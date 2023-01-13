@@ -1,0 +1,24 @@
+{
+  "development": {
+    "username": "phstagadmin",
+    "password": "RAJb!J]38%&yRn",
+    "database": "bioz_app_db",
+    "host": "planetheathstaging.cgqohlhgceaz.us-east-2.rds.amazonaws.com",
+    "dialect": "mysql",
+    "logging": false
+  },
+  "test": {
+    "username": "root",
+    "password": null,
+    "database": "bioapz_test",
+    "host": "127.0.0.1",
+    "dialect": "mysql"
+  },
+  "production": {
+    "username": "root",
+    "password": null,
+    "database": "bioapz_production",
+    "host": "127.0.0.1",
+    "dialect": "mysql"
+  }
+}

@@ -1,0 +1,11 @@
+/node_modules
+/node_modules/*
+
+db/*
+public/banners/*
+public/images/*
+public/offers/*
+public/products/*
+public/profile_picture/*
+public/combos/*
+/.idea/

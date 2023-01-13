@@ -1,0 +1,263 @@
+var mongoose = require('mongoose')
+var async = require('async')
+var crypto = require('crypto')
+var EmailTemplates = require('swig-email-templates')
+var nodemailer = require('nodemailer')
+var path = require('path')
+var resCode = require('../../config/res_code_config')
+var setRes = require('../../response')
+var jwt = require('jsonwebtoken');
+var models = require('../../models')
+var bcrypt = require('bcrypt')
+var _ = require('underscore')
+const Sequelize = require('sequelize');
+var notification = require('../../push_notification')
+var moment = require('moment')
+const MomentRange = require('moment-range');
+const Moment = MomentRange.extendMoment(moment);
+var fs = require('fs');
+
+exports.CreatePromo = async (req, res) => {
+
+	var data = req.body
+	req.file ? data.image = `public/promos/${req.file.filename}`: '';
+	var promosModel = models.promos
+	
+	console.log(data);
+
+	var requiredFields = _.reject(['business_id', 'promo_code', 'description', 'repeat_every', 'end_date', 'start_date'], (o) => { return (o ? true : false) & _.has(data, o)  })
+
+	data.repeat_every == 1 ? (data.repeat_on ? '' : requiredFields.push('repeat_on')) : '';
+
+	_.contains([1,2], parseInt(data.repeat_every)) ? data.repeat = true : '';
+
+	var repeat_on_validation = _.reject(data.repeat_on, (v) => {
+		return _.has([0,1,2,3,4,5,6], parseInt(v))
+	})
+
+	if (repeat_on_validation == '') {
+		
+		if (requiredFields == ''){
+
+			var Promo = await createPromo(data)
+
+			if (Promo != ''){
+				res.send(setRes(resCode.OK, Promo, false, 'Promo created successfully.'))
+			}
+			else{
+				res.send(setRes(resCode.BadRequest, null, true, "Fail to create promo."))
+			}
+
+		}else{
+			res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		}
+
+	} else {
+		res.send(setRes(resCode.BadRequest, '', true, "repeat_on value must between 0-6..."))
+	}
+}
+
+function createPromo(data){
+	var promosModel = models.promos
+
+	return new Promise((resolve, reject) => {
+
+		promosModel.create(data).then(promo => {
+			if (promo != null) {
+				resolve(promo);
+			}
+			else { 
+				resolve('')
+			}
+		})
+		.catch(error => {
+			resolve('')
+		})
+
+	})
+}
+
+exports.UpdatePromo = (req, res) => {
+
+	var data = req.body
+	req.file ? data.image = `public/promos/${req.file.filename}`: '';
+	var promosModel = models.promos
+	
+	var requiredFields = _.reject(['id'], (o) => { return (o ? true : false) & _.has(data, o)  })
+
+	data.repeat_every == 1 ? (data.repeat_on ? '' : requiredFields.push('repeat_on')) : '';
+
+	_.contains([1,2], parseInt(data.repeat_every)) ? data.repeat = true : '';
+
+ 	if (requiredFields == ''){
+
+		promosModel.findOne({
+			where: {
+				id: data.id,
+				is_deleted: false
+			}
+		}).then(PromoData => {
+
+			if (PromoData) {
+
+				if (data.image){
+					if (fs.existsSync(PromoData.image)){
+						fs.unlinkSync(PromoData.image);
+					}
+				}
+
+				promosModel.update(data, {
+					where: {
+						id: data.id,
+						is_deleted: false
+					}
+				}).then(updatedPromo => {
+					console.log(updatedPromo)
+					if (updatedPromo > 0){
+						
+						promosModel.findOne({
+							where: {
+								id: data.id,
+								is_deleted: false
+							}
+						}).then(promo => {
+							res.send(setRes(resCode.OK, promo, false, "Promo updated successfully."))
+						}).catch(error => {
+							console.log('===========update promo========')
+							console.log(error.message)
+							res.send(setRes(resCode.InternalServer, null, true, "Fail to update promo."))
+						})
+
+					}
+				})
+
+			} else {
+				res.send(setRes(resCode.ResourceNotFound, null, false, "Resource not found !!"))
+			}
+		}).catch(error => {
+			console.log(error);
+		})
+		
+
+	}else{
+		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+	}
+}
+
+exports.GetPromos = (req, res) => {
+
+	var resObj = {}
+	var data = req.body
+	var promosModel = models.promos;
+	var businessModel = models.business
+	var categoryModel = models.business_categorys
+	var Op = models.Op
+
+	var requiredFields = _.reject(['business_id'], (o) => { return (o ? true : false) & _.has(data, o)  })
+
+ 	if (requiredFields == ''){
+
+		promosModel.update({
+			is_deleted: true
+		}, {
+			where: {
+				is_deleted: false,
+				end_date: {
+					[Op.lt]: moment().format('YYYY-MM-DD')
+				}
+			}
+		}).then(updatedPromos => {
+			
+			promosModel.findAll({
+				where: {
+					business_id: data.business_id,
+					is_deleted: false,
+				},
+				order: [
+					['createdAt', 'DESC']
+				],
+				subQuery: false
+			}).then(promos => {
+
+				_.each(promos, (o) => {
+
+					let one = Moment.range(moment(`${data.from_date}T00:00:00.0000Z`), moment(`${data.to_date}T23:59:59.999Z`))
+	
+					let two = Moment.range(moment(`${o.start_date}T00:00:00.0000Z`), moment(`${o.end_date}T23:59:59.999Z`))
+	
+					let three = one.intersect(two)
+	
+					let four = three != null ? three.snapTo('day') : ''
+	
+					let five = three != null ? Array.from(three.by('days')) : ''
+					
+					_.each(five, (v) => {
+						v = v.format('DD-MM-YYYY')
+						if (o.repeat_every === 0) {
+							if (v === moment(o.start_date).format('DD-MM-YYYY')) {
+								_.has(resObj, v) === false ? resObj[v] = o : ''
+							}
+						} else if (o.repeat_every === 1) {
+							var start = moment(o.start_date),
+							end = moment(o.end_date),
+							day = o.repeat_on.map(function(v) {
+									return parseInt(v);
+								});
+
+
+							var now = start;
+
+							while (now.isBefore(end) || now.isSame(end)) {
+								if (v === moment(now).format('DD-MM-YYYY') && day.includes(moment(now,'YYYY-MM-DD').day())) {
+									_.has(resObj, v) === false ? resObj[v] = o : ''
+								}
+								now.add(1, 'days');
+							}
+
+						} else if (o.repeat_every === 2) {
+							
+								_.has(resObj, v) === false ? resObj[v] = o : ''
+							
+						}
+					})
+				})
+
+				///////////////////////////////////
+
+				// get N element from object
+				let arrRes = []
+				if (data.limit && data.limit > 0){
+					function firstN(obj, n) {
+						return _.chain(obj)
+						  .keys()
+						  .sort()
+						  .take(n)
+						  .reduce(function(memo, current) {
+							arrRes.push(obj[current]);
+							return memo;
+						  }, {})
+						  .value();
+					  }
+					  
+					firstN(resObj, data.limit)
+				}
+				//////////////////////////////////
+	
+				res.send(setRes(resCode.OK, (data.limit ? arrRes : resObj) , false, "Available Promos."))
+			})
+			.catch(error => {
+				console.log('============get promos error==========')
+				console.log(error.message)
+				res.send(setRes(resCode.InternalServer, null, true, "Internal server error"))
+			})
+
+		}).catch(error => {
+			console.log(error.message + ' ...promos.controller');
+			res.send(setRes(resCode.InternalServer, null, true, 'Internal server error.'))
+		})
+
+	}else{
+		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+	}
+
+}
