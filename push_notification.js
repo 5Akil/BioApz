@@ -5,7 +5,8 @@ module.exports.SendNotification = (req) =>{
     return new Promise(function(resolve, reject) {
         console.log('+++++++++++++++++++In Notification Module+++++++++++++++++++')
         //firebase server key
-        var serverKey = "AAAAt81rXUE:APA91bEh_yck1LjH2KbCYfFgr54ferL8EFtdn5_JOIQMmRW6bqfLe0luI8NMLmfQmm1hEIG4qHjCXqI8NAWIytOO3uxkRovXDbP9FQOGBRhjENi2UkVgy87Q4Dyxip8aba04xN4GmMJ8";
+        //var serverKey = "AAAAt81rXUE:APA91bEh_yck1LjH2KbCYfFgr54ferL8EFtdn5_JOIQMmRW6bqfLe0luI8NMLmfQmm1hEIG4qHjCXqI8NAWIytOO3uxkRovXDbP9FQOGBRhjENi2UkVgy87Q4Dyxip8aba04xN4GmMJ8";
+        var serverKey = "AAAAc9YLpS8:APA91bGUPSktxgDxwGZpbDI2VMM6h1bhF5yFNw8rvip6vgPiVYCF-Ut2oOpXzoM5eOjMw0naY6lUsMn9bk8prUbmy4xELnu3FiyB7B6UeexyM3sbsasxNnXJTw4HHnTmxy2fKUCGxgKZ";
 // var serverKey = "AIzaSyClU1O9FUSTDtFPkq5CDsv4KpfjnJVxgG0"; 
 
         

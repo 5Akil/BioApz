@@ -781,11 +781,13 @@ exports.CreateBusiness = async (req, res) => {
 
 exports.ChatInitialize = async (req, res) => {
 	var admin = require("firebase-admin");
-	var serviceAccount = require("../../bioapz-106c0-firebase-adminsdk-onfga-04682c17d2.json");
+	//var serviceAccount = require("../../bioapz-106c0-firebase-adminsdk-onfga-04682c17d2.json");
+	var serviceAccount = require("./bioapz-372208-4929769f6e43.json");
 
 	!admin.apps.length ? admin.initializeApp({
 		credential: admin.credential.cert(serviceAccount),
-		databaseURL: "https://bioapz-106c0-default-rtdb.firebaseio.com"
+		//databaseURL: "https://bioapz-106c0-default-rtdb.firebaseio.com"
+		databaseURL: "https://bioapz-372208-default-rtdb.firebaseio.com"
 	}).firestore()
   : admin.app().firestore();
 	
