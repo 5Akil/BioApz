@@ -42,7 +42,7 @@ exports.Register = async (req, res) => {
 
             var templates = new EmailTemplates()
             var context = {
-			  resetUrl: 'http://18.222.37.147:5000/api/user/account-activation/' + token,
+			  resetUrl: 'http://18.211.184.240:5000/api/user/account-activation/' + token,
 			  username: data.username
 			}
 			
@@ -494,7 +494,7 @@ function sendForgotPasswordMail(user, key){
 	
 				var templates = new EmailTemplates()
 				var context = {
-				  resetUrl: 'http://18.222.37.147:5000/api/user/resetPassword/' + token,
+				  resetUrl: 'http://18.211.184.240:5000/api/user/resetPassword/' + token,
 				  username: user.username
 				// resetUrl: '#'
 				}

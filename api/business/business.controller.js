@@ -782,7 +782,7 @@ exports.CreateBusiness = async (req, res) => {
 exports.ChatInitialize = async (req, res) => {
 	var admin = require("firebase-admin");
 	//var serviceAccount = require("../../bioapz-106c0-firebase-adminsdk-onfga-04682c17d2.json");
-	var serviceAccount = require("./bioapz-372208-4929769f6e43.json");
+	var serviceAccount = require("../../bioapz-372208-4929769f6e43.json");
 
 	!admin.apps.length ? admin.initializeApp({
 		credential: admin.credential.cert(serviceAccount),
