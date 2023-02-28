@@ -16,6 +16,7 @@ var moment = require('moment')
 const MomentRange = require('moment-range');
 const Moment = MomentRange.extendMoment(moment);
 var fs = require('fs');
+var awsConfig = require('../../config/aws_S3_config');
 
 exports.createInquiry = async (req, res) => {
 
@@ -102,7 +103,7 @@ exports.GetRecommendedBusiness = async (req, res) => {
 			res.send(setRes(resCode.BadRequest, null, true, "invalid page number, should start with 1"))
 	  }
 	  var skip = data.page_size * (data.page - 1)
-	  var limit = data.page_size
+	  var limit = parseInt(data.page_size)
 
 	  //get distance by latitude longitude in km
 	  const query = '( 6371 * acos( cos( radians('+data.latitude+') ) * cos( radians( latitude ) ) * cos( radians( longitude ) - radians('+data.longitude+') ) + sin( radians('+data.latitude+') ) * sin( radians( latitude ) ) ) )'
@@ -133,7 +134,7 @@ exports.GetRecommendedBusiness = async (req, res) => {
 					[Op.lt]: 10000
 				}
 			},
-			//group: ['business.id'],
+			group: ['business.id'],
 			order: Sequelize.col('distance'),
 			offset:skip,
 			limit : parseInt(limit),
@@ -142,9 +143,13 @@ exports.GetRecommendedBusiness = async (req, res) => {
 		}).then((business) => {
 
 			_.map(business, (Obj) => {
-				return Obj.template.template_url = Obj.template.template_url.concat(`?bid=${Obj.id}&uid=${data.user_id}&ccd=${Obj.color_code}`)
+				Obj.banner = awsConfig.getSignUrl(Obj.banner);
+  			Obj.template.template_url = awsConfig.getSignUrl('templates_thumb/'+Obj.template.image);
+  			return Obj;
+				// return Obj.template.template_url = Obj.template.template_url.concat(`?bid=${Obj.id}&uid=${data.user_id}&ccd=${Obj.color_code}`)
 			})
 
+			// business.banner = awsConfig.getSignUrl(business.banner)
 			res.send(setRes(resCode.OK, business, false, "Available businesses near you."))
 		})
 		.catch((err) => {
@@ -192,6 +197,9 @@ exports.GetBusinessDetail = async (req, res) => {
 			],
 		}).then(business => {
 			if (business != '' && business != null && business.id != null){
+				business.banner = awsConfig.getSignUrl(business.banner)
+				business.template.template_url = awsConfig.getSignUrl('templates_thumb/'+business.template.image)
+				business.template.image = awsConfig.getSignUrl('templates_thumb/'+business.template.image)
 				res.send(setRes(resCode.OK, business, false, "Get business detail successfully.."))
 			}else{
 				res.send(setRes(resCode.ResourceNotFound, null, false, "Business not found."))
@@ -258,6 +266,10 @@ exports.GetImages = async (req, res) => {
 			}
 		}).then(gallery => {
 			if (gallery != null && gallery != ''){
+				for(const data of gallery){
+				  const signurl = awsConfig.getSignUrl(`${data.image}`);
+				  data.image = signurl;		  
+				}
 				res.send(setRes(resCode.OK, gallery, false, "Available images for your business."))
 			}
 			else{
@@ -285,7 +297,7 @@ exports.UploadCompanyImages = async (req, res) => {
 
 				var row = {
 					business_id: data.business_id,
-					image:  `public/images/${singleFile.filename}`
+					image:  `${singleFile.key}`
 				}
 				recordArray.push(row)
 				cbSingleFile()
@@ -293,6 +305,10 @@ exports.UploadCompanyImages = async (req, res) => {
 			}, () => {
 				if (recordArray.length > 0){
 					galleryModel.bulkCreate(recordArray).then(gallery => {
+						for(const data of gallery){
+						  const signurl = awsConfig.getSignUrl(`${data.image}`);
+						  data.image = signurl;		  
+						}
 						res.send(setRes(resCode.OK, gallery, false, 'images are uploded successfully.'))
 					}).catch(error => {
 						res.send(setRes(resCode.BadRequest, null, true, "Fail to upload images."))
@@ -323,7 +339,7 @@ exports.GetAllOffers = async (req, res) => {
 			res.send(setRes(resCode.BadRequest, null, true, "invalid page number, should start with 1"))
 		}
 		var skip = data.page_size * (data.page - 1)
-		var limit = data.page_size
+		var limit = parseInt(data.page_size)
 		
 		var condition = {
 			offset:skip,
@@ -343,6 +359,10 @@ exports.GetAllOffers = async (req, res) => {
 
 		offerModel.findAll(condition).then((offers) => {
 			if (offers.length > 0){
+				for(offer of offers){
+					offer.image = awsConfig.getSignUrl(offer.image)
+					offer.business.banner = awsConfig.getSignUrl(offer.business.banner)
+				}
 				res.send(setRes(resCode.OK, offers, false, "Get offers list successfully"))
 			}else{
 				res.send(setRes(resCode.OK, offers, false, "Get offers list successfully"))
@@ -359,7 +379,7 @@ exports.GetAllOffers = async (req, res) => {
 exports.UpdateOfferDetail = async (req, res) => {
 
 	var data = req.body
-	req.file ? data.image = `public/offers/${req.file.filename}`: '';
+	req.file ? data.image = `${req.file.key}`: '';
 	var offerModel = models.offers
 	var productInqModel = models.product_inquiry;
 	var userModel = models.user;
@@ -380,6 +400,7 @@ exports.UpdateOfferDetail = async (req, res) => {
 					}
 				}).then(UpdatedOffer => {
 					if (UpdatedOffer != null){
+						UpdatedOffer.image = awsConfig.getSignUrl(UpdatedOffer.image)
 						res.send(setRes(resCode.OK, UpdatedOffer, false, "Offer updated successfully."))
 					}
 					else{
@@ -438,7 +459,7 @@ exports.UpdateOfferDetail = async (req, res) => {
 					
 
 			// send notification code over
-
+			 offer.image = awsConfig.getSignUrl(offer.image) 
 			res.send(setRes(resCode.OK, offer, false, "Offer added successfully."))
 		}).catch(error => {
 			res.send(setRes(resCode.BadRequest, null, true, "Fail to add offer."))
@@ -449,7 +470,7 @@ exports.UpdateOfferDetail = async (req, res) => {
 exports.CreateOffer = async (req, res) => {
 
 	var data = req.body
-	req.file ? data.image = `public/offers/${req.file.filename}`: '';
+	req.file ? data.image = `${req.file.key}`: '';
 	var offerModel = models.offers
 	
 	console.log(data);
@@ -471,6 +492,7 @@ exports.CreateOffer = async (req, res) => {
 			var Offer = await createOffer(data)
 
 			if (Offer != ''){
+				Offer.image = awsConfig.getSignUrl(Offer.image)
 				res.send(setRes(resCode.OK, Offer, false, 'Offer created successfully.'))
 			}
 			else{
@@ -509,7 +531,7 @@ function createOffer(data){
 exports.UpdateOffer = (req, res) => {
 
 	var data = req.body
-	req.file ? data.image = `public/offers/${req.file.filename}`: '';
+	req.file ? data.image = `${req.file.key}`: '';
 	var offerModel = models.offers
 	
 	var requiredFields = _.reject(['id'], (o) => { return _.has(data, o)  })
@@ -550,6 +572,7 @@ exports.UpdateOffer = (req, res) => {
 								is_deleted: false
 							}
 						}).then(offer => {
+							offer.image = awsConfig.getSignUrl(offer.image)
 							res.send(setRes(resCode.OK, offer, false, "Offer updated successfully."))
 						}).catch(error => {
 							console.log('===========update offer========')
@@ -607,8 +630,9 @@ exports.GetOffers = (req, res) => {
 				],
 				subQuery: false
 			}).then(offers => {
-
 				_.each(offers, (o) => {
+
+					
 
 					let one = Moment.range(moment(`${data.from_date}T00:00:00.0000Z`), moment(`${data.to_date}T23:59:59.999Z`))
 	
@@ -671,7 +695,14 @@ exports.GetOffers = (req, res) => {
 					firstN(resObj, data.limit)
 				}
 				//////////////////////////////////
-	
+				const offer = Object.keys(resObj)
+
+				for(const offers of offer){
+
+					resObj[offers].dataValues.image_url = awsConfig.getSignUrl(resObj[offers].dataValues.image)
+					
+				}
+				
 				res.send(setRes(resCode.OK, (data.limit ? arrRes : resObj) , false, "Available Offers."))
 			})
 			.catch(error => {
@@ -694,7 +725,7 @@ exports.GetOffers = (req, res) => {
 exports.ManageBannerAndBooking = function (req, res) {
 
 	var data = req.body
-	req.file ? data.banner = `public/banners/${req.file.originalname}` : '';
+	req.file ? data.banner = `${req.file.key}` : '';
 	var businessModel = models.business;
   
 	var requiredFields = _.reject(['id'], (o) => { return _.has(data, o)  })

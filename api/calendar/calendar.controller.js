@@ -15,6 +15,15 @@ var moment = require('moment')
 const MomentRange = require('moment-range');
 const Moment = MomentRange.extendMoment(moment);
 var fs = require('fs');
+var awsConfig = require('../../config/aws_S3_config');
+
+const AWS = require('aws-sdk');
+
+const s3 = new AWS.S3({
+  accessKeyId: 'AKIA6EW533LXXRNVFAPW',
+  secretAccessKey: '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',
+  region: 'us-east-1'
+});
 
 exports.ComboCalendar = async (req, res) => {
 
@@ -25,7 +34,7 @@ exports.ComboCalendar = async (req, res) => {
 console.log(data);
 	// store filename into array
 	_.each(req.files, (o) => {
-		files.push(`public/combos/${o.filename}`)
+		files.push(`${o.key}`)
 	})
 
 	var requiredFields = _.reject(['business_id', 'title', 'description', 'repeat_every', 'end_date', 'start_date'], (o) => { return _.has(data, o)  })
@@ -104,6 +113,12 @@ console.log(data);
 				var comboOffer = await createComboOffer(data)
 
 				if (comboOffer != ''){
+					var added_file = [];
+					for(const data of comboOffer.images){
+					  const signurl = awsConfig.getSignUrl(`${data}`);
+					  added_file.push(signurl);
+					}
+					comboOffer.images = added_file;
 					res.send(setRes(resCode.OK, comboOffer, false, 'combo offer created successfully.'))
 				}
 				else{
@@ -173,7 +188,7 @@ exports.GetComboOffers = (req, res) => {
 			comboModel.findAll({
 				where: {
 					business_id: data.business_id,
-					is_deleted: false,
+					//is_deleted: false,
 				},
 				order: [
 					['createdAt', 'DESC']
@@ -312,7 +327,23 @@ exports.GetComboOffers = (req, res) => {
 				//////////////////////////////////
 	
 				// res.send(setRes(resCode.OK, (arrRes == '' ? resObj : arrRes), false, "available combos."))
+				const offer_dates = Object.keys(resObj);
+				
+				for(const offer of offer_dates ){
+					var image = resObj[offer].dataValues.images;
+					
+					var images = image.split(";");
+					
+					var image_array = [];
+					for(const data of images){
+					  	const signurl = awsConfig.getSignUrl(data);
+					  	image_array.push(signurl);
+					}
+					resObj[offer].dataValues.images_url= image_array;
+						
+				}
 
+				// console.log(resObj);
 				res.send(setRes(resCode.OK, (data.limit ? arrRes : resObj) , false, "available combos."))
 			})
 			.catch(error => {
@@ -340,7 +371,7 @@ exports.UpdateComboOffer = (req, res) => {
 
 	// store filename into array
 	_.each(req.files, (o) => {
-		files.push(`public/combos/${o.filename}`)
+		files.push(`${o.key}`)
 	})
 
 	
@@ -384,6 +415,12 @@ exports.UpdateComboOffer = (req, res) => {
 								is_deleted: false
 							}
 						}).then(combo => {
+							var update_file = [];
+							for(const data of combo.images){
+							  const signurl = awsConfig.getSignUrl(`${data}`);
+							  update_file.push(signurl);
+							}
+							combo.images = update_file;
 							res.send(setRes(resCode.OK, combo, false, "Combo Offer updated successfully."))
 						}).catch(error => {
 							console.log('===========update combo offer========')
@@ -439,15 +476,29 @@ exports.removeImagesFromCombo = (req, res) => {
 				}).then(updatedOffer => {
 					
 					if (updatedOffer > 0) {
-						if (fs.existsSync(data.image)){
-							fs.unlinkSync(data.image);
-						}
+						const params = {
+						    Bucket: 'bioapz',
+						    Key: data.image
+						};
+						s3.headObject(params, function(err, metadata) {
+						  if (err && err.code === 'NotFound') {
+						    console.log('Image not found in folder ' + data.image);
+						  } else {
+						    s3.deleteObject(params)
+						  }
+						});
 
 						comboModel.findOne({
 							where: {
 								id: data.combo_id
 							}
 						}).then(combo => {
+							var file = [];
+							for(const data of combo.images){
+							  const signurl = awsConfig.getSignUrl(`${data}`);
+							  file.push(signurl);
+							}
+							combo.images = file;
 							res.send(setRes(resCode.OK, combo, false, "Combo offer.."))
 						})
 					}

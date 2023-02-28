@@ -14,13 +14,14 @@ const Sequelize = require('sequelize');
 var notification = require('../../push_notification')
 var moment = require('moment')
 const MomentRange = require('moment-range');
+var awsConfig = require('../../config/aws_S3_config');
 const Moment = MomentRange.extendMoment(moment);
 var fs = require('fs');
 
 exports.CreatePromo = async (req, res) => {
 
 	var data = req.body
-	req.file ? data.image = `public/promos/${req.file.filename}`: '';
+	req.file ? data.image = `${req.file.key}`: '';
 	var promosModel = models.promos
 	
 	console.log(data);
@@ -42,6 +43,7 @@ exports.CreatePromo = async (req, res) => {
 			var Promo = await createPromo(data)
 
 			if (Promo != ''){
+				Promo.image = awsConfig.getSignUrl(Promo.image)
 				res.send(setRes(resCode.OK, Promo, false, 'Promo created successfully.'))
 			}
 			else{
@@ -80,7 +82,7 @@ function createPromo(data){
 exports.UpdatePromo = (req, res) => {
 
 	var data = req.body
-	req.file ? data.image = `public/promos/${req.file.filename}`: '';
+	req.file ? data.image = `${req.file.key}`: '';
 	var promosModel = models.promos
 	
 	var requiredFields = _.reject(['id'], (o) => { return (o ? true : false) & _.has(data, o)  })
@@ -121,6 +123,7 @@ exports.UpdatePromo = (req, res) => {
 								is_deleted: false
 							}
 						}).then(promo => {
+							promo.image = awsConfig.getSignUrl(promo.image);
 							res.send(setRes(resCode.OK, promo, false, "Promo updated successfully."))
 						}).catch(error => {
 							console.log('===========update promo========')
@@ -178,7 +181,7 @@ exports.GetPromos = (req, res) => {
 				],
 				subQuery: false
 			}).then(promos => {
-
+				
 				_.each(promos, (o) => {
 
 					let one = Moment.range(moment(`${data.from_date}T00:00:00.0000Z`), moment(`${data.to_date}T23:59:59.999Z`))
@@ -242,7 +245,13 @@ exports.GetPromos = (req, res) => {
 					firstN(resObj, data.limit)
 				}
 				//////////////////////////////////
-	
+				const offer = Object.keys(resObj)
+
+				for(const offers of offer){
+
+					resObj[offers].dataValues.image_url = awsConfig.getSignUrl(resObj[offers].dataValues.image)
+					
+				}
 				res.send(setRes(resCode.OK, (data.limit ? arrRes : resObj) , false, "Available Promos."))
 			})
 			.catch(error => {

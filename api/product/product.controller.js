@@ -13,6 +13,7 @@ var _ = require('underscore')
 var moment = require('moment')
 const Sequelize = require('sequelize');
 var notification = require('../../push_notification')
+var awsConfig = require('../../config/aws_S3_config')
 
 exports.createInquiry = async (req, res) => {
 
@@ -84,7 +85,7 @@ exports.GetAllProducts = async (req, res) => {
 	var business = models.business;
 	var category = models.business_categorys;
 	var data = req.body
-
+	console.log(req.body)
 	var requiredFields = _.reject(['page','page_size'], (o) => { return _.has(data, o)  })
 
 	if (requiredFields == ''){
@@ -113,6 +114,10 @@ exports.GetAllProducts = async (req, res) => {
 
 		productModel.findAll(condition).then((products) => {
 			if (products.length > 0){
+				for(const data of products){
+				  const signurl = awsConfig.getSignUrl(`${data.image}`);
+				  data.image = signurl;		  
+				}
 				res.send(setRes(resCode.OK, products, false, "Get product list successfully"))
 			}else{
 				res.send(setRes(resCode.OK, products, false, "Get product list successfully"))
@@ -238,7 +243,7 @@ exports.IsReadStatus = async (req, res) => {
 exports.UpdateProductDetail = async (req, res) => {
 
 	var data = req.body
-	req.file ? data.image = `public/products/${req.file.filename}`: '';
+	req.file ? data.image = `${req.file.key}`: '';
 	var productModel = models.products
 
 	if (data.id){
@@ -257,6 +262,7 @@ exports.UpdateProductDetail = async (req, res) => {
 					}
 				}).then(UpdatedProduct => {
 					if (UpdatedProduct != null){
+						UpdatedProduct.image = awsConfig.getSignUrl(UpdatedProduct.image);
 						res.send(setRes(resCode.OK, UpdatedProduct, false, "Product Or Service updated successfully."))
 					}
 					else{
@@ -273,8 +279,10 @@ exports.UpdateProductDetail = async (req, res) => {
 	}
 	else{
 		productModel.create(data).then(product => {
+			product.image = awsConfig.getSignUrl(product.image);
 			res.send(setRes(resCode.OK, product, false, "Product Or Service added successfully."))
 		}).catch(error => {
+
 			res.send(setRes(resCode.BadRequest, null, true, "Fail to add product or service."))
 		})
 	}
@@ -337,6 +345,7 @@ exports.GetProductById = (req, res) => {
 		}
 	}).then(product => {
 		if (product != null){
+			product.image = awsConfig.getSignUrl(product.image)
 			res.send(setRes(resCode.OK, product, false, "Get product detail successfully."))
 		}
 		else{

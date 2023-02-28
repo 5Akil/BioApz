@@ -12,6 +12,7 @@ var _ = require('underscore')
 var mailConfig = require('../../config/mail_config')
 var util = require('util')
 var notification = require('../../push_notification');
+var awsConfig = require('../../config/aws_S3_config');
 
 exports.Register = async (req, res) => {
  
@@ -239,7 +240,10 @@ exports.Login = async (req, res) => {
 								if (newBusiness){
 
 									//custome template url
-									business.template.template_url = business.template.template_url.concat(`?bid=${business.id}`)
+									business.banner = awsConfig.getSignUrl(business.banner)
+									business.template.template_url = awsConfig.getSignUrl('templates_thumb/'+business.template.image)
+									business.template.image = awsConfig.getSignUrl('templates_thumb/'+business.template.image)
+									//business.template.template_url = business.template.template_url.concat(`?bid=${business.id}`)
 
 									res.send(setRes(resCode.OK, business, false, 'You are successfully logged in'))
 								}else{
@@ -279,6 +283,7 @@ exports.GetProfileDetail = async (req, res) => {
 			}
 		}).then(user => {
 			if (user != null){
+				user.profile_picture = awsConfig.getSignUrl(user.profile_picture);
 				res.send(setRes(resCode.OK, user, false, "Get user profile successfully."))
 			}
 			else{
@@ -296,7 +301,7 @@ exports.UpdateProfile = async (req, res) => {
 	// console.log(req.file.originalname)
 	// return
 	var data = req.body
-	req.file ? data.profile_picture = `public/profile_picture/${req.file.originalname}` : ''
+	req.file ? data.profile_picture = `${req.file.key}` : ''
 	var userModel = models.user
 	var requiredFields = _.reject(['id'], (o) => { return _.has(data, o)  })
 

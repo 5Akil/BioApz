@@ -7,6 +7,7 @@ var bcrypt = require('bcrypt')
 var models = require('../../models')
 const Sequelize = require('sequelize');
 var fs = require('fs')
+var awsConfig = require('../../config/aws_S3_config');
 
 exports.ProductTableSearch = function (req, res) {
 
@@ -20,6 +21,10 @@ exports.ProductTableSearch = function (req, res) {
         })
     }).then(products => {
         products = JSON.parse(JSON.stringify(products))
+        for(const data of products){
+		  const signurl = awsConfig.getSignUrl(`${data.image}`);
+		  data.image = signurl;		  
+		}
         res.send(setRes(resCode.OK, products, false, "Product search completed.."))
     }).catch(error => {
         res.send(setRes(resCode.InternalServer, null, true, "Internal server error."))
@@ -218,7 +223,7 @@ exports.FilterProducts = (req, res) => {
 			res.send(setRes(resCode.BadRequest, null, true, "invalid page number, should start with 1"))
 		}
 		var skip = data.page_size * (data.page - 1)
-		var limit = data.page_size
+		var limit = parseInt(data.page_size)
 		
 		category.findOne({
 			where: {
@@ -260,7 +265,10 @@ exports.FilterProducts = (req, res) => {
 							})
 
 						}, () => {
-
+							for(const data of products){
+							  const signurl = awsConfig.getSignUrl(`${data.image}`);
+							  data.image = signurl;		  
+							}
 							res.send(setRes(resCode.OK, products, false, "Available products get successfully"))
 
 						})
@@ -301,7 +309,7 @@ exports.Searching = (req, res) => {
 			res.send(setRes(resCode.BadRequest, null, true, "invalid page number, should start with 1"))
 		}
 		var skip = data.page_size * (data.page - 1)
-		var limit = data.page_size
+		var limit = parseInt(data.page_size);
 		var whereProduct = data.str != '' && data.str != null && data.str ? data.str : ''
 
 		if (data.filter != '' && data.filter != null && data.filter){
@@ -349,6 +357,10 @@ exports.Searching = (req, res) => {
 									}
 								})
 							}, async () => {
+								for(const data of products){
+								  const signurl = awsConfig.getSignUrl(`${data.image}`);
+								  data.image = signurl;		  
+								}
 								res.send(setRes(resCode.OK, products, false, "search completed.."))
 							})
 
