@@ -36,27 +36,7 @@ exports.AddToCart = async(req,res) => {
 				
 			}else{
 
-				var total_qty = parseInt(product.qty) + parseInt(data.qty)
-				shoppingCartModel.update({qty:total_qty}, {
-					where: {
-						user_id: data.user_id,product_id : data.product_id, is_deleted: false
-					}
-				}).then(UpdateData =>{
-					if(UpdateData > 0){
-						shoppingCartModel.findOne({
-							where: {
-								user_id: data.user_id,product_id : data.product_id, is_deleted: false
-							}
-						}).then(data => {
-							
-							res.send(setRes(resCode.OK, data, false, "Product quantity updated successfully."))
-						}).catch(error => {
-							
-							res.send(setRes(resCode.InternalServer, null, true, "Fail to update product quantity."))
-						})
-					}
-					
-				})
+				res.send(setRes(resCode.BadRequest, null, true, 'Product already into a cart...'));
 			}
 		})
 	}else{
@@ -141,6 +121,52 @@ exports.RemoveProductCart = async(req,res) => {
 				})
 			}else{
 				res.send(setRes(resCode.BadRequest, null, true, "Invalid user id or product id"))
+			}
+		})
+	}else{
+		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+	}
+}
+
+exports.QtyUpdate = async(req,res) => {
+
+	var data = req.body;
+	var shoppingCartModel = models.shopping_cart;
+
+	var requiredFields = _.reject(['user_id','product_id','qty'], (o) => { return _.has(data, o)  })
+	if(requiredFields == ""){
+
+		shoppingCartModel.findOne({
+			where: {
+				user_id: data.user_id,product_id : data.product_id, is_deleted: false
+			}
+		}).then(UserCartData => {
+
+			if(UserCartData != null){
+				shoppingCartModel.update({qty:data.qty}, {
+					where: {
+						user_id: data.user_id,product_id : data.product_id, is_deleted: false
+					}
+				}).then(UpdateData =>{
+					if(UpdateData > 0){
+
+						shoppingCartModel.findOne({
+							where: {
+								user_id: data.user_id,product_id : data.product_id, is_deleted: false
+							}
+						}).then(data => {
+							
+							res.send(setRes(resCode.OK, data, false, "Quantity update successfully."))
+						}).catch(error => {
+							
+							res.send(setRes(resCode.InternalServer, null, true, "Fail to update quantity."))
+						})
+					}else{
+						res.send(setRes(resCode.InternalServer, null, true, "Fail to update quantity."))
+					}
+				});
+			}else{
+				res.send(setRes(resCode.ResourceNotFound,null,false,"Data not found"))
 			}
 		})
 	}else{
