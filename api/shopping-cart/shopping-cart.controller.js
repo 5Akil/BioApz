@@ -18,25 +18,34 @@ exports.AddToCart = async(req,res) => {
 	
 	var data = req.body
 	var shoppingCartModel = models.shopping_cart
+	var orderDetailsModel = models.order_details
 
 	var requiredFields = _.reject(['user_id', 'product_id', 'qty','price'], (o) => { return _.has(data, o)  })
 
 	if (requiredFields == ''){
 
-		shoppingCartModel.findOne({where: {user_id: data.user_id,product_id : data.product_id, is_deleted: false}}).then(product => {
-			if(product == null){
+		orderDetailsModel.findOne({where: {product_id:data.product_id, is_deleted: false}}).then(OrderData => {
+			if(OrderData == null){
 
-				shoppingCartModel.create(data).then(function (cartData) {
-					if (cartData) {
-						res.send(setRes(resCode.OK, cartData, true, 'Product added into cart successfully.'));
-					} else {
-						res.send(setRes(resCode.BadRequest, null, true, 'Fail to add into cart'));
+				shoppingCartModel.findOne({where: {user_id: data.user_id,product_id : data.product_id, is_deleted: false}}).then(product => {
+					if(product == null){
+
+						shoppingCartModel.create(data).then(function (cartData) {
+							if (cartData) {
+								res.send(setRes(resCode.OK, cartData, true, 'Product added into cart successfully.'));
+							} else {
+								res.send(setRes(resCode.BadRequest, null, true, 'Fail to add into cart'));
+							}
+						});
+						
+					}else{
+
+						res.send(setRes(resCode.BadRequest, null, true, 'Product already into a cart...'));
 					}
-				});
-				
+				})
 			}else{
 
-				res.send(setRes(resCode.BadRequest, null, true, 'Product already into a cart...'));
+				res.send(setRes(resCode.ResourceNotFound,null,true,'Product out of stock'))
 			}
 		})
 	}else{
