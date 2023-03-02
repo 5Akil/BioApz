@@ -7,7 +7,7 @@ const multerS3 = require('multer-s3');
 
 const uuidv1 = require('uuid/v1');
 const moment = require('moment')
-
+var awsConfig = require('../../config/aws_S3_config')
 var storage = multer.diskStorage({
     destination: function (req, file, cb) {
       cb(null, 'public/products')
@@ -21,16 +21,6 @@ var storage = multer.diskStorage({
 var upload = multer({ storage: storage });
 
 //upload image in AWS S3
-const AWS = require('aws-sdk');
-
-AWS.config.update({
-  accessKeyId: 'AKIA6EW533LXXRNVFAPW',
-  secretAccessKey: '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',
-  region: 'us-east-1'
-});
-
-const s3 = new AWS.S3();
-
 const fileFilter = (req,file,cb) => {
 
   if(file.mimetype === 'image/jpeg' || file.mimetype === 'image/png'){
@@ -43,7 +33,7 @@ const fileFilter = (req,file,cb) => {
 var awsupload = multer({
   storage:multerS3({
     fileFilter,
-    s3:s3,
+    s3:awsConfig.s3,
     bucket:'bioapz',
     
     key:function(req,file,cb){
@@ -66,5 +56,8 @@ router.post('/isRead', verifyToken, controller.IsReadStatus)
 router.post('/updateProduct', verifyToken, awsupload.single('image'), controller.UpdateProductDetail)
 // router.post('/initChat', verifyToken, controller.ChatInitialize)
 router.post('/byId', verifyToken, controller.GetProductById)
+router.post('/photo', verifyToken, awsupload.single('image'), (req, res) => {
+  res.json({ message: 'File uploaded successfully',data:`${req.file.key}` });
+});
 
 module.exports = router;

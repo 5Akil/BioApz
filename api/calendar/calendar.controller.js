@@ -17,14 +17,6 @@ const Moment = MomentRange.extendMoment(moment);
 var fs = require('fs');
 var awsConfig = require('../../config/aws_S3_config');
 
-const AWS = require('aws-sdk');
-
-const s3 = new AWS.S3({
-  accessKeyId: 'AKIA6EW533LXXRNVFAPW',
-  secretAccessKey: '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',
-  region: 'us-east-1'
-});
-
 exports.ComboCalendar = async (req, res) => {
 
 	var data = req.body
@@ -480,11 +472,18 @@ exports.removeImagesFromCombo = (req, res) => {
 						    Bucket: 'bioapz',
 						    Key: data.image
 						};
-						s3.headObject(params, function(err, metadata) {
+						awsConfig.s3.headObject(params, function(err, metadata) {
 						  if (err && err.code === 'NotFound') {
 						    console.log('Image not found in folder ' + data.image);
 						  } else {
-						    s3.deleteObject(params)
+						  	console.log(params)
+						    awsConfig.s3.deleteObject(params,(err,data)=>{
+						    	if(err){
+						    		console.log(err)
+						    	}else{
+						    		console.log('successfully deleted')
+						    	}
+						    })
 						  }
 						});
 

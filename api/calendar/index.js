@@ -5,16 +5,7 @@ var multer = require('multer');
 const multerS3 = require('multer-s3');
 const uuidv1 = require('uuid/v1');
 const moment = require('moment')
-
-const AWS = require('aws-sdk');
-
-AWS.config.update({
-  accessKeyId: 'AKIA6EW533LXXRNVFAPW',
-  secretAccessKey: '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',
-  region: 'us-east-1'
-});
-
-const s3 = new AWS.S3();
+var awsConfig = require('../../config/aws_S3_config');
 
 const fileFilter = (req,file,cb) => {
 
@@ -27,7 +18,7 @@ const fileFilter = (req,file,cb) => {
 var awsuploadcombos = multer({
   storage:multerS3({
     fileFilter,
-    s3:s3,
+    s3:awsConfig.s3,
     bucket:'bioapz',
     
     key:function(req,file,cb){

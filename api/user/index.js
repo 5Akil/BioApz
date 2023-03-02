@@ -5,6 +5,7 @@ var multer = require('multer');
 const multerS3 = require('multer-s3');
 const uuidv1 = require('uuid/v1');
 const moment = require('moment')
+const awsConfig = require('../../config/aws_S3_config')
 
 var storage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -19,16 +20,6 @@ var storage = multer.diskStorage({
   
 var upload = multer({ storage: storage });
 //upload image in AWS S3
-const AWS = require('aws-sdk');
-
-AWS.config.update({
-  accessKeyId: 'AKIA6EW533LXXRNVFAPW',
-  secretAccessKey: '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',
-  region: 'us-east-1'
-});
-
-const s3 = new AWS.S3();
-
 const fileFilter = (req,file,cb) => {
 
   if(file.mimetype === 'image/jpeg' || file.mimetype === 'image/png'){
@@ -41,7 +32,7 @@ const fileFilter = (req,file,cb) => {
 var awsupload = multer({
   storage:multerS3({
     fileFilter,
-    s3:s3,
+    s3:awsConfig.s3,
     bucket:'bioapz',
     
     key:function(req,file,cb){

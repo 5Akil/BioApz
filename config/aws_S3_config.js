@@ -19,8 +19,15 @@ function getSignUrl (key) {
 	const signedUrl = s3.getSignedUrl('getObject', params);
   return `${signedUrl}`;
 }
+const fileFilter = (req,file,cb) => {
 
+  if(file.mimetype === 'image/jpeg' || file.mimetype === 'image/png'){
+    cb(null,true)
+  }else{
+    cb(new Error('Invalid image'),false);
+  }
+}
 
 module.exports = {
-  getSignUrl
+  getSignUrl,s3, fileFilter
 };
