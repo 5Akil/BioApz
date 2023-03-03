@@ -4,6 +4,7 @@ var EmailTemplates = require('swig-email-templates')
 var nodemailer = require('nodemailer')
 var path = require('path')
 var resCode = require('../../config/res_code_config')
+var commonConfig = require('../../config/common_config')
 var setRes = require('../../response')
 var jwt = require('jsonwebtoken');
 var models = require('../../models')
@@ -13,14 +14,16 @@ var mailConfig = require('../../config/mail_config')
 var util = require('util')
 var notification = require('../../push_notification');
 var awsConfig = require('../../config/aws_S3_config');
+var moment = require('moment')
 
 exports.Register = async (req, res) => {
  
  console.log(req.body)
   var data = req.body
+  req.file ? data.profile_picture = `${req.file.key}`: '';
   var dbModel = models.user;
 
-  var requiredFields = _.reject(['username', 'email', 'password', 'address', 'latitude', 'longitude'], (o) => { return _.has(data, o)  })
+  var requiredFields = _.reject(['username', 'email', 'password', 'address', 'mobile','confirm_password','latitude', 'longitude'], (o) => { return _.has(data, o)  })
 
   if (requiredFields == ''){
 
@@ -184,7 +187,10 @@ exports.Login = async (req, res) => {
 										// var messagedata = await notification.SendNotification(data)
 										// console.log('*********************************')
 										// console.log(messagedata)
+										if(user.profile_picture != null){
 
+											user.profile_picture = awsConfig.getSignUrl(user.profile_picture)
+										}
 										res.send(setRes(resCode.OK, user, false, 'You are successfully logged in'))
 									}else{
 										res.send(setRes(resCode.InternalServer, null, false, 'Token not updated'))
@@ -371,69 +377,132 @@ exports.ChangePassword = async (req, res) => {
 		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
 	}
 }
+exports.SendOtp = async(req,res) => {
+	var data = req.body
+	var userModel = models.user
 
+	var requiredFields = _.reject(['email'],(o) => { return _.has(data, o) })
+
+	if(requiredFields == ''){
+		res.send(setRes(resCode.BadRequest))
+	}else{
+		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+	}
+}
 exports.forgotPassword = async (req, res) => {
   var data = req.body
-  var userModel = models.user
-  var businessModel = models.business
+	var userModel = models.user
+	var emailOtpVerifieModel = models.email_otp_verifies
 
-  var requiredFields = _.reject(['email', 'role'], (o) => { return _.has(data, o)  })
+	var requiredFields = _.reject(['email','role'],(o) => { return _.has(data, o) })
 
-  if (requiredFields == ''){
-
-	if (data.role == 2){
-
-		// check email is exist or not
-		userModel.findOne({where: {email: data.email, is_deleted: false}}).then(async (user) => {
-			if (user == null){
-				res.send(setRes(resCode.BadRequest, null, true, 'User not found.'));
+	if(requiredFields == ''){
+		userModel.findOne({
+			where:{
+				email:data.email,
+				role_id : data.role,
+				is_deleted:false
 			}
-			else{
-				var response = await sendForgotPasswordMail(user, 2)
-				if (response != ''){
-					res.send(
-						setRes(resCode.OK, null, false, 'An e-mail has been sent to given email address with further instructions.')
-					  )
-				}
-				else{
-					res.send(setRes(resCode.InternalServer, null, true, "Internal server error."))
-				}
+		}).then(user => {
+
+			if(user != null){
+
+				const otp = Math.floor(Math.random() * 9000) + 1000;
+				
+				var currentDate = new Date();
+				var futureDate = new Date(currentDate.getTime() + commonConfig.email_otp_expired);
+				var new_date = futureDate.toLocaleString('en-US', { timeZone: 'UTC' });
+				var expire_at = moment(new_date).format('YYYY-MM-DD HH:mm:ss');
+
+				emailOtpVerifieModel.create({user_id:user.id,email:data.email,otp:otp,role_id:data.role,expire_at:expire_at}).then( function (OtpData){
+					
+					if (OtpData) {
+
+						var transporter = nodemailer.createTransport({
+              host: mailConfig.host,
+              port: mailConfig.port,
+              secure: mailConfig.secure,
+              auth: mailConfig.auth,
+              tls: mailConfig.tls
+            })
+
+            var templates = new EmailTemplates();
+            var context = {
+						  otp : otp,
+						  username: user.username,
+						  expire_at : expire_at
+						}
+
+						templates.render(path.join(__dirname, '../../', 'template', 'email-otp.html'), context, function (
+							err,
+              html,
+              text,
+              subject
+            ){
+							transporter.sendMail(
+							{
+								from: 'BioApz <do-not-reply@mail.com>',
+								to: data.email,
+								subject: 'Email OTP Verification',
+                html: html
+							},
+							function (err, result) {
+                if (err) {
+				         console.log("--------------------------err------------")
+				         console.log(err)
+                } else {
+        				  console.log("--------------------------send res------------")
+					        console.log(result)
+					        res.send(setRes(resCode.OK, `Email has been sended to ${users.email}, with account activation instuction.. `, false, ''));
+                }
+              }
+              )
+            })
+          }
+          data.otp = otp;
+          data.expire_at = expire_at;
+					res.send(setRes(resCode.OK,data,false,'We have sent otp to your email address.'))
+					
+				}).catch(err => {
+						res.send(setRes(resCode.InternalServer, null, true, err.message))
+				});
+				
+			}else{
+				res.send(setRes(resCode.ResourceNotFound, null, true, "User not found."))
 			}
-		  })
-
-	}
-	else if (data.role == 3){
-
-		// check email is exist or not
-		businessModel.findOne({where: {email: data.email, is_deleted: false}}).then(async (business) => {
-			if (business == null){
-				res.send(setRes(resCode.BadRequest, null, true, 'User not found.'));
-			}
-			else{
-				var response = await sendForgotPasswordMail(business, 3)
-				if (response != ''){
-					res.send(
-						setRes(resCode.OK, null, false, 'An e-mail has been sent to given email address with further instructions.')
-					  )
-				}
-				else{
-					res.send(setRes(resCode.InternalServer, null, true, "Internal server error."))
-				}
-			}
-		  })
-
-	}
-	else{
-		res.send(setRes(resCode.BadRequest, null, true, 'Invalid role.'))
-	}
-
-  }
-  else{
+		})
+		
+	}else{
 		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
-   	}
+	}
+  
 
 }
 
+exports.OtpVerify = async (req, res) => {
+
+	var data = req.body
+	var userModel = models.user
+  var businessModel = models.business
+  var emailOtpVerifieModel = models.email_otp_verifies
+
+  var requiredFields = _.reject(['role','otp'], (o) => { return _.has(data, o)  })
+
+  if(requiredFields == ""){
+
+  	emailOtpVerifieModel.findOne({where:{otp:data.otp,role_id:data.role}}).then((OtpUser) => {
+
+  		if(OtpUser != null){
+  			
+  			res.send(setRes(resCode.OK,OtpUser,false,"Your data"));
+  		}else{
+  			res.send(setRes(resCode.OK,null,false,"Invalid otp"))
+  		}
+  	});
+  }else{
+  	res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+  }
+}
 function sendForgotPasswordMail(user, key){
 
 	if (key == 2){

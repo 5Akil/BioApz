@@ -48,9 +48,10 @@ var controller = require('./user.controller')
 
 const {verifyToken} = require('../../config/token');
 
-router.post('/register', controller.Register)
+router.post('/register', awsupload.single('profile_picture'),controller.Register)
 router.post('/login', controller.Login)
 router.post('/forgotPassword', controller.forgotPassword);
+router.post('/otp-verification', controller.OtpVerify)
 router.get('/resetPassword/:token', controller.GetResetPasswordForm);
 router.post('/update-password/:token', controller.UpdatePassword)
 router.get('/account-activation/:token', controller.AccountActivationByToken)

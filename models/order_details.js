@@ -22,7 +22,7 @@ module.exports = (sequelize, DataTypes) => {
   OrderDetails.associate = function(models) {
     // associations can be defined here
     OrderDetails.belongsTo(models.user, {foreignKey: 'user_id'})
-    OrderDetails.belongsTo(models.order, {foreignKey: 'order_id'})
+    OrderDetails.belongsTo(models.orders, {foreignKey: 'order_id'})
     OrderDetails.belongsTo(models.products, {foreignKey: 'product_id'})
   };
   return OrderDetails;
