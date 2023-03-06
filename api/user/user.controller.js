@@ -246,10 +246,22 @@ exports.Login = async (req, res) => {
 								if (newBusiness){
 
 									//custome template url
-									business.banner = awsConfig.getSignUrl(business.banner)
-									business.template.template_url = awsConfig.getSignUrl('templates_thumb/'+business.template.image)
-									business.template.image = awsConfig.getSignUrl('templates_thumb/'+business.template.image)
-									//business.template.template_url = business.template.template_url.concat(`?bid=${business.id}`)
+									if(business.banner != null){
+
+										business.banner = awsConfig.getSignUrl(business.banner)
+									}
+									if(business.template != null){
+
+										if(business.template.template_url != null){
+
+											business.template.template_url = awsConfig.getSignUrl('templates_thumb/'+business.template.image)
+										}
+										if(business.template.image != null){
+
+											business.template.image = awsConfig.getSignUrl('templates_thumb/'+business.template.image)
+										}
+
+									}
 
 									res.send(setRes(resCode.OK, business, false, 'You are successfully logged in'))
 								}else{
@@ -312,6 +324,18 @@ exports.UpdateProfile = async (req, res) => {
 	var requiredFields = _.reject(['id'], (o) => { return _.has(data, o)  })
 
 	if (requiredFields == ''){
+
+		if(data.profile_picture){
+		
+			userModel.findOne({where:{id:data.id,is_deleted:false}}).then(userData =>{
+				const params = {
+							    Bucket: 'bioapz',
+							    Key: userData.profile_picture
+							};
+				awsConfig.deleteImageAWS(params)
+			})
+		}
+
 		userModel.update(data, {
 			where: {
 				id: data.id
@@ -335,7 +359,7 @@ exports.UpdateProfile = async (req, res) => {
 exports.ChangePassword = async (req, res) => {
 	var data = req.body
 	var userModel = models.user
-	var requiredFields = _.reject(['id'], (o) => { return _.has(data, o)  })
+	var requiredFields = _.reject(['id','old_password','new_password','confirm_password'], (o) => { return _.has(data, o)  })
 
 	if (requiredFields == ''){
 		userModel.findOne({
@@ -490,11 +514,64 @@ exports.OtpVerify = async (req, res) => {
 
   if(requiredFields == ""){
 
-  	emailOtpVerifieModel.findOne({where:{otp:data.otp,role_id:data.role}}).then((OtpUser) => {
+  	emailOtpVerifieModel.findOne({where:{otp:data.otp,role_id:data.role}}).then((otpUser) => {
 
-  		if(OtpUser != null){
+  		if(otpUser != null){
   			
-  			res.send(setRes(resCode.OK,OtpUser,false,"Your data"));
+				var now_date_time = new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '');
+				var expire_time = moment(otpUser.expire_at).format('YYYY-MM-DD HH:mm:ss');
+	
+				if(now_date_time > expire_time){
+					res.send(setRes(resCode.OK,null,false,"Your otp has been expired."));
+				}else{
+					
+					if (data.role == 2){
+
+						userModel.findOne({where: {email: otpUser.email, is_deleted: false}}).then(async (user) => {
+							if (user == null){
+								res.send(setRes(resCode.BadRequest, null, true, 'User not found.'));
+							}
+							else{
+								var response = await sendForgotPasswordMail(user, 2)
+								if (response != ''){
+									res.send(
+										setRes(resCode.OK, null, false, 'An e-mail has been sent to given email address with further instructions.')
+									  )
+								}
+								else{
+									res.send(setRes(resCode.InternalServer, null, true, "Internal server error."))
+								}
+							}
+						  })
+						otpUser.destroy();
+					}
+					else if (data.role == 3){
+
+						// check email is exist or not
+						businessModel.findOne({where: {email: otpUser.email, is_deleted: false}}).then(async (business) => {
+							if (business == null){
+								res.send(setRes(resCode.BadRequest, null, true, 'User not found.'));
+							}
+							else{
+								var response = await sendForgotPasswordMail(business, 3)
+								if (response != ''){
+									res.send(
+										setRes(resCode.OK, null, false, 'An e-mail has been sent to given email address with further instructions.')
+									  )
+								}
+								else{
+									res.send(setRes(resCode.InternalServer, null, true, "Internal server error."))
+								}
+							}
+						  })
+
+						otpUser.destroy();
+					}
+					else{
+						res.send(setRes(resCode.BadRequest, null, true, 'Invalid role.'))
+					}
+				}
+  			
   		}else{
   			res.send(setRes(resCode.OK,null,false,"Invalid otp"))
   		}

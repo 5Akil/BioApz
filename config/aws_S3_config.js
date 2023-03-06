@@ -19,15 +19,24 @@ function getSignUrl (key) {
 	const signedUrl = s3.getSignedUrl('getObject', params);
   return `${signedUrl}`;
 }
-const fileFilter = (req,file,cb) => {
 
-  if(file.mimetype === 'image/jpeg' || file.mimetype === 'image/png'){
-    cb(null,true)
-  }else{
-    cb(new Error('Invalid image'),false);
-  }
+function deleteImageAWS(params){
+
+  s3.headObject(params, function(err, metadata) {
+    if (err && err.code === 'NotFound') {
+      console.log('Image not found in folder ' + params.Key);
+    } else {
+      
+      s3.deleteObject(params,(err,data)=>{
+        if(err){
+          console.log(err)
+        }else{
+          return true;
+        }
+      })
+    }
+  });
 }
-
 module.exports = {
-  getSignUrl,s3, fileFilter
+  getSignUrl,s3, deleteImageAWS
 };

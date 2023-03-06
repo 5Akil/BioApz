@@ -214,12 +214,47 @@ exports.GetBusinessDetail = async (req, res) => {
 	}
 
 }
+exports.GetProfile = async (req, res) =>{
 
+	var data = req.params
+	var businessModel = models.business
+	var categoryModel = models.business_categorys
+	
+	businessModel.findOne({
+		where:{
+			id: data.id,
+			is_deleted:false
+		},
+		include: [categoryModel]
+	}).then(business => {
+		if (business != null){
+			business.banner = awsConfig.getSignUrl(business.banner);
+			res.send(setRes(resCode.OK, business, false, "Get business profile successfully."))
+		}
+		else{
+			res.send(setRes(resCode.ResourceNotFound, user, true, "Business not Found."))
+		}
+	}).catch(userError => {
+		res.send(setRes(resCode.InternalServer, null, true, "Fail to Get business Profile."))
+	})
+
+}
 exports.UpdateBusinessDetail = async (req, res) => {
 
 	var data = req.body
+	req.file ? data.banner = `${req.file.key}` : '';
 	var businessModel = models.business
 	var categoryModel = models.business_categorys
+	if(data.banner){
+		
+		businessModel.findOne({where:{id:data.id,is_deleted:false,is_active:true}}).then(businessData =>{
+			const params = {
+						    Bucket: 'bioapz',
+						    Key: businessData.banner
+						};
+			awsConfig.deleteImageAWS(params)
+		})
+	}
 
 	businessModel.update(data, {
 		where: {
@@ -239,6 +274,7 @@ exports.UpdateBusinessDetail = async (req, res) => {
 				include: [categoryModel]
 			}).then(UpdatedBusiness => {
 				if (UpdatedBusiness != null){
+					UpdatedBusiness.banner = awsConfig.getSignUrl(UpdatedBusiness.banner)
 					res.send(setRes(resCode.OK, UpdatedBusiness, false, "Business detail updated successfully."))
 				}
 				else{
@@ -251,6 +287,56 @@ exports.UpdateBusinessDetail = async (req, res) => {
 	}).catch(error => {
 		res.send(setRes(resCode.BadRequest, null, true, "Fail to update detail."))
 	})
+}
+
+exports.ChangePassword = async(req, res) => {
+
+	var data = req.body
+	var businessModel = models.business
+
+	var requiredFields = _.reject(['id','old_password','new_password','confirm_password'], (o) => { return _.has(data, o)  })
+
+	if(requiredFields == ""){
+
+		businessModel.findOne({
+			where:{
+				id:data.id,
+				is_deleted:false,
+				is_active :true
+			}
+		}).then(business => {
+			if (business != null){
+				bcrypt.compare(data.old_password, business.password, function(error, isValid){
+					if (!error && isValid == true){
+						bcrypt.hash(data.new_password, 10).then(hash => {
+							businessModel.update({
+								password:hash
+							},{
+								where:{
+									id: data.id
+								}
+							}).then(updated => {
+								if (updated == 1){
+									res.send(setRes(resCode.OK, null, false, 'Password updated successfully.'))
+								}
+								else{
+									res.send(setRes(resCode.InternalServer, null, true, "Fail to update password."))
+								}
+							})
+						})
+					}
+					else{
+						res.send(setRes(resCode.BadRequest, null, true, "Old password not match."))
+					}
+				})
+			}
+			else{
+				res.send(setRes(resCode.ResourceNotFound, null, true, "Business not found."))
+			}
+		})
+	}else{
+		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+	}
 }
 
 exports.GetImages = async (req, res) => {
@@ -385,6 +471,15 @@ exports.UpdateOfferDetail = async (req, res) => {
 	var userModel = models.user;
 
 	if (data.id){
+		if(data.image){
+			offerModel.findOne({where:{id:data.id,is_deleted:false}}).then(offerData => {
+				const params = {
+							    Bucket: 'bioapz',
+							    Key: offerData.image
+							};
+				awsConfig.deleteImageAWS(params)
+			});
+		}
 		offerModel.update(data,{
 			where: {
 				id: data.id,
@@ -551,10 +646,13 @@ exports.UpdateOffer = (req, res) => {
 
 			if (OfferData) {
 
-				if (data.image){
-					if (fs.existsSync(OfferData.image)){
-						fs.unlinkSync(OfferData.image);
-					}
+				if(data.image){
+		
+					const params = {
+								    Bucket: 'bioapz',
+								    Key: OfferData.image
+								};
+					awsConfig.deleteImageAWS(params)
 				}
 
 				offerModel.update(data, {
@@ -750,15 +848,37 @@ exports.ManageBannerAndBooking = function (req, res) {
 		  res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
 	  }
 }
-  
+ 
+exports.GetCategory = async (req, res) => {
+
+	var categoryModel = models.business_categorys;
+	categoryModel.findAll({
+		where: {
+				is_deleted: false
+			},
+		order: [
+				['createdAt', 'DESC']
+			],
+			
+	}).then(categories => {
+		if (categories != '' && categories != null ){
+		
+			res.send(setRes(resCode.OK, categories, false, "Get business category successfully.."))
+		}else{
+			res.send(setRes(resCode.ResourceNotFound, null, false, "Business category not found."))
+		}
+			
+	}).catch(error => {
+		res.send(setRes(resCode.BadRequest, null, true, "Fail to send request."))
+	})
+}
 exports.CreateBusiness = async (req, res) => {
 	var data = req.body
-	console.log('**************************************')
-	console.log(data)
+	req.file ? data.banner = `${req.file.key}`: '';
 	// return false
 	var businessModel = models.business
 	var inquiryModel = models.business_inquiry
-	var requiredFields = _.reject([], (o) => { return _.has(data, o)  })
+	var requiredFields = _.reject(['business_name','category_id','email','password','abn_no','address','account_name','account_number','latitude','longitude'], (o) => { return _.has(data, o)  })
 //   data = {
 // 	template_id: data.template_id,
 // 	business_name: data.business_name,
@@ -795,6 +915,9 @@ exports.CreateBusiness = async (req, res) => {
 
 			}
 			else{
+				if(business.banner != null){
+					business.banner = awsConfig.getSignUrl(business.banner);
+				}
 				res.send(setRes(resCode.OK, business, false, "Business created successfully."))
 			}
 			

@@ -386,10 +386,12 @@ exports.UpdateComboOffer = (req, res) => {
 			if (comboOffer) {
 
 				_.each(comboOffer.images, (image) => {
-					if (fs.existsSync(image)){
-						fs.unlinkSync(image);
-						return;
-					}
+
+					const params = {
+								    Bucket: 'bioapz',
+								    Key: image
+								};
+					awsConfig.deleteImageAWS(params)
 				})
 
 				comboModel.update(data, {
@@ -472,20 +474,7 @@ exports.removeImagesFromCombo = (req, res) => {
 						    Bucket: 'bioapz',
 						    Key: data.image
 						};
-						awsConfig.s3.headObject(params, function(err, metadata) {
-						  if (err && err.code === 'NotFound') {
-						    console.log('Image not found in folder ' + data.image);
-						  } else {
-						  	console.log(params)
-						    awsConfig.s3.deleteObject(params,(err,data)=>{
-						    	if(err){
-						    		console.log(err)
-						    	}else{
-						    		console.log('successfully deleted')
-						    	}
-						    })
-						  }
-						});
+						awsConfig.deleteImageAWS(params)
 
 						comboModel.findOne({
 							where: {

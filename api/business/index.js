@@ -104,14 +104,17 @@ const {verifyToken} = require('../../config/token');
 router.post('/inquiry', verifyToken, controller.createInquiry)
 router.post('/recommended', verifyToken, controller.GetRecommendedBusiness)
 router.post('/getBusinessDetail', verifyToken, controller.GetBusinessDetail);
-router.post('/updateBusinessDetail', verifyToken, controller.UpdateBusinessDetail)
+router.post('/updateBusinessDetail', verifyToken, awsuploadbanner.single('banner'), controller.UpdateBusinessDetail)
 router.post('/getImages', verifyToken, controller.GetImages);
 router.post('/uploadImages', verifyToken, awsuploadcompanyImages.array('images'), controller.UploadCompanyImages)
 router.post('/getAll', verifyToken, controller.GetAllOffers)
 router.post('/updateOffers', verifyToken, awsupload.single('image'), controller.UpdateOfferDetail)
 router.post('/banner_booking', verifyToken , awsuploadbanner.single('banner'), controller.ManageBannerAndBooking);
-router.post('/register', controller.CreateBusiness)
+router.get('/category-list',controller.GetCategory)
+router.post('/register', awsuploadbanner.single('banner'),controller.CreateBusiness)
 router.post('/initChat', verifyToken, controller.ChatInitialize)
+router.get('/get-profile/:id',verifyToken,controller.GetProfile)
+router.post('/change-password',verifyToken,controller.ChangePassword)
 
 router.post('/createOffer', verifyToken, awsupload.single('image'), controller.CreateOffer)
 router.post('/updateOffer', verifyToken, awsupload.single('image'), controller.UpdateOffer)

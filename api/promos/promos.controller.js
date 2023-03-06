@@ -93,6 +93,7 @@ exports.UpdatePromo = (req, res) => {
 
  	if (requiredFields == ''){
 
+
 		promosModel.findOne({
 			where: {
 				id: data.id,
@@ -102,10 +103,13 @@ exports.UpdatePromo = (req, res) => {
 
 			if (PromoData) {
 
-				if (data.image){
-					if (fs.existsSync(PromoData.image)){
-						fs.unlinkSync(PromoData.image);
-					}
+				if(data.image){
+		
+					const params = {
+								    Bucket: 'bioapz',
+								    Key: PromoData.image
+								};
+					awsConfig.deleteImageAWS(params)
 				}
 
 				promosModel.update(data, {

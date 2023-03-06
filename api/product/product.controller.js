@@ -247,6 +247,22 @@ exports.UpdateProductDetail = async (req, res) => {
 	var productModel = models.products
 
 	if (data.id){
+
+		productModel.findOne({
+			where: {
+				id: data.id,
+				is_deleted: false
+			}
+		}).then(productData => {
+			if(data.image){
+		
+					const params = {
+								    Bucket: 'bioapz',
+								    Key: productData.image
+								};
+					awsConfig.deleteImageAWS(params)
+				}
+		});
 		productModel.update(data,{
 			where: {
 				id: data.id,
