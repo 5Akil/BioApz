@@ -7,6 +7,7 @@ module.exports = function (app) {
   app.use('/api/promo', require('./api/promos'))
   app.use('/api/gift-card-template', require('./api/gift-card'))
   app.use('/api/shopping-cart', require('./api/shopping-cart'))
+  app.use('/api/wishlist', require('./api/wishlist'))
   app.use('/api/order', require('./api/order'))
   
 }

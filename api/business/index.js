@@ -10,7 +10,7 @@ const awsConfig = require('../../config/aws_S3_config')
 var companyImages = multer({
     storage: multer.diskStorage({
       destination: function (req, file, cb) {
-        cb(null, 'public/images')
+        cb(null, 'public/business_gallery')
       },
       filename: function (req, file, cb) {
         var fileExtension = file.mimetype.split('/')[1];
@@ -78,7 +78,7 @@ var awsuploadcompanyImages = multer({
       const fileExt = file.originalname.split('.').pop(); // get file extension
       const randomString = Math.floor(Math.random() * 1000000); // generate random string
       const fileName = `${Date.now()}_${randomString}.${fileExt}`;
-      cb(null,'images/'+fileName);
+      cb(null,'business_gallery/'+fileName);
     }
   })
 })

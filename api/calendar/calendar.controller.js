@@ -14,7 +14,7 @@ var notification = require('../../push_notification')
 var moment = require('moment')
 const MomentRange = require('moment-range');
 const Moment = MomentRange.extendMoment(moment);
-var fs = require('fs');
+var fs = require('fs').promises;
 var awsConfig = require('../../config/aws_S3_config');
 
 exports.ComboCalendar = async (req, res) => {

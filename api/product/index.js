@@ -45,19 +45,40 @@ var awsupload = multer({
   })
 })
 
+var categoryawsupload = multer({
+  storage:multerS3({
+    fileFilter,
+    s3:awsConfig.s3,
+    bucket:'bioapz',
+    
+    key:function(req,file,cb){
+      const fileExt = file.originalname.split('.').pop(); // get file extension
+      const randomString = Math.floor(Math.random() * 1000000); // generate random string
+      const fileName = `${Date.now()}_${randomString}.${fileExt}`;
+      cb(null,'product_category/'+fileName);
+    }
+  })
+})
 var controller = require('./product.controller')
-
+const uploadImage = multer({ dest: 'products/' });
 const {verifyToken} = require('../../config/token');
 
 router.post('/inquiry', verifyToken, controller.createInquiry)
 router.post('/getAll', verifyToken, controller.GetAllProducts)
 router.post('/getBooking', verifyToken, controller.GetBookingInquiry)
 router.post('/isRead', verifyToken, controller.IsReadStatus)
-router.post('/updateProduct', verifyToken, awsupload.single('image'), controller.UpdateProductDetail)
+router.post('/creatProduct', verifyToken, uploadImage.array('image'), controller.createProduct)
+router.post('/updateProduct', verifyToken, uploadImage.array('image'), controller.UpdateProductDetail)
+router.post('/removeImage',verifyToken,controller.RemoveProductImage)
+
+
 // router.post('/initChat', verifyToken, controller.ChatInitialize)
-router.post('/byId', verifyToken, controller.GetProductById)
-router.post('/photo', verifyToken, awsupload.single('image'), (req, res) => {
-  res.json({ message: 'File uploaded successfully',data:`${req.file.key}` });
-});
+router.get('/byId/:id', verifyToken, controller.GetProductById)
+
+router.post('/createCategory',verifyToken, categoryawsupload.single('image'), controller.CreateCategory)
+router.get('/category-list/:id',verifyToken,controller.CategoryList)
+router.post('/updateCategory',verifyToken,categoryawsupload.single('image'), controller.UpdateCategory)
+router.delete('/removeCategory/:id',verifyToken, controller.RemoveCategory)
+
 
 module.exports = router;
