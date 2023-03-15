@@ -9,6 +9,7 @@ module.exports = (sequelize, DataTypes) => {
     business_id: DataTypes.INTEGER,
     image: DataTypes.STRING,
     name: DataTypes.STRING,
+    parent_id: DataTypes.INTEGER,
     is_enable :{
       type: DataTypes.BOOLEAN,
       defaultValue: true

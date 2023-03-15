@@ -5,6 +5,7 @@ var EmailTemplates = require('swig-email-templates')
 var nodemailer = require('nodemailer')
 var path = require('path')
 var resCode = require('../../config/res_code_config')
+var commonConfig = require('../../config/common_config')
 var setRes = require('../../response')
 var jwt = require('jsonwebtoken');
 var models = require('../../models')
@@ -89,7 +90,6 @@ exports.GetAllProducts = async (req, res) => {
 	var category = models.business_categorys;
 	var product_category = models.product_categorys
 	var data = req.body
-	console.log(req.body)
 	var requiredFields = _.reject(['page','page_size','business_id'], (o) => { return _.has(data, o)  })
 
 	if (requiredFields == ''){
@@ -107,12 +107,12 @@ exports.GetAllProducts = async (req, res) => {
 				['createdAt', 'DESC']
 			]
 		}
-		
-		if(data.product_search){
-			condition.where = {business_id:data.business_id,name: `%${data.product_search}%`,is_deleted: false}			
-		}
+		condition.where = {business_id:data.business_id,category_id:data.category_id,sub_category_id:data.sub_category_id}
+		// if(data.product_search){
+		// 	condition.where = {business_id:data.business_id,name: `%${data.product_search}%`,is_deleted: false}			
+		// }
 		// data.product_search ? condition.where = {business_id:data.business_id,name: `%${data.product_search}%`,is_deleted: false} :condition.where = {is_deleted: false},
-		data.business_id ? condition.where = {business_id:data.business_id, is_deleted: false} : condition.where = {is_deleted: false},
+		// data.business_id ? condition.where = {business_id:data.business_id, is_deleted: false} : condition.where = {is_deleted: false},
 
 		productModel.findAll(condition).then((products) => {
 			if (products.length > 0){
@@ -128,7 +128,7 @@ exports.GetAllProducts = async (req, res) => {
 				}
 				res.send(setRes(resCode.OK, products, false, "Get product list successfully"))
 			}else{
-				res.send(setRes(resCode.OK, products, false, "Get product list successfully"))
+				res.send(setRes(resCode.ResourceNotFound, null, false, "Products not found"))
 			}
 		})
 		.catch((error) => {
@@ -253,68 +253,89 @@ exports.createProduct = async(req,res) => {
 
 		var data = req.body
 		var filesData = req.files;
+		var validation = true;
 		var requiredFields = _.reject(['business_id','category_id','name','price','description'], (o) => { return _.has(data, o)  })
 		if(requiredFields == ""){
 
 				if(filesData.length == 0){
-					res.send(setRes(resCode.BadRequest, null, true, 'At least one image is required for product'))					
+					res.send(setRes(resCode.BadRequest, null, true, 'At least one image is required for product'))
+					validation = false;
+				}else if(filesData.length > 5){
+					validation = false;
+					res.send(setRes(resCode.BadRequest, null, true, 'You can upload only 5 images'))
 				}
-
-				var productModel = models.products
-				productModel.create(data).then(async function(product)  {
-					const lastInsertId = product.id;
-					if(lastInsertId){
-						var files = [];
-						var buffer_img = [];
-						for(const file of filesData){
-							
-							const fileContent = await fs.promises.readFile(file.path);
-							const fileExt = `${file.originalname}`.split('.').pop()
-							const randomString = Math.floor(Math.random() * 1000000); 
-							const fileName = `${Date.now()}_${randomString}.${fileExt}`;
-							const params = {
-					       Bucket: 'bioapz',
-					       Key: `products/${lastInsertId}/${fileName}`,
-					       Body: fileContent,
-			     		};
-
-						  const result = await awsConfig.s3.upload(params).promise();
-						  if(result){
-								files.push(`products/${lastInsertId}/${fileName}`)
-								fs.unlinkSync(file.path)
-
-			     		}				  
+				if(filesData.length !=0 && filesData.length <= 5){
+					for(const image of filesData){
+						const fileContent = await fs.promises.readFile(image.path);
+						const fileExt = `${image.originalname}`.split('.').pop();
+						if(image.size > commonConfig.maxFileSize){
+							validation = false;
+							res.send(setRes(resCode.BadRequest, null, true, 'You can upload only 5 mb files, some file size is too large'))
+						}else if (!commonConfig.allowedExtensions.includes(fileExt)) {
+						  // the file extension is not allowed
+						  validation = false;
+						  res.send(setRes(resCode.BadRequest, null, true, 'You can upload only jpg, jpeg, png, gif files'))
 						}
-						var image = files.join(';');
-						productModel.update({
-							image: image
-						},{
-							where: {
-								id: lastInsertId,
-								
-							}
-						}).then(productData => {
-							if(productData){
-								productModel.findOne({where:{id:lastInsertId}}).then(getData => {
-									var product_images = getData.image
-									var image_array = [];
-									for(const data of product_images){
-										const signurl = awsConfig.getSignUrl(data);
-					  				image_array.push(signurl);
-									}
-									getData.dataValues.product_images = image_array
-									
-									res.send(setRes(resCode.OK,getData,null,"Product created successfully"))
-								})
-							}else{
-								res.send(setRes(resCode.InternalServer,getData,null,"Image not update"))
-							}
-						})
 					}
-				
-				}).catch(error => {
-					res.send(setRes(resCode.BadRequest, error, true, "Fail to add product or service."))
-				})
+
+				}
+				var productModel = models.products
+				if(validation){
+					productModel.create(data).then(async function(product)  {
+						const lastInsertId = product.id;
+						if(lastInsertId){
+							var files = [];
+							for(const file of filesData){
+								
+								const fileContent = await fs.promises.readFile(file.path);
+								const fileExt = `${file.originalname}`.split('.').pop()
+								const randomString = Math.floor(Math.random() * 1000000); 
+								const fileName = `${Date.now()}_${randomString}.${fileExt}`;
+								const params = {
+						       Bucket: awsConfig.Bucket,
+						       Key: `products/${lastInsertId}/${fileName}`,
+						       Body: fileContent,
+				     		};
+
+							  const result = await awsConfig.s3.upload(params).promise();
+							  if(result){
+									files.push(`products/${lastInsertId}/${fileName}`)
+									fs.unlinkSync(file.path)
+
+				     		}				  
+							}
+							var image = files.join(';');
+							productModel.update({
+								image: image
+							},{
+								where: {
+									id: lastInsertId,
+									
+								}
+							}).then(productData => {
+								if(productData){
+									productModel.findOne({where:{id:lastInsertId}}).then(getData => {
+										var product_images = getData.image
+										var image_array = [];
+										for(const data of product_images){
+											const signurl = awsConfig.getSignUrl(data);
+						  				image_array.push(signurl);
+										}
+										getData.dataValues.product_images = image_array
+										
+										res.send(setRes(resCode.OK,getData,null,"Product created successfully"))
+									})
+								}else{
+									res.send(setRes(resCode.InternalServer,getData,null,"Image not update"))
+								}
+							})
+						}
+					
+					}).catch(error => {
+						res.send(setRes(resCode.BadRequest, error, true, "Fail to add product or service."))
+					})
+
+				}
 		}else{
 			res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
 		}
@@ -329,37 +350,60 @@ exports.UpdateProductDetail = async (req, res) => {
 	
 	var productModel = models.products
 
+	const row = await productModel.findByPk(data.id);
+	const image = row.image;
+	
 	if (data.id){
-
 		if(req.files){
-				const filesData = req.files;
-				var files = [];
-				for(const file of filesData){
-					const fileContent = await fs.promises.readFile(file.path);
-					const fileExt = `${file.originalname}`.split('.').pop()
-					const randomString = Math.floor(Math.random() * 1000000); 
-					const fileName = `${Date.now()}_${randomString}.${fileExt}`;
-					const params = {
-			       Bucket: 'bioapz',
-			       Key: `products/${data.id}/${fileName}`,
-			       Body: fileContent,
-	     		};
 
-	     		const result = await awsConfig.s3.upload(params).promise();
-				  if(result){
-						files.push(`products/${data.id}/${fileName}`)
-						fs.unlinkSync(file.path)
-					}
+				const filesData = req.files;
+				const total_image = image.length + filesData.length;
+				var validation = true
+
+				if(total_image > 5){
+					validation = false
+					res.send(setRes(resCode.BadRequest, null, true, "You cannot update more than 5 images.You already uploaded "+image.length+" images"))
 				}
-				var images = files.join(';');
-				const row = await productModel.findByPk(data.id);
-				const image = row.image;
-				const oldFilenames = image.join(';');
-				
-				
-				if(images != ""){
-					const allFilenames = `${oldFilenames};${images}`;
-					data.image = allFilenames
+				for(const imageFile of filesData){
+						const fileContent = await fs.promises.readFile(imageFile.path);
+						const fileExt = `${imageFile.originalname}`.split('.').pop();
+						if(imageFile.size > commonConfig.maxFileSize){
+							validation = false;
+							res.send(setRes(resCode.BadRequest, null, true, 'You can upload only 5 mb files, some file size is too large'))
+						}else if (!commonConfig.allowedExtensions.includes(fileExt)) {
+						  // the file extension is not allowed
+						  validation = false;
+						  res.send(setRes(resCode.BadRequest, null, true, 'You can upload only jpg, jpeg, png, gif files'))
+						}
+				}
+				if(validation){
+
+					var files = [];
+					for(const file of filesData){
+						const fileContent = await fs.promises.readFile(file.path);
+						const fileExt = `${file.originalname}`.split('.').pop()
+						const randomString = Math.floor(Math.random() * 1000000); 
+						const fileName = `${Date.now()}_${randomString}.${fileExt}`;
+						const params = {
+				       Bucket: awsConfig.Bucket,
+				       Key: `products/${data.id}/${fileName}`,
+				       Body: fileContent,
+		     		};
+
+		     		const result = await awsConfig.s3.upload(params).promise();
+					  if(result){
+							files.push(`products/${data.id}/${fileName}`)
+							fs.unlinkSync(file.path)
+						}
+					}
+					var images = files.join(';');
+					const oldFilenames = image.join(';');
+					
+					
+					if(images != ""){
+						const allFilenames = `${oldFilenames};${images}`;
+						data.image = allFilenames
+					}
 				}
 			}
 		
@@ -514,7 +558,7 @@ exports.RemoveProductImage = async(req, res) => {
 					
 					if (updatedProduct > 0) {
 						const params = {
-						    Bucket: 'bioapz',
+						    Bucket: awsConfig.Bucket,
 						    Key: data.image_name
 						};
 						awsConfig.deleteImageAWS(params)
@@ -556,7 +600,7 @@ exports.CreateCategory = (req, res) => {
 	req.file ? data.image = `${req.file.key}`: '';
 	var productCategoryModel = models.product_categorys
 
-	var requiredFields = _.reject(['business_id','name','image'], (o) => { return _.has(data, o)  })
+	var requiredFields = _.reject(['business_id','name','image','parent_id'], (o) => { return _.has(data, o)  })
 
 	if(requiredFields == ""){
 
@@ -584,7 +628,8 @@ exports.CategoryList = async(req, res) => {
 		where:{
 			business_id:data.id,
 			is_deleted: false,
-			is_enable: true
+			is_enable: true,
+			parent_id:0
 		}
 	}).then(categoryData => {
 		if (categoryData != '' && categoryData != null ){
@@ -601,6 +646,32 @@ exports.CategoryList = async(req, res) => {
 		}).catch(error => {
 			res.send(setRes(resCode.BadRequest, error, true, "Fail to send request."))
 	})	
+}
+
+exports.GetCategoryById = async(req, res) => {
+
+	var data = req.params
+	var productCategoryModel = models.product_categorys
+
+	productCategoryModel.findOne({
+		where:{
+			id:data.id,
+			is_deleted:false,
+			is_enable:true,
+			parent_id:0
+		}
+	}).then(categoryData => {
+		if (categoryData != null){
+			
+			categoryData.image = awsConfig.getSignUrl(categoryData.image)
+			res.send(setRes(resCode.OK, categoryData, false, "Get product detail successfully."))
+		}
+		else{
+			res.send(setRes(resCode.ResourceNotFound, null, true, "Resource not found."))
+		}
+	}).catch(GetCategoryError => {
+		res.send(setRes(resCode.InternalServer, null, true, "Internal server error."))
+	})
 }
 
 exports.UpdateCategory = async(req, res) => {
@@ -621,7 +692,7 @@ exports.UpdateCategory = async(req, res) => {
 				if(data.image){
 		
 					const params = {
-								    Bucket: 'bioapz',
+								    Bucket: awsConfig.Bucket,
 								    Key: categoryData.image
 								};
 					awsConfig.deleteImageAWS(params)
@@ -726,4 +797,126 @@ exports.RemoveCategory = async(req, res) => {
 		res.send(setRes.BadRequest,null,true,"id is require")
 	}
 
+}
+
+exports.ProductTypeList = async(req, res) => {
+
+	var data = req.body;
+	var categoryModel = models.product_categorys
+	var Op = models.Op;
+
+	var requiredFields = _.reject(['business_id','category_id'], (o) => { return _.has(data, o) })
+	if(requiredFields == ""){
+
+		categoryModel.findAll({
+
+			where:{
+				business_id : data.business_id,
+				parent_id : data.category_id,
+				is_deleted: false,
+				is_enable: true
+			}
+		}).then(subCategoryData => {
+			if (subCategoryData != '' && subCategoryData != null ){
+			// Update Sign URL
+			for(const data of subCategoryData){
+			  const signurl = awsConfig.getSignUrl(data.image);
+			  data.image = signurl;		  
+			}
+				res.send(setRes(resCode.OK, subCategoryData, false, "Get product type  detail successfully.."))
+			}else{
+				res.send(setRes(resCode.ResourceNotFound, null, false, "product type not found."))
+			}
+		}).catch(error => {
+			res.send(setRes(resCode.BadRequest, error, true, "Fail to send request."))
+		})
+	}else{
+		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))		
+	}
+}
+
+exports.removeProductType = async(req, res) => {
+
+	var data = req.params
+	var productCategoryModel = models.product_categorys
+	var cartModel = models.shopping_cart
+	var orderDetailsModel = models.order_details
+	var wishlistModel = models.wishlists
+	var productModel = models.products
+	var Op = models.Op;
+
+	productModel.findAll({
+		where:{
+			sub_category_id:data.id,
+			is_deleted:false
+		}
+	}).then(productData => {
+		
+		var product_ids = [];
+		for(const data of productData){
+			product_ids.push(data.id)
+		}
+		cartModel.findAll({
+			where:{
+				product_id:{
+					[Op.in]:product_ids
+				},
+				is_deleted:false
+			}
+		}).then(cartData => {
+			if(cartData.length > 0){
+				res.send(setRes(resCode.BadRequest,null,true,"You can not delete this category because some product of this sub-category are into some user carts"))
+			}else{
+				
+				wishlistModel.findAll({
+					where:{
+						product_id:{
+							[Op.in]:product_ids
+						},
+						is_deleted:false
+					}
+				}).then(wishlistData => {
+
+					if(wishlistData.length > 0){
+						res.send(setRes(resCode.BadRequest,null,true,"You can not delete this category because some product of this sub-category are into some user wishlist"))
+					}else{
+
+						orderDetailsModel.findAll({
+							where:{
+								product_id:{
+									[Op.in]:product_ids
+								},
+								is_deleted:false,
+								order_status:1
+							}
+						}).then(orderData => {
+
+							if(orderData.length > 0){
+								res.send(setRes(resCode.BadRequest,null,true,"You can not delete this category because some ongoing order of this sub-category product"))
+							}else{
+								productCategoryModel.findOne({
+									where:{
+										id:data.id,
+										is_deleted:false,
+										is_enable:true
+									}
+								}).then(subCategoryData => {
+
+									if(subCategoryData != null){
+
+										subCategoryData.update({is_deleted:true})
+										res.send(setRes(resCode.OK,null,false,"Product type deleted successfully"))
+									}else{
+										res.send(setRes(resCode.ResourceNotFound,null,false,"Product type not found"))
+									}
+								})
+							}
+						})
+					}
+				})
+			}
+		})			
+	}).catch(error => {
+		res.send(setRes(resCode.BadRequest, error, true, "Internal server error."))
+	})
 }

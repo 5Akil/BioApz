@@ -106,7 +106,7 @@ exports.UpdatePromo = (req, res) => {
 				if(data.image){
 		
 					const params = {
-								    Bucket: 'bioapz',
+								    Bucket: awsConfig.Bucket,
 								    Key: PromoData.image
 								};
 					awsConfig.deleteImageAWS(params)

@@ -249,7 +249,7 @@ exports.UpdateBusinessDetail = async (req, res) => {
 		
 		businessModel.findOne({where:{id:data.id,is_deleted:false,is_active:true}}).then(businessData =>{
 			const params = {
-						    Bucket: 'bioapz',
+						    Bucket: awsConfig.Bucket,
 						    Key: businessData.banner
 						};
 			awsConfig.deleteImageAWS(params)
@@ -474,7 +474,7 @@ exports.UpdateOfferDetail = async (req, res) => {
 		if(data.image){
 			offerModel.findOne({where:{id:data.id,is_deleted:false}}).then(offerData => {
 				const params = {
-							    Bucket: 'bioapz',
+							    Bucket: awsConfig.Bucket,
 							    Key: offerData.image
 							};
 				awsConfig.deleteImageAWS(params)
@@ -649,7 +649,7 @@ exports.UpdateOffer = (req, res) => {
 				if(data.image){
 		
 					const params = {
-								    Bucket: 'bioapz',
+								    Bucket: awsConfig.Bucket,
 								    Key: OfferData.image
 								};
 					awsConfig.deleteImageAWS(params)

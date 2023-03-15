@@ -3,15 +3,16 @@ const AWS = require('aws-sdk');
 AWS.config.update({
   accessKeyId: 'AKIA6EW533LXXRNVFAPW',
   secretAccessKey: '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',
-  region: 'us-east-1'
+  region: 'us-east-1',
 });
 
 const s3 = new AWS.S3();
+const Bucket = 'bioapz';
 
 function getSignUrl (key) {
 
 	const params = {
-	  Bucket: 'bioapz',
+	  Bucket: Bucket,
 	  Key: key,
 	  Expires: 3600 // The number of seconds until the URL expires
 	};
@@ -38,5 +39,5 @@ function deleteImageAWS(params){
   });
 }
 module.exports = {
-  getSignUrl,s3, deleteImageAWS
+  getSignUrl,s3, deleteImageAWS, Bucket
 };

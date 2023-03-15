@@ -4,6 +4,7 @@ var EmailTemplates = require('swig-email-templates')
 var nodemailer = require('nodemailer')
 var path = require('path')
 var resCode = require('../../config/res_code_config')
+var commonConfig = require('../../config/common_config')
 var setRes = require('../../response')
 var jwt = require('jsonwebtoken');
 var models = require('../../models')
@@ -14,20 +15,16 @@ var notification = require('../../push_notification')
 var moment = require('moment')
 const MomentRange = require('moment-range');
 const Moment = MomentRange.extendMoment(moment);
-var fs = require('fs').promises;
+var fs = require('fs');
 var awsConfig = require('../../config/aws_S3_config');
 
 exports.ComboCalendar = async (req, res) => {
 
 	var data = req.body
+	var filesData = req.files;
 	var comboModel = models.combo_calendar
 	var Op = models.Op
-	var files = []
-console.log(data);
-	// store filename into array
-	_.each(req.files, (o) => {
-		files.push(`${o.key}`)
-	})
+	var validation = true;
 
 	var requiredFields = _.reject(['business_id', 'title', 'description', 'repeat_every', 'end_date', 'start_date'], (o) => { return _.has(data, o)  })
 
@@ -43,7 +40,28 @@ console.log(data);
 		
 		if (requiredFields == ''){
 
-			data.images = files
+			if(filesData.length == 0){
+				res.send(setRes(resCode.BadRequest, null, true, 'At least one image is required for product'))
+				validation = false;
+			}else if(filesData.length > 5){
+				validation = false;
+				res.send(setRes(resCode.BadRequest, null, true, 'You can upload only 5 images'))
+			}
+			if(filesData.length !=0 && filesData.length <= 5){
+				for(const image of filesData){
+					const fileContent = await fs.promises.readFile(image.path);
+					const fileExt = `${image.originalname}`.split('.').pop();
+					if(image.size > commonConfig.maxFileSize){
+						validation = false;
+						res.send(setRes(resCode.BadRequest, null, true, 'You can upload only 5 mb files, some file size is too large'))
+					}else if (!commonConfig.allowedExtensions.includes(fileExt)) {
+					  // the file extension is not allowed
+					  validation = false;
+					  res.send(setRes(resCode.BadRequest, null, true, 'You can upload only jpg, jpeg, png, gif files'))
+					}
+				}
+
+			}
 
 			// data.start_date ? '' : data.start_date = moment().toISOString()
 
@@ -101,20 +119,64 @@ console.log(data);
 
 			// }
 			// else{
+				if(validation){
 
-				var comboOffer = await createComboOffer(data)
+					var comboOffer = await createComboOffer(data)
 
-				if (comboOffer != ''){
-					var added_file = [];
-					for(const data of comboOffer.images){
-					  const signurl = awsConfig.getSignUrl(`${data}`);
-					  added_file.push(signurl);
+					if (comboOffer != ''){
+						const lastInsertId = comboOffer.id;
+						if(lastInsertId){
+
+							var files = [];
+							for(const file of filesData){
+								
+								const fileContent = await fs.promises.readFile(file.path);
+								const fileExt = `${file.originalname}`.split('.').pop()
+								const randomString = Math.floor(Math.random() * 1000000); 
+								const fileName = `${Date.now()}_${randomString}.${fileExt}`;
+								const params = {
+								   Bucket: awsConfig.Bucket,
+							       Key: `combos/${lastInsertId}/${fileName}`,
+							       Body: fileContent,
+					     		};
+
+							  const result = await awsConfig.s3.upload(params).promise();
+							  if(result){
+									files.push(`combos/${lastInsertId}/${fileName}`)
+									fs.unlinkSync(file.path)
+				     			}				  
+							}
+							var images = files.join(';');
+							comboModel.update({
+								images: images
+							},{
+								where: {
+									id: lastInsertId,
+									
+								}
+							}).then(comboData => {
+								if(comboData){
+									comboModel.findOne({where:{id:lastInsertId}}).then(getData => {
+										var combo_images = getData.images
+										var image_array = [];
+										for(const data of combo_images){
+											const signurl = awsConfig.getSignUrl(data);
+						  					image_array.push(signurl);
+										}
+										getData.dataValues.combo_images = image_array
+										
+										res.send(setRes(resCode.OK,getData,null,"Combo offer created successfully"))
+									})
+								}else{
+									res.send(setRes(resCode.InternalServer,getData,null,"Image not update"))
+								}
+							})
+						}
+						
 					}
-					comboOffer.images = added_file;
-					res.send(setRes(resCode.OK, comboOffer, false, 'combo offer created successfully.'))
-				}
-				else{
-					res.send(setRes(resCode.BadRequest, null, true, "Fail to create combo offer."))
+					else{
+						res.send(setRes(resCode.BadRequest, null, true, "Fail to create combo offer."))
+					}
 				}
 				
 			// }
@@ -355,17 +417,11 @@ exports.GetComboOffers = (req, res) => {
 
 }
 
-exports.UpdateComboOffer = (req, res) => {
+exports.UpdateComboOffer = async (req, res) => {
 
 	var data = req.body
+
 	var comboModel = models.combo_calendar
-	var files = []
-
-	// store filename into array
-	_.each(req.files, (o) => {
-		files.push(`${o.key}`)
-	})
-
 	
 	var requiredFields = _.reject(['id'], (o) => { return _.has(data, o)  })
 
@@ -374,8 +430,61 @@ exports.UpdateComboOffer = (req, res) => {
 	_.contains([1,2], parseInt(data.repeat_every)) ? data.repeat = true : '';
 
  	if (requiredFields == ''){
+ 		const row = await comboModel.findByPk(data.id);
+		const image = row.images;
+		if(req.files){
+			const filesData = req.files;
+			const total_image = image.length + filesData.length;
+			var validation = true
 
-		files != '' ? data.images = files : ''
+			if(total_image > 5){
+				validation = false
+				res.send(setRes(resCode.BadRequest, null, true, "You cannot update more than 5 images.You already uploaded "+image.length+" images"))
+			}
+			for(const imageFile of filesData){
+					const fileContent = await fs.promises.readFile(imageFile.path);
+					const fileExt = `${imageFile.originalname}`.split('.').pop();
+					if(imageFile.size > commonConfig.maxFileSize){
+						validation = false;
+						res.send(setRes(resCode.BadRequest, null, true, 'You can upload only 5 mb files, some file size is too large'))
+					}else if (!commonConfig.allowedExtensions.includes(fileExt)) {
+					  // the file extension is not allowed
+					  validation = false;
+					  res.send(setRes(resCode.BadRequest, null, true, 'You can upload only jpg, jpeg, png, gif files'))
+					}
+			}
+
+			if(validation){
+				
+				var files = [];
+				for(const file of filesData){
+					const fileContent = await fs.promises.readFile(file.path);
+					const fileExt = `${file.originalname}`.split('.').pop()
+					const randomString = Math.floor(Math.random() * 1000000); 
+					const fileName = `${Date.now()}_${randomString}.${fileExt}`;
+					const params = {
+				       Bucket: awsConfig.Bucket,
+				       Key: `combos/${data.id}/${fileName}`,
+				       Body: fileContent,
+		     		};
+
+	     			const result = await awsConfig.s3.upload(params).promise();
+				  	if(result){
+						files.push(`combos/${data.id}/${fileName}`)
+						fs.unlinkSync(file.path)
+					}
+				}
+				var images = files.join(';');
+				
+				const oldFilenames = image.join(';');
+				
+				
+				if(images != ""){
+					const allFilenames = `${oldFilenames};${images}`;
+					data.images = allFilenames
+				}
+			}
+		}
 
 		comboModel.findOne({
 			where: {
@@ -385,14 +494,6 @@ exports.UpdateComboOffer = (req, res) => {
 		}).then(comboOffer => {
 			if (comboOffer) {
 
-				_.each(comboOffer.images, (image) => {
-
-					const params = {
-								    Bucket: 'bioapz',
-								    Key: image
-								};
-					awsConfig.deleteImageAWS(params)
-				})
 
 				comboModel.update(data, {
 					where: {
@@ -400,7 +501,6 @@ exports.UpdateComboOffer = (req, res) => {
 						is_deleted: false
 					}
 				}).then(updatedOffers => {
-					console.log(updatedOffers)
 					if (updatedOffers > 0){
 						
 						comboModel.findOne({
@@ -409,12 +509,13 @@ exports.UpdateComboOffer = (req, res) => {
 								is_deleted: false
 							}
 						}).then(combo => {
-							var update_file = [];
-							for(const data of combo.images){
-							  const signurl = awsConfig.getSignUrl(`${data}`);
-							  update_file.push(signurl);
+							var combo_images = combo.images
+							var image_array = [];
+							for(const data of combo_images){
+								const signurl = awsConfig.getSignUrl(data);
+			  					image_array.push(signurl);
 							}
-							combo.images = update_file;
+							combo.dataValues.combo_images = image_array
 							res.send(setRes(resCode.OK, combo, false, "Combo Offer updated successfully."))
 						}).catch(error => {
 							console.log('===========update combo offer========')
@@ -460,9 +561,9 @@ exports.removeImagesFromCombo = (req, res) => {
 				var replaceImages = _.filter(comboOffer.images, (img) => {
 						return img != data.image
 					})
-
+				var images = replaceImages.join(';');
 				comboModel.update({
-					images: replaceImages
+					images: images
 				},{
 					where : {
 						id: data.combo_id
@@ -471,7 +572,7 @@ exports.removeImagesFromCombo = (req, res) => {
 					
 					if (updatedOffer > 0) {
 						const params = {
-						    Bucket: 'bioapz',
+						    Bucket: awsConfig.Bucket,
 						    Key: data.image
 						};
 						awsConfig.deleteImageAWS(params)
@@ -481,12 +582,13 @@ exports.removeImagesFromCombo = (req, res) => {
 								id: data.combo_id
 							}
 						}).then(combo => {
-							var file = [];
-							for(const data of combo.images){
-							  const signurl = awsConfig.getSignUrl(`${data}`);
-							  file.push(signurl);
+							var combo_images = combo.images
+							var image_array = [];
+							for(const data of combo_images){
+								const signurl = awsConfig.getSignUrl(data);
+			  					image_array.push(signurl);
 							}
-							combo.images = file;
+							combo.dataValues.combo_images = image_array
 							res.send(setRes(resCode.OK, combo, false, "Combo offer.."))
 						})
 					}

@@ -7,6 +7,7 @@ const uuidv1 = require('uuid/v1');
 const moment = require('moment')
 const fs = require('fs')
 const awsConfig = require('../../config/aws_S3_config')
+var commonConfig = require('../../config/common_config')
 
 var upload =  multer({
     storage: multer.diskStorage({
@@ -29,15 +30,14 @@ const fileFilter = (req,file,cb) => {
   if(file.mimetype === 'image/jpeg' || file.mimetype === 'image/png'){
     cb(null,true)
   }else{
-    cb(new Error('Invalid image'),false);
+    cb(new Error('You can upload only jpg, jpeg, png, gif files'),false);
   }
 }
 
 var awsupload = multer({
   storage:multerS3({
-    fileFilter,
     s3:awsConfig.s3,
-    bucket:'bioapz',
+    bucket:awsConfig.Bucket,
     
     key:function(req,file,cb){
       const fileExt = file.originalname.split('.').pop(); // get file extension
@@ -45,7 +45,11 @@ var awsupload = multer({
       const fileName = `${Date.now()}_${randomString}.${fileExt}`;
       cb(null,'promos/'+fileName);
     }
-  })
+  }),
+  limits: {
+    fileSize: commonConfig.maxFileSize, // 5 MB limit
+  },
+  fileFilter,
 });
 
 var controller = require('./promos.controller')

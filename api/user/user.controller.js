@@ -329,7 +329,7 @@ exports.UpdateProfile = async (req, res) => {
 		
 			userModel.findOne({where:{id:data.id,is_deleted:false}}).then(userData =>{
 				const params = {
-							    Bucket: 'bioapz',
+							    Bucket: awsConfig.Bucket,
 							    Key: userData.profile_picture
 							};
 				awsConfig.deleteImageAWS(params)

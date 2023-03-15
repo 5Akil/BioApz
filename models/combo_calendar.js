@@ -15,9 +15,7 @@ module.exports = (sequelize, DataTypes) => {
       get() {
         return this.getDataValue('images') ? this.getDataValue('images').split(';') : ''
       },
-      set(val) {
-        this.setDataValue('images',val.join(';'));
-      },
+      
     },
     title: {
       type: DataTypes.STRING
