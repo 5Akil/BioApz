@@ -11,5 +11,6 @@ router.post('/product-filter', controller.FilterProducts)
 router.get('/chat-notification', controller.ChatNotification);
 router.post('/searching', controller.Searching)
 router.post('/delete', verifyToken, controller.DeleteProductOffers)
+router.post('/user-business-search',controller.BusinessSearch)
 
 module.exports = router;

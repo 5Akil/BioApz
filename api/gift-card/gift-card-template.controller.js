@@ -29,12 +29,14 @@ exports.GetGiftCardTemplate = async(req,res) => {
 				['createdAt', 'DESC']
 			],
 			
-	}).then(templates => {
+	}).then(async templates => {
 		if (templates != '' && templates != null ){
 			// Update Sign URL
 			for(const data of templates){
-			  const signurl = awsConfig.getSignUrl(`gift_card_templates/${data.template_image}`);
-			  data.template_image = signurl;		  
+			  const signurl = await awsConfig.getSignUrl(`${data.template_image}`).then(function(res){
+
+			  	data.template_image = res;		  
+			  });
 			}
 				res.send(setRes(resCode.OK, templates, false, "Get templates detail successfully.."))
 			}else{

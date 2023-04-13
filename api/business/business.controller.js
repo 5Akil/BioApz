@@ -142,9 +142,13 @@ exports.GetRecommendedBusiness = async (req, res) => {
 
 		}).then((business) => {
 
-			_.map(business, (Obj) => {
-				Obj.banner = awsConfig.getSignUrl(Obj.banner);
-  			Obj.template.template_url = awsConfig.getSignUrl('templates_thumb/'+Obj.template.image);
+			_.map(business, async(Obj) => {
+				var banner = await awsConfig.getSignUrl(Obj.banner).then(function(res){
+					Obj.banner = res
+				});
+  			var template_url = await awsConfig.getSignUrl(Obj.template.image).then(function(res){
+  				Obj.template.template_url = res
+  			});
   			return Obj;
 				// return Obj.template.template_url = Obj.template.template_url.concat(`?bid=${Obj.id}&uid=${data.user_id}&ccd=${Obj.color_code}`)
 			})
@@ -195,11 +199,17 @@ exports.GetBusinessDetail = async (req, res) => {
 					model: template
 				}
 			],
-		}).then(business => {
+		}).then(async business => {
 			if (business != '' && business != null && business.id != null){
-				business.banner = awsConfig.getSignUrl(business.banner)
-				business.template.template_url = awsConfig.getSignUrl('templates_thumb/'+business.template.image)
-				business.template.image = awsConfig.getSignUrl('templates_thumb/'+business.template.image)
+				var business_banner = await awsConfig.getSignUrl(business.banner).then(function(res){
+					business.banner = res;
+				})
+				var business_template_template_url = await awsConfig.getSignUrl(business.template.image).then(function(res){
+					business.template.template_url = res
+				})
+				var business_template_image = await awsConfig.getSignUrl(business.template.image).then(function(res){
+					business.template.image = res
+				})
 				res.send(setRes(resCode.OK, business, false, "Get business detail successfully.."))
 			}else{
 				res.send(setRes(resCode.ResourceNotFound, null, false, "Business not found."))
@@ -226,13 +236,15 @@ exports.GetProfile = async (req, res) =>{
 			is_deleted:false
 		},
 		include: [categoryModel]
-	}).then(business => {
+	}).then(async business => {
 		if (business != null){
-			business.banner = awsConfig.getSignUrl(business.banner);
+			var business_banner = await awsConfig.getSignUrl(business.banner).then(function(res){
+				business.banner = res
+			});
 			res.send(setRes(resCode.OK, business, false, "Get business profile successfully."))
 		}
 		else{
-			res.send(setRes(resCode.ResourceNotFound, user, true, "Business not Found."))
+			res.send(setRes(resCode.ResourceNotFound, null, true, "Business not Found."))
 		}
 	}).catch(userError => {
 		res.send(setRes(resCode.InternalServer, null, true, "Fail to Get business Profile."))
@@ -272,20 +284,22 @@ exports.UpdateBusinessDetail = async (req, res) => {
 					is_deleted: false
 				},
 				include: [categoryModel]
-			}).then(UpdatedBusiness => {
+			}).then(async UpdatedBusiness => {
 				if (UpdatedBusiness != null){
-					UpdatedBusiness.banner = awsConfig.getSignUrl(UpdatedBusiness.banner)
-					res.send(setRes(resCode.OK, UpdatedBusiness, false, "Business detail updated successfully."))
+					var UpdatedBusiness_banner = await awsConfig.getSignUrl(UpdatedBusiness.banner).then(function(res){
+						UpdatedBusiness.banner = res
+					})
+					res.send(setRes(resCode.OK, UpdatedBusiness, false, "Business detail update successfully."))
 				}
 				else{
-					res.send(setRes(resCode.OK, null, false, "Fail to get business detail."))		
+					res.send(setRes(resCode.BadRequest, null, false, "Fail to update business detail."))		
 				}
 			})
 		}else{
-			res.send(setRes(resCode.OK, null, false, "Fail to updated business detail."))
+			res.send(setRes(resCode.BadRequest, null, false, "Fail to update business detail."))
 		}
 	}).catch(error => {
-		res.send(setRes(resCode.BadRequest, null, true, "Fail to update detail."))
+		res.send(setRes(resCode.InternalServer, null, true, "Internal server error."))
 	})
 }
 
@@ -350,11 +364,13 @@ exports.GetImages = async (req, res) => {
 				business_id: data.business_id,
 				is_deleted: false
 			}
-		}).then(gallery => {
+		}).then(async gallery => {
 			if (gallery != null && gallery != ''){
 				for(const data of gallery){
-				  const signurl = awsConfig.getSignUrl(`${data.image}`);
-				  data.image = signurl;		  
+				  const signurl = await awsConfig.getSignUrl(`${data.image}`).then(function(res){
+
+				  	data.image = res;		  
+				  });
 				}
 				res.send(setRes(resCode.OK, gallery, false, "Available images for your business."))
 			}
@@ -390,10 +406,12 @@ exports.UploadCompanyImages = async (req, res) => {
 
 			}, () => {
 				if (recordArray.length > 0){
-					galleryModel.bulkCreate(recordArray).then(gallery => {
+					galleryModel.bulkCreate(recordArray).then(async gallery => {
 						for(const data of gallery){
-						  const signurl = awsConfig.getSignUrl(`${data.image}`);
-						  data.image = signurl;		  
+						  const signurl = await awsConfig.getSignUrl(`${data.image}`).then(function(res){
+
+						  	data.image = res;		  
+						  });
 						}
 						res.send(setRes(resCode.OK, gallery, false, 'images are uploded successfully.'))
 					}).catch(error => {
@@ -443,11 +461,15 @@ exports.GetAllOffers = async (req, res) => {
 		}
 		data.business_id ? condition.where = {business_id:data.business_id, is_deleted: false} : condition.where = {is_deleted: false},
 
-		offerModel.findAll(condition).then((offers) => {
+		offerModel.findAll(condition).then(async(offers) => {
 			if (offers.length > 0){
 				for(offer of offers){
-					offer.image = awsConfig.getSignUrl(offer.image)
-					offer.business.banner = awsConfig.getSignUrl(offer.business.banner)
+					var offer_image = await awsConfig.getSignUrl(offer.image).then(function(res){
+						offer.image = res
+					})
+					var offer_business_banner = await awsConfig.getSignUrl(offer.business.banner).then(function(res){
+						offer.business.banner = res
+					})
 				}
 				res.send(setRes(resCode.OK, offers, false, "Get offers list successfully"))
 			}else{
@@ -493,9 +515,11 @@ exports.UpdateOfferDetail = async (req, res) => {
 						id: data.id,
 						is_deleted: false
 					}
-				}).then(UpdatedOffer => {
+				}).then(async UpdatedOffer => {
 					if (UpdatedOffer != null){
-						UpdatedOffer.image = awsConfig.getSignUrl(UpdatedOffer.image)
+						var UpdatedOffer_image = await awsConfig.getSignUrl(UpdatedOffer.image).then(function(res){
+							UpdatedOffer.image = res
+						})
 						res.send(setRes(resCode.OK, UpdatedOffer, false, "Offer updated successfully."))
 					}
 					else{
@@ -554,7 +578,9 @@ exports.UpdateOfferDetail = async (req, res) => {
 					
 
 			// send notification code over
-			 offer.image = awsConfig.getSignUrl(offer.image) 
+			 var offer_image = await awsConfig.getSignUrl(offer.image).then(function(res){
+			 		offer.image = res
+			 })
 			res.send(setRes(resCode.OK, offer, false, "Offer added successfully."))
 		}).catch(error => {
 			res.send(setRes(resCode.BadRequest, null, true, "Fail to add offer."))
@@ -587,7 +613,9 @@ exports.CreateOffer = async (req, res) => {
 			var Offer = await createOffer(data)
 
 			if (Offer != ''){
-				Offer.image = awsConfig.getSignUrl(Offer.image)
+				Offer.image = await awsConfig.getSignUrl(Offer.image).then(function(res){
+					Offer.image = res
+				})
 				res.send(setRes(resCode.OK, Offer, false, 'Offer created successfully.'))
 			}
 			else{
@@ -669,8 +697,10 @@ exports.UpdateOffer = (req, res) => {
 								id: data.id,
 								is_deleted: false
 							}
-						}).then(offer => {
-							offer.image = awsConfig.getSignUrl(offer.image)
+						}).then(async offer => {
+							var offer_image = await awsConfig.getSignUrl(offer.image).then(function(res){
+								offer.image = res
+							})
 							res.send(setRes(resCode.OK, offer, false, "Offer updated successfully."))
 						}).catch(error => {
 							console.log('===========update offer========')
@@ -727,7 +757,7 @@ exports.GetOffers = (req, res) => {
 					['createdAt', 'DESC']
 				],
 				subQuery: false
-			}).then(offers => {
+			}).then(async offers => {
 				_.each(offers, (o) => {
 
 					
@@ -797,7 +827,9 @@ exports.GetOffers = (req, res) => {
 
 				for(const offers of offer){
 
-					resObj[offers].dataValues.image_url = awsConfig.getSignUrl(resObj[offers].dataValues.image)
+					var resObj_offers_dataValues_image_url = await awsConfig.getSignUrl(resObj[offers].dataValues.image).then(function(res){
+						resObj[offers].dataValues.image_url = res
+					})
 					
 				}
 				
@@ -894,7 +926,7 @@ exports.CreateBusiness = async (req, res) => {
 // 	sections: data.sections
 // }
 	if (requiredFields == ''){
-		businessModel.create(data).then(business => {
+		businessModel.create(data).then(async business => {
 
 			if (data.id){
 
@@ -916,7 +948,9 @@ exports.CreateBusiness = async (req, res) => {
 			}
 			else{
 				if(business.banner != null){
-					business.banner = awsConfig.getSignUrl(business.banner);
+					var business_banner = await awsConfig.getSignUrl(business.banner).then(function(res){
+						business.banner = res
+					});
 				}
 				res.send(setRes(resCode.OK, business, false, "Business created successfully."))
 			}

@@ -81,7 +81,7 @@ var awsuploadcompanyImages = multer({
       const fileExt = file.originalname.split('.').pop(); // get file extension
       const randomString = Math.floor(Math.random() * 1000000); // generate random string
       const fileName = `${Date.now()}_${randomString}.${fileExt}`;
-      cb(null,'business_gallery/'+fileName);
+     cb(null,'business_gallery/'+req.body.business_id+'/'+fileName);
     }
   }),
   limits: {
@@ -111,6 +111,8 @@ var awsuploadbanner = multer({
 var controller = require('./business.controller')
 
 const {verifyToken} = require('../../config/token');
+
+const uploadImage = multer({ dest: 'business_gallery/' });
 
 router.post('/inquiry', verifyToken, controller.createInquiry)
 router.post('/recommended', verifyToken, controller.GetRecommendedBusiness)

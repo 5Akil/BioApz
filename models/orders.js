@@ -7,6 +7,7 @@ module.exports = (sequelize, DataTypes) => {
       autoIncrement: true,
     },
     user_id : DataTypes.INTEGER,
+    business_id : DataTypes.INTEGER,
     order_no : DataTypes.STRING,
     amount : DataTypes.DOUBLE(11, 2),
     payment_status : DataTypes.STRING,
@@ -23,6 +24,7 @@ module.exports = (sequelize, DataTypes) => {
   Orders.associate = function(models) {
     // associations can be defined here
     Orders.belongsTo(models.user, {foreignKey: 'user_id'})
+    Orders.belongsTo(models.business, {foreignKey: 'business_id'})
     
   };
   return Orders;

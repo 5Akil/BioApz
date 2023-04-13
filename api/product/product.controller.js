@@ -20,8 +20,7 @@ var multer = require('multer');
 const multerS3 = require('multer-s3');
 
 exports.createInquiry = async (req, res) => {
-
-  console.log(req.body)
+	
   var data = req.body
   var dbModel = models.product_inquiry;
   var businessModel = models.business;
@@ -63,13 +62,15 @@ exports.createInquiry = async (req, res) => {
 							}
 						})
 						// send notification code over
-
-						res.send(setRes(resCode.OK, inquiry, false, 'Inquiry created successfully.'));
+						res.send(setRes(resCode.OK, true, "Inquiry created successfully.",inquiry))
+						
 					} else {
-						res.send(setRes(resCode.BadRequest, null, true, 'Fail to create inquiry'));
+						res.send(setRes(resCode.BadRequest, false, "Fail to create inquiry.",null))
+						
 					}
 				}).catch(error => {
-					res.send(setRes(resCode.InternalServer, error.message, true, "Internal server error."))
+					res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
+					
 				})
 		// 	}
 		// 	else{
@@ -77,9 +78,9 @@ exports.createInquiry = async (req, res) => {
 		// 	}
 		// })
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
+		
 	}
-
 }
 
 
@@ -89,6 +90,8 @@ exports.GetAllProducts = async (req, res) => {
 	var business = models.business;
 	var category = models.business_categorys;
 	var product_category = models.product_categorys
+	var productRattingModel = models.product_ratings
+	var categoryModel = models.product_categorys
 	var data = req.body
 	var requiredFields = _.reject(['page','page_size','business_id'], (o) => { return _.has(data, o)  })
 
@@ -105,37 +108,67 @@ exports.GetAllProducts = async (req, res) => {
 			subQuery:false,
 			order: [
 				['createdAt', 'DESC']
-			]
+			],
+			include:[
+				{
+					model:productRattingModel,
+					attributes: []
+				},
+				{
+			        model: categoryModel,
+			        as: 'product_categorys',
+			        attributes:['name']
+			    },
+			    {
+			        model: categoryModel,
+			        as: 'sub_category',
+			        attributes:['name']
+			    }
+			],
+			attributes: { include : [
+				[Sequelize.fn('AVG', Sequelize.col('product_ratings.ratings')),'rating']
+			]},
+			group: ['products.id'],
 		}
-		condition.where = {business_id:data.business_id,category_id:data.category_id,sub_category_id:data.sub_category_id}
-		// if(data.product_search){
-		// 	condition.where = {business_id:data.business_id,name: `%${data.product_search}%`,is_deleted: false}			
-		// }
-		// data.product_search ? condition.where = {business_id:data.business_id,name: `%${data.product_search}%`,is_deleted: false} :condition.where = {is_deleted: false},
-		// data.business_id ? condition.where = {business_id:data.business_id, is_deleted: false} : condition.where = {is_deleted: false},
-
-		productModel.findAll(condition).then((products) => {
+		condition.where = {business_id:data.business_id,category_id:data.category_id}
+		if(data.sub_category_id) {
+			condition.where = {business_id:data.business_id,category_id:data.category_id,sub_category_id:data.sub_category_id}
+		}
+		
+		productModel.findAll(condition).then(async(products) => {
 			if (products.length > 0){
 				for(const data of products){
 				  var product_images = data.image
 						var image_array = [];
 					
 							for(const data of product_images){
-								const signurl = awsConfig.getSignUrl(data);
-			  				image_array.push(signurl);
+								const signurl = await awsConfig.getSignUrl(data).then(function(res){
+
+			  						image_array.push(res);
+								});
+								
 							}
-						data.dataValues.product_images = image_array	  
+						data.dataValues.product_images = image_array
+						data.dataValues.category_name = data.product_categorys.name
+						data.dataValues.product_type = data.sub_category.name
+
+						delete data.dataValues.product_categorys
+						delete data.dataValues.sub_category
 				}
-				res.send(setRes(resCode.OK, products, false, "Get product list successfully"))
+				res.send(setRes(resCode.OK, true, "Get product list successfully",products))
+				
 			}else{
-				res.send(setRes(resCode.ResourceNotFound, null, false, "Products not found"))
+				res.send(setRes(resCode.ResourceNotFound,false, "Products not found",null))
+				
 			}
 		})
 		.catch((error) => {
-			res.send(setRes(resCode.BadRequest, null, true, "Fail to get product list"))
+			res.send(setRes(resCode.InternalServer,false, "Fail to get product list",null))
+			
 		})
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 
 }
@@ -178,26 +211,28 @@ exports.GetBookingInquiry = async (req, res) => {
 				}).then((bookings) => {
 					// console.log(bookings)
 					if (bookings != ''){
-						res.send(setRes(resCode.OK, bookings, false, 'Available booking for your business.'))
+						res.send(setRes(resCode.OK,true, "Available booking for your business.",bookings))
+						
 					}else{
-						res.send(setRes(resCode.OK, bookings, false, 'No Booking available for your business.'))
+						res.send(setRes(resCode.OK,true, "No Booking available for your business.",bookings))
+						
 					}
 
 				}).catch((calenderError) => {
-					console.log(calenderError)
-					res.send(setRes(resCode.InternalServer, null, true, 'get booking error.'))
+					res.send(setRes(resCode.InternalServer,false, "Get booking error.",null))
+					
 				})
 
 			}else{
-				res.send(setRes(resCode.ResourceNotFound, null, true, "Business not found."))
+				res.send(setRes(resCode.ResourceNotFound, false, "Business not found.",null))
 			}
 
 		}).catch((error) => {
-			res.send(setRes(resCode.InternalServer, null, true, "get business error."))
+			res.send(setRes(resCode.InternalServer, false, "get business error.",null))
 		})
 		
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 	
 }
@@ -226,24 +261,24 @@ exports.IsReadStatus = async (req, res) => {
 						}
 					}).then(UpdatedInquiry => {
 						if (UpdatedInquiry != ''){
-							res.send(setRes(resCode.OK, UpdatedInquiry , false, "Product inquiry is readed.."))
+							res.send(setRes(resCode.OK,true, "Product inquiry is readed..",UpdatedInquiry))
 						}
 						else{
-							res.send(setRes(resCode.InternalServer, null, true, "Fail to get inquiry."))		
+							res.send(setRes(resCode.InternalServer,false, "Fail to get inquiry.",null))		
 						}
 					}).catch(GetInquiryError => {
-						res.send(setRes(resCode.BadRequest, null, true, GetInquiryError))
+						res.send(setRes(resCode.BadRequest,false, GetInquiryError,null))
 					})
 					
 				}else{
-					res.send(setRes(resCode.InternalServer, null, true, "Fail to read inquiry."))
+					res.send(setRes(resCode.InternalServer,false, "Fail to read inquiry.",null))
 				}
 			}).catch(error => {
-				res.send(setRes(resCode.BadRequest, null, true, error))
+				res.send(setRes(resCode.BadRequest,false, error,null))
 			})
 
 		}else{
-			res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+			res.send(setRes(resCode.BadRequest,false, (requiredFields.toString() + ' are required'),null))
 		}
 
 }
@@ -258,11 +293,11 @@ exports.createProduct = async(req,res) => {
 		if(requiredFields == ""){
 
 				if(filesData.length == 0){
-					res.send(setRes(resCode.BadRequest, null, true, 'At least one image is required for product'))
+					res.send(setRes(resCode.BadRequest,false, 'At least one image is required for product',null))
 					validation = false;
 				}else if(filesData.length > 5){
 					validation = false;
-					res.send(setRes(resCode.BadRequest, null, true, 'You can upload only 5 images'))
+					res.send(setRes(resCode.BadRequest,false, 'You can upload only 5 images',null))
 				}
 				if(filesData.length !=0 && filesData.length <= 5){
 					for(const image of filesData){
@@ -270,11 +305,11 @@ exports.createProduct = async(req,res) => {
 						const fileExt = `${image.originalname}`.split('.').pop();
 						if(image.size > commonConfig.maxFileSize){
 							validation = false;
-							res.send(setRes(resCode.BadRequest, null, true, 'You can upload only 5 mb files, some file size is too large'))
+							res.send(setRes(resCode.BadRequest,false, 'You can upload only 5 mb files, some file size is too large',null))
 						}else if (!commonConfig.allowedExtensions.includes(fileExt)) {
 						  // the file extension is not allowed
 						  validation = false;
-						  res.send(setRes(resCode.BadRequest, null, true, 'You can upload only jpg, jpeg, png, gif files'))
+						  res.send(setRes(resCode.BadRequest, false, 'You can upload only jpg, jpeg, png, gif files',null))
 						}
 					}
 
@@ -314,33 +349,35 @@ exports.createProduct = async(req,res) => {
 								}
 							}).then(productData => {
 								if(productData){
-									productModel.findOne({where:{id:lastInsertId}}).then(getData => {
+									productModel.findOne({where:{id:lastInsertId}}).then(async getData => {
 										var product_images = getData.image
 										var image_array = [];
 										for(const data of product_images){
-											const signurl = awsConfig.getSignUrl(data);
-						  				image_array.push(signurl);
+											const signurl = await awsConfig.getSignUrl(data).then(function(res){
+
+						  						image_array.push(res);
+											});
 										}
 										getData.dataValues.product_images = image_array
 										
-										res.send(setRes(resCode.OK,getData,null,"Product created successfully"))
+										res.send(setRes(resCode.OK,true,"Product created successfully",getData))
 									})
 								}else{
-									res.send(setRes(resCode.InternalServer,getData,null,"Image not update"))
+									res.send(setRes(resCode.InternalServer,false,"Image not update",getData))
 								}
 							})
 						}
 					
 					}).catch(error => {
-						res.send(setRes(resCode.BadRequest, error, true, "Fail to add product or service."))
+						res.send(setRes(resCode.BadRequest,false, "Fail to add product or service.",null))
 					})
 
 				}
 		}else{
-			res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+			res.send(setRes(resCode.BadRequest,false, (requiredFields.toString() + ' are required'),null))
 		}
 	}catch(error){
-		res.send(setRes(resCode.BadRequest, null, true, "Something went wrong!"))
+		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
 	}
 
 }
@@ -362,18 +399,18 @@ exports.UpdateProductDetail = async (req, res) => {
 
 				if(total_image > 5){
 					validation = false
-					res.send(setRes(resCode.BadRequest, null, true, "You cannot update more than 5 images.You already uploaded "+image.length+" images"))
+					res.send(setRes(resCode.BadRequest,false, "You cannot update more than 5 images.You already uploaded "+image.length+" images",null))
 				}
 				for(const imageFile of filesData){
 						const fileContent = await fs.promises.readFile(imageFile.path);
 						const fileExt = `${imageFile.originalname}`.split('.').pop();
 						if(imageFile.size > commonConfig.maxFileSize){
 							validation = false;
-							res.send(setRes(resCode.BadRequest, null, true, 'You can upload only 5 mb files, some file size is too large'))
+							res.send(setRes(resCode.BadRequest,false, 'You can upload only 5 mb files, some file size is too large',null))
 						}else if (!commonConfig.allowedExtensions.includes(fileExt)) {
 						  // the file extension is not allowed
 						  validation = false;
-						  res.send(setRes(resCode.BadRequest, null, true, 'You can upload only jpg, jpeg, png, gif files'))
+						  res.send(setRes(resCode.BadRequest,false, 'You can upload only jpg, jpeg, png, gif files',null))
 						}
 				}
 				if(validation){
@@ -420,13 +457,15 @@ exports.UpdateProductDetail = async (req, res) => {
 						id: data.id,
 						is_deleted: false
 					}
-				}).then(UpdatedProduct => {
+				}).then(async UpdatedProduct => {
 					if (UpdatedProduct != null){
 						var product_images = UpdatedProduct.image
 						var image_array = [];
 						for(const data of product_images){
-							const signurl = awsConfig.getSignUrl(data);
-		  				image_array.push(signurl);
+							const signurl = await awsConfig.getSignUrl(data).then(function(res){
+
+		  						image_array.push(res);
+							});
 						}
 						UpdatedProduct.dataValues.product_images = image_array
 						res.send(setRes(resCode.OK, UpdatedProduct, false, "Product Or Service updated successfully."))
@@ -494,33 +533,66 @@ exports.UpdateProductDetail = async (req, res) => {
 // 		}
 // }
 
-exports.GetProductById = (req, res) => {
+exports.GetProductById =  (req, res) => {
 
 	data = req.params
 	var productModel = models.products
+	var productRattingModel = models.product_ratings
+	var categoryModel = models.product_categorys
 
-	productModel.findOne({
+	 productModel.findOne({
 		where: {
 			id: data.id,
 			is_deleted: false
-		}
-	}).then(product => {
-		if (product != null){
-			// product.image = awsConfig.getSignUrl(product.image)
+		},
+		include:[
+			{
+				model:productRattingModel,
+				attributes: []
+			},
+			{
+		        model: categoryModel,
+		        as: 'product_categorys',
+		        attributes:['name']
+		    },
+		    {
+		        model: categoryModel,
+		        as: 'sub_category',
+		        attributes:['name']
+		    }
+
+		],
+		attributes: { include : [
+			[Sequelize.fn('AVG', Sequelize.col('product_ratings.ratings')),'rating']
+		]},
+	}).then(async product => {
+		if (product.length > 0){
+			
 			var product_images = product.image
 			var image_array = [];
 			for(const data of product_images){
-				const signurl = awsConfig.getSignUrl(data);
-				image_array.push(signurl);
+				const signurl = await awsConfig.getSignUrl(data).then(function(res){
+					image_array.push(res);
+				});
 			}
+			
 			product.dataValues.product_images = image_array
-			res.send(setRes(resCode.OK, product, false, "Get product detail successfully."))
+			product.dataValues.category_name = product.product_categorys.name
+			product.dataValues.product_type = product.sub_category.name
+
+			delete product.dataValues.product_categorys
+			delete product.dataValues.sub_category
+			res.send(setRes(resCode.OK, true, "Get product detail successfully.",product))
+			
 		}
 		else{
-			res.send(setRes(resCode.ResourceNotFound, null, true, "Resource not found."))
+			res.send(setRes(resCode.ResourceNotFound,false, "Product not found.",null))
+			// res.send(setRes(resCode.ResourceNotFound, null, true, "Resource not found."))
+
 		}
 	}).catch(GetProductError => {
-		res.send(setRes(resCode.InternalServer, null, true, "Internal server error."))
+		res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
+		
 	})
 
 }
@@ -567,12 +639,14 @@ exports.RemoveProductImage = async(req, res) => {
 							where: {
 								id: data.id
 							}
-						}).then(product => {
+						}).then(async product => {
 							var product_images = product.image
 							var image_array = [];
 							for(const data of product_images){
-								const signurl = awsConfig.getSignUrl(data);
-			  				image_array.push(signurl);
+								const signurl = await awsConfig.getSignUrl(data).then(function(res){
+
+			  						image_array.push(res);
+								});
 							}
 							product.dataValues.product_images = image_array
 							res.send(setRes(resCode.OK, product, false, "Product .."))
@@ -594,7 +668,7 @@ exports.RemoveProductImage = async(req, res) => {
 		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
 	}
 }
-exports.CreateCategory = (req, res) => {
+exports.CreateCategory = async (req, res) => {
  
 	var data = req.body
 	req.file ? data.image = `${req.file.key}`: '';
@@ -604,17 +678,19 @@ exports.CreateCategory = (req, res) => {
 
 	if(requiredFields == ""){
 
-		productCategoryModel.create(data).then(categoryData => {
+		productCategoryModel.create(data).then(async categoryData => {
 
 			if(categoryData){
-				data.image = awsConfig.getSignUrl(data.image)
+				var image = await awsConfig.getSignUrl(data.image).then(function(res){
+					data.image = res
+				})
 				res.send(setRes(resCode.OK,data,false,"Category added successfully"))
 			}else{
 				res.send(setRes(resCode.InternalServer,null,true,"Internal server error"))
 			}
 		})
 	}else {
-			res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
 	}
 
 }
@@ -622,30 +698,50 @@ exports.CreateCategory = (req, res) => {
 exports.CategoryList = async(req, res) => {
 
 	var data = req.params
+	var pageination = req.body
+
 	var productCategoryModel = models.product_categorys
 
-	productCategoryModel.findAll({
-		where:{
-			business_id:data.id,
-			is_deleted: false,
-			is_enable: true,
-			parent_id:0
+	var requiredFields = _.reject(['page','page_size'], (o) => { return _.has(pageination, o)  })
+	if(requiredFields == ""){
+		if(data.page < 0 || data.page === 0) {
+			res.send(setRes(resCode.BadRequest, null, true, "invalid page number, should start with 1"))
 		}
-	}).then(categoryData => {
-		if (categoryData != '' && categoryData != null ){
-			// Update Sign URL
-			for(const data of categoryData){
-			  const signurl = awsConfig.getSignUrl(data.image);
-			  data.image = signurl;		  
-			}
-				res.send(setRes(resCode.OK, categoryData, false, "Get category detail successfully.."))
-			}else{
-				res.send(setRes(resCode.ResourceNotFound, null, false, "Category not found."))
-			}
-			
-		}).catch(error => {
-			res.send(setRes(resCode.BadRequest, error, true, "Fail to send request."))
-	})	
+		var skip = pageination.page_size * (pageination.page - 1)
+		var limit = parseInt(pageination.page_size)
+
+		productCategoryModel.findAll({
+			where:{
+				business_id:data.id,
+				is_deleted: false,
+				is_enable: true,
+				parent_id:0
+			},
+			offset:skip,
+			limit:limit,
+			order: [
+				['createdAt', 'DESC']
+			]
+		}).then(async categoryData => {
+			if (categoryData != '' && categoryData != null ){
+				// Update Sign URL
+				for(const data of categoryData){
+				  const signurl = await awsConfig.getSignUrl(data.image).then(function(res){
+
+				  	data.image = res;		  
+				  });
+				}
+					res.send(setRes(resCode.OK, categoryData, false, "Get category detail successfully.."))
+				}else{
+					res.send(setRes(resCode.ResourceNotFound, null, false, "Category not found."))
+				}
+				
+			}).catch(error => {
+				res.send(setRes(resCode.BadRequest, error, true, "Fail to send request."))
+			})	
+	}else{
+		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+	}
 }
 
 exports.GetCategoryById = async(req, res) => {
@@ -658,16 +754,17 @@ exports.GetCategoryById = async(req, res) => {
 			id:data.id,
 			is_deleted:false,
 			is_enable:true,
-			parent_id:0
 		}
-	}).then(categoryData => {
+	}).then(async categoryData => {
 		if (categoryData != null){
 			
-			categoryData.image = awsConfig.getSignUrl(categoryData.image)
-			res.send(setRes(resCode.OK, categoryData, false, "Get product detail successfully."))
+			var categoryData_image = await awsConfig.getSignUrl(categoryData.image).then(function(res){
+				categoryData.image = res;
+			})
+			res.send(setRes(resCode.OK, categoryData, false, "Get category detail successfully."))
 		}
 		else{
-			res.send(setRes(resCode.ResourceNotFound, null, true, "Resource not found."))
+			res.send(setRes(resCode.ResourceNotFound, null, true, "Category not found."))
 		}
 	}).catch(GetCategoryError => {
 		res.send(setRes(resCode.InternalServer, null, true, "Internal server error."))
@@ -709,8 +806,10 @@ exports.UpdateCategory = async(req, res) => {
 							where:{id: data.id,
 							is_deleted: false,
 							is_enable: true
-						}}).then(categoryDetail => {
-							categoryDetail.image = awsConfig.getSignUrl(categoryDetail.image)
+						}}).then(async categoryDetail => {
+							var categoryDetail_image = await awsConfig.getSignUrl(categoryDetail.image).then(function(res){
+								categoryDetail.image = res;
+							})
 							res.send(setRes(resCode.OK,categoryDetail,false,'Category update successfully'))
 						})
 					}else{
@@ -718,7 +817,7 @@ exports.UpdateCategory = async(req, res) => {
 					}
 				})
 			}else{
-				res.send(setRes(resCode.ResourceNotFound,null,true,"Data not found"))
+				res.send(setRes(resCode.ResourceNotFound,null,true,"Category not found"))
 			}
 		})
 	}else{
@@ -805,9 +904,13 @@ exports.ProductTypeList = async(req, res) => {
 	var categoryModel = models.product_categorys
 	var Op = models.Op;
 
-	var requiredFields = _.reject(['business_id','category_id'], (o) => { return _.has(data, o) })
+	var requiredFields = _.reject(['business_id','category_id','page','page_size'], (o) => { return _.has(data, o) })
 	if(requiredFields == ""){
-
+		if(data.page < 0 || data.page === 0) {
+			res.send(setRes(resCode.BadRequest, null, true, "invalid page number, should start with 1"))
+		}
+		var skip = data.page_size * (data.page - 1)
+		var limit = parseInt(data.page_size)
 		categoryModel.findAll({
 
 			where:{
@@ -815,17 +918,24 @@ exports.ProductTypeList = async(req, res) => {
 				parent_id : data.category_id,
 				is_deleted: false,
 				is_enable: true
-			}
-		}).then(subCategoryData => {
+			},
+			offset:skip,
+			limit:limit,
+			order: [
+				['createdAt', 'DESC']
+			]
+		}).then(async subCategoryData => {
 			if (subCategoryData != '' && subCategoryData != null ){
 			// Update Sign URL
 			for(const data of subCategoryData){
-			  const signurl = awsConfig.getSignUrl(data.image);
-			  data.image = signurl;		  
+			  const signurl = await awsConfig.getSignUrl(data.image).then(function(res){
+
+			  	data.image = res;		  
+			  });
 			}
-				res.send(setRes(resCode.OK, subCategoryData, false, "Get product type  detail successfully.."))
+				res.send(setRes(resCode.OK, subCategoryData, false, "Get product type  details successfully.."))
 			}else{
-				res.send(setRes(resCode.ResourceNotFound, null, false, "product type not found."))
+				res.send(setRes(resCode.ResourceNotFound, null, false, "Product type not found."))
 			}
 		}).catch(error => {
 			res.send(setRes(resCode.BadRequest, error, true, "Fail to send request."))
@@ -919,4 +1029,104 @@ exports.removeProductType = async(req, res) => {
 	}).catch(error => {
 		res.send(setRes(resCode.BadRequest, error, true, "Internal server error."))
 	})
+}
+
+exports.AddProductRattings = async(req,res) => {
+
+	var data = req.body
+	var productRattingModel = models.product_ratings
+	var requiredFields = _.reject(['user_id','product_id','ratings','description'], (o) => { return _.has(data, o) })
+
+	if(requiredFields == ""){
+
+		productRattingModel.findOne({
+			where:{
+				user_id:data.user_id,
+				product_id:data.product_id,
+				is_deleted:false
+			}
+		}).then(rattingData => {
+			if(rattingData != null){
+				productRattingModel.update(data,{where:
+					{
+						user_id:data.user_id,
+						product_id:data.product_id
+					}
+				}).then(updateData=>{
+
+					if(updateData == 1){
+
+						productRattingModel.findOne({
+							where:{
+								product_id : data.product_id,
+								user_id : data.user_id,
+								is_deleted: false
+							}
+						}).then(rattingDetails => {
+							res.send(setRes(resCode.OK,rattingDetails,false,"Product ratting update successfully"))
+						})
+					}else{
+						res.send(setRes(resCode.InternalServer,null,true,"Internal server error"))
+					}
+				})
+			}else{
+				productRattingModel.create(data).then(addRattingData => {
+
+					res.send(setRes(resCode.OK,addRattingData,false,"Product ratting save successfully"))
+				})
+			}
+		}).catch(error => {
+			res.send(setRes(resCode.InternalServer,null,true,"Fail to add product ratting"))
+		})
+	}else{
+		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+	}
+}
+
+exports.GetProductRattings = async(req,res)=>{
+
+	var data = req.body
+	var productRattingModel = models.product_ratings
+	var userModel = models.user
+	var requiredFields = _.reject(['product_id','page','page_size'], (o) => { return _.has(data, o) })
+
+	if(requiredFields == ""){
+
+		productRattingModel.findAll({
+			where:{
+				product_id : data.product_id,
+				is_deleted : false
+			},
+			include:{
+				model:userModel
+			},
+			order: [
+				['createdAt', 'DESC']
+			],
+			attributes: { exclude: ['is_deleted', 'updatedAt'] }
+		}).then(async ratingData => {
+
+			for(const data of ratingData){
+
+				data.dataValues.user_name = data.user.username
+				if(data.user.profile_picture != null){
+					const signurl = await awsConfig.getSignUrl(data.user.profile_picture).then(function(res){
+						data.dataValues.profile_picture = res
+					})
+				}else{
+					data.dataValues.profile_picture = null
+				}
+				data.dataValues.ratings = data.ratings
+				data.dataValues.review = data.description
+
+				delete data.dataValues.user
+				delete data.dataValues.description
+			}
+			res.send(setRes(resCode.OK,ratingData,false,'Get ratings successfully'))
+		}).catch(error => {
+			res.send(setRes(resCode.InternalServer, null,true,'Fail to get ratings'))
+		})
+	}else{
+		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))	
+	}
 }

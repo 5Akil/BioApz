@@ -9,5 +9,8 @@ module.exports = function (app) {
   app.use('/api/shopping-cart', require('./api/shopping-cart'))
   app.use('/api/wishlist', require('./api/wishlist'))
   app.use('/api/order', require('./api/order'))
+  app.use('/api/faq', require('./api/faq'))
+  app.use('/api/cms', require('./api/cms'))
+  app.use('/api/setting', require('./api/setting'))
   
 }

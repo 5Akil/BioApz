@@ -1,9 +1,10 @@
 
-module.exports = function (code, data, is_error, message) {
+module.exports = function (code, status, message,data,timestamp = Date.now()) {
   return {
     code,
+    status,
+    message,
     data,
-    is_error,
-    message
+    timestamp
   }
 }

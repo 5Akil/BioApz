@@ -154,14 +154,16 @@ exports.ComboCalendar = async (req, res) => {
 									id: lastInsertId,
 									
 								}
-							}).then(comboData => {
+							}).then( async comboData => {
 								if(comboData){
-									comboModel.findOne({where:{id:lastInsertId}}).then(getData => {
+									comboModel.findOne({where:{id:lastInsertId}}).then(async getData => {
 										var combo_images = getData.images
 										var image_array = [];
 										for(const data of combo_images){
-											const signurl = awsConfig.getSignUrl(data);
-						  					image_array.push(signurl);
+											const signurl = await awsConfig.getSignUrl(data).then(function(res){
+
+						  						image_array.push(res);
+											});
 										}
 										getData.dataValues.combo_images = image_array
 										
@@ -248,7 +250,7 @@ exports.GetComboOffers = (req, res) => {
 					['createdAt', 'DESC']
 				],
 				subQuery: false
-			}).then(combos => {
+			}).then(async combos => {
 
 				// console.log(JSON.parse(JSON.stringify(combos)))
 				// var start = moment(combos[0].start_date).subtract(1, 'day'),
@@ -390,8 +392,10 @@ exports.GetComboOffers = (req, res) => {
 					
 					var image_array = [];
 					for(const data of images){
-					  	const signurl = awsConfig.getSignUrl(data);
-					  	image_array.push(signurl);
+					  	const signurl = await awsConfig.getSignUrl(data).then(function(res){
+
+					  		image_array.push(res);
+					  	});
 					}
 					resObj[offer].dataValues.images_url= image_array;
 						
@@ -508,12 +512,14 @@ exports.UpdateComboOffer = async (req, res) => {
 								id: data.id,
 								is_deleted: false
 							}
-						}).then(combo => {
+						}).then(async combo => {
 							var combo_images = combo.images
 							var image_array = [];
 							for(const data of combo_images){
-								const signurl = awsConfig.getSignUrl(data);
-			  					image_array.push(signurl);
+								const signurl = await awsConfig.getSignUrl(data).then(function(res){
+
+			  						image_array.push(res);
+								});
 							}
 							combo.dataValues.combo_images = image_array
 							res.send(setRes(resCode.OK, combo, false, "Combo Offer updated successfully."))
@@ -581,12 +587,14 @@ exports.removeImagesFromCombo = (req, res) => {
 							where: {
 								id: data.combo_id
 							}
-						}).then(combo => {
+						}).then(async combo => {
 							var combo_images = combo.images
 							var image_array = [];
 							for(const data of combo_images){
-								const signurl = awsConfig.getSignUrl(data);
-			  					image_array.push(signurl);
+								const signurl = await awsConfig.getSignUrl(data).then(function(res){
+
+			  						image_array.push(res);
+								});
 							}
 							combo.dataValues.combo_images = image_array
 							res.send(setRes(resCode.OK, combo, false, "Combo offer.."))

@@ -43,7 +43,9 @@ exports.CreatePromo = async (req, res) => {
 			var Promo = await createPromo(data)
 
 			if (Promo != ''){
-				Promo.image = awsConfig.getSignUrl(Promo.image)
+				var Promo_image = await awsConfig.getSignUrl(Promo.image).then(function(res){
+					Promo.image = res
+				})
 				res.send(setRes(resCode.OK, Promo, false, 'Promo created successfully.'))
 			}
 			else{
@@ -126,8 +128,10 @@ exports.UpdatePromo = (req, res) => {
 								id: data.id,
 								is_deleted: false
 							}
-						}).then(promo => {
-							promo.image = awsConfig.getSignUrl(promo.image);
+						}).then(async promo => {
+							var promo_image = await awsConfig.getSignUrl(promo.image).then(function(res){
+								promo.image = res
+							});
 							res.send(setRes(resCode.OK, promo, false, "Promo updated successfully."))
 						}).catch(error => {
 							console.log('===========update promo========')
@@ -184,7 +188,7 @@ exports.GetPromos = (req, res) => {
 					['createdAt', 'DESC']
 				],
 				subQuery: false
-			}).then(promos => {
+			}).then(async promos => {
 				
 				_.each(promos, (o) => {
 
@@ -253,7 +257,9 @@ exports.GetPromos = (req, res) => {
 
 				for(const offers of offer){
 
-					resObj[offers].dataValues.image_url = awsConfig.getSignUrl(resObj[offers].dataValues.image)
+					var image_url = await awsConfig.getSignUrl(resObj[offers].dataValues.image).then(function(res){
+						resObj[offers].dataValues.image_url = res
+					})
 					
 				}
 				res.send(setRes(resCode.OK, (data.limit ? arrRes : resObj) , false, "Available Promos."))

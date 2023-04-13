@@ -74,18 +74,21 @@ exports.CartList = async(req,res) => {
 					model: productModel
 				}
 			],
-		}).then(cartData => {
+		}).then(async cartData => {
 
 			if(cartData != null && cartData != ""){
-
 				for(data of cartData){
 
-					data.product.image = awsConfig.getSignUrl(data.product.image)
+					var product_image = await awsConfig.getSignUrl(data.product.image[0]).then(function(res){
+						data.product.image = res;
+					})
 				}
 				res.send(setRes(resCode.OK, cartData, true, 'Your cart details.'));
 			}else{
-				res.send(setRes(resCode.ResourceNotFound, null, false, "Your cart is empty."))
+				res.send(setRes(resCode.OK, null, false, "Your cart is empty."))
 			}
+		}).catch(error => {
+			res.send(setRes(resCode.InternalServer,null,true,"Internal server error"))
 		})
 	}else{
 		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))

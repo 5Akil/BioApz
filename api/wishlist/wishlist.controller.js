@@ -29,7 +29,7 @@ exports.AddToWishList = async(req, res) =>{
 					if (wishlistData) {
 						res.send(setRes(resCode.OK, wishlistData, true, 'Product added into wishlist successfully.'));
 					} else {
-						res.send(setRes(resCode.BadRequest, null, true, 'Fail to add into cart'));
+						res.send(setRes(resCode.BadRequest, null, true, 'Fail to add into wishlist'));
 					}
 				});
 				
@@ -59,13 +59,15 @@ exports.wishlistData = async (req, res) => {
 				model: productModel
 			}
 		],
-	}).then(wishlistData => {
+	}).then(async wishlistData => {
 
 		if(wishlistData != null && wishlistData != ""){
 
 			for(data of wishlistData){
 
-				data.product.image = awsConfig.getSignUrl(data.product.image)
+				var product_image = await awsConfig.getSignUrl(data.product.image[0]).then(function(res){
+					data.product.image = res
+				})
 			}
 			res.send(setRes(resCode.OK, wishlistData, true, 'Your wishlist details.'));
 		}else{

@@ -46,7 +46,7 @@ exports.Register = async (req, res) => {
 
             var templates = new EmailTemplates()
             var context = {
-			  resetUrl: 'http://18.211.184.240:5000/api/user/account-activation/' + token,
+			  resetUrl: commonConfig.app_url+'/api/user/account-activation/' + token,
 			  username: data.username
 			}
 			
@@ -189,7 +189,9 @@ exports.Login = async (req, res) => {
 										// console.log(messagedata)
 										if(user.profile_picture != null){
 
-											user.profile_picture = awsConfig.getSignUrl(user.profile_picture)
+											var profile_picture = await awsConfig.getSignUrl(user.profile_picture).then(function(res){
+												user.profile_picture = res
+											})
 										}
 										res.send(setRes(resCode.OK, user, false, 'You are successfully logged in'))
 									}else{
@@ -242,23 +244,29 @@ exports.Login = async (req, res) => {
 								},
 								{where: {id: business.id}
 							})
-							.then(function (newBusiness) {
+							.then(async function (newBusiness) {
 								if (newBusiness){
 
 									//custome template url
 									if(business.banner != null){
 
-										business.banner = awsConfig.getSignUrl(business.banner)
+										var banner = await awsConfig.getSignUrl(business.banner).then(function(res){
+											business.banner = res
+										})
 									}
 									if(business.template != null){
 
 										if(business.template.template_url != null){
 
-											business.template.template_url = awsConfig.getSignUrl('templates_thumb/'+business.template.image)
+											var template_url = await awsConfig.getSignUrl(business.template.image).then(function(res){
+												business.template.template_url = res;
+											})
 										}
 										if(business.template.image != null){
 
-											business.template.image = awsConfig.getSignUrl('templates_thumb/'+business.template.image)
+											var template_image = await awsConfig.getSignUrl(business.template.image).then(function(res){
+												business.template.image = res;
+											})
 										}
 
 									}
@@ -299,9 +307,11 @@ exports.GetProfileDetail = async (req, res) => {
 				id: data.id,
 				is_deleted:false
 			}
-		}).then(user => {
+		}).then(async user => {
 			if (user != null){
-				user.profile_picture = awsConfig.getSignUrl(user.profile_picture);
+				var profile_picture = await awsConfig.getSignUrl(user.profile_picture).then(function(res){
+					user.profile_picture = res;
+				});
 				res.send(setRes(resCode.OK, user, false, "Get user profile successfully."))
 			}
 			else{
@@ -645,7 +655,7 @@ function sendForgotPasswordMail(user, key){
 	
 				var templates = new EmailTemplates()
 				var context = {
-				  resetUrl: 'http://18.211.184.240:5000/api/user/resetPassword/' + token,
+				  resetUrl: commonConfig.app_url+'/api/user/resetPassword/' + token,
 				  username: user.username
 				// resetUrl: '#'
 				}
@@ -981,4 +991,70 @@ function FeedbackMail(user, data){
 		  )
 
 	})
+}
+
+exports.GetAllBusiness = async (req, res) => {
+
+	var data = req.body
+	var businessModel = models.business
+	var businesscateogryModel = models.business_categorys
+
+	var requiredFields = _.reject(['page', 'page_size'], (o) => { return _.has(data, o)  })
+
+	if(requiredFields == ""){
+
+		if(data.page < 0 || data.page === 0) {
+			res.send(setRes(resCode.BadRequest, null, true, "invalid page number, should start with 1"))
+		}
+
+		var skip = data.page_size * (data.page - 1)
+		var limit = parseInt(data.page_size)
+
+		var condition = {
+			include: {
+				model: businesscateogryModel,
+				attributes: ['name'] 
+			},
+			offset:skip,
+			limit:limit,
+			order: [
+				['createdAt', 'DESC']
+			],
+			attributes: { exclude: ['is_deleted', 'is_enable','auth_token','device_type',
+				'role_id','sections','template_id','color_code','approve_by',
+				'booking_facility','abn_no','address','password','account_name','person_name',
+				'reset_pass_token','reset_pass_expire','device_token','business_category','account_number',
+				'latitude','longitude','email','device_id','phone'] }
+		}
+
+		if(data.category_id){
+			condition.where = {category_id:data.category_id,is_deleted:false,is_active:true}
+		}else{
+			condition.where = {is_deleted:false,is_active:true}
+		}
+		businessModel.findAll(condition).then(async businessData => {
+
+			if(businessData.length > 0){
+
+				for(const data of businessData){
+					
+					data.dataValues.category_name = data.business_category.name
+					delete data.dataValues.business_category;
+					if(data.banner != null){
+
+						const signurl = await awsConfig.getSignUrl(data.banner).then(function(res){
+							data.banner = res
+						})
+					}
+				}
+				res.send(setRes(resCode.OK,businessData,false,'Get Business successfully'))
+			}else{
+				res.send(setRes(resCode.ResourceNotFound,null,false,'Business not found'))
+			}
+		}).catch(error => {
+			res.send(setRes(resCode.InternalServer,null,true,"Fail to get business"))
+		})
+	}else{
+		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+	}
 }

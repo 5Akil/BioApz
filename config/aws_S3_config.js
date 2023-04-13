@@ -1,3 +1,5 @@
+var commonConfig = require('../config/common_config');
+
 const AWS = require('aws-sdk');
 
 AWS.config.update({
@@ -10,15 +12,30 @@ const s3 = new AWS.S3();
 const Bucket = 'bioapz';
 
 function getSignUrl (key) {
+  return new Promise((resolve, reject) => {
+    const params = {
+      Bucket: Bucket,
+      Key: key
+    };
 
-	const params = {
-	  Bucket: Bucket,
-	  Key: key,
-	  Expires: 3600 // The number of seconds until the URL expires
-	};
-	// Generate the signed URL
-	const signedUrl = s3.getSignedUrl('getObject', params);
-  return `${signedUrl}`;
+      s3.headObject(params, (err, metadata) => {
+
+        if ((err && err.code === 'NotFound') || (err =='Forbidden: null')) {
+          
+          resolve(commonConfig.app_url+'/public/defualt.png');
+        }  else {
+          const urlParams = {
+            Bucket: Bucket,
+            Key: key,
+            Expires: 3600
+          };
+          const signedUrl = s3.getSignedUrl('getObject', urlParams);
+          
+          resolve(signedUrl);
+        }
+      });
+  });
+  
 }
 
 function deleteImageAWS(params){

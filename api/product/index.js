@@ -73,4 +73,7 @@ router.delete('/removeCategory/:id',verifyToken, controller.RemoveCategory)
 
 router.post('/productTypeList',verifyToken,controller.ProductTypeList)
 router.delete('/removeProductType/:id',verifyToken,controller.removeProductType)
+
+router.post('/add-product-ratings',verifyToken,controller.AddProductRattings)
+router.post('/get-product-ratings',verifyToken,controller.GetProductRattings)
 module.exports = router;

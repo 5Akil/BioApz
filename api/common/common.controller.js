@@ -14,21 +14,46 @@ exports.ProductTableSearch = function (req, res) {
     var data = req.body;
     var productModel = models.products;
     var Op = models.Op;
+    var requiredFields = _.reject(['page','page_size'], (o) => { return _.has(data, o)  })
+    if(requiredFields == ""){
 
-    productModel.findAll({
-        where: Sequelize.where(Sequelize.col("name"), {
-            [Op.like]: `${data.str}%`
-        })
-    }).then(products => {
-        products = JSON.parse(JSON.stringify(products))
-        for(const data of products){
-		  const signurl = awsConfig.getSignUrl(`${data.image}`);
-		  data.image = signurl;		  
+	    if(data.page < 0 || data.page === 0) {
+			res.send(setRes(resCode.BadRequest, null, true, "invalid page number, should start with 1"))
 		}
-        res.send(setRes(resCode.OK, products, false, "Product search completed.."))
-    }).catch(error => {
-        res.send(setRes(resCode.InternalServer, null, true, "Internal server error."))
-    })
+	    var skip = data.page_size * (data.page - 1)
+		var limit = parseInt(data.page_size)
+	    var condition = {
+	    	offset:skip,
+			limit : limit,
+		};
+		condition.where = {
+	            name: {
+			      [Op.like]: `%${data.str}%`
+			    },
+			    is_deleted: false,
+			    
+	        }
+	    productModel.findAll(condition).then(async products => {
+	        // products = JSON.parse(JSON.stringify(products))
+	        for(const data of products){
+			  	var product_images = data.image
+				var image_array = [];
+			
+					for(const data of product_images){
+						const signurl = await awsConfig.getSignUrl(data).then(function(res){
+
+	  						image_array.push(res);
+						});
+					}
+				data.dataValues.product_images = image_array	  
+			}
+	        res.send(setRes(resCode.OK, products, false, "Product search completed.."))
+	    }).catch(error => {
+	        res.send(setRes(resCode.InternalServer, null, true, "Internal server error."))
+	    })
+    }else{
+    	res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+    }
 
 }
 
@@ -84,7 +109,7 @@ exports.RecommendedBusinessSearch = (req, res) => {
 		}).then((business) => {
 
 			_.map(business, (Obj) => {
-				return Obj.template.template_url = Obj.template.template_url.concat(`?bid=${Obj.id}&ccd=${Obj.color_code}`)
+				// return Obj.template.template_url = Obj.template.template_url.concat(`?bid=${Obj.id}&ccd=${Obj.color_code}`)
 			})
             business = JSON.parse(JSON.stringify(business))
             //filter start
@@ -213,10 +238,26 @@ exports.FilterProducts = (req, res) => {
 	var businessModel = models.business;
 	var category = models.business_categorys;
 	var data = req.body
+	var { category, type, price } = req.query;
+
 	var Op = models.Op
 	var products = []
+	var condition = {is_deleted:false};
+	if (category) {
+    	condition.category_id = parseInt(category);
+  	}
+  	if (type) {
+    	condition.sub_category_id = type;
+  	}
 
-	var requiredFields = _.reject(['page','page_size','filter'], (o) => { return _.has(data, o)  })
+  	if(price) {
+  		var price_range = price.split('_')
+  		
+  		condition.price =  {
+      		[Op.between]: [price_range[0], price_range[1]]
+    	};
+  	}
+	var requiredFields = _.reject(['page','page_size'], (o) => { return _.has(data, o)  })
 
 	if (requiredFields == ''){
 		if(data.page < 0 || data.page === 0) {
@@ -225,65 +266,98 @@ exports.FilterProducts = (req, res) => {
 		var skip = data.page_size * (data.page - 1)
 		var limit = parseInt(data.page_size)
 		
-		category.findOne({
-			where: {
-				[Op.and]:[
-					{ is_deleted: false },
-					Sequelize.where(Sequelize.fn('lower', Sequelize.col('name')), {[Op.like]: `%${data.filter}%`})
-				  ]
-			}
-		}).then(category => {
-			if (category != null){
+		// data.category ? condition = {category_id:parseInt(data.category),is_deleted:false}:condition = {is_deleted:false};
+		// data.type ? condition = {sub_category_id:data.type,is_deleted:false}:condition = {is_deleted:false};
 
-				businessModel.findAll({
-					where: {
-						is_deleted: false,
-						category_id: category.id,
-						is_active: true
-					}
-				}).then(businesses => {
-					if (businesses != null){
+		productModel.findAll({
+			where:condition,
+			offset:skip,
+			limit:limit
+		}).then(async productData => {
+			if(productData.length > 0){
 
-						async.forEach(businesses, (singleBusiness, cbBusiness) => {
+				for(const data of productData){
+				  var product_images = data.image
+						var image_array = [];
+					
+							for(const data of product_images){
+								const signurl = await awsConfig.getSignUrl(data).then(function(res){
 
-							productModel.findAll({
-								where: {
-									business_id: singleBusiness.id,
-									is_deleted: false
-								},
-								offset:skip,
-								limit : limit,
-								subQuery:false,
-							}).then(BusinessProducts => {
-								if (BusinessProducts != null){
-									products = [...products, ...BusinessProducts]
-									cbBusiness()
-								}
-								else{
-									cbBusiness()
-								}
-							})
-
-						}, () => {
-							for(const data of products){
-							  const signurl = awsConfig.getSignUrl(`${data.image}`);
-							  data.image = signurl;		  
+			  						image_array.push(res);
+								});
 							}
-							res.send(setRes(resCode.OK, products, false, "Available products get successfully"))
-
-						})
-
-					}
-					else{
-						res.send(setRes(resCode.ResourceNotFound, null, true, "Resource not found."))		
-					}
-				})
-
+						data.dataValues.product_images = image_array	  
+				}
+				res.send(setRes(resCode.OK,productData,false,'Product get successfully...'))
+			}else{
+				res.send(setRes(resCode.ResourceNotFound,null,false,"Products are not found"))
 			}
-			else{
-				res.send(setRes(resCode.ResourceNotFound, null, true, "Resource not found."))
-			}
-		}).catch(error => {
+		}) 
+		// category.findOne({
+		// 	where: {
+		// 		[Op.and]:[
+		// 			{ is_deleted: false },
+		// 			Sequelize.where(Sequelize.fn('lower', Sequelize.col('name')), {[Op.like]: `%${data.filter}%`})
+		// 		  ]
+		// 	}
+		// }).then(category => {
+		// 	if (category != null){
+
+		// 		businessModel.findAll({
+		// 			where: {
+		// 				is_deleted: false,
+		// 				category_id: category.id,
+		// 				is_active: true
+		// 			}
+		// 		}).then(businesses => {
+		// 			if (businesses != null){
+
+		// 				async.forEach(businesses, (singleBusiness, cbBusiness) => {
+
+		// 					productModel.findAll({
+		// 						where: {
+		// 							business_id: singleBusiness.id,
+		// 							is_deleted: false
+		// 						},
+		// 						offset:skip,
+		// 						limit : limit,
+		// 						subQuery:false,
+		// 					}).then(BusinessProducts => {
+		// 						if (BusinessProducts != null){
+		// 							products = [...products, ...BusinessProducts]
+		// 							cbBusiness()
+		// 						}
+		// 						else{
+		// 							cbBusiness()
+		// 						}
+		// 					})
+
+		// 				}, () => {
+		// 					for(const data of products){
+		// 		  				var product_images = data.image
+		// 						var image_array = [];
+							
+		// 							for(const data of product_images){
+		// 								const signurl = awsConfig.getSignUrl(data);
+		// 			  					image_array.push(signurl);
+		// 							}
+		// 						data.dataValues.product_images = image_array	  
+		// 					}
+		// 					res.send(setRes(resCode.OK, products, false, "Available products get successfully"))
+
+		// 				})
+
+		// 			}
+		// 			else{
+		// 				res.send(setRes(resCode.ResourceNotFound, null, true, "Resource not found."))		
+		// 			}
+		// 		})
+
+		// 	}
+		// 	else{
+		// 		res.send(setRes(resCode.ResourceNotFound, null, true, "Resource not found."))
+		// 	}
+		.catch(error => {
 			res.send(setRes(resCode.InternalServer, null, true, error.message))
 		})
 	}else{
@@ -358,8 +432,16 @@ exports.Searching = (req, res) => {
 								})
 							}, async () => {
 								for(const data of products){
-								  const signurl = awsConfig.getSignUrl(`${data.image}`);
-								  data.image = signurl;		  
+								  var product_images = data.image
+										var image_array = [];
+									
+											for(const data of product_images){
+												const signurl = await awsConfig.getSignUrl(data).then(function(res){
+
+							  						image_array.push(res);
+												});
+											}
+										data.dataValues.product_images = image_array	  
 								}
 								res.send(setRes(resCode.OK, products, false, "search completed.."))
 							})
@@ -386,8 +468,20 @@ exports.Searching = (req, res) => {
 				offset:skip,
 				limit : limit,
 				subQuery:false,
-			}).then(products => {
-				products = JSON.parse(JSON.stringify(products))
+			}).then(async products => {
+				// products = JSON.parse(JSON.stringify(products))
+				for(const data of products){
+					var product_images = data.image
+						var image_array = [];
+						
+							for(const data of product_images){
+								const signurl = await awsConfig.getSignUrl(data).then(function(res){
+
+				  					image_array.push(res);
+								});
+							}
+						data.dataValues.product_images = image_array	  
+					}
 				res.send(setRes(resCode.OK, products, false, "Product search completed.."))
 			}).catch(error => {
 				res.send(setRes(resCode.InternalServer, null, true, "Internal server error."))
@@ -423,12 +517,17 @@ exports.DeleteProductOffers = (req, res) => {
 			}).then(product => {
 
 				//delete offer image from local directory
-				if (fs.existsSync(product.image)){
-					fs.unlinkSync(product.image);
-				}
+				var product_images = product.image
+				_.each(product_images, (o) => {
+					const params = {
+						    Bucket: awsConfig.Bucket,
+						    Key: o
+						};
+					awsConfig.deleteImageAWS(params)
+				});
 
 				//delete record from database
-				productModel.destroy({
+				productModel.update({is_deleted:true},{
 					where: {
 						id: data.product_id
 					}
@@ -455,12 +554,14 @@ exports.DeleteProductOffers = (req, res) => {
 			}).then(offer => {
 
 				//delete offer image from local directory
-				if (fs.existsSync(offer.image)){
-					fs.unlinkSync(offer.image);
-				}
+				const params = {
+						    Bucket: awsConfig.Bucket,
+						    Key: offer.image
+						};
+				awsConfig.deleteImageAWS(params)
 
 				//delete record from database
-				offerModel.destroy({
+				offerModel.update({is_deleted:true},{
 					where: {
 						id: data.offer_id
 					}
@@ -475,30 +576,34 @@ exports.DeleteProductOffers = (req, res) => {
 					res.send(setRes(resCode.InternalServer, null, true, "Internal server error."))
 				})
 
+			}).catch(error => {
+				res.send(setRes(resCode.ResourceNotFound,null,false,"Resource not found"))
 			})
 			
 		}
 		else if (data.image_ids){
-
+			var  image_ids = JSON.parse("[" + data.image_ids + "]");
 			//delete file from local directory
-
+			
 			galleryModel.findAll({
 				where: {
 					id: {
-						[Op.in]: data.image_ids
+						[Op.in]: image_ids
 					}
 				}
 			}).then(DeletedImages => {
 					
 				_.each(DeletedImages, (o) => {
-					if (fs.existsSync(o.image)){
-						fs.unlinkSync(o.image);
-					}
+					const params = {
+						    Bucket: awsConfig.Bucket,
+						    Key: o.image
+						};
+					awsConfig.deleteImageAWS(params)
 				});
 
-				galleryModel.destroy({
+				galleryModel.update({is_deleted:true},{
 					where: {
-						id: data.image_ids
+						id: image_ids
 					}
 				}).then(DeleteImages => {
 					
@@ -510,6 +615,8 @@ exports.DeleteProductOffers = (req, res) => {
 					}
 				})
 
+			}).catch(error => {
+				res.send(setRes(resCode.InternalServer,null,true,"Internal server error"))
 			})
 
 			//delete file from local directory code over
@@ -527,14 +634,15 @@ exports.DeleteProductOffers = (req, res) => {
 
 					//delete combo image from local directory
 					_.each(combo.images, (image) => {
-						if (fs.existsSync(image)){
-							fs.unlinkSync(image);
-							return;
-						}
+						const params = {
+						    Bucket: awsConfig.Bucket,
+						    Key: image
+						};
+						awsConfig.deleteImageAWS(params)
 					})
 
 					//delete record from database
-					comboModel.destroy({
+					comboModel.update({is_deleted:true},{
 						where: {
 							id: data.combo_id
 						}
@@ -566,12 +674,14 @@ exports.DeleteProductOffers = (req, res) => {
 				if (promo != null) {
 
 					//delete promo image from local directory
-					if (fs.existsSync(promo.image)){
-						fs.unlinkSync(promo.image);
-					}
+					const params = {
+						    Bucket: awsConfig.Bucket,
+						    Key: promo.image
+						};
+					awsConfig.deleteImageAWS(params)
 
 					//delete record from database
-					promosModel.destroy({
+					promosModel.update({is_deleted:true},{
 						where: {
 							id: data.promo_id
 						}
@@ -598,4 +708,66 @@ exports.DeleteProductOffers = (req, res) => {
 		}
 
 	}
+}
+
+exports.BusinessSearch = async (req, res) => {
+
+	var data = req.body;
+    var businessModel = models.business;
+    var businesscateogryModel = models.business_categorys
+    var Op = models.Op;
+
+    var requiredFields = _.reject(['page','page_size'], (o) => { return _.has(data, o)  })
+    if(requiredFields == ""){
+
+	    if(data.page < 0 || data.page === 0) {
+			res.send(setRes(resCode.BadRequest, null, true, "invalid page number, should start with 1"))
+		}
+	    var skip = data.page_size * (data.page - 1)
+		var limit = parseInt(data.page_size)
+	    var condition = {
+	    	offset:skip,
+			limit : limit,
+			include: {
+				model: businesscateogryModel,
+				attributes: ['name'] 
+			},
+			attributes: { exclude: ['is_deleted', 'is_enable','auth_token','device_type',
+				'role_id','sections','template_id','color_code','approve_by',
+				'booking_facility','abn_no','address','password','account_name','person_name',
+				'reset_pass_token','reset_pass_expire','device_token','business_category','account_number',
+				'latitude','longitude','email','device_id','phone'] }
+		};
+		condition.where = {
+	            business_name: {
+			      [Op.like]: `%${data.str}%`
+			    },
+			    is_deleted: false,
+			    
+	        }
+	    businessModel.findAll(condition).then(async business => {
+
+	    	if(business.length > 0){
+		        for(const data of business){
+		        data.dataValues.category_name = data.business_category.name
+				delete data.dataValues.business_category;
+		        	if(data.banner != null){
+
+					  	const signurl = await awsConfig.getSignUrl(data.banner).then(function(res){
+					  		data.banner = res
+					  	})
+		        	}
+				}
+
+	    	}else{
+	    		res.send(setRes(resCode.ResourceNotFound,null,false,"Business not found"))
+	    	}
+	        res.send(setRes(resCode.OK, business, false, "Business search completed.."))
+	    }).catch(error => {
+	        res.send(setRes(resCode.InternalServer, null, true, "Fail to get business"))
+	    })
+    }else{
+    	res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+    }
+
 }
