@@ -32,24 +32,24 @@ exports.AddToCart = async(req,res) => {
 
 						shoppingCartModel.create(data).then(function (cartData) {
 							if (cartData) {
-								res.send(setRes(resCode.OK, cartData, true, 'Product added into cart successfully.'));
+								res.send(setRes(resCode.OK, true, 'Product added into cart successfully.',cartData));
 							} else {
-								res.send(setRes(resCode.BadRequest, null, true, 'Fail to add into cart'));
+								res.send(setRes(resCode.BadRequest, false, 'Fail to add into cart',null));
 							}
 						});
 						
 					}else{
 
-						res.send(setRes(resCode.BadRequest, null, true, 'Product already into a cart...'));
+						res.send(setRes(resCode.BadRequest, false, 'Product already into a cart...',null));
 					}
 				})
 			}else{
 
-				res.send(setRes(resCode.ResourceNotFound,null,true,'Product out of stock'))
+				res.send(setRes(resCode.ResourceNotFound,false,'Product out of stock',null))
 			}
 		})
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 	
 }
@@ -83,15 +83,15 @@ exports.CartList = async(req,res) => {
 						data.product.image = res;
 					})
 				}
-				res.send(setRes(resCode.OK, cartData, true, 'Your cart details.'));
+				res.send(setRes(resCode.OK, true, 'Your cart details.',cartData));
 			}else{
-				res.send(setRes(resCode.OK, null, false, "Your cart is empty."))
+				res.send(setRes(resCode.OK, false, "Your cart is empty.",null))
 			}
 		}).catch(error => {
-			res.send(setRes(resCode.InternalServer,null,true,"Internal server error"))
+			res.send(setRes(resCode.InternalServer,false,"Internal server error",null))
 		})
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 }
 
@@ -123,20 +123,20 @@ exports.RemoveProductCart = async(req,res) => {
 							}
 						}).then(data => {
 							
-							res.send(setRes(resCode.OK, data, false, "Product remove from cart successfully."))
+							res.send(setRes(resCode.OK, true, "Product remove from cart successfully.",data))
 						}).catch(error => {
 							
-							res.send(setRes(resCode.InternalServer, null, true, "Fail to remove product from cart."))
+							res.send(setRes(resCode.InternalServer, false, "Fail to remove product from cart.",null))
 						})
 					}
 					
 				})
 			}else{
-				res.send(setRes(resCode.BadRequest, null, true, "Invalid user id or product id"))
+				res.send(setRes(resCode.BadRequest, false, "Invalid user id or product id",null))
 			}
 		})
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 }
 
@@ -168,20 +168,20 @@ exports.QtyUpdate = async(req,res) => {
 							}
 						}).then(data => {
 							
-							res.send(setRes(resCode.OK, data, false, "Quantity update successfully."))
+							res.send(setRes(resCode.OK, true, "Quantity update successfully.",data))
 						}).catch(error => {
 							
-							res.send(setRes(resCode.InternalServer, null, true, "Fail to update quantity."))
+							res.send(setRes(resCode.InternalServer, false ,"Fail to update quantity.",null))
 						})
 					}else{
-						res.send(setRes(resCode.InternalServer, null, true, "Fail to update quantity."))
+						res.send(setRes(resCode.InternalServer, false, "Fail to update quantity.",null))
 					}
 				});
 			}else{
-				res.send(setRes(resCode.ResourceNotFound,null,false,"Data not found"))
+				res.send(setRes(resCode.ResourceNotFound,false,"Data not found",null))
 			}
 		})
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 }

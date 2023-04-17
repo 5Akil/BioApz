@@ -28,12 +28,12 @@ exports.StoreFaq = async(req, res) => {
 	if(requiredFields == ""){
 
 		faqModel.create(data).then(faqData => {
-			res.send(setRes(resCode.OK,data,false,"Faq added successfully"))
+			res.send(setRes(resCode.OK,true,"Faq added successfully",data))
 		}).catch(error => {
-			res.send(setRes(resCode.InternalServer,null,true,"Fail to add faq"))
+			res.send(setRes(resCode.InternalServer,false,"Fail to add faq",null))
 		})
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 }
 
@@ -46,7 +46,7 @@ exports.GetFaqList = async(req, res ) => {
 
 	if(requiredFields == ""){
 		if(data.page < 0 || data.page === 0) {
-			res.send(setRes(resCode.BadRequest, null, true, "invalid page number, should start with 1"))
+			res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1",null))
 		}
 		var skip = data.page_size * (data.page - 1)
 		var limit = parseInt(data.page_size)
@@ -64,15 +64,15 @@ exports.GetFaqList = async(req, res ) => {
 		}).then(faqData => {
 			if(faqData.length > 0){
 
-				res.send(setRes(resCode.OK,faqData,false,"Faq get successfully"))
+				res.send(setRes(resCode.OK,true,"Faq get successfully",faqData))
 			}else{
-				res.send(setRes(resCode.ResourceNotFound,null,false,"Faq not found"))
+				res.send(setRes(resCode.ResourceNotFound,false,"Faq not found",null))
 			}
 		}).catch(error => {
-			res.send(setRes(resCode.InternalServer,null,true,"Fail to get faq"))
+			res.send(setRes(resCode.InternalServer,false,"Fail to get faq",null))
 		})
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))	
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))	
 	}
 
 }
@@ -90,12 +90,12 @@ exports.GetFaqById = async (req,res) => {
 	}).then(faqData => {
 		if(faqData != null){
 
-			res.send(setRes(resCode.OK,faqData,false,"Faq get successfully"))
+			res.send(setRes(resCode.OK,true,"Faq get successfully",faqData))
 		}else{
-			res.send(setRes(resCode.ResourceNotFound,null,false,"Faq not found"))
+			res.send(setRes(resCode.ResourceNotFound,false,"Faq not found",null))
 		}
 	}).catch(error => {
-		res.send(setRes(resCode.InternalServer,null,true,"Fail to get faq"))
+		res.send(setRes(resCode.InternalServer,false,"Fail to get faq",null))
 	})
 }
 
@@ -131,20 +131,20 @@ exports.UpdateFaq = async (req, res ) => {
 								is_deleted:false
 							}
 						}).then(faqDetail => {
-							res.send(setRes(resCode.OK,faqDetail,false,"Faq update successfully"))
+							res.send(setRes(resCode.OK,true,"Faq update successfully",faqDetail))
 						})
 					}else{
-						res.send(setRes(resCode.InternalServer,null,true,'Fail to update'))
+						res.send(setRes(resCode.InternalServer,false,'Fail to update',null))
 					}
 				})
 			}else{
-				res.send(setRes(resCode.ResourceNotFound,null,false,"Faq not found"))
+				res.send(setRes(resCode.ResourceNotFound,false,"Faq not found",null))
 			}
 		}).catch(error => {
-			res.send(setRes(resCode.InternalServer,null,true,'Fail to update'))
+			res.send(setRes(resCode.InternalServer,false,'Fail to update',null))
 		})
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))	
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))	
 	}
 
 }
@@ -163,11 +163,11 @@ exports.RemoveFaq = async (req, res ) => {
 		if(faqData != null){
 
 			faqData.update({is_deleted:true})
-			res.send(setRes(resCode.OK,null,false,"Faq deleted successfully"))
+			res.send(setRes(resCode.OK,true,"Faq deleted successfully",null))
 		}else{
-			res.send(setRes(resCode.ResourceNotFound,null,false,"Faq not found"))
+			res.send(setRes(resCode.ResourceNotFound,false,"Faq not found",null))
 		}
 	}).catch(error => {
-		res.send(setRes(resCode.InternalServer,null,true,"Fail to delete "))
+		res.send(setRes(resCode.InternalServer,false,"Fail to delete ",null))
 	})
 }

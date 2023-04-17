@@ -46,18 +46,18 @@ exports.CreatePromo = async (req, res) => {
 				var Promo_image = await awsConfig.getSignUrl(Promo.image).then(function(res){
 					Promo.image = res
 				})
-				res.send(setRes(resCode.OK, Promo, false, 'Promo created successfully.'))
+				res.send(setRes(resCode.OK, true, 'Promo created successfully.',Promo))
 			}
 			else{
-				res.send(setRes(resCode.BadRequest, null, true, "Fail to create promo."))
+				res.send(setRes(resCode.BadRequest, false, "Fail to create promo.",null))
 			}
 
 		}else{
-			res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 		}
 
 	} else {
-		res.send(setRes(resCode.BadRequest, '', true, "repeat_on value must between 0-6..."))
+		res.send(setRes(resCode.BadRequest, false, "repeat_on value must between 0-6...",null))
 	}
 }
 
@@ -132,26 +132,25 @@ exports.UpdatePromo = (req, res) => {
 							var promo_image = await awsConfig.getSignUrl(promo.image).then(function(res){
 								promo.image = res
 							});
-							res.send(setRes(resCode.OK, promo, false, "Promo updated successfully."))
+							res.send(setRes(resCode.OK,true, "Promo updated successfully.",promo))
 						}).catch(error => {
-							console.log('===========update promo========')
-							console.log(error.message)
-							res.send(setRes(resCode.InternalServer, null, true, "Fail to update promo."))
+							
+							res.send(setRes(resCode.InternalServer, false, "Fail to update promo.",null))
 						})
 
 					}
 				})
 
 			} else {
-				res.send(setRes(resCode.ResourceNotFound, null, false, "Resource not found !!"))
+				res.send(setRes(resCode.ResourceNotFound, false, "Resource not found.",null))
 			}
 		}).catch(error => {
-			console.log(error);
+			res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
 		})
 		
 
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 }
 
@@ -262,21 +261,21 @@ exports.GetPromos = (req, res) => {
 					})
 					
 				}
-				res.send(setRes(resCode.OK, (data.limit ? arrRes : resObj) , false, "Available Promos."))
+				res.send(setRes(resCode.OK , true, "Available Promos.",(data.limit ? arrRes : resObj)))
 			})
 			.catch(error => {
-				console.log('============get promos error==========')
-				console.log(error.message)
-				res.send(setRes(resCode.InternalServer, null, true, "Internal server error"))
+				
+		
+				res.send(setRes(resCode.InternalServer, false, "Internal server error",null))
 			})
 
 		}).catch(error => {
 			console.log(error.message + ' ...promos.controller');
-			res.send(setRes(resCode.InternalServer, null, true, 'Internal server error.'))
+			res.send(setRes(resCode.InternalServer, false, 'Internal server error.',null))
 		})
 
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 
 }

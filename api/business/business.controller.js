@@ -45,34 +45,34 @@ exports.createInquiry = async (req, res) => {
 					if (inquiry == null){
 						dbModel.create(data).then(function (inquiry) {
 							if (inquiry) {
-								res.send(setRes(resCode.OK, inquiry, false, 'Business inquiry submitted successfully'));
+								res.send(setRes(resCode.OK, true, 'Business inquiry submitted successfully',inquiry));
 							} else {
-								res.send(setRes(resCode.BadRequest, null, true, 'Fail to create inquiry'));
+								res.send(setRes(resCode.BadRequest, false, 'Fail to create inquiry',null));
 							}
 						});
 					}
 					else{
 						if (inquiry.email == data.email){
-							res.send(setRes(resCode.BadRequest, null, true, 'Inquiry already created on this email.'));
+							res.send(setRes(resCode.BadRequest, false, 'Inquiry already created on this email.',null));
 						}
 						else if (inquiry.phone == data.phone){
-							res.send(setRes(resCode.BadRequest, null, true, 'Inquiry already created on this number.'));
+							res.send(setRes(resCode.BadRequest, false, 'Inquiry already created on this number.',null));
 						}
 						else{
-							res.send(setRes(resCode.InternalServer, null, true, 'Internal server error.'));
+							res.send(setRes(resCode.InternalServer, false, 'Internal server error.',null));
 						}
 					}
 				}).catch(inquiryError => {
-					res.send(setRes(resCode.BadRequest, null, true, inquiryError.message));
+					res.send(setRes(resCode.BadRequest, false, inquiryError.message,null));
 				})
 			}
 			else{
-				res.send(setRes(resCode.BadRequest, null, true, 'This number already register with business.'));
+				res.send(setRes(resCode.BadRequest, false, 'This number already register with business.',null));
 			}
 		})
 	
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 
 }
@@ -100,7 +100,7 @@ exports.GetRecommendedBusiness = async (req, res) => {
  	 if (requiredFields == ''){
 
 		if(data.page < 0 || data.page === 0) {
-			res.send(setRes(resCode.BadRequest, null, true, "invalid page number, should start with 1"))
+			res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1",null))
 	  }
 	  var skip = data.page_size * (data.page - 1)
 	  var limit = parseInt(data.page_size)
@@ -154,14 +154,14 @@ exports.GetRecommendedBusiness = async (req, res) => {
 			})
 
 			// business.banner = awsConfig.getSignUrl(business.banner)
-			res.send(setRes(resCode.OK, business, false, "Available businesses near you."))
+			res.send(setRes(resCode.OK, true, "Available businesses near you.",business))
 		})
 		.catch((err) => {
-			res.send(setRes(resCode.BadRequest, null, true, err.message))
+			res.send(setRes(resCode.BadRequest, false, "Internal server error",null))
 		})
 
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),true))
 	}
 }
 
@@ -210,17 +210,17 @@ exports.GetBusinessDetail = async (req, res) => {
 				var business_template_image = await awsConfig.getSignUrl(business.template.image).then(function(res){
 					business.template.image = res
 				})
-				res.send(setRes(resCode.OK, business, false, "Get business detail successfully.."))
+				res.send(setRes(resCode.OK, true, "Get business detail successfully.",business))
 			}else{
-				res.send(setRes(resCode.ResourceNotFound, null, false, "Business not found."))
+				res.send(setRes(resCode.ResourceNotFound, false, "Business not found.",null))
 			}
 			
 		}).catch(error => {
-			res.send(setRes(resCode.BadRequest, null, true, "Fail to send request."))
+			res.send(setRes(resCode.BadRequest, false, "Fail to send request.",null))
 		})
 
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 
 }
@@ -241,13 +241,13 @@ exports.GetProfile = async (req, res) =>{
 			var business_banner = await awsConfig.getSignUrl(business.banner).then(function(res){
 				business.banner = res
 			});
-			res.send(setRes(resCode.OK, business, false, "Get business profile successfully."))
+			res.send(setRes(resCode.OK, true, "Get business profile successfully.",business))
 		}
 		else{
-			res.send(setRes(resCode.ResourceNotFound, null, true, "Business not Found."))
+			res.send(setRes(resCode.ResourceNotFound, false, "Business not Found.",null))
 		}
 	}).catch(userError => {
-		res.send(setRes(resCode.InternalServer, null, true, "Fail to Get business Profile."))
+		res.send(setRes(resCode.InternalServer, false, "Fail to Get business Profile.",null))
 	})
 
 }
@@ -289,17 +289,17 @@ exports.UpdateBusinessDetail = async (req, res) => {
 					var UpdatedBusiness_banner = await awsConfig.getSignUrl(UpdatedBusiness.banner).then(function(res){
 						UpdatedBusiness.banner = res
 					})
-					res.send(setRes(resCode.OK, UpdatedBusiness, false, "Business detail update successfully."))
+					res.send(setRes(resCode.OK, true, "Business detail update successfully.",UpdatedBusiness))
 				}
 				else{
-					res.send(setRes(resCode.BadRequest, null, false, "Fail to update business detail."))		
+					res.send(setRes(resCode.BadRequest, true, "Fail to update business detail.",null))		
 				}
 			})
 		}else{
-			res.send(setRes(resCode.BadRequest, null, false, "Fail to update business detail."))
+			res.send(setRes(resCode.BadRequest, false, "Fail to update business detail.",null))
 		}
 	}).catch(error => {
-		res.send(setRes(resCode.InternalServer, null, true, "Internal server error."))
+		res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
 	})
 }
 
@@ -331,25 +331,25 @@ exports.ChangePassword = async(req, res) => {
 								}
 							}).then(updated => {
 								if (updated == 1){
-									res.send(setRes(resCode.OK, null, false, 'Password updated successfully.'))
+									res.send(setRes(resCode.OK, true, 'Password updated successfully.',null))
 								}
 								else{
-									res.send(setRes(resCode.InternalServer, null, true, "Fail to update password."))
+									res.send(setRes(resCode.InternalServer, false, "Fail to update password.",null))
 								}
 							})
 						})
 					}
 					else{
-						res.send(setRes(resCode.BadRequest, null, true, "Old password not match."))
+						res.send(setRes(resCode.BadRequest, false, "Old password not match.",null))
 					}
 				})
 			}
 			else{
-				res.send(setRes(resCode.ResourceNotFound, null, true, "Business not found."))
+				res.send(setRes(resCode.ResourceNotFound, false, "Business not found.",null))
 			}
 		})
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 }
 
@@ -372,14 +372,14 @@ exports.GetImages = async (req, res) => {
 				  	data.image = res;		  
 				  });
 				}
-				res.send(setRes(resCode.OK, gallery, false, "Available images for your business."))
+				res.send(setRes(resCode.OK, true, "Available images for your business.",gallery))
 			}
 			else{
-				res.send(setRes(resCode.ResourceNotFound, null, false, "No images found for your business."))
+				res.send(setRes(resCode.ResourceNotFound, false, "No images found for your business.",null))
 			}
 		})
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 }
 
@@ -413,20 +413,20 @@ exports.UploadCompanyImages = async (req, res) => {
 						  	data.image = res;		  
 						  });
 						}
-						res.send(setRes(resCode.OK, gallery, false, 'images are uploded successfully.'))
+						res.send(setRes(resCode.OK, true, 'images are uploded successfully.',gallery))
 					}).catch(error => {
-						res.send(setRes(resCode.BadRequest, null, true, "Fail to upload images."))
+						res.send(setRes(resCode.BadRequest, false, "Fail to upload images.",null))
 					})
 				}
 			})
 		}
 		else{
-			res.send(setRes(resCode.BadRequest, null, true, "Please upload one or more file."))
+			res.send(setRes(resCode.BadRequest, false, "Please upload one or more file."),null)
 		}
 
 	}else{
 		console.log("in");
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 }
 
@@ -440,7 +440,7 @@ exports.GetAllOffers = async (req, res) => {
 
 	if (requiredFields == ''){
 		if(data.page < 0 || data.page === 0) {
-			res.send(setRes(resCode.BadRequest, null, true, "invalid page number, should start with 1"))
+			res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1"),null)
 		}
 		var skip = data.page_size * (data.page - 1)
 		var limit = parseInt(data.page_size)
@@ -471,16 +471,16 @@ exports.GetAllOffers = async (req, res) => {
 						offer.business.banner = res
 					})
 				}
-				res.send(setRes(resCode.OK, offers, false, "Get offers list successfully"))
+				res.send(setRes(resCode.OK, true, "Get offers list successfully",offers))
 			}else{
-				res.send(setRes(resCode.OK, offers, false, "Get offers list successfully"))
+				res.send(setRes(resCode.ResourceNotFound, false, "Offer not found",null))
 			}
 		})
 		.catch((error) => {
-			res.send(setRes(resCode.BadRequest, null, true, "Fail to get offers list"))
+			res.send(setRes(resCode.BadRequest, false, "Fail to get offers list",null))
 		})
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 }
 
@@ -520,18 +520,18 @@ exports.UpdateOfferDetail = async (req, res) => {
 						var UpdatedOffer_image = await awsConfig.getSignUrl(UpdatedOffer.image).then(function(res){
 							UpdatedOffer.image = res
 						})
-						res.send(setRes(resCode.OK, UpdatedOffer, false, "Offer updated successfully."))
+						res.send(setRes(resCode.OK, true, "Offer updated successfully.",UpdatedOffer))
 					}
 					else{
-						res.send(setRes(resCode.BadRequest, null, true, "Fail to get offer."))		
+						res.send(setRes(resCode.BadRequest, false, "Fail to get offer.",null))		
 					}
 				})
 			}
 			else{
-				res.send(setRes(resCode.BadRequest, null, true, "Fail to update offer."))
+				res.send(setRes(resCode.BadRequest, false, "Fail to update offer.",null))
 			}
 		}).catch(UpdateOfferError => {
-			res.send(setRes(resCode.BadRequest, null, true, "Fail to updated offer."))
+			res.send(setRes(resCode.BadRequest, false, "Fail to updated offer.",null))
 		})
 	}
 	else{
@@ -581,9 +581,9 @@ exports.UpdateOfferDetail = async (req, res) => {
 			 var offer_image = await awsConfig.getSignUrl(offer.image).then(function(res){
 			 		offer.image = res
 			 })
-			res.send(setRes(resCode.OK, offer, false, "Offer added successfully."))
+			res.send(setRes(resCode.OK, true, "Offer added successfully.",offer))
 		}).catch(error => {
-			res.send(setRes(resCode.BadRequest, null, true, "Fail to add offer."))
+			res.send(setRes(resCode.BadRequest, false, "Fail to add offer.",null))
 		})
 	}
 }
@@ -616,18 +616,18 @@ exports.CreateOffer = async (req, res) => {
 				Offer.image = await awsConfig.getSignUrl(Offer.image).then(function(res){
 					Offer.image = res
 				})
-				res.send(setRes(resCode.OK, Offer, false, 'Offer created successfully.'))
+				res.send(setRes(resCode.OK, true, 'Offer created successfully.',Offer))
 			}
 			else{
-				res.send(setRes(resCode.BadRequest, null, true, "Fail to create offer."))
+				res.send(setRes(resCode.BadRequest, true, "Fail to create offer.",null))
 			}
 
 		}else{
-			res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),true))
 		}
 
 	} else {
-		res.send(setRes(resCode.BadRequest, '', true, "repeat_on value must between 0-6..."))
+		res.send(setRes(resCode.BadRequest, false, "repeat_on value must between 0-6...",null))
 	}
 }
 
@@ -701,26 +701,26 @@ exports.UpdateOffer = (req, res) => {
 							var offer_image = await awsConfig.getSignUrl(offer.image).then(function(res){
 								offer.image = res
 							})
-							res.send(setRes(resCode.OK, offer, false, "Offer updated successfully."))
+							res.send(setRes(resCode.OK, true, "Offer updated successfully.",offer))
 						}).catch(error => {
 							console.log('===========update offer========')
 							console.log(error.message)
-							res.send(setRes(resCode.InternalServer, null, true, "Fail to update offer."))
+							res.send(setRes(resCode.InternalServer, false, "Fail to update offer.",null))
 						})
 
 					}
 				})
 
 			} else {
-				res.send(setRes(resCode.ResourceNotFound, null, false, "Resource not found !!"))
+				res.send(setRes(resCode.ResourceNotFound, false, "Resource not found !!",null))
 			}
 		}).catch(error => {
-			console.log(error);
+			res.send(setRes(resCode.InternalServer, false, "Internal server error",null))
 		})
 		
 
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 }
 
@@ -833,21 +833,21 @@ exports.GetOffers = (req, res) => {
 					
 				}
 				
-				res.send(setRes(resCode.OK, (data.limit ? arrRes : resObj) , false, "Available Offers."))
+				res.send(setRes(resCode.OK , true, "Available Offers.",(data.limit ? arrRes : resObj)))
 			})
 			.catch(error => {
 				console.log('============get offer error==========')
 				console.log(error.message)
-				res.send(setRes(resCode.InternalServer, null, true, "Internal server error"))
+				res.send(setRes(resCode.InternalServer, false, "Internal server error",null))
 			})
 
 		}).catch(error => {
 			console.log(error.message + ' ...business.controller');
-			res.send(setRes(resCode.InternalServer, null, true, 'Internal server error.'))
+			res.send(setRes(resCode.InternalServer, false, 'Internal server error.',null))
 		})
 
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 
 }
@@ -867,17 +867,17 @@ exports.ManageBannerAndBooking = function (req, res) {
 			  }
 		  }).then(updateBanner => {
 			  if (updateBanner == 1){
-				  res.send(setRes(resCode.OK, '', false, "Banner updated successfully."))
+				  res.send(setRes(resCode.OK, true, "Banner updated successfully.",null))
 			  }
 			  else{
-				  res.send(setRes(resCode.BadRequest, null, true, "Fail to update banner."))
+				  res.send(setRes(resCode.BadRequest, false, "Fail to update banner.",null))
 			  }
 		  }).catch(UpdateBannerError => {
-			  res.send(setRes(resCode.BadRequest, null, true, "Fail to updated banner."))
+			  res.send(setRes(resCode.BadRequest, false, "Fail to updated banner.",null))
 		  })
 	  }
 	  else{
-		  res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		  res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	  }
 }
  
@@ -895,13 +895,13 @@ exports.GetCategory = async (req, res) => {
 	}).then(categories => {
 		if (categories != '' && categories != null ){
 		
-			res.send(setRes(resCode.OK, categories, false, "Get business category successfully.."))
+			res.send(setRes(resCode.OK, true, "Get business category successfully..",categories))
 		}else{
-			res.send(setRes(resCode.ResourceNotFound, null, false, "Business category not found."))
+			res.send(setRes(resCode.ResourceNotFound, true, "Business category not found.",null))
 		}
 			
 	}).catch(error => {
-		res.send(setRes(resCode.BadRequest, null, true, "Fail to send request."))
+		res.send(setRes(resCode.BadRequest, false, "Fail to send request.",null))
 	})
 }
 exports.CreateBusiness = async (req, res) => {
@@ -938,10 +938,10 @@ exports.CreateBusiness = async (req, res) => {
 					}
 				}).then(inquiry => {
 					if (inquiry > 0){
-						res.send(setRes(resCode.OK, business, false, "Business created successfully."))
+						res.send(setRes(resCode.OK, true, "Business created successfully.",business))
 					}
 					else{
-						res.send(setRes(resCode.InternalServer, null, true, "Fail to remove Inquity."))
+						res.send(setRes(resCode.InternalServer, false, "Fail to remove Inquity.",null))
 					}
 				})
 
@@ -952,17 +952,17 @@ exports.CreateBusiness = async (req, res) => {
 						business.banner = res
 					});
 				}
-				res.send(setRes(resCode.OK, business, false, "Business created successfully."))
+				res.send(setRes(resCode.OK, true, "Business created successfully.",business))
 			}
 			
 			
 		}).catch(error => {
 			console.log(error.message)
-			res.send(setRes(resCode.BadRequest, null, true, "Fail to create Business."))
+			res.send(setRes(resCode.BadRequest, false, "Fail to create Business.",true))
 		})	
 	}
 	else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 }
 
@@ -1133,15 +1133,15 @@ exports.ChatInitialize = async (req, res) => {
 
 				}
 				else{
-					res.send(setRes(resCode.BadRequest, null, true, "Inquiry not found."))
+					res.send(setRes(resCode.BadRequest, false, "Inquiry not found.",null))
 				}
 
 			}).catch(getProductInqError => {
-				res.send(setRes(resCode.InternalServer, null, true, getProductInqError.message))
+				res.send(setRes(resCode.InternalServer, false, getProductInqError.message,null))
 			})
 
 		}else{
-			res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 		}
 }
 
@@ -1259,18 +1259,18 @@ exports.RestaurantsBooking = (req, res) => {
 						})
 						// send notification code over
 
-						res.send(setRes(resCode.OK, booking, false, 'Booking created successfully.'));
+						res.send(setRes(resCode.OK, true, 'Booking created successfully.',booking));
 					} else {
-						res.send(setRes(resCode.BadRequest, null, true, 'Fail to create Booking.'));
+						res.send(setRes(resCode.BadRequest, false, 'Fail to create Booking.',null));
 					}
 				});
 			}
 			else{
-				res.send(setRes(resCode.BadRequest, null, true, 'Fail to create Booking.'));
+				res.send(setRes(resCode.BadRequest, false, 'Fail to create Booking.',null));
 			}
 		})
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 
 }

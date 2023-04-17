@@ -75,31 +75,31 @@ exports.Register = async (req, res) => {
                   } else {
           				console.log("--------------------------send res------------")
 						console.log(result)
-						res.send(setRes(resCode.OK, `Email has been sended to ${users.email}, with account activation instuction.. `, false, ''));
+						res.send(setRes(resCode.OK, true,`Email has been sended to ${users.email}, with account activation instuction.. `,true));
                   }
                 }
               )
             })
 
-			  res.send(setRes(resCode.OK, `Email has been sended to ${users.email}, with account activation instuction.. `, false, ''));
+			  res.send(setRes(resCode.OK,true, `Email has been sended to ${users.email}, with account activation instuction.. `, null));
           } else {
-              res.send(setRes(resCode.BadRequest, null, true, 'user registration fail'));
+              res.send(setRes(resCode.BadRequest, false, 'user registration fail',null));
           }
 		})
 		.catch(err => {
-			res.send(setRes(resCode.InternalServer, null, true, err.message))
+			res.send(setRes(resCode.InternalServer, false, err.message,null))
 		});
       }
       else{
-        res.send(setRes(resCode.BadRequest, null, true, 'User already exist'));
+        res.send(setRes(resCode.BadRequest, false, 'User already exist',true));
       }
     }).catch(error => {
-		res.send(setRes(resCode.InternalServer, null, true, error))
+		res.send(setRes(resCode.InternalServer, false, error,null))
 	})
     
 
   }else{
-    res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+    res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
   }
   
 }
@@ -134,7 +134,6 @@ exports.AccountActivationByToken = async (req, res) => {
 
 exports.Login = async (req, res) => {
 
-	console.log(req.body)
 	var data = req.body;
 	var userModel = models.user
 	var businessModel = models.business;
@@ -156,13 +155,13 @@ exports.Login = async (req, res) => {
 			}
 			}).then(function (user) {
 				if (!user) {
-					res.send(setRes(resCode.BadRequest, null, true ,'User not found.'))
+					res.send(setRes(resCode.BadRequest, false ,'User not found.',null))
 				} else {
 					if (user.is_deleted == 1){
-						res.send(setRes(resCode.BadRequest, null, true ,'User no longer available.'))
+						res.send(setRes(resCode.BadRequest, false,'User no longer available.',null))
 					}
 					else if (user.is_active == 0){
-						res.send(setRes(resCode.BadRequest, null, true ,'Please verify your account.'))
+						res.send(setRes(resCode.BadRequest, false ,'Please verify your account.',null))
 					}
 					else{
 						bcrypt.compare(data.password, user.password, async function (err, result) {
@@ -193,14 +192,14 @@ exports.Login = async (req, res) => {
 												user.profile_picture = res
 											})
 										}
-										res.send(setRes(resCode.OK, user, false, 'You are successfully logged in'))
+										res.send(setRes(resCode.OK, true, 'You are successfully logged in',user))
 									}else{
-										res.send(setRes(resCode.InternalServer, null, false, 'Token not updated'))
+										res.send(setRes(resCode.InternalServer, false, 'Token not updated',null))
 									}
 								})
 
 							} else {
-								res.send(setRes(resCode.Unauthorized, null, true, "Invalid Email id or password"))
+								res.send(setRes(resCode.Unauthorized, false, "Invalid Email id or password",null))
 							}
 						});
 					}
@@ -219,13 +218,13 @@ exports.Login = async (req, res) => {
 				include: [templateModel, categoryModel]
 		}).then(function (business) {
 			if (!business) {
-				res.send(setRes(resCode.BadRequest, null, true ,'Business not found..'))
+				res.send(setRes(resCode.BadRequest, false ,'Business not found.',null))
 			} else {
 				if (business.is_deleted == 1){
-					res.send(setRes(resCode.BadRequest, null, true ,'Business no longer available.Please contact Admin.'))
+					res.send(setRes(resCode.BadRequest,false,'Business no longer available.Please contact Admin.',null))
 				}
 				else if (business.is_active == 0){
-					res.send(setRes(resCode.BadRequest, null, true ,'Please verify your business.'))
+					res.send(setRes(resCode.BadRequest, false,'Please verify your business.',null))
 				}
 				else{
 					bcrypt.compare(data.password, business.password, async function (err, result) {
@@ -271,28 +270,28 @@ exports.Login = async (req, res) => {
 
 									}
 
-									res.send(setRes(resCode.OK, business, false, 'You are successfully logged in'))
+									res.send(setRes(resCode.OK, true, 'You are successfully logged in',business))
 								}else{
-									res.send(setRes(resCode.InternalServer, null, false, 'Token not updated'))
+									res.send(setRes(resCode.InternalServer, false, 'Token not updated',null))
 								}
 							})
 		
 						} else {
-							res.send(setRes(resCode.Unauthorized, null, true, "Invalid Email id or password"))
+							res.send(setRes(resCode.Unauthorized, false, "Invalid Email id or password",null))
 						}
 					});
 				}
 			}
 		}).catch(error => {
-			res.send(setRes(resCode.InternalServer, null, true, "Internal Server Error"))
+			res.send(setRes(resCode.InternalServer, false, "Internal Server Error",null))
 		});
 		}
 		else{
-			res.send(setRes(resCode.BadRequest, null, true, 'Invalid role.'))
+			res.send(setRes(resCode.BadRequest, false, 'Invalid role.',null))
 		}
 
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 }
 
@@ -312,16 +311,16 @@ exports.GetProfileDetail = async (req, res) => {
 				var profile_picture = await awsConfig.getSignUrl(user.profile_picture).then(function(res){
 					user.profile_picture = res;
 				});
-				res.send(setRes(resCode.OK, user, false, "Get user profile successfully."))
+				res.send(setRes(resCode.OK, true, "Get user profile successfully.",user))
 			}
 			else{
-				res.send(setRes(resCode.ResourceNotFound, user, true, "User not Found."))
+				res.send(setRes(resCode.ResourceNotFound, false, "User not Found.",null))
 			}
 		}).catch(userError => {
-			res.send(setRes(resCode.InternalServer, null, true, "Fail to Get user Profile."))
+			res.send(setRes(resCode.InternalServer, false, "Fail to Get user Profile.",null))
 		})
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 }
 
@@ -352,17 +351,17 @@ exports.UpdateProfile = async (req, res) => {
 			}
 		}).then(user => {
 			if (user == 1){
-				res.send(setRes(resCode.OK, null, false, "User Profile Updated Successfully."))
+				res.send(setRes(resCode.OK, true, "User Profile Updated Successfully.",null))
 			}
 			else{
-				res.send(setRes(resCode.BadRequest, null, true, "Fail to Update User Profile."))
+				res.send(setRes(resCode.BadRequest, false, "Fail to Update User Profile.",null))
 			}
 		}).catch(error => {
-			res.send(setRes(resCode.InternalServer, null, true, "Internal server error."))
+			res.send(setRes(resCode.InternalServer, true, "Internal server error.",null))
 		})
 
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 }
 
@@ -390,25 +389,25 @@ exports.ChangePassword = async (req, res) => {
 								}
 							}).then(updated => {
 								if (updated == 1){
-									res.send(setRes(resCode.OK, null, false, 'Password updated successfully.'))
+									res.send(setRes(resCode.OK, true, 'Password updated successfully.',null))
 								}
 								else{
-									res.send(setRes(resCode.InternalServer, null, true, "Fail to update password."))
+									res.send(setRes(resCode.InternalServer, false, "Fail to update password.",null))
 								}
 							})
 						})
 					}
 					else{
-						res.send(setRes(resCode.BadRequest, null, true, "Old password not match."))
+						res.send(setRes(resCode.BadRequest, false, "Old password not match.",null))
 					}
 				})
 			}
 			else{
-				res.send(setRes(resCode.ResourceNotFound, null, true, "User not found."))
+				res.send(setRes(resCode.ResourceNotFound, false, "User not found.",null))
 			}
 		})
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 }
 exports.SendOtp = async(req,res) => {
@@ -487,7 +486,7 @@ exports.forgotPassword = async (req, res) => {
                 } else {
         				  console.log("--------------------------send res------------")
 					        console.log(result)
-					        res.send(setRes(resCode.OK, `Email has been sended to ${users.email}, with account activation instuction.. `, false, ''));
+					        res.send(setRes(resCode.OK, true,`Email has been sended to ${users.email}, with account activation instuction.. `,null));
                 }
               }
               )
@@ -495,19 +494,19 @@ exports.forgotPassword = async (req, res) => {
           }
           data.otp = otp;
           data.expire_at = expire_at;
-					res.send(setRes(resCode.OK,data,false,'We have sent otp to your email address.'))
+					res.send(setRes(resCode.OK,true,'We have sent otp to your email address.',data))
 					
 				}).catch(err => {
-						res.send(setRes(resCode.InternalServer, null, true, err.message))
+						res.send(setRes(resCode.InternalServer, false, err.message,null))
 				});
 				
 			}else{
-				res.send(setRes(resCode.ResourceNotFound, null, true, "User not found."))
+				res.send(setRes(resCode.ResourceNotFound, false, "User not found.",null))
 			}
 		})
 		
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false,(requiredFields.toString() + ' are required'),null))
 	}
   
 
@@ -532,24 +531,24 @@ exports.OtpVerify = async (req, res) => {
 				var expire_time = moment(otpUser.expire_at).format('YYYY-MM-DD HH:mm:ss');
 	
 				if(now_date_time > expire_time){
-					res.send(setRes(resCode.OK,null,false,"Your otp has been expired."));
+					res.send(setRes(resCode.Unauthorized,false,"Your otp has been expired.",null));
 				}else{
 					
 					if (data.role == 2){
 
 						userModel.findOne({where: {email: otpUser.email, is_deleted: false}}).then(async (user) => {
 							if (user == null){
-								res.send(setRes(resCode.BadRequest, null, true, 'User not found.'));
+								res.send(setRes(resCode.BadRequest, false, 'User not found.',null));
 							}
 							else{
 								var response = await sendForgotPasswordMail(user, 2)
 								if (response != ''){
 									res.send(
-										setRes(resCode.OK, null, false, 'An e-mail has been sent to given email address with further instructions.')
+										setRes(resCode.OK, true, 'An e-mail has been sent to given email address with further instructions.',null)
 									  )
 								}
 								else{
-									res.send(setRes(resCode.InternalServer, null, true, "Internal server error."))
+									res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
 								}
 							}
 						  })
@@ -560,17 +559,17 @@ exports.OtpVerify = async (req, res) => {
 						// check email is exist or not
 						businessModel.findOne({where: {email: otpUser.email, is_deleted: false}}).then(async (business) => {
 							if (business == null){
-								res.send(setRes(resCode.BadRequest, null, true, 'User not found.'));
+								res.send(setRes(resCode.BadRequest, false, 'User not found.',null));
 							}
 							else{
 								var response = await sendForgotPasswordMail(business, 3)
 								if (response != ''){
 									res.send(
-										setRes(resCode.OK, null, false, 'An e-mail has been sent to given email address with further instructions.')
+										setRes(resCode.OK, true, 'An e-mail has been sent to given email address with further instructions.',null)
 									  )
 								}
 								else{
-									res.send(setRes(resCode.InternalServer, null, true, "Internal server error."))
+									res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
 								}
 							}
 						  })
@@ -578,16 +577,16 @@ exports.OtpVerify = async (req, res) => {
 						otpUser.destroy();
 					}
 					else{
-						res.send(setRes(resCode.BadRequest, null, true, 'Invalid role.'))
+						res.send(setRes(resCode.BadRequest, false, 'Invalid role.',null))
 					}
 				}
   			
   		}else{
-  			res.send(setRes(resCode.OK,null,false,"Invalid otp"))
+  			res.send(setRes(resCode.Unauthorized,false,"Invalid otp",null))
   		}
   	});
   }else{
-  	res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+  	res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
   }
 }
 function sendForgotPasswordMail(user, key){
@@ -778,13 +777,13 @@ exports.UpdatePassword = function (req, res) {
 				}
 			}).then(updateUser => {
 				if (updateUser == 1){
-					res.send(setRes(resCode.OK, user, false, "Password Updated Successfully."))
+					res.send(setRes(resCode.OK,true, "Password Updated Successfully.",user))
 				}
 				else{
-					res.send(setRes(resCode.BadRequest, null, true, "Fail to Update Password."))		
+					res.send(setRes(resCode.BadRequest, false, "Fail to Update Password.",null))		
 				}
 			}).catch(UpdateUserError => {
-				res.send(setRes(resCode.ResourceNotFound, 1, true, UpdateUserError.message))			
+				res.send(setRes(resCode.ResourceNotFound, false, UpdateUserError.message,null))			
 			})
 		}
 		else{
@@ -811,27 +810,27 @@ exports.UpdatePassword = function (req, res) {
 						}
 					}).then(updateBusiness => {
 						if (updateBusiness == 1){
-							res.send(setRes(resCode.OK, business, false, "Password Updated Successfully."))
+							res.send(setRes(resCode.OK, true, "Password Updated Successfully.",business))
 						}
 						else{
-							res.send(setRes(resCode.BadRequest, null, true, "Fail to Update Password."))		
+							res.send(setRes(resCode.BadRequest, false, "Fail to Update Password.",null))		
 						}
 					}).catch(UpdateBusinessError => {
-						res.send(setRes(resCode.ResourceNotFound, 2, true, UpdateBusinessError.message))			
+						res.send(setRes(resCode.ResourceNotFound, false, UpdateBusinessError.message,null))			
 					})
 				}
 				else{
-					res.send(setRes(resCode.BadRequest, null, true, "Fail to Update Password."))
+					res.send(setRes(resCode.BadRequest, false, "Fail to Update Password.",null))
 				}
 			}).catch(GetBusinessError => {
-				res.send(setRes(resCode.ResourceNotFound, 3, true, GetBusinessError.message))			
+				res.send(setRes(resCode.ResourceNotFound,false, GetBusinessError.message,true))			
 			})
 		}
 	
 	//   res.sendFile(path.join(__dirname, '../../template', 'reset-password.html'))
 	// res.send(setRes(resCode.OK, user, false, ""))
   }).catch((GetUserError) => {
-	res.send(setRes(resCode.ResourceNotFound, 4, true, GetUserError.message))
+	res.send(setRes(resCode.ResourceNotFound, false, GetUserError.message,null))
   })
 }
 
@@ -861,18 +860,18 @@ exports.SendFeedback = async (req, res) => {
 					console.log(feedbackRes)
 
 					if (feedbackRes == ''){
-						res.send(setRes(resCode.BadRequest, null, true, "Fail to send feedback email."))
+						res.send(setRes(resCode.BadRequest, false, "Fail to send feedback email.",null))
 					}
 					else{
-						res.send(setRes(resCode.OK, feedbackRes, false, "Your feedback has been sended to our team."))
+						res.send(setRes(resCode.OK, true, "Your feedback has been sended to our team.",feedbackRes))
 					}
 	
 				}
 				else{
-					res.send(setRes(resCode.ResourceNotFound, null, true, "User not found."))
+					res.send(setRes(resCode.ResourceNotFound, false, "User not found.",null))
 				}
 			}).catch(getUserError => {
-				res.send(setRes(resCode.InternalServer, null, true, getUserError.message))
+				res.send(setRes(resCode.InternalServer, false, getUserError.message,null))
 			})
 
 		}
@@ -889,28 +888,28 @@ exports.SendFeedback = async (req, res) => {
 					var feedbackRes = await FeedbackMail(business, data)
 
 					if (feedbackRes == ''){
-						res.send(setRes(resCode.BadRequest, null, true, "Fail to send feedback email."))
+						res.send(setRes(resCode.BadRequest, false, "Fail to send feedback email.",null))
 					}
 					else{
-						res.send(setRes(resCode.OK, feedbackRes, false, "Your feedback has been sended to our team."))
+						res.send(setRes(resCode.OK, true, "Your feedback has been sended to our team.",feedbackRes))
 					}
 	
 				}
 				else{
-					res.send(setRes(resCode.ResourceNotFound, null, true, "User or Business not found."))
+					res.send(setRes(resCode.ResourceNotFound,false, "User or Business not found.",null))
 				}
 			}).catch(getUserError => {
-				res.send(setRes(resCode.InternalServer, null, true, getUserError.message))
+				res.send(setRes(resCode.InternalServer, false, getUserError.message,null))
 			})
 
 		}
 		else {
-			res.send(setRes(resCode.BadRequest, null, true, "business_id or user_id are required."))
+			res.send(setRes(resCode.BadRequest, false, "business_id or user_id are required.",null))
 		}
 
 	}
 	else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 }
 
@@ -1004,7 +1003,7 @@ exports.GetAllBusiness = async (req, res) => {
 	if(requiredFields == ""){
 
 		if(data.page < 0 || data.page === 0) {
-			res.send(setRes(resCode.BadRequest, null, true, "invalid page number, should start with 1"))
+			res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1",null))
 		}
 
 		var skip = data.page_size * (data.page - 1)
@@ -1045,16 +1044,18 @@ exports.GetAllBusiness = async (req, res) => {
 						const signurl = await awsConfig.getSignUrl(data.banner).then(function(res){
 							data.banner = res
 						})
+					}else{
+						data.banner = commonConfig.app_url+'/public/defualt.png'
 					}
 				}
-				res.send(setRes(resCode.OK,businessData,false,'Get Business successfully'))
+				res.send(setRes(resCode.OK,true,'Get Business successfully',businessData))
 			}else{
-				res.send(setRes(resCode.ResourceNotFound,null,false,'Business not found'))
+				res.send(setRes(resCode.ResourceNotFound,false,'Business not found',null))
 			}
 		}).catch(error => {
-			res.send(setRes(resCode.InternalServer,null,true,"Fail to get business"))
+			res.send(setRes(resCode.InternalServer,false,"Fail to get business",null))
 		})
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 }

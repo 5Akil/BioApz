@@ -27,19 +27,19 @@ exports.AddToWishList = async(req, res) =>{
 
 				wishlistModel.create(data).then(function (wishlistData) {
 					if (wishlistData) {
-						res.send(setRes(resCode.OK, wishlistData, true, 'Product added into wishlist successfully.'));
+						res.send(setRes(resCode.OK, true, 'Product added into wishlist successfully.',wishlistData));
 					} else {
-						res.send(setRes(resCode.BadRequest, null, true, 'Fail to add into wishlist'));
+						res.send(setRes(resCode.BadRequest, false, 'Fail to add into wishlist',null));
 					}
 				});
 				
 			}else{
 
-				res.send(setRes(resCode.BadRequest, null, true, 'Product already into a wishlist...'));
+				res.send(setRes(resCode.BadRequest, false, 'Product already into a wishlist...',null));
 			}
 		})
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 }
 
@@ -69,9 +69,9 @@ exports.wishlistData = async (req, res) => {
 					data.product.image = res
 				})
 			}
-			res.send(setRes(resCode.OK, wishlistData, true, 'Your wishlist details.'));
+			res.send(setRes(resCode.OK, true, 'Your wishlist details.',wishlistData));
 		}else{
-			res.send(setRes(resCode.ResourceNotFound, null, false, "Your wishlist is empty."))
+			res.send(setRes(resCode.ResourceNotFound, false, "Your wishlist is empty.",null))
 		}
 	})
 }
@@ -104,20 +104,20 @@ exports.RemoveProductWishlist = async(req,res) => {
 							}
 						}).then(data => {
 							
-							res.send(setRes(resCode.OK, data, false, "Product remove from wishlist successfully."))
+							res.send(setRes(resCode.OK, true, "Product remove from wishlist successfully.",data))
 						}).catch(error => {
 							
-							res.send(setRes(resCode.InternalServer, null, true, "Fail to remove product from wishlist."))
+							res.send(setRes(resCode.InternalServer, false, "Fail to remove product from wishlist.",null))
 						})
 					}
 					
 				})
 			}else{
-				res.send(setRes(resCode.ResourceNotFound, null, false, "Data not found"))
+				res.send(setRes(resCode.ResourceNotFound, false, "Data not found",null))
 			}
 		})
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 }
 
@@ -139,18 +139,18 @@ exports.AddToCart = async(req, res) => {
 					if(cartData){
 						wishlistData.update({is_deleted:true})
 
-						res.send(setRes(resCode.OK,data,false,"Product add into cart successfully"))						
+						res.send(setRes(resCode.OK,true,"Product add into cart successfully",data))						
 					}else{
-						res.send(setRes(resCode.InternalServer,null,true,"Internal server error"))
+						res.send(setRes(resCode.InternalServer,false,"Internal server error",null))
 					}
 				})
 			}else{
-				res.send(setRes(resCode.ResourceNotFound,null,false,"Data not found"))
+				res.send(setRes(resCode.ResourceNotFound,false,"Data not found",null))
 			}
 		})
 			
 		
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 }

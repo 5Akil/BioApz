@@ -26,7 +26,7 @@ exports.OrderHistory = async(req,res) => {
 
 	if(requiredFields == ""){
 		if(parseInt(data.page) < 0 || parseInt(data.page) === 0) {
-			res.send(setRes(resCode.BadRequest, null, true, "invalid page number, should start with 1"))
+			res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1",null))
 		}
 		var skip = data.page_size * (data.page - 1)
 		var limit = parseInt(data.page_size)
@@ -63,18 +63,18 @@ exports.OrderHistory = async(req,res) => {
 							data.dataValues.banner = res
 						})
 					}else{
-						data.dataValues.banner = null
+						data.dataValues.banner = commonConfig.app_url+'/public/defualt.png'
 					}
 					delete data.dataValues.business;
 				}
-				res.send(setRes(resCode.OK,OrderData,null,'Order history get successfully'))
+				res.send(setRes(resCode.OK,true,'Order history get successfully',OrderData))
 			}else{
-				res.send(setRes(resCode.ResourceNotFound,null,true,'Order history not found'))
+				res.send(setRes(resCode.ResourceNotFound,false,'Order history not found',null))
 			}
 		})
 		
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 }
 
@@ -122,9 +122,9 @@ exports.OrderDetail = async (req,res) => {
 			delete data.dataValues.product
 			
 		}
-		res.send(setRes(resCode.OK,orderDetails,false,'Get order details successfully'))
+		res.send(setRes(resCode.OK,true,'Get order details successfully',orderDetails))
 	}).catch(error => {	
-		res.send(setRes(resCode.InternalServer,error,true,'Fail to get order details'))
+		res.send(setRes(resCode.InternalServer,false,'Fail to get order details',null))
 	})
 }
 
@@ -140,7 +140,7 @@ exports.BusinessOrderHistory = async(req,res) => {
 
 	if(requiredFields == ""){
 		if(parseInt(data.page) < 0 || parseInt(data.page) === 0) {
-			res.send(setRes(resCode.BadRequest, null, true, "invalid page number, should start with 1"))
+			res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1",null))
 		}
 		var skip = data.page_size * (data.page - 1)
 		var limit = parseInt(data.page_size)
@@ -180,14 +180,14 @@ exports.BusinessOrderHistory = async(req,res) => {
 					delete data.dataValues.user
 					delete data.dataValues.business
 				}
-				res.send(setRes(resCode.OK,OrderData,null,'Order history get successfully'))
+				res.send(setRes(resCode.OK,null,'Order history get successfully',OrderData))
 			}else{
-				res.send(setRes(resCode.ResourceNotFound,null,true,'Order history not found'))
+				res.send(setRes(resCode.ResourceNotFound,false,'Order history not found',null))
 			}
 		})
 		
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 }
 
@@ -267,8 +267,8 @@ exports.BusinessOrderDetail = async (req,res) => {
             "product" : products
 		}
 		orderDetails = datas
-		res.send(setRes(resCode.OK,orderDetails,false,'Get order details successfully'))
+		res.send(setRes(resCode.OK,true,'Get order details successfully',orderDetails))
 	}).catch(error => {	
-		res.send(setRes(resCode.InternalServer,error,true,'Fail to get order details'))
+		res.send(setRes(resCode.InternalServer,false,'Fail to get order details',null))
 	})
 }

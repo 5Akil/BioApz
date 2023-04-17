@@ -18,7 +18,7 @@ exports.ProductTableSearch = function (req, res) {
     if(requiredFields == ""){
 
 	    if(data.page < 0 || data.page === 0) {
-			res.send(setRes(resCode.BadRequest, null, true, "invalid page number, should start with 1"))
+			res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1",null))
 		}
 	    var skip = data.page_size * (data.page - 1)
 		var limit = parseInt(data.page_size)
@@ -47,12 +47,12 @@ exports.ProductTableSearch = function (req, res) {
 					}
 				data.dataValues.product_images = image_array	  
 			}
-	        res.send(setRes(resCode.OK, products, false, "Product search completed.."))
+	        res.send(setRes(resCode.OK, true, "Product search completed..",products))
 	    }).catch(error => {
-	        res.send(setRes(resCode.InternalServer, null, true, "Internal server error."))
+	        res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
 	    })
     }else{
-    	res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+    	res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
     }
 
 }
@@ -122,14 +122,14 @@ exports.RecommendedBusinessSearch = (req, res) => {
 
             //filter over
 
-			res.send(setRes(resCode.OK, filterData, false, "Business search completed.."))
+			res.send(setRes(resCode.OK, true, "Business search completed..",filterData))
 		})
 		.catch((err) => {
-			res.send(setRes(resCode.InternalServer, null, true, err.message))
+			res.send(setRes(resCode.InternalServer, false, "Internal server error",null))
 		})
 
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 
 }
@@ -261,7 +261,7 @@ exports.FilterProducts = (req, res) => {
 
 	if (requiredFields == ''){
 		if(data.page < 0 || data.page === 0) {
-			res.send(setRes(resCode.BadRequest, null, true, "invalid page number, should start with 1"))
+			res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1",null))
 		}
 		var skip = data.page_size * (data.page - 1)
 		var limit = parseInt(data.page_size)
@@ -288,9 +288,9 @@ exports.FilterProducts = (req, res) => {
 							}
 						data.dataValues.product_images = image_array	  
 				}
-				res.send(setRes(resCode.OK,productData,false,'Product get successfully...'))
+				res.send(setRes(resCode.OK,true,'Product get successfully.',productData))
 			}else{
-				res.send(setRes(resCode.ResourceNotFound,null,false,"Products are not found"))
+				res.send(setRes(resCode.ResourceNotFound,false,"Products are not found",null))
 			}
 		}) 
 		// category.findOne({
@@ -358,10 +358,10 @@ exports.FilterProducts = (req, res) => {
 		// 		res.send(setRes(resCode.ResourceNotFound, null, true, "Resource not found."))
 		// 	}
 		.catch(error => {
-			res.send(setRes(resCode.InternalServer, null, true, error.message))
+			res.send(setRes(resCode.InternalServer, false, "Internal server error",null))
 		})
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 
 }
@@ -380,7 +380,7 @@ exports.Searching = (req, res) => {
 
  	 if (requiredFields == ''){
 		if(data.page < 0 || data.page === 0) {
-			res.send(setRes(resCode.BadRequest, null, true, "invalid page number, should start with 1"))
+			res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1",null))
 		}
 		var skip = data.page_size * (data.page - 1)
 		var limit = parseInt(data.page_size);
@@ -443,20 +443,20 @@ exports.Searching = (req, res) => {
 											}
 										data.dataValues.product_images = image_array	  
 								}
-								res.send(setRes(resCode.OK, products, false, "search completed.."))
+								res.send(setRes(resCode.OK, true, "search completed..",products))
 							})
 
 						}
 						else{
-							res.send(setRes(resCode.ResourceNotFound, null, true, "Resource not found."))		
+							res.send(setRes(resCode.ResourceNotFound, false, "Resource not found.",null))		
 						}
 					})
 				}
 				else{
-					res.send(setRes(resCode.ResourceNotFound, null, true, "Resource not found."))
+					res.send(setRes(resCode.ResourceNotFound, false, "Resource not found.",null))
 				}
 			}).catch(error => {
-				res.send(setRes(resCode.InternalServer, null, true, error.message))
+				res.send(setRes(resCode.InternalServer, false, error.message,null))
 			})
 		}
 		else{
@@ -482,15 +482,15 @@ exports.Searching = (req, res) => {
 							}
 						data.dataValues.product_images = image_array	  
 					}
-				res.send(setRes(resCode.OK, products, false, "Product search completed.."))
+				res.send(setRes(resCode.OK, true, "Product search completed..",products))
 			}).catch(error => {
-				res.send(setRes(resCode.InternalServer, null, true, "Internal server error."))
+				res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
 			})
 
 		}
 
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 
 }
@@ -533,13 +533,13 @@ exports.DeleteProductOffers = (req, res) => {
 					}
 				}).then(DeleteProduct => {
 					if (DeleteProduct == 1){
-						res.send(setRes(resCode.OK, {product_id: data.product_id}, false, "Product deleted successfully."))
+						res.send(setRes(resCode.OK, true, "Product deleted successfully.",{product_id: data.product_id}))
 					}
 					else{
-						res.send(setRes(resCode.BadRequest, null, true, "Fail to delete product."))
+						res.send(setRes(resCode.BadRequest, false, "Fail to delete product.",null))
 					}
 				}).catch(DeleteProductError => {
-					res.send(setRes(resCode.InternalServer, null, true, "Internal server error."))
+					res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
 				})
 	
 			})
@@ -567,17 +567,17 @@ exports.DeleteProductOffers = (req, res) => {
 					}
 				}).then(DeleteOffer => {
 					if (DeleteOffer == 1){
-						res.send(setRes(resCode.OK, {offer_id: data.offer_id}, false, "Offer deleted successfully."))
+						res.send(setRes(resCode.OK, true, "Offer deleted successfully.",{offer_id: data.offer_id}))
 					}
 					else{
-						res.send(setRes(resCode.BadRequest, null, true, "Fail to delete offer."))
+						res.send(setRes(resCode.BadRequest, false, "Fail to delete offer.",null))
 					}
 				}).catch(DeleteOfferError => {
-					res.send(setRes(resCode.InternalServer, null, true, "Internal server error."))
+					res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
 				})
 
 			}).catch(error => {
-				res.send(setRes(resCode.ResourceNotFound,null,false,"Resource not found"))
+				res.send(setRes(resCode.ResourceNotFound,false,"Resource not found",null))
 			})
 			
 		}
@@ -608,15 +608,15 @@ exports.DeleteProductOffers = (req, res) => {
 				}).then(DeleteImages => {
 					
 					if (DeleteImages > 0){
-						res.send(setRes(resCode.OK, {image_ids: data.image_ids}, false, "Images deleted successfully."))
+						res.send(setRes(resCode.OK, true, "Images deleted successfully.",{image_ids: data.image_ids}))
 					}
 					else{
-						res.send(setRes(resCode.BadRequest, null, true, "Fail to delete images."))
+						res.send(setRes(resCode.BadRequest, false, "Fail to delete images.",null))
 					}
 				})
 
 			}).catch(error => {
-				res.send(setRes(resCode.InternalServer,null,true,"Internal server error"))
+				res.send(setRes(resCode.InternalServer,false,"Internal server error",null))
 			})
 
 			//delete file from local directory code over
@@ -648,17 +648,17 @@ exports.DeleteProductOffers = (req, res) => {
 						}
 					}).then(DeleteCombo => {
 						if (DeleteCombo == 1){
-							res.send(setRes(resCode.OK, {combo_id: data.combo_id}, false, "Combo deleted successfully."))
+							res.send(setRes(resCode.OK, true, "Combo deleted successfully.",{combo_id: data.combo_id}))
 						}
 						else{
-							res.send(setRes(resCode.BadRequest, null, true, "Fail to delete combo."))
+							res.send(setRes(resCode.BadRequest, false, "Fail to delete combo.",null))
 						}
 					}).catch(DeleteComboError => {
-						res.send(setRes(resCode.InternalServer, null, true, "Internal server error."))
+						res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
 					})
 
 				} else {
-					res.send(setRes(resCode.BadRequest, null, true, "Invalid combo ID."))
+					res.send(setRes(resCode.BadRequest, false, "Invalid combo ID.",null))
 				}
 				
 	
@@ -687,24 +687,24 @@ exports.DeleteProductOffers = (req, res) => {
 						}
 					}).then(DeletePromo => {
 						if (DeletePromo == 1){
-							res.send(setRes(resCode.OK, {promo_id: data.promo_id}, false, "Promo deleted successfully."))
+							res.send(setRes(resCode.OK, true, "Promo deleted successfully.",{promo_id: data.promo_id}))
 						}
 						else{
-							res.send(setRes(resCode.BadRequest, null, true, "Fail to delete promo."))
+							res.send(setRes(resCode.BadRequest, false, "Fail to delete promo.",null))
 						}
 					}).catch(DeletePromoError => {
-						res.send(setRes(resCode.InternalServer, null, true, "Internal server error."))
+						res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
 					})
 
 				} else {
-					res.send(setRes(resCode.BadRequest, null, true, "Invalid Promo Id."))
+					res.send(setRes(resCode.BadRequest, false, "Invalid Promo Id.",null))
 				}
 				
 	
 			})
 		}
 		else{
-			res.send(setRes(resCode.BadRequest, null, true, "product_id or offer_id or image_ids or combo_id are required."))
+			res.send(setRes(resCode.BadRequest, false, "product_id or offer_id or image_ids or combo_id are required.",null))
 		}
 
 	}
@@ -721,7 +721,7 @@ exports.BusinessSearch = async (req, res) => {
     if(requiredFields == ""){
 
 	    if(data.page < 0 || data.page === 0) {
-			res.send(setRes(resCode.BadRequest, null, true, "invalid page number, should start with 1"))
+			res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1",null))
 		}
 	    var skip = data.page_size * (data.page - 1)
 		var limit = parseInt(data.page_size)
@@ -760,14 +760,14 @@ exports.BusinessSearch = async (req, res) => {
 				}
 
 	    	}else{
-	    		res.send(setRes(resCode.ResourceNotFound,null,false,"Business not found"))
+	    		res.send(setRes(resCode.ResourceNotFound,false,"Business not found",null))
 	    	}
-	        res.send(setRes(resCode.OK, business, false, "Business search completed.."))
+	        res.send(setRes(resCode.OK, false, "Business search completed.",business))
 	    }).catch(error => {
-	        res.send(setRes(resCode.InternalServer, null, true, "Fail to get business"))
+	        res.send(setRes(resCode.InternalServer, false, "Fail to get business",null))
 	    })
     }else{
-    	res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+    	res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
     }
 
 }

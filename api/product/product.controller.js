@@ -566,7 +566,8 @@ exports.GetProductById =  (req, res) => {
 			[Sequelize.fn('AVG', Sequelize.col('product_ratings.ratings')),'rating']
 		]},
 	}).then(async product => {
-		if (product.length > 0){
+		
+		if (product != null){
 			
 			var product_images = product.image
 			var image_array = [];
@@ -649,23 +650,23 @@ exports.RemoveProductImage = async(req, res) => {
 								});
 							}
 							product.dataValues.product_images = image_array
-							res.send(setRes(resCode.OK, product, false, "Product .."))
+							res.send(setRes(resCode.OK, true, "Image remove successfully",product))
 						})
 					}
 
 				}).catch(error => {
-					res.send(setRes(resCode.InternalServer, null, true, "Internal server error."))
+					res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
 				})
 
 			}).catch(error => {
-				res.send(setRes(resCode.InternalServer, null, true, "Fail to remove image from product."))
+				res.send(setRes(resCode.InternalServer, false, "Fail to remove image from product.",null))
 			})
 
 		} else {
-			res.send(setRes(resCode.BadRequest, null, true, "Invalid image name..."))
+			res.send(setRes(resCode.BadRequest, false, "Invalid image name...",null))
 		}
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 }
 exports.CreateCategory = async (req, res) => {
@@ -684,13 +685,13 @@ exports.CreateCategory = async (req, res) => {
 				var image = await awsConfig.getSignUrl(data.image).then(function(res){
 					data.image = res
 				})
-				res.send(setRes(resCode.OK,data,false,"Category added successfully"))
+				res.send(setRes(resCode.OK,true,"Category added successfully",data))
 			}else{
-				res.send(setRes(resCode.InternalServer,null,true,"Internal server error"))
+				res.send(setRes(resCode.InternalServer,false,"Internal server error",null))
 			}
 		})
 	}else {
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 
 }
@@ -731,16 +732,16 @@ exports.CategoryList = async(req, res) => {
 				  	data.image = res;		  
 				  });
 				}
-					res.send(setRes(resCode.OK, categoryData, false, "Get category detail successfully.."))
-				}else{
-					res.send(setRes(resCode.ResourceNotFound, null, false, "Category not found."))
-				}
+				res.send(setRes(resCode.OK, true, "Get category detail successfully.",categoryData))
+			}else{
+				res.send(setRes(resCode.ResourceNotFound, false, "Category not found.",null))
+			}
 				
-			}).catch(error => {
-				res.send(setRes(resCode.BadRequest, error, true, "Fail to send request."))
-			})	
+		}).catch(error => {
+			res.send(setRes(resCode.BadRequest, false, "Fail to send request.",null))
+		})	
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 }
 
@@ -761,13 +762,13 @@ exports.GetCategoryById = async(req, res) => {
 			var categoryData_image = await awsConfig.getSignUrl(categoryData.image).then(function(res){
 				categoryData.image = res;
 			})
-			res.send(setRes(resCode.OK, categoryData, false, "Get category detail successfully."))
+			res.send(setRes(resCode.OK, true, "Get category detail successfully.",categoryData))
 		}
 		else{
-			res.send(setRes(resCode.ResourceNotFound, null, true, "Category not found."))
+			res.send(setRes(resCode.ResourceNotFound,false, "Category not found.",null))
 		}
 	}).catch(GetCategoryError => {
-		res.send(setRes(resCode.InternalServer, null, true, "Internal server error."))
+		res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
 	})
 }
 
@@ -810,18 +811,18 @@ exports.UpdateCategory = async(req, res) => {
 							var categoryDetail_image = await awsConfig.getSignUrl(categoryDetail.image).then(function(res){
 								categoryDetail.image = res;
 							})
-							res.send(setRes(resCode.OK,categoryDetail,false,'Category update successfully'))
+							res.send(setRes(resCode.OK,true,'Category update successfully',categoryDetail))
 						})
 					}else{
-						res.send(setRes(resCode.BadRequest, null, true, "Fail to update category or service."))
+						res.send(setRes(resCode.BadRequest, false, "Fail to update category or service.",null))
 					}
 				})
 			}else{
-				res.send(setRes(resCode.ResourceNotFound,null,true,"Category not found"))
+				res.send(setRes(resCode.ResourceNotFound,false,"Category not found",null))
 			}
 		})
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, ('id are required')))
+		res.send(setRes(resCode.BadRequest, false, ('id are required'),null))
 	}
 }
 
@@ -836,64 +837,82 @@ exports.RemoveCategory = async(req, res) => {
 
 	if(data.id){
 
-		cartModel.findAll({
+		productModel.findAll({
 			where:{
 				category_id:data.id,
 				is_deleted:false
 			}
-		}).then(cartData => {
-
-			if(cartData.length > 0 ){
-				res.send(setRes(resCode.BadRequest,null,true,"You can not delete this category because some product of this category into user cart"))
-			}else{
-
-				orderDetailsModel.findAll({
-					where:{
-						category_id:data.id,
-						is_deleted:false,
-						order_status:1
-					}
-				}).then(orderData => {
-					if(orderData.length > 0){
-						res.send(setRes(resCode.BadRequest,null,true,"You can not delete this category because some ongoing order of this category product"))
-					}else{
-
-						wishlistModel.findAll({
-							where:{
-								category_id:data.id,
-								is_deleted:false,
-								
-							}
-						}).then(wishlistData => {
-
-							if(wishlistData.length > 0){
-								res.send(setRes(resCode.BadRequest,null,true,"You can not delete this category because some product of this category into user wishlists"))
-							}else{
-
-								productCategoryModel.findOne({
-									where:{
-										id:data.id,
-										is_deleted:false,
-										is_enable:true
-									}
-								}).then(categoryData => {
-
-									if(categoryData != null){
-
-										categoryData.update({is_deleted:true})
-										res.send(setRes(resCode.OK,null,false,"Category deleted successfully"))
-									}else{
-										res.send(setRes(resCode.ResourceNotFound,null,false,"Category not found"))
-									}
-								})
-							}
-						})
-					}
-				})
+		}).then(productData => {
+			
+			var product_ids = [];
+			for(const data of productData){
+				product_ids.push(data.id)
 			}
+			cartModel.findAll({
+				where:{
+					product_id:{
+						[Op.in]:product_ids
+					},
+					is_deleted:false
+				}
+			}).then(cartData => {
+				if(cartData.length > 0){
+					res.send(setRes(resCode.BadRequest,false,"You can not delete this category because some product of this sub-category are into some user carts",null))
+				}else{
+					
+					wishlistModel.findAll({
+						where:{
+							product_id:{
+								[Op.in]:product_ids
+							},
+							is_deleted:false
+						}
+					}).then(wishlistData => {
+
+						if(wishlistData.length > 0){
+							res.send(setRes(resCode.BadRequest,false,"You can not delete this category because some product of this sub-category are into some user wishlist",null))
+						}else{
+
+							orderDetailsModel.findAll({
+								where:{
+									product_id:{
+										[Op.in]:product_ids
+									},
+									is_deleted:false,
+									order_status:1
+								}
+							}).then(orderData => {
+
+								if(orderData.length > 0){
+									res.send(setRes(resCode.BadRequest,false,"You can not delete this category because some ongoing order of this sub-category product",null))
+								}else{
+									productCategoryModel.findOne({
+										where:{
+											id:data.id,
+											is_deleted:false,
+											is_enable:true
+										}
+									}).then(categoryData => {
+
+										if(categoryData != null){
+
+											categoryData.update({is_deleted:true})
+											res.send(setRes(resCode.OK,true,"Product category deleted successfully",null))
+										}else{
+											res.send(setRes(resCode.ResourceNotFound,false,"Product category not found",null))
+										}
+									})
+								}
+							})
+						}
+					})
+				}
+			})			
+		}).catch(error => {
+			res.send(setRes(resCode.BadRequest, false, "Internal server error.",null))
 		})
 	}else{
-		res.send(setRes.BadRequest,null,true,"id is require")
+		res.send(setRes.BadRequest,false,"id is require",null)
 	}
 
 }
@@ -907,7 +926,7 @@ exports.ProductTypeList = async(req, res) => {
 	var requiredFields = _.reject(['business_id','category_id','page','page_size'], (o) => { return _.has(data, o) })
 	if(requiredFields == ""){
 		if(data.page < 0 || data.page === 0) {
-			res.send(setRes(resCode.BadRequest, null, true, "invalid page number, should start with 1"))
+			res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1",null))
 		}
 		var skip = data.page_size * (data.page - 1)
 		var limit = parseInt(data.page_size)
@@ -933,15 +952,15 @@ exports.ProductTypeList = async(req, res) => {
 			  	data.image = res;		  
 			  });
 			}
-				res.send(setRes(resCode.OK, subCategoryData, false, "Get product type  details successfully.."))
+				res.send(setRes(resCode.OK, true, "Get product type  details successfully.",subCategoryData))
 			}else{
-				res.send(setRes(resCode.ResourceNotFound, null, false, "Product type not found."))
+				res.send(setRes(resCode.ResourceNotFound, true, "Product type not found.",null))
 			}
 		}).catch(error => {
-			res.send(setRes(resCode.BadRequest, error, true, "Fail to send request."))
+			res.send(setRes(resCode.BadRequest,false, "Fail to send request.",null))
 		})
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))		
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))		
 	}
 }
 
@@ -975,7 +994,7 @@ exports.removeProductType = async(req, res) => {
 			}
 		}).then(cartData => {
 			if(cartData.length > 0){
-				res.send(setRes(resCode.BadRequest,null,true,"You can not delete this category because some product of this sub-category are into some user carts"))
+				res.send(setRes(resCode.BadRequest,false,"You can not delete this category because some product of this sub-category are into some user carts",null))
 			}else{
 				
 				wishlistModel.findAll({
@@ -988,7 +1007,7 @@ exports.removeProductType = async(req, res) => {
 				}).then(wishlistData => {
 
 					if(wishlistData.length > 0){
-						res.send(setRes(resCode.BadRequest,null,true,"You can not delete this category because some product of this sub-category are into some user wishlist"))
+						res.send(setRes(resCode.BadRequest,false,"You can not delete this category because some product of this sub-category are into some user wishlist",null))
 					}else{
 
 						orderDetailsModel.findAll({
@@ -1002,7 +1021,7 @@ exports.removeProductType = async(req, res) => {
 						}).then(orderData => {
 
 							if(orderData.length > 0){
-								res.send(setRes(resCode.BadRequest,null,true,"You can not delete this category because some ongoing order of this sub-category product"))
+								res.send(setRes(resCode.BadRequest,false,"You can not delete this category because some ongoing order of this sub-category product",null))
 							}else{
 								productCategoryModel.findOne({
 									where:{
@@ -1015,9 +1034,9 @@ exports.removeProductType = async(req, res) => {
 									if(subCategoryData != null){
 
 										subCategoryData.update({is_deleted:true})
-										res.send(setRes(resCode.OK,null,false,"Product type deleted successfully"))
+										res.send(setRes(resCode.OK,true,"Product type deleted successfully",null))
 									}else{
-										res.send(setRes(resCode.ResourceNotFound,null,false,"Product type not found"))
+										res.send(setRes(resCode.ResourceNotFound,false,"Product type not found",null))
 									}
 								})
 							}
@@ -1027,7 +1046,7 @@ exports.removeProductType = async(req, res) => {
 			}
 		})			
 	}).catch(error => {
-		res.send(setRes(resCode.BadRequest, error, true, "Internal server error."))
+		res.send(setRes(resCode.BadRequest, false, "Internal server error.",null))
 	})
 }
 
@@ -1063,23 +1082,23 @@ exports.AddProductRattings = async(req,res) => {
 								is_deleted: false
 							}
 						}).then(rattingDetails => {
-							res.send(setRes(resCode.OK,rattingDetails,false,"Product ratting update successfully"))
+							res.send(setRes(resCode.OK,true,"Product ratting update successfully",rattingDetails))
 						})
 					}else{
-						res.send(setRes(resCode.InternalServer,null,true,"Internal server error"))
+						res.send(setRes(resCode.InternalServer,false,"Internal server error",null))
 					}
 				})
 			}else{
 				productRattingModel.create(data).then(addRattingData => {
 
-					res.send(setRes(resCode.OK,addRattingData,false,"Product ratting save successfully"))
+					res.send(setRes(resCode.OK,true,"Product ratting save successfully",addRattingData))
 				})
 			}
 		}).catch(error => {
-			res.send(setRes(resCode.InternalServer,null,true,"Fail to add product ratting"))
+			res.send(setRes(resCode.InternalServer,false,"Fail to add product ratting",null))
 		})
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 }
 
@@ -1114,7 +1133,7 @@ exports.GetProductRattings = async(req,res)=>{
 						data.dataValues.profile_picture = res
 					})
 				}else{
-					data.dataValues.profile_picture = null
+					data.dataValues.profile_picture = commonConfig.app_url+'/public/defualt.png'
 				}
 				data.dataValues.ratings = data.ratings
 				data.dataValues.review = data.description
@@ -1122,11 +1141,11 @@ exports.GetProductRattings = async(req,res)=>{
 				delete data.dataValues.user
 				delete data.dataValues.description
 			}
-			res.send(setRes(resCode.OK,ratingData,false,'Get ratings successfully'))
+			res.send(setRes(resCode.OK,true,'Get ratings successfully',ratingData))
 		}).catch(error => {
-			res.send(setRes(resCode.InternalServer, null,true,'Fail to get ratings'))
+			res.send(setRes(resCode.InternalServer, false,'Fail to get ratings',null))
 		})
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))	
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))	
 	}
 }

@@ -38,12 +38,12 @@ exports.GetGiftCardTemplate = async(req,res) => {
 			  	data.template_image = res;		  
 			  });
 			}
-				res.send(setRes(resCode.OK, templates, false, "Get templates detail successfully.."))
+				res.send(setRes(resCode.OK, true, "Get templates detail successfully.",templates))
 			}else{
-				res.send(setRes(resCode.ResourceNotFound, null, false, "Templates not found."))
+				res.send(setRes(resCode.ResourceNotFound,false, "Templates not found.",null))
 			}
 			
 		}).catch(error => {
-			res.send(setRes(resCode.BadRequest, null, true, "Fail to send request."))
+			res.send(setRes(resCode.BadRequest, false, "Fail to send request.",null))
 		})
 }

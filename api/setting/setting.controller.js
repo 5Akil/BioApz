@@ -35,19 +35,19 @@ exports.AddSettingData = async (req, res) => {
 		}).then(settingDetail => {
 
 			if(settingDetail != null){
-				res.send(setRes(resCode.BadRequest,null,false,"This key data already exsit"))
+				res.send(setRes(resCode.BadRequest,false,"This key data already exsit",null))
 			}else{
 
 				settingModel.create(data).then(settingData => {
-					res.send(setRes(resCode.OK,data,false,"Data added successfully"))
+					res.send(setRes(resCode.OK,true,"Data added successfully",data))
 				}).catch(error => {
-					res.send(setRes(resCode.InternalServer,null,true,"Fail to add data"))
+					res.send(setRes(resCode.InternalServer,false,"Fail to add data",null))
 				})
 			}
 		})
 
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 }
 
@@ -79,16 +79,16 @@ exports.GetSettingDetails = async (req , res) => {
 					setting_details[data.setting_key] = data;
 				}
 				settingData = setting_details
-				res.send(setRes(resCode.OK,settingData,false,'Data get successfully'))
+				res.send(setRes(resCode.OK,true,'Data get successfully',settingData))
 			}else{
 
-				res.send(setRes(resCode.ResourceNotFound,null,false,'Data not found'))
+				res.send(setRes(resCode.ResourceNotFound,false,'Data not found',null))
 			}
 		}).catch(error => {
-			res.send(setRes(resCode.InternalServer,null,true,"Fail to get setting details"))
+			res.send(setRes(resCode.InternalServer,false,"Fail to get setting details",null))
 		})
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 }
 
@@ -127,19 +127,19 @@ exports.UpdateSettingData = async (req, res) => {
 								setting_key:data.setting_key
 							}
 						}).then(settingDetails => {
-							res.send(setRes(resCode.OK,settingDetails,false,'Setting data update successfully'))
+							res.send(setRes(resCode.OK,true,'Setting data update successfully',settingDetails))
 						})
 					}else{
-						res.send(setRes(resCode.InternalServer,null,true,'Fail to update data'))
+						res.send(setRes(resCode.InternalServer,false,'Fail to update data',null))
 					}
 				})
 			}else{
-				res.send(setRes(resCode.ResourceNotFound,null,false,"Setting not found"))
+				res.send(setRes(resCode.ResourceNotFound,false,"Setting not found",null))
 			}
 		}).catch(error => {
-			res.send(setRes(resCode.InternalServer,null,false,"Internal server error"))
+			res.send(setRes(resCode.InternalServer,false,"Internal server error",null))
 		})
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))	
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))	
 	}
 }

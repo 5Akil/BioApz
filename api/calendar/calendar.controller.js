@@ -41,11 +41,11 @@ exports.ComboCalendar = async (req, res) => {
 		if (requiredFields == ''){
 
 			if(filesData.length == 0){
-				res.send(setRes(resCode.BadRequest, null, true, 'At least one image is required for product'))
+				res.send(setRes(resCode.BadRequest, false, 'At least one image is required for product',null))
 				validation = false;
 			}else if(filesData.length > 5){
 				validation = false;
-				res.send(setRes(resCode.BadRequest, null, true, 'You can upload only 5 images'))
+				res.send(setRes(resCode.BadRequest, false, 'You can upload only 5 images',null))
 			}
 			if(filesData.length !=0 && filesData.length <= 5){
 				for(const image of filesData){
@@ -53,11 +53,11 @@ exports.ComboCalendar = async (req, res) => {
 					const fileExt = `${image.originalname}`.split('.').pop();
 					if(image.size > commonConfig.maxFileSize){
 						validation = false;
-						res.send(setRes(resCode.BadRequest, null, true, 'You can upload only 5 mb files, some file size is too large'))
+						res.send(setRes(resCode.BadRequest, false, 'You can upload only 5 mb files, some file size is too large',null))
 					}else if (!commonConfig.allowedExtensions.includes(fileExt)) {
 					  // the file extension is not allowed
 					  validation = false;
-					  res.send(setRes(resCode.BadRequest, null, true, 'You can upload only jpg, jpeg, png, gif files'))
+					  res.send(setRes(resCode.BadRequest,false, 'You can upload only jpg, jpeg, png, gif files',null))
 					}
 				}
 
@@ -167,7 +167,7 @@ exports.ComboCalendar = async (req, res) => {
 										}
 										getData.dataValues.combo_images = image_array
 										
-										res.send(setRes(resCode.OK,getData,null,"Combo offer created successfully"))
+										res.send(setRes(resCode.OK,true,"Combo offer created successfully",getData))
 									})
 								}else{
 									res.send(setRes(resCode.InternalServer,getData,null,"Image not update"))
@@ -177,7 +177,7 @@ exports.ComboCalendar = async (req, res) => {
 						
 					}
 					else{
-						res.send(setRes(resCode.BadRequest, null, true, "Fail to create combo offer."))
+						res.send(setRes(resCode.BadRequest, false, "Fail to create combo offer.",null))
 					}
 				}
 				
@@ -185,11 +185,11 @@ exports.ComboCalendar = async (req, res) => {
 			
 
 		}else{
-			res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 		}
 
 	} else {
-		res.send(setRes(resCode.BadRequest, '', true, "repeat_on value must between 0-6..."))
+		res.send(setRes(resCode.BadRequest, false, "repeat_on value must between 0-6...",null))
 	}
 }
 
@@ -402,21 +402,21 @@ exports.GetComboOffers = (req, res) => {
 				}
 
 				// console.log(resObj);
-				res.send(setRes(resCode.OK, (data.limit ? arrRes : resObj) , false, "available combos."))
+				res.send(setRes(resCode.OK ,true, "available combos.",(data.limit ? arrRes : resObj)))
 			})
 			.catch(error => {
 				console.log('============get combo error==========')
 				console.log(error.message)
-				res.send(setRes(resCode.InternalServer, null, true, "Internal server error"))
+				res.send(setRes(resCode.InternalServer, false, "Internal server error",null))
 			})
 
 		}).catch(error => {
 			console.log(error.message + ' ...calendar.controller');
-			res.send(setRes(resCode.InternalServer, null, true, 'Internal server error.'))
+			res.send(setRes(resCode.InternalServer, false, 'Internal server error.',null))
 		})
 
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 
 }
@@ -443,18 +443,18 @@ exports.UpdateComboOffer = async (req, res) => {
 
 			if(total_image > 5){
 				validation = false
-				res.send(setRes(resCode.BadRequest, null, true, "You cannot update more than 5 images.You already uploaded "+image.length+" images"))
+				res.send(setRes(resCode.BadRequest, false, "You cannot update more than 5 images.You already uploaded "+image.length+" images",null))
 			}
 			for(const imageFile of filesData){
 					const fileContent = await fs.promises.readFile(imageFile.path);
 					const fileExt = `${imageFile.originalname}`.split('.').pop();
 					if(imageFile.size > commonConfig.maxFileSize){
 						validation = false;
-						res.send(setRes(resCode.BadRequest, null, true, 'You can upload only 5 mb files, some file size is too large'))
+						res.send(setRes(resCode.BadRequest, false, 'You can upload only 5 mb files, some file size is too large',null))
 					}else if (!commonConfig.allowedExtensions.includes(fileExt)) {
 					  // the file extension is not allowed
 					  validation = false;
-					  res.send(setRes(resCode.BadRequest, null, true, 'You can upload only jpg, jpeg, png, gif files'))
+					  res.send(setRes(resCode.BadRequest, false, 'You can upload only jpg, jpeg, png, gif files',null))
 					}
 			}
 
@@ -522,26 +522,26 @@ exports.UpdateComboOffer = async (req, res) => {
 								});
 							}
 							combo.dataValues.combo_images = image_array
-							res.send(setRes(resCode.OK, combo, false, "Combo Offer updated successfully."))
+							res.send(setRes(resCode.OK, true, "Combo Offer updated successfully.",combo))
 						}).catch(error => {
-							console.log('===========update combo offer========')
+							
 							console.log(error.message)
-							res.send(setRes(resCode.InternalServer, null, true, "Fail to update combo offer."))
+							res.send(setRes(resCode.InternalServer, false, "Fail to update combo offer.",null))
 						})
 
 					}
 				})
 
 			} else {
-				res.send(setRes(resCode.ResourceNotFound, null, false, "Resource not found !!"))
+				res.send(setRes(resCode.ResourceNotFound, false, "Resource not found.",null))
 			}
 		}).catch(error => {
-			console.log(error);
+			res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
 		})
 		
 
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 }
 
@@ -597,7 +597,7 @@ exports.removeImagesFromCombo = (req, res) => {
 								});
 							}
 							combo.dataValues.combo_images = image_array
-							res.send(setRes(resCode.OK, combo, false, "Combo offer.."))
+							res.send(setRes(resCode.OK, true, "Image remove successfully",combo))
 						})
 					}
 

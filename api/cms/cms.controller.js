@@ -36,19 +36,19 @@ exports.AddCms = async (req, res) => {
 		}).then(pageDetail => {
 
 			if(pageDetail != null){
-				res.send(setRes(resCode.BadRequest,null,false,"This page data already exsit"))
+				res.send(setRes(resCode.BadRequest,true,"This page data already exsit",null))
 			}else{
 
 				cmsModel.create(data).then(cmsData => {
-					res.send(setRes(resCode.OK,data,false,"Data added successfully"))
+					res.send(setRes(resCode.OK,true,"Data added successfully",data))
 				}).catch(error => {
-					res.send(setRes(resCode.InternalServer,null,true,"Fail to add cms data"))
+					res.send(setRes(resCode.InternalServer,false,"Fail to add cms data",null))
 				})
 			}
 		})
 
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 }
 
@@ -80,16 +80,16 @@ exports.GetPageDetails = async (req , res) => {
 					page_details[data.page_key] = data;
 				}
 				pageData = page_details
-				res.send(setRes(resCode.OK,pageData,false,'Data get successfully'))
+				res.send(setRes(resCode.OK,true,'Data get successfully',pageData))
 			}else{
 
-				res.send(setRes(resCode.ResourceNotFound,null,false,'Data not found'))
+				res.send(setRes(resCode.ResourceNotFound,false,'Data not found',null))
 			}
 		}).catch(error => {
-			res.send(setRes(resCode.InternalServer,null,true,"Fail to get page details"))
+			res.send(setRes(resCode.InternalServer,false,"Fail to get page details",true))
 		})
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 }
 
@@ -128,19 +128,19 @@ exports.UpdatePageData = async (req, res) => {
 								page_key:data.page_key
 							}
 						}).then(pageDetails => {
-							res.send(setRes(resCode.OK,pageDetails,false,'Page data update successfully'))
+							res.send(setRes(resCode.OK,true,'Page data update successfully',pageDetails))
 						})
 					}else{
-						res.send(setRes(resCode.InternalServer,null,true,'Internal server error'))
+						res.send(setRes(resCode.InternalServer,true,'Internal server error',null))
 					}
 				})
 			}else{
-				res.send(setRes(resCode.ResourceNotFound,null,false,"Page not found"))
+				res.send(setRes(resCode.ResourceNotFound,false,"Page not found",null))
 			}
 		}).catch(error => {
-			res.send(setRes(resCode.InternalServer,null,false,"Internal server error"))
+			res.send(setRes(resCode.InternalServer,false,"Internal server error",null))
 		})
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))	
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))	
 	}
 }
