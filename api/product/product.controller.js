@@ -93,7 +93,7 @@ exports.GetAllProducts = async (req, res) => {
 	var productRattingModel = models.product_ratings
 	var categoryModel = models.product_categorys
 	var data = req.body
-	var requiredFields = _.reject(['page','page_size','business_id'], (o) => { return _.has(data, o)  })
+	var requiredFields = _.reject(['page','page_size','business_id','category_id'], (o) => { return _.has(data, o)  })
 
 	if (requiredFields == ''){
 		if(data.page < 0 || data.page === 0) {
