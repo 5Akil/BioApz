@@ -136,11 +136,14 @@ exports.GetAllProducts = async (req, res) => {
 		}
 		
 		productModel.findAll(condition).then(async(products) => {
+			console.log(products.length);
 			if (products.length > 0){
 				for(const data of products){
-				  var product_images = data.image
-						var image_array = [];
 					
+				  	var product_images = data.image
+					var image_array = [];
+						if(product_images != null){
+
 							for(const data of product_images){
 								const signurl = await awsConfig.getSignUrl(data).then(function(res){
 
@@ -148,12 +151,15 @@ exports.GetAllProducts = async (req, res) => {
 								});
 								
 							}
-						data.dataValues.product_images = image_array
-						data.dataValues.category_name = data.product_categorys.name
-						data.dataValues.product_type = data.sub_category.name
+						}else{
+							image_array.push(commonConfig.default_image)
+						}
+					data.dataValues.product_images = image_array
+					data.dataValues.category_name = data.product_categorys.name
+					data.dataValues.product_type = data.sub_category.name
 
-						delete data.dataValues.product_categorys
-						delete data.dataValues.sub_category
+					delete data.dataValues.product_categorys
+					delete data.dataValues.sub_category
 				}
 				res.send(setRes(resCode.OK, true, "Get product list successfully",products))
 				
@@ -698,22 +704,22 @@ exports.CreateCategory = async (req, res) => {
 
 exports.CategoryList = async(req, res) => {
 
-	var data = req.params
-	var pageination = req.body
+	
+	var data = req.body
 
 	var productCategoryModel = models.product_categorys
 
-	var requiredFields = _.reject(['page','page_size'], (o) => { return _.has(pageination, o)  })
+	var requiredFields = _.reject(['business_id','page','page_size'], (o) => { return _.has(data, o)  })
 	if(requiredFields == ""){
 		if(data.page < 0 || data.page === 0) {
 			res.send(setRes(resCode.BadRequest, null, true, "invalid page number, should start with 1"))
 		}
-		var skip = pageination.page_size * (pageination.page - 1)
-		var limit = parseInt(pageination.page_size)
+		var skip = data.page_size * (data.page - 1)
+		var limit = parseInt(data.page_size)
 
 		productCategoryModel.findAll({
 			where:{
-				business_id:data.id,
+				business_id:data.business_id,
 				is_deleted: false,
 				is_enable: true,
 				parent_id:0
@@ -727,10 +733,16 @@ exports.CategoryList = async(req, res) => {
 			if (categoryData != '' && categoryData != null ){
 				// Update Sign URL
 				for(const data of categoryData){
-				  const signurl = await awsConfig.getSignUrl(data.image).then(function(res){
 
-				  	data.image = res;		  
-				  });
+					if(data.image != null){
+
+					  	const signurl = await awsConfig.getSignUrl(data.image).then(function(res){
+
+					  		data.image = res;		  
+					  	});
+					  }else{
+					  	data.image = commonConfig.default_image;
+					  }
 				}
 				res.send(setRes(resCode.OK, true, "Get category detail successfully.",categoryData))
 			}else{
@@ -758,10 +770,14 @@ exports.GetCategoryById = async(req, res) => {
 		}
 	}).then(async categoryData => {
 		if (categoryData != null){
-			
-			var categoryData_image = await awsConfig.getSignUrl(categoryData.image).then(function(res){
-				categoryData.image = res;
-			})
+			if(categoryData.image != null){
+
+				var categoryData_image = await awsConfig.getSignUrl(categoryData.image).then(function(res){
+					categoryData.image = res;
+				})
+			}else{
+				categoryData.image = commonConfig.default_image;
+			}
 			res.send(setRes(resCode.OK, true, "Get category detail successfully.",categoryData))
 		}
 		else{
@@ -808,9 +824,15 @@ exports.UpdateCategory = async(req, res) => {
 							is_deleted: false,
 							is_enable: true
 						}}).then(async categoryDetail => {
-							var categoryDetail_image = await awsConfig.getSignUrl(categoryDetail.image).then(function(res){
+
+							if(categoryDetail.image != null){
+
+								var categoryDetail_image = await awsConfig.getSignUrl(categoryDetail.image).then(function(res){
+									categoryDetail.image = res;
+								})
+							}else{
 								categoryDetail.image = res;
-							})
+							}
 							res.send(setRes(resCode.OK,true,'Category update successfully',categoryDetail))
 						})
 					}else{

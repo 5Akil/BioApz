@@ -66,7 +66,7 @@ router.post('/removeImage',verifyToken,controller.RemoveProductImage)
 router.get('/byId/:id', verifyToken, controller.GetProductById)
 
 router.post('/createCategory',verifyToken, categoryawsupload.single('image'), controller.CreateCategory)
-router.get('/category-list/:id',verifyToken,controller.CategoryList)
+router.post('/category-list/',verifyToken,controller.CategoryList)
 router.get('/categoryById/:id',verifyToken,controller.GetCategoryById)
 router.post('/updateCategory',verifyToken,categoryawsupload.single('image'), controller.UpdateCategory)
 router.delete('/removeCategory/:id',verifyToken, controller.RemoveCategory)
