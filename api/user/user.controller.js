@@ -46,9 +46,7 @@ exports.Register = async (req, res) => {
             var templates = new EmailTemplates()
             var context = {
 			  resetUrl: commonConfig.app_url+'/api/user/account-activation/' + token,
-			  username: data.username,
-			  icon_image : commonConfig.app_url+'/public/icon.png',
-			  logo_image : commonConfig.app_url+'/public/logo.png'
+			  username: data.username
 			}
 			
 
@@ -466,10 +464,9 @@ exports.forgotPassword = async (req, res) => {
 				var context = {
 							  otp : otp,
 							  username: user.username,
-							  expire_at : expire_at,
-							  icon_image : commonConfig.app_url+'/public/icon.png',
-							  logo_image : commonConfig.app_url+'/public/logo.png'
+							  expire_at : expire_at
 							}
+							console.log(context)
 							templates.render(path.join(__dirname, '../../', 'template', 'email-otp.html'), context, function (
 								err,
 				  html,
@@ -542,9 +539,7 @@ exports.forgotPassword = async (req, res) => {
 				var context = {
 							  otp : otp,
 							  username: user.person_name,
-							  expire_at : expire_at,
-							  icon_image : commonConfig.app_url+'/public/icon.png',
-							  logo_image : commonConfig.app_url+'/public/logo.png'
+							  expire_at : expire_at
 							}
 							console.log(context)
 							templates.render(path.join(__dirname, '../../', 'template', 'email-otp.html'), context, function (
@@ -739,9 +734,7 @@ function sendForgotPasswordMail(user, key){
 				var templates = new EmailTemplates()
 				var context = {
 				  resetUrl: commonConfig.app_url+'/api/user/resetPassword/' + token,
-				  username: user.username,
-				  icon_image : commonConfig.app_url+'/public/icon.png',
-				  logo_image : commonConfig.app_url+'/public/logo.png'
+				  username: user.username
 				// resetUrl: '#'
 				}
 	
@@ -1023,9 +1016,7 @@ function FeedbackMail(user, data){
 				var context = {
 				  username: user.username || user.business_name,
 				  caption: data.caption,
-				  message: data.message,
-				  icon_image : commonConfig.app_url+'/public/icon.png',
-				  logo_image : commonConfig.app_url+'/public/logo.png'
+				  message: data.message
 				}
 	
 				templates.render(path.join(__dirname, '../../', 'template', 'customer-feedback.html'), context, function (
