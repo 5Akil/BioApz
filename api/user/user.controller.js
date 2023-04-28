@@ -47,6 +47,7 @@ exports.Register = async (req, res) => {
             var context = {
 			  resetUrl: commonConfig.app_url+'/api/user/account-activation/' + token,
 			  username: data.username,
+			  icon_image : commonConfig.app_url+'/public/icon.png',
 			  logo_image : commonConfig.app_url+'/public/logo.png'
 			}
 			
@@ -466,6 +467,7 @@ exports.forgotPassword = async (req, res) => {
 							  otp : otp,
 							  username: user.username,
 							  expire_at : expire_at,
+							  icon_image : commonConfig.app_url+'/public/icon.png',
 							  logo_image : commonConfig.app_url+'/public/logo.png'
 							}
 							templates.render(path.join(__dirname, '../../', 'template', 'email-otp.html'), context, function (
@@ -541,6 +543,7 @@ exports.forgotPassword = async (req, res) => {
 							  otp : otp,
 							  username: user.person_name,
 							  expire_at : expire_at,
+							  icon_image : commonConfig.app_url+'/public/icon.png',
 							  logo_image : commonConfig.app_url+'/public/logo.png'
 							}
 							console.log(context)
@@ -737,6 +740,7 @@ function sendForgotPasswordMail(user, key){
 				var context = {
 				  resetUrl: commonConfig.app_url+'/api/user/resetPassword/' + token,
 				  username: user.username,
+				  icon_image : commonConfig.app_url+'/public/icon.png',
 				  logo_image : commonConfig.app_url+'/public/logo.png'
 				// resetUrl: '#'
 				}
@@ -1020,6 +1024,7 @@ function FeedbackMail(user, data){
 				  username: user.username || user.business_name,
 				  caption: data.caption,
 				  message: data.message,
+				  icon_image : commonConfig.app_url+'/public/icon.png',
 				  logo_image : commonConfig.app_url+'/public/logo.png'
 				}
 	
