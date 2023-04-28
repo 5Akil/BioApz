@@ -539,9 +539,9 @@ exports.forgotPassword = async (req, res) => {
 				var context = {
 							  otp : otp,
 							  username: user.person_name,
-							  expire_at : expire_at
+							  expire_at : expire_at,
+							  logo_image : `../../../public/logo.png`,
 							}
-							console.log(context)
 							templates.render(path.join(__dirname, '../../', 'template', 'email-otp.html'), context, function (
 								err,
 				  html,
