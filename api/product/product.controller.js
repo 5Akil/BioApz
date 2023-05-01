@@ -132,10 +132,10 @@ exports.GetAllProducts = async (req, res) => {
 		}
 		condition.where = {business_id:data.business_id,category_id:data.category_id}
 		if(data.sub_category_id) {
-			console.log(1)
+			
 			condition.where = {business_id:data.business_id,category_id:data.category_id,sub_category_id:data.sub_category_id}
 		}
-		console.log(2)
+		
 		
 		productModel.findAll(condition).then(async(products) => {
 			
@@ -986,27 +986,30 @@ exports.ProductTypeList = async(req, res) => {
 	var categoryModel = models.product_categorys
 	var Op = models.Op;
 
-	var requiredFields = _.reject(['business_id','category_id','page','page_size'], (o) => { return _.has(data, o) })
+	var requiredFields = _.reject(['business_id','page','page_size'], (o) => { return _.has(data, o) })
 	if(requiredFields == ""){
 		if(data.page < 0 || data.page === 0) {
 			res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1",null))
 		}
 		var skip = data.page_size * (data.page - 1)
 		var limit = parseInt(data.page_size)
-		categoryModel.findAll({
-
-			where:{
-				business_id : data.business_id,
-				parent_id : data.category_id,
-				is_deleted: false,
-				is_enable: true
-			},
+		var condition = {
 			offset:skip,
-			limit:limit,
+			limit : limit,
+			subQuery:false,
 			order: [
 				['createdAt', 'DESC']
-			]
-		}).then(async subCategoryData => {
+			],
+			
+		};
+		condition.where = {business_id:data.business_id,parent_id:{
+				[Op.ne]: 0	
+			},is_deleted:false}
+		if(data.category_id) {
+			
+			condition.where = {business_id:data.business_id,parent_id:data.category_id,is_deleted:false}
+		}
+		categoryModel.findAll(condition).then(async subCategoryData => {
 			if (subCategoryData != '' && subCategoryData != null ){
 			// Update Sign URL
 			for(const data of subCategoryData){
@@ -1026,7 +1029,7 @@ exports.ProductTypeList = async(req, res) => {
 				res.send(setRes(resCode.ResourceNotFound, true, "Product type not found.",null))
 			}
 		}).catch(error => {
-			res.send(setRes(resCode.BadRequest,false, "Fail to send request.",null))
+			res.send(setRes(resCode.InternalServer,false, "Internal server error.",null))
 		})
 	}else{
 		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))		
