@@ -198,7 +198,7 @@ exports.Login = async (req, res) => {
 								})
 
 							} else {
-								res.send(setRes(resCode.Unauthorized, false, "Invalid Email id or password",null))
+								res.send(setRes(resCode.BadRequest, false, "Invalid Email id or password",null))
 							}
 						});
 					}
@@ -276,7 +276,7 @@ exports.Login = async (req, res) => {
 							})
 		
 						} else {
-							res.send(setRes(resCode.Unauthorized, false, "Invalid Email id or password",null))
+							res.send(setRes(resCode.BadRequest, false, "Invalid Email id or password",null))
 						}
 					});
 				}

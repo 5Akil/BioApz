@@ -926,39 +926,45 @@ exports.CreateBusiness = async (req, res) => {
 // 	sections: data.sections
 // }
 	if (requiredFields == ''){
-		businessModel.create(data).then(async business => {
+		businessModel.findOne({where: {email: data.email, is_deleted: false}}).then((business) => {
+			if (business == null){
+				businessModel.create(data).then(async business => {
 
-			if (data.id){
+					if (data.id){
 
-				inquiryModel.update({
-					is_deleted: true
-				},{
-					where: {
-						id: data.id
-					}
-				}).then(inquiry => {
-					if (inquiry > 0){
-						res.send(setRes(resCode.OK, true, "Business created successfully.",business))
+						inquiryModel.update({
+							is_deleted: true
+						},{
+							where: {
+								id: data.id
+							}
+						}).then(inquiry => {
+							if (inquiry > 0){
+								res.send(setRes(resCode.OK, true, "Business created successfully.",business))
+							}
+							else{
+								res.send(setRes(resCode.InternalServer, false, "Fail to remove Inquity.",null))
+							}
+						})
+
 					}
 					else{
-						res.send(setRes(resCode.InternalServer, false, "Fail to remove Inquity.",null))
+						if(business.banner != null){
+							var business_banner = await awsConfig.getSignUrl(business.banner).then(function(res){
+								business.banner = res
+							});
+						}
+						res.send(setRes(resCode.OK, true, "Business created successfully.",business))
 					}
+					
+					
 				})
-
+			}else{
+				res.send(setRes(resCode.BadRequest, false, 'Business already exist',null));
 			}
-			else{
-				if(business.banner != null){
-					var business_banner = await awsConfig.getSignUrl(business.banner).then(function(res){
-						business.banner = res
-					});
-				}
-				res.send(setRes(resCode.OK, true, "Business created successfully.",business))
-			}
-			
-			
 		}).catch(error => {
 			console.log(error.message)
-			res.send(setRes(resCode.BadRequest, false, "Fail to create Business.",true))
+			res.send(setRes(resCode.InternalServer, false, "Fail to create Business.",null))
 		})	
 	}
 	else{
