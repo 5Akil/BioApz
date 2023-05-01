@@ -307,9 +307,14 @@ exports.GetProfileDetail = async (req, res) => {
 			}
 		}).then(async user => {
 			if (user != null){
-				var profile_picture = await awsConfig.getSignUrl(user.profile_picture).then(function(res){
-					user.profile_picture = res;
-				});
+				if(user.profile_picture != null){
+
+					var profile_picture = await awsConfig.getSignUrl(user.profile_picture).then(function(res){
+						user.profile_picture = res;
+					});
+				}else{
+					user.profile_picture = commonConfig.default_user_image;
+				}
 				res.send(setRes(resCode.OK, true, "Get user profile successfully.",user))
 			}
 			else{

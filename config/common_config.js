@@ -4,5 +4,6 @@ module.exports = {
 	allowedExtensions : ['jpg', 'jpeg', 'png', 'gif','JPG','JPEG','PNG'],
 	maxFileSize : 5 * 1024 * 1024, //5 Mb
 	app_url : 'http://18.211.184.240:5000',
-	default_image : 'http://18.211.184.240:5000/public/defualt.png'
+	default_image : 'http://18.211.184.240:5000/public/defualt.png',
+	default_user_image : 'http://18.211.184.240:5000/public/default.jpg'
 }
