@@ -1129,7 +1129,7 @@ exports.GetAllBusiness = async (req, res) => {
 							data.banner = res
 						})
 					}else{
-						data.banner = commonConfig.app_url+'/public/defualt.png'
+						data.banner = commonConfig.default_image;
 					}
 				}
 				res.send(setRes(resCode.OK,true,'Get Business successfully',businessData))

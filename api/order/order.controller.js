@@ -63,7 +63,7 @@ exports.OrderHistory = async(req,res) => {
 							data.dataValues.banner = res
 						})
 					}else{
-						data.dataValues.banner = commonConfig.app_url+'/public/defualt.png'
+						data.dataValues.banner = commonConfig.default_image;
 					}
 					delete data.dataValues.business;
 				}

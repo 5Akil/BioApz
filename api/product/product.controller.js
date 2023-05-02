@@ -1205,7 +1205,7 @@ exports.GetProductRattings = async(req,res)=>{
 						data.dataValues.profile_picture = res
 					})
 				}else{
-					data.dataValues.profile_picture = commonConfig.app_url+'/public/defualt.png'
+					data.dataValues.profile_picture = commonConfig.default_image;
 				}
 				data.dataValues.ratings = data.ratings
 				data.dataValues.review = data.description
