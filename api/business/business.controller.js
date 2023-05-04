@@ -258,50 +258,86 @@ exports.UpdateBusinessDetail = async (req, res) => {
 	req.file ? data.banner = `${req.file.key}` : '';
 	var businessModel = models.business
 	var categoryModel = models.business_categorys
-	if(data.banner){
+	var Op = models.Op;
+	var requiredFields = _.reject(['business_name', 'person_name','abn_no','banner', 'email', 'phone','description'], (o) => { return _.has(data, o)  })
+	var mailId = data.email;
+	var emailFormat = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/;
 		
-		businessModel.findOne({where:{id:data.id,is_deleted:false,is_active:true}}).then(businessData =>{
-			const params = {
-						    Bucket: awsConfig.Bucket,
-						    Key: businessData.banner
-						};
-			awsConfig.deleteImageAWS(params)
-		})
-	}
-
-	businessModel.update(data, {
-		where: {
-			id: data.id,
-			is_active: true,
-			is_deleted: false
-		}
-	}).then(business => {
-		if (business == 1){
-
-			businessModel.findOne({
-				where: {
-					id: data.id,
-					is_active: true,
-					is_deleted: false
-				},
-				include: [categoryModel]
-			}).then(async UpdatedBusiness => {
-				if (UpdatedBusiness != null){
-					var UpdatedBusiness_banner = await awsConfig.getSignUrl(UpdatedBusiness.banner).then(function(res){
-						UpdatedBusiness.banner = res
-					})
-					res.send(setRes(resCode.OK, true, "Business detail update successfully.",UpdatedBusiness))
-				}
-				else{
-					res.send(setRes(resCode.BadRequest, true, "Fail to update business detail.",null))		
-				}
-			})
+		if(requiredFields == ''){
+			if (mailId.match(emailFormat) == null){
+				res.send(setRes(resCode.BadRequest, false, 'Please enter valid email format.',null));
+			}
+			else if((data.phone.length > 10) || (data.phone.length < 7)){
+				res.send(setRes(resCode.BadRequest, false, 'Please enter valid mobile number.',null));
+			}else{
+				await businessModel.update(data, {
+					where: {
+						id: data.id,
+						is_active: true,
+						is_deleted: false
+					}
+				}).then(async business => {
+					if (business == 1){
+						if(data.banner){
+							await businessModel.findOne({where:{id:data.id,is_deleted:false,is_active:true}}).then(businessData =>{
+								if(!(_.isEmpty(businessData.banner))){
+									const params = {
+										Bucket: awsConfig.Bucket,
+										Key: businessData.banner
+									};
+									awsConfig.deleteImageAWS(params)
+								}
+							})
+						}
+						await businessModel.findOne({
+							where: {
+								id: data.id,
+								is_active: true,
+								is_deleted: false
+							},
+							include: [categoryModel]
+						}).then(async UpdatedBusiness => {
+							await businessModel.findOne({where:{
+								[Op.or]: [
+									{email: data.email},
+									{phone: data.phone}
+								],
+								is_deleted:false,
+								is_active:true,
+								id:{
+								[Op.ne]: data.id	
+							}}}).then(async updatebusinessemailData =>{
+											if (updatebusinessemailData == null){
+												if(!(_.isEmpty(data.banner))){
+													var UpdatedBusiness_banner = await awsConfig.getSignUrl(UpdatedBusiness.banner).then(function(res){
+														UpdatedBusiness.banner = res
+													})
+												}
+												res.send(setRes(resCode.OK, true, "Business detail update successfully.",UpdatedBusiness))
+											}
+											else if(updatebusinessemailData.phone == data.phone){
+													res.send(setRes(resCode.BadRequest, false, 'Mobile number already exist.',null));
+											}
+											else if (updatebusinessemailData.email == UpdatedBusiness.email){
+												res.send(setRes(resCode.BadRequest, false, 'Business already exist on this email.',null));
+											}
+											else{
+												res.send(setRes(resCode.BadRequest, true, "Fail to update business detail.",null))		
+											}
+							})
+							
+						})
+					}else{
+						res.send(setRes(resCode.BadRequest, false, "Fail to update business detail.",null))
+					}
+				}).catch(error => {
+					res.send(setRes(resCode.BadRequest, false, error.message,null));
+				})
+			}
+			
 		}else{
-			res.send(setRes(resCode.BadRequest, false, "Fail to update business detail.",null))
+			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 		}
-	}).catch(error => {
-		res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
-	})
 }
 
 exports.ChangePassword = async(req, res) => {
@@ -912,7 +948,76 @@ exports.CreateBusiness = async (req, res) => {
 	var businessModel = models.business
 	var inquiryModel = models.business_inquiry
 	var Op = models.Op
-	var requiredFields = _.reject(['business_name','username','phone','category_id','email','password','abn_no','address','description','account_name','account_number','latitude','longitude'], (o) => { return _.has(data, o)  })
+	var requiredFields = _.reject(['business_name','person_name','phone','category_id','email','password','abn_no','address','description','account_name','account_number','latitude','longitude'], (o) => { return _.has(data, o)  })
+
+	
+	var mailId = data.email;
+	var emailFormat = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/;
+	if (requiredFields == ''){
+			if (mailId.match(emailFormat) == null){
+				res.send(setRes(resCode.BadRequest, false, 'Please enter valid email format.',null));
+			}
+			else if((data.phone.length > 12) || (data.phone.length < 7)){
+				res.send(setRes(resCode.BadRequest, false, 'Please enter valid mobile number.',null));
+			}
+				else{
+					await businessModel.findOne({
+						where: {
+							is_deleted: false,
+							[Op.or]: [
+								{email: data.email},
+								{phone: data.phone}
+							]
+						}
+					}).then(async (validation) => {
+						if(validation == null){
+							 await businessModel.create(data).then(async business => {
+	
+								if (data.id){
+			
+									await inquiryModel.update({
+										is_deleted: true
+									},{
+										where: {
+											id: data.id
+										}
+									}).then(inquiry => {
+										if (inquiry > 0){
+											res.send(setRes(resCode.OK, true, "Business created successfully.",business))
+										}
+										else{
+											res.send(setRes(resCode.InternalServer, false, "Fail to remove Inquity.",null))
+										}
+									})
+			
+								}
+								else{
+									if(business.banner != null){
+										var business_banner = await awsConfig.getSignUrl(business.banner).then(function(res){
+											business.banner = res
+										});
+									}
+									res.send(setRes(resCode.OK, true, "Business created successfully.",business))
+								}
+							})
+						}else if(validation.phone == data.phone){
+								res.send(setRes(resCode.BadRequest, false, 'Mobile number already exist.',null));
+						}
+						else if (validation.email == data.email){
+							res.send(setRes(resCode.BadRequest, false, 'Business already exist on this email.',null));
+						}else{
+							res.send(setRes(resCode.InternalServer, false, 'Internal server error.',null));
+						}
+					}).catch(error => {
+						res.send(setRes(resCode.BadRequest, false, error.message,null));
+					})
+				}
+	}
+	else{
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
+	}
+	
+
 //   data = {
 // 	template_id: data.template_id,
 // 	business_name: data.business_name,
@@ -932,77 +1037,8 @@ exports.CreateBusiness = async (req, res) => {
     // 		mobile: Joi.string().regex(/^\d{3}-\d{3}-\d{4}$/).required(),
   	// });
 	// console.log(schema)
-	if (requiredFields == ''){
-		// businessModel.findOne({where: {email: data.email, is_deleted: false}}).then((business) => {
-		// 	if (business == null){
-				await businessModel.findOne({
-					where: {
-						is_deleted: false,
-						[Op.or]: [
-							{email: data.email},
-							{phone: data.phone}
-						]
-					}
-				}).then(async (validation) => {
-					if(validation == null){
-					 	await businessModel.create(data).then(async business => {
-
-							if (data.id){
-		
-								await inquiryModel.update({
-									is_deleted: true
-								},{
-									where: {
-										id: data.id
-									}
-								}).then(inquiry => {
-									if (inquiry > 0){
-										res.send(setRes(resCode.OK, true, "Business created successfully.",business))
-									}
-									else{
-										res.send(setRes(resCode.InternalServer, false, "Fail to remove Inquity.",null))
-									}
-								})
-		
-							}
-							else{
-								if(business.banner != null){
-									var business_banner = await awsConfig.getSignUrl(business.banner).then(function(res){
-										business.banner = res
-									});
-								}
-								res.send(setRes(resCode.OK, true, "Business created successfully.",business))
-							}
-						})
-					}
-					else if((data.phone.length > 12) || (data.phone.length < 7)){
-						res.send(setRes(resCode.BadRequest, false, 'Please enter valid mobile number.',null));
-					}else if(validation.phone == data.phone){
-							res.send(setRes(resCode.BadRequest, false, 'Mobile number already exist.',null));
-					}
-					else if (validation.email == data.email){
-						console.log('email')
-						res.send(setRes(resCode.BadRequest, false, 'Business already exist on this email.',null));
-					}
-					else{
-						console.log('server')
-						res.send(setRes(resCode.InternalServer, false, 'Internal server error.',null));
-					}
-				}).catch(error => {
-					res.send(setRes(resCode.BadRequest, false, error.message,null));
-				})
-			// }else{
-			// 	res.send(setRes(resCode.BadRequest, false, 'Business already exist',null));
-			// }
-		// })
-		// .catch(error => {
-		// 	console.log(error.message)
-		// 	res.send(setRes(resCode.InternalServer, false, "Fail to create Business.",null))
-		// })	
-	}
-	else{
-		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
-	}
+	
+	
 }
 
 
