@@ -644,14 +644,15 @@ exports.DeleteProductOffers = (req, res) => {
 					//delete record from database
 					comboModel.update({is_deleted:true},{
 						where: {
-							id: data.combo_id
+							id: data.combo_id,
+							is_deleted:false
 						}
 					}).then(DeleteCombo => {
 						if (DeleteCombo == 1){
-							res.send(setRes(resCode.OK, true, "Combo deleted successfully.",{combo_id: data.combo_id}))
+							res.send(setRes(resCode.OK, true, "Event deleted successfully.",null))
 						}
 						else{
-							res.send(setRes(resCode.BadRequest, false, "Fail to delete combo.",null))
+							res.send(setRes(resCode.ResourceNotFound, false, "Event not found.",null))
 						}
 					}).catch(DeleteComboError => {
 						res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))

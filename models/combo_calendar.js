@@ -51,13 +51,22 @@ module.exports = (sequelize, DataTypes) => {
     end_date: {
       type: DataTypes.STRING
     },
+    start_time: {
+      type: DataTypes.STRING
+    },
+    end_time: {
+      type: DataTypes.STRING
+    },
+    location: {
+      type: DataTypes.STRING
+    },
     repeat: {
       type: DataTypes.BOOLEAN,
       defaultValue: false // Repeat [true - yes, false - no]
     },
     is_deleted: {
       type: DataTypes.BOOLEAN,
-      defaultValue: false,      
+      defaultValue: false 
     }
   }, {
     // timestamps: false
