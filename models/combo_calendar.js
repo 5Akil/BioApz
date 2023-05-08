@@ -74,6 +74,7 @@ module.exports = (sequelize, DataTypes) => {
   ComboCalendar.associate = function(models) {
     // associations can be defined here
     ComboCalendar.belongsTo(models.business, {foreignKey: 'business_id'})
+    ComboCalendar.hasMany(models.user_events, {foreignKey: 'event_id'}) 
   };
   return ComboCalendar;
 };
