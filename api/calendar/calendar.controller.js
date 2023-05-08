@@ -417,12 +417,13 @@ exports.UpdateEvent = async (req, res) => {
 
 	var data = req.body
 	var comboModel = models.combo_calendar
-	var requiredFields = _.reject(['id'], (o) => { return _.has(data, o) })
+	var requiredFields = _.reject(['id','title', 'description', 'end_date', 'start_date', 'end_time', 'start_time', 'location'], (o) => { return _.has(data, o) })
 
 	// data.repeat_every == 1 ? (data.repeat_on ? '' : requiredFields.push('repeat_on')) : '';
 	// _.contains([1, 2], parseInt(data.repeat_every)) ? data.repeat = true : '';
 	var row = await comboModel.findByPk(data.id);
-	if (data.id) {
+	if (data.id != null) {
+		if(requiredFields == ''){
 			var image = row.images;
 			if (req.files) {
 				const filesData = req.files;
@@ -522,7 +523,9 @@ exports.UpdateEvent = async (req, res) => {
 			}).catch(error => {
 				res.send(setRes(resCode.InternalServer, false, "Internal server error.", null))
 			})
-		
+		}else{
+			res.send(setRes(resCode.BadRequest,false, (requiredFields.toString() + ' are required'),null))
+		}
 	} else {
 		res.send(setRes(resCode.BadRequest, null, true, ('id is required')))
 	}
