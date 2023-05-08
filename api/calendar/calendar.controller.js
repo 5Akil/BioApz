@@ -417,11 +417,18 @@ exports.UpdateEvent = async (req, res) => {
 
 	var data = req.body
 	var comboModel = models.combo_calendar
-	var requiredFields = _.reject(['id','title', 'description', 'end_date', 'start_date', 'end_time', 'start_time', 'location'], (o) => { return _.has(data, o) })
+	var requiredFields = _.reject(['id','title', 'description', 'end_date', 'start_date', 'location'], (o) => { return _.has(data, o) })
 
 	// data.repeat_every == 1 ? (data.repeat_on ? '' : requiredFields.push('repeat_on')) : '';
 	// _.contains([1, 2], parseInt(data.repeat_every)) ? data.repeat = true : '';
 	var row = await comboModel.findByPk(data.id);
+	// Start date save different columns logic
+	var startDate = moment(data.start_date).format('DD-MM-YYYY HH:mm:ss');
+	var sDate_value = startDate.split(" ");
+
+	// End date time save different columns logic
+	var endDate = moment(data.end_date).format('DD-MM-YYYY HH:mm:ss');
+	var eDate_value = endDate.split(" ");
 	if (data.id != null) {
 		if(requiredFields == ''){
 			var image = row.images;
@@ -499,6 +506,7 @@ exports.UpdateEvent = async (req, res) => {
 									is_deleted: false
 								}
 							}).then(async combo => {
+								console.log(combo.dataValues)
 								var combo_images = combo.images
 								var image_array = [];
 								for (const data of combo_images) {
@@ -508,6 +516,10 @@ exports.UpdateEvent = async (req, res) => {
 									});
 								}
 								combo.dataValues.combo_images = image_array
+								combo.dataValues.start_date = sDate_value[0]
+								combo.dataValues.start_time = sDate_value[1]
+								combo.dataValues.end_date = eDate_value[0]
+								combo.dataValues.end_time = eDate_value[1]
 								res.send(setRes(resCode.OK, true, "Event updated successfully.", combo))
 							}).catch(error => {
 
