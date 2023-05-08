@@ -268,8 +268,8 @@ exports.GetAllEvents = async (req, res) => {
 					[Op.lt]: moment().format('YYYY-MM-DD')
 				}
 			}
-		}).then(updatedOffers => {
-			comboModel.findAll({
+		}).then(async updatedOffers => {
+		 	await comboModel.findAll({
 				where: {
 					business_id: data.business_id,
 					is_deleted: false,
@@ -279,7 +279,7 @@ exports.GetAllEvents = async (req, res) => {
 				],
 				subQuery: false
 			}).then(async combos => {
-				_.each(combos, (o) => {
+				await _.each(combos, (o) => {
 					let one = Moment.range(moment(`${data.from_date}T00:00:00.0000Z`), moment(`${data.to_date}T23:59:59.999Z`))
 					let two = Moment.range(moment(`${o.start_date}T00:00:00.0000Z`), moment(`${o.end_date}T23:59:59.999Z`))
 					let three = one.intersect(two)
