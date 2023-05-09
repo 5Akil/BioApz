@@ -50,7 +50,7 @@ exports.CreateEvent = async (req, res) => {
 		var eDate_value = endDate.split(" ");
 
 		if (filesData.length == 0) {
-			res.send(setRes(resCode.BadRequest, false, 'At least one image is required for event', null))
+			res.send(setRes(resCode.BadRequest, false, 'At least one image is required for product', null))
 			validation = false;
 		} else if (filesData.length > 5) {
 			validation = false;
@@ -211,7 +211,7 @@ exports.removeImagesFromCombo = (req, res) => {
 			}).catch(error => {
 				console.log('===========remove images from combo offer========')
 				console.log(error.message)
-				res.send(setRes(resCode.InternalServer, null, true, "Fail to remove image from event."))
+				res.send(setRes(resCode.InternalServer, null, true, "Fail to remove image from combo offer."))
 			})
 
 		} else {
@@ -285,7 +285,6 @@ exports.GetAllEvents = async (req, res) => {
 					let three = one.intersect(two)
 					let four = three != null ? three.snapTo('day') : ''
 					let five = three != null ? Array.from(three.by('days')) : ''
-
 					_.each(five, (v) => {
 						v = v.format('DD-MM-YYYY')
 						if (o.repeat_every === 0) {
@@ -310,6 +309,7 @@ exports.GetAllEvents = async (req, res) => {
 						}
 					})
 				})
+				console.log(resObj)
 				// get N element from object
 				let arrRes = []
 				if (data.limit && data.limit > 0) {
@@ -423,11 +423,11 @@ exports.UpdateEvent = async (req, res) => {
 	// _.contains([1, 2], parseInt(data.repeat_every)) ? data.repeat = true : '';
 	var row = await comboModel.findByPk(data.id);
 	// Start date save different columns logic
-	var startDate = moment(data.start_date).format('DD-MM-YYYY HH:mm:ss');
+	var startDate = moment(data.start_date).format('YYYY-MM-DD HH:mm:ss');
 	var sDate_value = startDate.split(" ");
 
 	// End date time save different columns logic
-	var endDate = moment(data.end_date).format('DD-MM-YYYY HH:mm:ss');
+	var endDate = moment(data.end_date).format('YYYY-MM-DD HH:mm:ss');
 	var eDate_value = endDate.split(" ");
 	if (data.id != null) {
 		if(requiredFields == ''){
@@ -505,24 +505,38 @@ exports.UpdateEvent = async (req, res) => {
 									id: data.id,
 									is_deleted: false
 								}
-							}).then(async combo => {
-								console.log(combo.dataValues)
-								var combo_images = combo.images
-								var image_array = [];
-								for (const data of combo_images) {
-									const signurl = await awsConfig.getSignUrl(data).then(function (res) {
+							}).then(async comboData => {
+								comboModel.update({
+									start_date : sDate_value[0],
+									start_time : sDate_value[1],
+									end_date : eDate_value[0],
+									end_time : eDate_value[1],
+								},{
+									where:{
+										id: data.id,
+										is_deleted: false
+									}
+								}).then(async comboValue =>{
+									comboModel.findOne({
+										where: {
+											id: data.id,
+											is_deleted: false
+										}
+									}).then(async combo => {
+										var combo_images = combo.images
+										var image_array = [];
+										for (const data of combo_images) {
+											const signurl = await awsConfig.getSignUrl(data).then(function (res) {
 
-										image_array.push(res);
-									});
-								}
-								combo.dataValues.combo_images = image_array
-								combo.dataValues.start_date = sDate_value[0]
-								combo.dataValues.start_time = sDate_value[1]
-								combo.dataValues.end_date = eDate_value[0]
-								combo.dataValues.end_time = eDate_value[1]
-								res.send(setRes(resCode.OK, true, "Event updated successfully.", combo))
+												image_array.push(res);
+											});
+										}
+										combo.dataValues.combo_images = image_array
+										
+										res.send(setRes(resCode.OK, true, "Event updated successfully.", combo))
+									})
+								})
 							}).catch(error => {
-
 								console.log(error.message)
 								res.send(setRes(resCode.InternalServer, false, "Fail to update event.", null))
 							})
