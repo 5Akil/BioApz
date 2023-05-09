@@ -50,7 +50,7 @@ exports.CreateEvent = async (req, res) => {
 		var eDate_value = endDate.split(" ");
 
 		if (filesData.length == 0) {
-			res.send(setRes(resCode.BadRequest, false, 'At least one image is required for product', null))
+			res.send(setRes(resCode.BadRequest, false, 'At least one image is required for event', null))
 			validation = false;
 		} else if (filesData.length > 5) {
 			validation = false;
@@ -211,7 +211,7 @@ exports.removeImagesFromCombo = (req, res) => {
 			}).catch(error => {
 				console.log('===========remove images from combo offer========')
 				console.log(error.message)
-				res.send(setRes(resCode.InternalServer, null, true, "Fail to remove image from combo offer."))
+				res.send(setRes(resCode.InternalServer, null, true, "Fail to remove image from event."))
 			})
 
 		} else {
