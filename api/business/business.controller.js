@@ -9,6 +9,7 @@ var setRes = require('../../response')
 var jwt = require('jsonwebtoken');
 var models = require('../../models')
 var bcrypt = require('bcrypt')
+var commonConfig = require('../../config/common_config')
 var _ = require('underscore')
 const Sequelize = require('sequelize');
 var notification = require('../../push_notification')
@@ -126,9 +127,9 @@ exports.GetRecommendedBusiness = async (req, res) => {
 					model: category,
 					where: whereCategory,
 				},
-				{
-					model: template
-				}
+				// {
+				// 	model: template
+				// }
 			],
 			having: {
 				distance: {
@@ -144,12 +145,16 @@ exports.GetRecommendedBusiness = async (req, res) => {
 		}).then((business) => {
 
 			_.map(business, async(Obj) => {
-				var banner = await awsConfig.getSignUrl(Obj.banner).then(function(res){
-					Obj.banner = res
-				});
-  			var template_url = await awsConfig.getSignUrl(Obj.template.image).then(function(res){
-  				Obj.template.template_url = res
-  			});
+				if(Obj.banner != null){
+					var banner = await awsConfig.getSignUrl(Obj.banner).then(function(res){
+						Obj.banner = res;
+					});
+				}else{
+					Obj.banner = commonConfig.default_user_image;
+				}
+  			// var template_url = await awsConfig.getSignUrl(Obj.template.image).then(function(res){
+  			// 	Obj.template.template_url = res
+  			// });
   			return Obj;
 				// return Obj.template.template_url = Obj.template.template_url.concat(`?bid=${Obj.id}&uid=${data.user_id}&ccd=${Obj.color_code}`)
 			})
@@ -196,21 +201,27 @@ exports.GetBusinessDetail = async (req, res) => {
 				{
 					model: category,
 				},
-				{
-					model: template
-				}
+				// {
+				// 	model: template
+				// }
 			],
 		}).then(async business => {
 			if (business != '' && business != null && business.id != null){
-				var business_banner = await awsConfig.getSignUrl(business.banner).then(function(res){
-					business.banner = res;
-				})
-				var business_template_template_url = await awsConfig.getSignUrl(business.template.image).then(function(res){
-					business.template.template_url = res
-				})
-				var business_template_image = await awsConfig.getSignUrl(business.template.image).then(function(res){
-					business.template.image = res
-				})
+				if(business.banner != null){
+					var business_banner = await awsConfig.getSignUrl(business.banner).then(function(res){
+						business.banner = res;
+					})
+				}
+				else{
+					business.banner = commonConfig.default_user_image;
+				}
+				
+				// var business_template_template_url = await awsConfig.getSignUrl(business.template.image).then(function(res){
+				// 	business.template.template_url = res
+				// })
+				// var business_template_image = await awsConfig.getSignUrl(business.template.image).then(function(res){
+				// 	business.template.image = res
+				// })
 				res.send(setRes(resCode.OK, true, "Get business detail successfully.",business))
 			}else{
 				res.send(setRes(resCode.ResourceNotFound, false, "Business not found.",null))
@@ -238,10 +249,15 @@ exports.GetProfile = async (req, res) =>{
 		},
 		include: [categoryModel]
 	}).then(async business => {
-		if (business != null){
-			var business_banner = await awsConfig.getSignUrl(business.banner).then(function(res){
-				business.banner = res
-			});
+		if(business){
+			if (business.banner != null){
+				var business_banner = await awsConfig.getSignUrl(business.banner).then(function(res){
+					business.banner = res
+				});
+			}
+			else{
+				business.banner = commonConfig.default_user_image;
+			}
 			res.send(setRes(resCode.OK, true, "Get business profile successfully.",business))
 		}
 		else{
@@ -309,9 +325,14 @@ exports.UpdateBusinessDetail = async (req, res) => {
 							}}}).then(async updatebusinessemailData =>{
 											if (updatebusinessemailData == null){
 												if(!(_.isEmpty(data.banner))){
-													var UpdatedBusiness_banner = await awsConfig.getSignUrl(UpdatedBusiness.banner).then(function(res){
+													if(UpdatedBusiness.banner != null){
+														var UpdatedBusiness_banner = await awsConfig.getSignUrl(UpdatedBusiness.banner).then(function(res){
 														UpdatedBusiness.banner = res
-													})
+														})
+													}
+													else{
+														UpdatedBusiness.banner = commonConfig.default_user_image;
+													}
 												}
 												res.send(setRes(resCode.OK, true, "Business detail update successfully.",UpdatedBusiness))
 											}
@@ -504,9 +525,13 @@ exports.GetAllOffers = async (req, res) => {
 					var offer_image = await awsConfig.getSignUrl(offer.image).then(function(res){
 						offer.image = res
 					})
-					var offer_business_banner = await awsConfig.getSignUrl(offer.business.banner).then(function(res){
-						offer.business.banner = res
-					})
+					if(offer.business.banner != null){
+						var offer_business_banner = await awsConfig.getSignUrl(offer.business.banner).then(function(res){
+							offer.business.banner = res
+						})
+					}else{
+						offer.business.banner = commonConfig.default_user_image;
+					}
 				}
 				res.send(setRes(resCode.OK, true, "Get offers list successfully",offers))
 			}else{
@@ -993,9 +1018,14 @@ exports.CreateBusiness = async (req, res) => {
 								}
 								else{
 									if(business.banner != null){
-										var business_banner = await awsConfig.getSignUrl(business.banner).then(function(res){
-											business.banner = res
-										});
+										if(business.banner != null){
+											var business_banner = await awsConfig.getSignUrl(business.banner).then(function(res){
+												business.banner = res
+											});
+										}
+										else{
+											business.banner = commonConfig.default_user_image;
+										}
 									}
 									res.send(setRes(resCode.OK, true, "Business created successfully.",business))
 								}

@@ -191,6 +191,9 @@ exports.Login = async (req, res) => {
 												user.profile_picture = res
 											})
 										}
+										else{
+											user.profile_picture = commonConfig.default_user_image;
+										}
 										res.send(setRes(resCode.OK, true, 'You are successfully logged in',user))
 									}else{
 										res.send(setRes(resCode.InternalServer, false, 'Token not updated',null))
@@ -306,6 +309,7 @@ exports.GetProfileDetail = async (req, res) => {
 				is_deleted:false
 			}
 		}).then(async user => {
+			console.log(user)
 			if (user != null){
 				if(user.profile_picture != null){
 
