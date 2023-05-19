@@ -12,5 +12,5 @@ module.exports = function (app) {
   app.use('/api/faq', require('./api/faq'))
   app.use('/api/cms', require('./api/cms'))
   app.use('/api/setting', require('./api/setting'))
-  
+  app.use('/api/rewards', require('./api/rewards'))
 }
