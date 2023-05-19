@@ -1,6 +1,6 @@
 'use strict';
 module.exports = (sequelize, DataTypes) => {
-  const Cashbacks = sequelize.define('cashbacks', {
+  const Discounts = sequelize.define('discounts', {
     id: {
       type: DataTypes.INTEGER,
       primaryKey: true,
@@ -10,13 +10,10 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.INTEGER,
     },
     title: DataTypes.STRING,
-     cashback_on: {
+    discount_type: {
       type: DataTypes.BOOLEAN
     },
-    cashback_type: {
-      type: DataTypes.BOOLEAN
-    },
-    cashback_value: DataTypes.DECIMAL,
+    discount_value: DataTypes.DECIMAL,
     product_category_id: {
         type: DataTypes.INTEGER,
     },
@@ -37,9 +34,9 @@ module.exports = (sequelize, DataTypes) => {
      deletedAt: 'deleted_at',
     // timestamps: false
   });
-  Cashbacks.associate = function(models) {
+  Discounts.associate = function(models) {
     // associations can be defined here
-    Cashbacks.belongsTo(models.business, {foreignKey: 'business_id'})
+    Discounts.belongsTo(models.business, {foreignKey: 'business_id'})
   };
-  return Cashbacks;
+  return Discounts;
 };

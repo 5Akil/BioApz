@@ -16,7 +16,7 @@ module.exports = (sequelize, DataTypes) => {
     amount: DataTypes.DECIMAL,
     cashback_percentage : DataTypes.DECIMAL,
     expire_at: DataTypes.DATE,
-    description: DataTypes.TEXT,
+    description: DataTypes.STRING,
     is_cashback: {
       type: DataTypes.BOOLEAN,
       defaultValue: false

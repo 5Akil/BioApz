@@ -29,7 +29,7 @@ const fileFilter = (req,file,cb) => {
   }
 }
 // Gift Cards Section START
-var controller = require('./rewards.controller')
+var controller = require('./gift-cards.controller')
 
 var giftcardawsupload = multer({
   storage:multerS3({
@@ -55,13 +55,9 @@ var giftcardawsupload = multer({
 router.post('/list', verifyToken, controller.giftCardList)
 
 // Gift Card Routes
-router.post('/gift-cards/create', verifyToken, giftcardawsupload.single('image'), controller.giftCardCreate)
-router.delete('/gift-cards/delete/:id', verifyToken, controller.deleteGiftCard)
-router.get('/gift-cards/view/:id',verifyToken,controller.giftCardView)
-router.post('/gift-cards/update',verifyToken,giftcardawsupload.single('image'), controller.giftCardUpdate)
+router.post('/create', verifyToken, giftcardawsupload.single('image'), controller.giftCardCreate)
+router.delete('/delete/:id', verifyToken, controller.deleteGiftCard)
+router.get('/view/:id',verifyToken,controller.giftCardView)
+router.post('/update',verifyToken,giftcardawsupload.single('image'), controller.giftCardUpdate)
 // Gift Cards Section END
-
-// Cashbacks Section START
-router.post('/cashbacks/create', verifyToken, controller.cashbackCreate)
-// Cashbacks Section END
 module.exports = router;

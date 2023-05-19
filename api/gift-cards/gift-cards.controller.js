@@ -19,6 +19,7 @@ const fs = require('fs');
 var multer = require('multer');
 const multerS3 = require('multer-s3');
 
+
 // Create Reward Gift Card START
 exports.giftCardCreate = async(req,res) => {
 	try{
@@ -28,11 +29,12 @@ exports.giftCardCreate = async(req,res) => {
 		req.file ? data.image = `${req.file.key}`: '';
 		var validation = true;
 		var Op = models.Op;
+		let arrayFields = ['image','name','amount','expire_at','description','is_cashback'];
+		const result =  data.is_cashback == 1 ? (arrayFields.push('cashback_percentage')) : '';
 
-		var requiredFields = _.reject(['business_id','image','name','amount','expire_at','description','is_cashback'], (o) => { return _.has(data, o)  })
-		const result =  data.is_cashback == 1 ? (requiredFields.push('cashback_percentage')) : '';
+		var requiredFields = _.reject(arrayFields, (o) => { return _.has(data, o)  })
 
-		if(requiredFields == ""){
+		if(requiredFields.length == 0){
 			var currentDate = (moment().format('YYYY-MM-DD') == moment(data.expire_at).format('YYYY-MM-DD'))
 			var pastDate = moment(data.expire_at,'YYYY-MM-DD').isBefore(moment());
 			if(result != '' && !((data.cashback_percentage >= Math.min(1,100)) && (data.cashback_percentage <= Math.max(1,100)))){
@@ -43,7 +45,6 @@ exports.giftCardCreate = async(req,res) => {
 				res.send(setRes(resCode.BadRequest,false, "Amount field invalid.!",null))
 			}else {
 				if(validation){
-					console.log(data.business_id)
 					businessModel.findOne({
 						where:{
 							id:data.business_id,
@@ -69,13 +70,13 @@ exports.giftCardCreate = async(req,res) => {
 									giftCardModel.create(data).then(async giftCardData => {
 										if(giftCardData){
 											if(data.image != null){
-												var image = await awsConfig.getSignUrl(data.image).then(function(res){
-													data.image = res
+												var image = await awsConfig.getSignUrl(giftCardData.image).then(function(res){
+													giftCardData.image = res
 												})
 											}else{
-												data.image = commonConfig.default_image
+												giftCardData.image = commonConfig.default_image
 											}
-											res.send(setRes(resCode.OK,true,"Gift card added successfully",data))
+											res.send(setRes(resCode.OK,true,"Gift card added successfully",giftCardData))
 										}else{
 											res.send(setRes(resCode.InternalServer,false,"Internal server error",null))
 										}
@@ -96,59 +97,6 @@ exports.giftCardCreate = async(req,res) => {
 	}
 }
 // Create Reward Gift Card END
-
-// List Reward Gift Card START
-exports.giftCardList =async(req,res) => {
-	try{
-		var data = req.body
-		var giftCardModel = models.gift_cards
-
-		var requiredFields = _.reject(['business_id','page','page_size'], (o) => { return _.has(data, o)  })
-
-		if(requiredFields == ""){
-			if(data.page < 0 || data.page == 0) {
-				res.send(setRes(resCode.BadRequest, null, true, "invalid page number, should start with 1"))
-			}
-			var skip = data.page_size * (data.page - 1)
-			var limit = parseInt(data.page_size)
-
-			var condition = {
-				offset:skip,
-				limit : limit,
-				order: [
-					['createdAt', 'DESC']
-				],
-			}
-			condition.where = {business_id:data.business_id,isDeleted:false,status:true}
-
-			giftCardModel.findAll(condition).then(async giftCardData => {
-				if (giftCardData.length > 0){
-					// Update Sign URL
-					for(const data of giftCardData){
-						if(data.image != null){
-							var images = data.image
-						  	const signurl = await awsConfig.getSignUrl(images.toString()).then(function(res){
-						  		data.image = res;
-						  	});
-						}else {
-						  	data.image = commonConfig.default_image;
-						}
-					}
-					res.send(setRes(resCode.OK, true, "Get gift card detail successfully.",giftCardData))
-				}else{
-					res.send(setRes(resCode.ResourceNotFound, false, "Gift Card not found.",null))
-				}		
-			}).catch(error => {
-				res.send(setRes(resCode.BadRequest, error, "Fail to send request.",null))
-			})
-		}else{
-			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
-		}
-	}catch(error){
-		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
-	}
-}
-// List Reward Gift Card END
 
 // Delete Reward Gift Card START
 exports.deleteGiftCard =async(req,res) => {
@@ -184,7 +132,6 @@ exports.deleteGiftCard =async(req,res) => {
 									id: deleteData.id
 								}
 								}).then(async Data => {
-									console.log(Data)
 									const params = {
 										Bucket: awsConfig.Bucket,
 										Key: Data.image
@@ -252,11 +199,12 @@ exports.giftCardUpdate =async(req,res) => {
 		req.file ? data.image = `${req.file.key}`: '';
 		var giftCardModel = models.gift_cards;
 		var Op = models.Op;
+		let arrayFields = ['id','image','name','amount','expire_at','description','is_cashback'];
+		const result =  data.is_cashback == 1 ? (arrayFields.push('cashback_percentage')) : '';
 
-		var requiredFields = _.reject(['id','image','name','amount','cashback_percentage','expire_at','description','is_cashback'], (o) => { return _.has(data, o)  })
-		const result =  data.is_cashback == 1 ? (requiredFields.push('cashback_percentage')) : '';
-		
-		if(requiredFields == ""){
+		var requiredFields = _.reject( arrayFields, (o) => { return _.has(data, o)  })
+
+		if(requiredFields.length == 0){
 			var currentDate = (moment().format('YYYY-MM-DD') == moment(data.expire_at).format('YYYY-MM-DD'))
 			var pastDate = moment(data.expire_at,'YYYY-MM-DD').isBefore(moment());
 			if((result != '' && !(data.cashback_percentage >= Math.min(1,100)) && (data.cashback_percentage <= Math.max(1,100)))){
@@ -308,21 +256,154 @@ exports.giftCardUpdate =async(req,res) => {
 }
 // Update Reward Gift Card END
 
+// List Reward Gift Card START
+exports.giftCardListOld =async(req,res) => {
+	try{
+		var data = req.body
+		var giftCardModel = models.gift_cards
+		const promises = [];
 
-// Create Reward cashbacks START
-exports.cashbackCreate = async(req,res) =>{
-	// var data = req.body
-	// var cashbackModel = models.cashbacks
-	// var businessModel = models.business
-	// var validation = true;
+		var requiredFields = _.reject(['business_id','page','page_size'], (o) => { return _.has(data, o)  })
 
-	// var requiredFields = _.reject(['business_id','title','cashback_on','cashback_type','amount','product_category_id','product_id','validity_for'], (o) => { return _.has(data, o)  })
+		if(requiredFields == ""){
+			if(data.page < 0 || data.page == 0) {
+				res.send(setRes(resCode.BadRequest, null, true, "invalid page number, should start with 1"))
+			}
+			var skip = data.page_size * (data.page - 1)
+			var limit = parseInt(data.page_size)
 
-	// if(requiredFields == ""){
+			var condition = {
+				offset:skip,
+				limit : limit,
+				order: [
+					['createdAt', 'DESC']
+				],
+			}
+			condition.where = {business_id:data.business_id,isDeleted:false,status:true}
 
-	// }else {
-	// 	res.send(setRes(resCode.BadRequest,false, (requiredFields.toString() + ' are required'),null))
-	// }
-	console.log(data)
+			promises.push();
+
+			giftCardModel.findAll(condition).then(async giftCardData => {
+				if (giftCardData.length > 0){
+					// Update Sign URL
+					for(const data of giftCardData){
+						if(data.image != null){
+							var images = data.image
+						  	const signurl = await awsConfig.getSignUrl(images.toString()).then(function(res){
+						  		data.image = res;
+						  	});
+						}else {
+						  	data.image = commonConfig.default_image;
+						}
+					}
+					res.send(setRes(resCode.OK, true, "Get gift card detail successfully.",giftCardData))
+				}else{
+					res.send(setRes(resCode.ResourceNotFound, false, "Gift Card not found.",null))
+				}		
+			}).catch(error => {
+				res.send(setRes(resCode.BadRequest, error, "Fail to send request.",null))
+			})
+		}else{
+			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
+		}
+	}catch(error){
+		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
+	}
 }
-// Create Reward cashbacks END
+// List Reward Gift Card END
+
+exports.giftCardList =async(req,res) => {
+	try{
+		var data = req.body
+		var giftCardModel = models.gift_cards
+		var cashbackModel = models.cashbacks
+		var discountModel = models.discounts
+		var couponeModel = models.coupones
+		const promises = [];
+
+		var requiredFields = _.reject(['business_id','page','page_size'], (o) => { return _.has(data, o)  })
+
+		if(requiredFields == ""){
+			if(data.page < 0 || data.page == 0) {
+				res.send(setRes(resCode.BadRequest, null, true, "invalid page number, should start with 1"))
+			}
+			var skip = data.page_size * (data.page - 1)
+			var limit = parseInt(data.page_size)
+
+			var condition = {
+				offset:skip,
+				limit : limit,
+				order: [
+					['createdAt', 'DESC']
+				],
+			}
+			condition.where = {isDeleted:false,status:true}
+
+			promises.push(
+				giftCardModel.findAll(condition).then(async giftCardData => {
+					if (giftCardData.length > 0){
+						// Update Sign URL
+						for(const data of giftCardData){
+							if(data.image != null){
+								var images = data.image
+								const signurl = await awsConfig.getSignUrl(images.toString()).then(function(res){
+									data.image = res;
+								});
+							}else {
+								data.image = commonConfig.default_image;
+							}
+						}
+						return giftCardData;
+					}
+					return [];
+				}),
+				cashbackModel.findAll(condition).then(async CashbackData => {
+					if (CashbackData.length > 0){
+						return CashbackData;
+					}
+					return [];		
+				}),
+				discountModel.findAll(condition).then(async DiscountData => {
+					if (DiscountData.length > 0){
+						return DiscountData;
+					}
+					return [];
+				}),
+				couponeModel.findAll(condition).then(async CouponeData => {
+					if (CouponeData.length > 0){
+						return CouponeData;
+					}
+					return [];
+				})
+			);
+
+			const [giftcardRewards,cashbackData,discountData,couponeData] = await Promise.all(promises);
+
+			const arrays = [giftcardRewards, cashbackData,discountData,couponeData];
+			const mergedArray = mergeRandomArrayObjects(arrays);
+
+			res.send(setRes(resCode.OK, true, "Get gift card detail successfully.",mergedArray))
+			
+
+		}else{
+			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
+		}
+	}catch(error){
+		console.log(error)
+		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
+	}
+}
+
+function mergeRandomArrayObjects(arrays) {
+  const shuffledArrays = _.shuffle(arrays);
+  const mergedArray = [];
+
+  _.each(shuffledArrays, function(array) {
+    _.each(array, function(obj) {
+      _.extend(obj, { random: Math.random() });
+      mergedArray.push(obj);
+    });
+  });
+
+  return mergedArray;
+}

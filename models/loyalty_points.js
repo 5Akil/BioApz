@@ -1,6 +1,6 @@
 'use strict';
 module.exports = (sequelize, DataTypes) => {
-  const Cashbacks = sequelize.define('cashbacks', {
+  const Cashbacks = sequelize.define('loyalty_points', {
     id: {
       type: DataTypes.INTEGER,
       primaryKey: true,
