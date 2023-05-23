@@ -317,7 +317,7 @@ exports.UpdateBusinessDetail = async (req, res) => {
 															}else{
 																dataDetail.banner = awsConfig.default_image;
 															}
-													res.send(setRes(resCode.OK,true,'Business update successfully',dataDetail))
+													res.send(setRes(resCode.OK,true,'Business profile update successfully',dataDetail))
 													})
 												}else{
 													res.send(setRes(resCode.BadRequest, false, "Fail to update business.",null))
