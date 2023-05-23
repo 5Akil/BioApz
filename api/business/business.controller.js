@@ -307,14 +307,18 @@ exports.UpdateBusinessDetail = async (req, res) => {
 												const params = {Bucket: awsConfig.Bucket,Key: businessDetail.banner};awsConfig.deleteImageAWS(params)
 											}
 												if(updateData == 1){
-													if(data.banner != null){
-														var updateData_image = await awsConfig.getSignUrl(data.banner).then(function(res){
-															businessDetail.banner = res;
-														})
-													}else{
-														businessDetail.banner = awsConfig.default_image;
-													}
-													res.send(setRes(resCode.OK,true,'Business update successfully',businessDetail))
+													businessModel.findOne({
+														where:{id:data.id,is_deleted:false,is_active:true}
+													}).then(async dataDetail => {
+															if(data.banner != null){
+																var updateData_image = await awsConfig.getSignUrl(data.banner).then(function(res){
+																	dataDetail.banner = res;
+																})
+															}else{
+																dataDetail.banner = awsConfig.default_image;
+															}
+													res.send(setRes(resCode.OK,true,'Business update successfully',dataDetail))
+													})
 												}else{
 													res.send(setRes(resCode.BadRequest, false, "Fail to update business.",null))
 												}
