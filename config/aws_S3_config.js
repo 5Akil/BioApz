@@ -22,7 +22,7 @@ function getSignUrl (key) {
 
         if ((err && err.code === 'NotFound') || (err =='Forbidden: null')) {
           
-          resolve(commonConfig.app_url+'/public/defualt.png');
+          resolve(commonConfig.default_image);
         }  else {
           const urlParams = {
             Bucket: Bucket,
