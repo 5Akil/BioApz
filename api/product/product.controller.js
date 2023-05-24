@@ -892,11 +892,12 @@ exports.UpdateCategory = async(req, res) => {
 exports.RemoveCategory = async(req, res) => {
 
 	var data = req.params
-	
+	var productModel = models.products
 	var productCategoryModel = models.product_categorys
 	var cartModel = models.shopping_cart
 	var orderDetailsModel = models.order_details
 	var wishlistModel = models.wishlists
+	var Op = models.Op;
 
 	if(data.id){
 
@@ -906,7 +907,6 @@ exports.RemoveCategory = async(req, res) => {
 				is_deleted:false
 			}
 		}).then(productData => {
-			
 			var product_ids = [];
 			for(const data of productData){
 				product_ids.push(data.id)
@@ -931,7 +931,6 @@ exports.RemoveCategory = async(req, res) => {
 							is_deleted:false
 						}
 					}).then(wishlistData => {
-
 						if(wishlistData.length > 0){
 							res.send(setRes(resCode.BadRequest,false,"You can not delete this category because some product of this sub-category are into some user wishlist",null))
 						}else{
@@ -959,7 +958,7 @@ exports.RemoveCategory = async(req, res) => {
 
 										if(categoryData != null){
 
-											categoryData.update({is_deleted:true})
+											categoryData.update({is_deleted:true,is_enable:false})
 											res.send(setRes(resCode.OK,true,"Product category deleted successfully",null))
 										}else{
 											res.send(setRes(resCode.ResourceNotFound,false,"Product category not found",null))

@@ -52,7 +52,7 @@ exports.create = async(req,res) =>{
 			if(!(Number.isInteger(Number(data.order_value)))){
 				res.send(setRes(resCode.BadRequest,false, "Amount field invalid.!",null))
 			}else if(currentDate || pastDate){
-				res.send(setRes(resCode.BadRequest,false, "You can't selete past and current date.!",null))
+				res.send(setRes(resCode.BadRequest,false, "You can't select past and current date.!",null))
 			}else if(valueType == false && valueType != null){
 				res.send(setRes(resCode.BadRequest,false, "Please enter valid percentage value!",null))
 			}else{
@@ -165,7 +165,7 @@ exports.update =async(req,res) => {
 			if(!(Number.isInteger(Number(data.order_value)))){
 				res.send(setRes(resCode.BadRequest,false, "Amount field invalid.!",null))
 			}else if(currentDate || pastDate){
-				res.send(setRes(resCode.BadRequest,false, "You can't selete past and current date.!",null))
+				res.send(setRes(resCode.BadRequest,false, "You can't select past and current date.!",null))
 			}else if(valueType == false && valueType != null){
 				res.send(setRes(resCode.BadRequest,false, "Please enter valid percentage value!",null))
 			}else{

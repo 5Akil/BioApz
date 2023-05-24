@@ -34,7 +34,7 @@ exports.cashbackCreate = async(req,res) =>{
 		const result =  data.cashback_type == 0 ? (!((data.cashback_value >= Math.min(1,100)) && (data.cashback_value <= Math.max(1,100))) ? true : false) : '';
 		if(requiredFields == ""){
 			if(result){
-				res.send(setRes(resCode.BadRequest,false, "Please selete valid cashback value value in percentage(between 1 to 100)!",null))
+				res.send(setRes(resCode.BadRequest,false, "Please select valid cashback value in percentage(between 1 to 100)!",null))
 			}else{
 				if(validation){{
 				businessModel.findOne({
@@ -150,7 +150,7 @@ exports.cashbackUpdate = async(req,res) => {
 		const result =  data.cashback_type == 0 ? (!((data.cashback_value >= Math.min(1,100)) && (data.cashback_value <= Math.max(1,100))) ? true : false) : '';
 		if(requiredFields == ""){
 			if(result){
-				res.send(setRes(resCode.BadRequest,false, "Please selete valid cashback value value in percentage(between 1 to 100)!",null))
+				res.send(setRes(resCode.BadRequest,false, "Please select valid cashback value in percentage(between 1 to 100)!",null))
 			}else{
 				cashbackModel.findOne({
 					where:{id: data.id,isDeleted: false,status: true,deleted_at:null}
@@ -182,7 +182,7 @@ exports.cashbackUpdate = async(req,res) => {
 															res.send(setRes(resCode.OK,true,'Cashback update successfully',data))
 														})
 													}else{
-														res.send(setRes(resCode.BadRequest, false, "Fail to update gift card.",null))
+														res.send(setRes(resCode.BadRequest, false, "Fail to update cashback.",null))
 													}
 												})
 											}

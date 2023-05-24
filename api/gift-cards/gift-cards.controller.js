@@ -38,9 +38,9 @@ exports.giftCardCreate = async(req,res) => {
 			var currentDate = (moment().format('YYYY-MM-DD') == moment(data.expire_at).format('YYYY-MM-DD'))
 			var pastDate = moment(data.expire_at,'YYYY-MM-DD').isBefore(moment());
 			if(result != '' && !((data.cashback_percentage >= Math.min(1,100)) && (data.cashback_percentage <= Math.max(1,100)))){
-				res.send(setRes(resCode.BadRequest,false, "Please selete valid cashback percentage!",null))
+				res.send(setRes(resCode.BadRequest,false, "Please select valid cashback percentage!",null))
 			}else if(currentDate || pastDate){
-				res.send(setRes(resCode.BadRequest,false, "You can't selete past and current date.!",null))
+				res.send(setRes(resCode.BadRequest,false, "You can't select past and current date.!",null))
 			}else if(!(Number.isInteger(Number(data.amount)))){
 				res.send(setRes(resCode.BadRequest,false, "Amount field invalid.!",null))
 			}else {
@@ -172,9 +172,9 @@ exports.giftCardUpdate =async(req,res) => {
 			var currentDate = (moment().format('YYYY-MM-DD') == moment(data.expire_at).format('YYYY-MM-DD'))
 			var pastDate = moment(data.expire_at,'YYYY-MM-DD').isBefore(moment());
 			if((result != '' && !(data.cashback_percentage >= Math.min(1,100)) && (data.cashback_percentage <= Math.max(1,100)))){
-				res.send(setRes(resCode.BadRequest,false, "Please selete valid cashback percentage!",null))
+				res.send(setRes(resCode.BadRequest,false, "Please select valid cashback percentage!",null))
 			}else if(currentDate || pastDate){
-				res.send(setRes(resCode.BadRequest,false, "You can't selete past and current date.!",null))
+				res.send(setRes(resCode.BadRequest,false, "You can't select past and current date.!",null))
 			}else{
 				giftCardModel.findOne({
 					where:{id: data.id,isDeleted: false,status: true}

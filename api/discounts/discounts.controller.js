@@ -34,7 +34,7 @@ exports.create = async(req,res) =>{
 		const result =  data.discount_type == 0 ? (!((data.discount_value >= Math.min(1,100)) && (data.discount_value <= Math.max(1,100))) ? true : false) : '';
 		if(requiredFields == ""){
 			if(result){
-				res.send(setRes(resCode.BadRequest,false, "Please selete valid discount value value in percentage(between 1 to 100)!",null))
+				res.send(setRes(resCode.BadRequest,false, "Please select valid discount value in percentage(between 1 to 100)!",null))
 			}else{
 				if(validation){
 					businessModel.findOne({
@@ -145,7 +145,7 @@ exports.update =async(req,res) => {
 		const result =  data.discount_type == 0 ? (!((data.discount_value >= Math.min(1,100)) && (data.discount_value <= Math.max(1,100))) ? true : false) : '';
 		if(requiredFields == ""){
 			if(result){
-				res.send(setRes(resCode.BadRequest,false, "Please selete valid cashback value value in percentage(between 1 to 100)!",null))
+				res.send(setRes(resCode.BadRequest,false, "Please select valid cashback value in percentage(between 1 to 100)!",null))
 			}else{
 				discountModel.findOne({
 					where:{id: data.id,isDeleted: false,status: true,deleted_at:null}

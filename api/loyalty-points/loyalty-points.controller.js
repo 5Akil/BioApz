@@ -37,7 +37,7 @@ exports.create = async(req,res) =>{
 			if(data.amount != undefined && !(Number.isInteger(Number(data.amount))) && data.loyalty_type == 0 && !_.isEmpty(data.amount)){
 				res.send(setRes(resCode.BadRequest,false, "Amount field invalid.!",null))
 			}else if(currentDate || pastDate){
-				res.send(setRes(resCode.BadRequest,false, "You can't selete past and current date.!",null))
+				res.send(setRes(resCode.BadRequest,false, "You can't select past and current date.!",null))
 			}else{
 				if(validation){
 					businessModel.findOne({
@@ -143,7 +143,7 @@ exports.update = async(req,res) => {
 			if(data.amount != undefined && !(Number.isInteger(Number(data.amount))) && data.loyalty_type == 0 && !_.isEmpty(data.amount)){
 				res.send(setRes(resCode.BadRequest,false, "Amount field invalid.!",null))
 			}else if(currentDate || pastDate){
-				res.send(setRes(resCode.BadRequest,false, "You can't selete past and current date.!",null))
+				res.send(setRes(resCode.BadRequest,false, "You can't select past and current date.!",null))
 			}else{
 				loyaltyPointModel.findOne({
 					where:{id: data.id,isDeleted: false,status: true,deleted_at:null}
