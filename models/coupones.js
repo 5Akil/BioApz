@@ -20,8 +20,10 @@ module.exports = (sequelize, DataTypes) => {
     product_id: {
         type: DataTypes.INTEGER,
     },
-    products: DataTypes.STRING,
-    order_min_value: DataTypes.DECIMAL,
+    value_type: {
+      type: DataTypes.BOOLEAN,
+    },
+    order_value: DataTypes.DECIMAL,
     expire_at: DataTypes.DATE,
     description: DataTypes.STRING,
     validity_for: DataTypes.INTEGER,

@@ -52,12 +52,13 @@ var giftcardawsupload = multer({
 
 
 // Common
-router.post('/list', verifyToken, controller.giftCardList)
+router.post('/list', verifyToken, controller.commonRewardsList)
+router.get('/view/:id',verifyToken,controller.commonRewardsView)
+
 
 // Gift Card Routes
 router.post('/create', verifyToken, giftcardawsupload.single('image'), controller.giftCardCreate)
 router.delete('/delete/:id', verifyToken, controller.deleteGiftCard)
-router.get('/view/:id',verifyToken,controller.giftCardView)
 router.post('/update',verifyToken,giftcardawsupload.single('image'), controller.giftCardUpdate)
 // Gift Cards Section END
 module.exports = router;

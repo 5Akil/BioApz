@@ -28,13 +28,13 @@ const fileFilter = (req,file,cb) => {
     cb(new Error('You can upload only jpg, jpeg, png, gif files'),false);
   }
 }
-// Cashbackss Section START
-var controller = require('./cashbacks.controller')
+// Coupones Section START
+var controller = require('./coupones.controller')
 
-// Cashbacks Routes
-router.post('/create', verifyToken, controller.cashbackCreate)
-router.delete('/delete/:id', verifyToken,controller.deleteGiftCard)
-router.post('/update',verifyToken,controller.cashbackUpdate)
-// Cashbackss Section END
+// Coupones Routes
+router.post('/create', verifyToken, controller.create)
+router.delete('/delete/:id', verifyToken,controller.delete)
+router.post('/update',verifyToken,controller.update)
+// Coupones Section END
 
 module.exports = router;

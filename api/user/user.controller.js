@@ -217,7 +217,9 @@ exports.Login = async (req, res) => {
 					is_active: true,
 					is_deleted: false
 				},
-				include: [templateModel, categoryModel]
+				include: [
+					// templateModel, 
+					categoryModel]
 		}).then(function (business) {
 			if (!business) {
 				res.send(setRes(resCode.BadRequest, false ,'Business not found.',null))
@@ -255,22 +257,22 @@ exports.Login = async (req, res) => {
 											business.banner = res
 										})
 									}
-									if(business.template != null){
+									// if(business.template != null){
 
-										if(business.template.template_url != null){
+									// 	if(business.template.template_url != null){
 
-											var template_url = await awsConfig.getSignUrl(business.template.image).then(function(res){
-												business.template.template_url = res;
-											})
-										}
-										if(business.template.image != null){
+									// 		var template_url = await awsConfig.getSignUrl(business.template.image).then(function(res){
+									// 			business.template.template_url = res;
+									// 		})
+									// 	}
+									// 	if(business.template.image != null){
 
-											var template_image = await awsConfig.getSignUrl(business.template.image).then(function(res){
-												business.template.image = res;
-											})
-										}
+									// 		var template_image = await awsConfig.getSignUrl(business.template.image).then(function(res){
+									// 			business.template.image = res;
+									// 		})
+									// 	}
 
-									}
+									// }
 
 									res.send(setRes(resCode.OK, true, 'You are successfully logged in',business))
 								}else{

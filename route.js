@@ -15,4 +15,8 @@ module.exports = function (app) {
   app.use('/api/gift-cards', require('./api/gift-cards'))
   app.use('/api/rewards', require('./api/gift-cards'))
   app.use('/api/cashbacks', require('./api/cashbacks'))
+  app.use('/api/discounts', require('./api/discounts'))
+  app.use('/api/coupones', require('./api/coupones'))
+  app.use('/api/loyalty_points', require('./api/loyalty-points'))
+
 }

@@ -10,7 +10,7 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.INTEGER,
     },
     title: DataTypes.STRING,
-     cashback_on: {
+    cashback_on: {
       type: DataTypes.BOOLEAN
     },
     cashback_type: {
@@ -23,6 +23,7 @@ module.exports = (sequelize, DataTypes) => {
     product_id: {
         type: DataTypes.INTEGER,
     },
+    description: DataTypes.STRING,
     validity_for: DataTypes.INTEGER,
     status: {
       type: DataTypes.BOOLEAN,

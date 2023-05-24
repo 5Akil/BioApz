@@ -1,4 +1,4 @@
-var mongoose = require('mongoose')
+        var mongoose = require('mongoose')
 var async = require('async')
 var crypto = require('crypto')
 var EmailTemplates = require('swig-email-templates')
@@ -113,7 +113,6 @@ exports.deleteGiftCard =async(req,res) => {
 				isDeleted: false
 			}
 			}).then(async giftCardData => {
-				console.log(giftCardData)
 				var timestamps = moment().format('YYYY-MM-DD HH:mm:ss')
 				if (giftCardData) {
 					const params = {
@@ -156,41 +155,6 @@ exports.deleteGiftCard =async(req,res) => {
 	}
 }
 // Delete Reward Gift Card END
-
-// View Reward Gift Card START
-exports.giftCardView =async(req,res) => {
-	try{
-		var data = req.params
-		var giftCardModel = models.gift_cards
-
-		giftCardModel.findOne({
-			where:{
-				id:data.id,
-				status:true,
-				isDeleted:false
-			}
-		}).then(async giftCardData => {
-			if (giftCardData != null){
-				if(giftCardData.image != null){
-					var giftCardData_image = await awsConfig.getSignUrl(giftCardData.image).then(function(res){
-						giftCardData.image = res;
-					})
-				}else{
-					giftCardData.image = commonConfig.default_image;
-				}
-				res.send(setRes(resCode.OK, true, "Get gift card detail successfully.",giftCardData))
-			}
-			else{
-				res.send(setRes(resCode.ResourceNotFound,false, "Gift card not found.",null))
-			}
-		}).catch(error2 => {
-			res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
-		})
-	}catch(error){
-		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
-	}
-}
-// View Reward Gift Card END
 
 // Update Reward Gift Card START
 exports.giftCardUpdate =async(req,res) => {
@@ -256,92 +220,41 @@ exports.giftCardUpdate =async(req,res) => {
 }
 // Update Reward Gift Card END
 
-// List Reward Gift Card START
-exports.giftCardListOld =async(req,res) => {
-	try{
-		var data = req.body
-		var giftCardModel = models.gift_cards
-		const promises = [];
-
-		var requiredFields = _.reject(['business_id','page','page_size'], (o) => { return _.has(data, o)  })
-
-		if(requiredFields == ""){
-			if(data.page < 0 || data.page == 0) {
-				res.send(setRes(resCode.BadRequest, null, true, "invalid page number, should start with 1"))
-			}
-			var skip = data.page_size * (data.page - 1)
-			var limit = parseInt(data.page_size)
-
-			var condition = {
-				offset:skip,
-				limit : limit,
-				order: [
-					['createdAt', 'DESC']
-				],
-			}
-			condition.where = {business_id:data.business_id,isDeleted:false,status:true}
-
-			promises.push();
-
-			giftCardModel.findAll(condition).then(async giftCardData => {
-				if (giftCardData.length > 0){
-					// Update Sign URL
-					for(const data of giftCardData){
-						if(data.image != null){
-							var images = data.image
-						  	const signurl = await awsConfig.getSignUrl(images.toString()).then(function(res){
-						  		data.image = res;
-						  	});
-						}else {
-						  	data.image = commonConfig.default_image;
-						}
-					}
-					res.send(setRes(resCode.OK, true, "Get gift card detail successfully.",giftCardData))
-				}else{
-					res.send(setRes(resCode.ResourceNotFound, false, "Gift Card not found.",null))
-				}		
-			}).catch(error => {
-				res.send(setRes(resCode.BadRequest, error, "Fail to send request.",null))
-			})
-		}else{
-			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
-		}
-	}catch(error){
-		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
-	}
-}
-// List Reward Gift Card END
-
-exports.giftCardList =async(req,res) => {
+// List Rewards START
+exports.commonRewardsList =async(req,res) => {
 	try{
 		var data = req.body
 		var giftCardModel = models.gift_cards
 		var cashbackModel = models.cashbacks
 		var discountModel = models.discounts
 		var couponeModel = models.coupones
+		var loyaltyPointModel = models.loyalty_points
+		var Op = models.Op
 		const promises = [];
+		var request_type = data.type
 
-		var requiredFields = _.reject(['business_id','page','page_size'], (o) => { return _.has(data, o)  })
+		var requiredFields = _.reject(['business_id','page','page_size','type'], (o) => { return _.has(data, o)  })
 
 		if(requiredFields == ""){
 			if(data.page < 0 || data.page == 0) {
-				res.send(setRes(resCode.BadRequest, null, true, "invalid page number, should start with 1"))
+				return res.send(setRes(resCode.BadRequest, null, false, "invalid page number, should start with 1"))
 			}
-			var skip = data.page_size * (data.page - 1)
-			var limit = parseInt(data.page_size)
+			var typeArr = ['gift_cards','cashbacks','discounts','coupones','loyalty_points'];
 
-			var condition = {
-				offset:skip,
-				limit : limit,
-				order: [
-					['createdAt', 'DESC']
-				],
+			if((request_type) && !(typeArr.includes(request_type))){
+				return res.send(setRes(resCode.BadRequest, null, false, "Please select valid type."))
 			}
-			condition.where = {isDeleted:false,status:true}
+			// var skip = data.page_size * (data.page - 1)
+			// var limit = parseInt(data.page_size)
+			let skip = data.page_size * (data.page - 1);
+			let limit = parseInt(data.page_size);
 
 			promises.push(
-				giftCardModel.findAll(condition).then(async giftCardData => {
+				giftCardModel.findAll({
+					where:{isDeleted:false,status:true,business_id:data.business_id,deleted_at: null,[Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],}
+				}).then(async giftCardData => {
 					if (giftCardData.length > 0){
+						const dataArray = [];
 						// Update Sign URL
 						for(const data of giftCardData){
 							if(data.image != null){
@@ -352,39 +265,86 @@ exports.giftCardList =async(req,res) => {
 							}else {
 								data.image = commonConfig.default_image;
 							}
+							let result = 	JSON.parse(JSON.stringify(data));
+							result.type="gift_cards";
+							dataArray.push(result);
 						}
-						return giftCardData;
+						return dataArray;
 					}
 					return [];
 				}),
-				cashbackModel.findAll(condition).then(async CashbackData => {
+				cashbackModel.findAll({
+					where:{isDeleted:false,status:true,business_id:data.business_id,deleted_at: null,[Op.or]: [{title: {[Op.like]: "%" + data.search + "%",}}],}
+				}).then(async CashbackData => {
 					if (CashbackData.length > 0){
-						return CashbackData;
+						const dataArray = [];
+						for(const data of CashbackData){
+						let result = 	JSON.parse(JSON.stringify(data));
+						result.type="cashbacks";
+						dataArray.push(result);
+						}
+						return dataArray;
 					}
 					return [];		
 				}),
-				discountModel.findAll(condition).then(async DiscountData => {
-					if (DiscountData.length > 0){
-						return DiscountData;
+				discountModel.findAll({
+					where:{isDeleted:false,status:true,business_id:data.business_id,deleted_at: null,[Op.or]: [{title: {[Op.like]: "%" + data.search + "%",}}],}
+				}).then(async DiscountData => {
+						if (DiscountData.length > 0){
+							const dataArray = [];
+							for(const data of DiscountData){
+								let result = 	JSON.parse(JSON.stringify(data));
+								result.type="discounts";
+								dataArray.push(result);
+								}
+								return dataArray;
+						}
+					return [];
+				}),
+				couponeModel.findAll({
+					where:{isDeleted:false,status:true,business_id:data.business_id,deleted_at: null,[Op.or]: [{title: {[Op.like]: "%" + data.search + "%",}}],}
+				}).then(async CouponeData => {
+					if (CouponeData.length > 0){
+						const dataArray = [];
+						for(const data of CouponeData){
+						let result = 	JSON.parse(JSON.stringify(data));
+						result.type="coupones";
+						dataArray.push(result);
+						}
+						return dataArray;
+						
 					}
 					return [];
 				}),
-				couponeModel.findAll(condition).then(async CouponeData => {
-					if (CouponeData.length > 0){
-						return CouponeData;
-					}
-					return [];
+				loyaltyPointModel.findAll({
+					where:{isDeleted:false,status:true,business_id:data.business_id,deleted_at: null,[Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],}
+					}).then(async LoyaltyPointData => {
+						if(LoyaltyPointData.length  > 0){
+							const dataArray = [];
+							for(const data of LoyaltyPointData){
+								let result = 	JSON.parse(JSON.stringify(data));
+								result.type="loyalty_points";
+								dataArray.push(result);
+						}
+						return dataArray;
+						}
+						return [];
 				})
 			);
 
-			const [giftcardRewards,cashbackData,discountData,couponeData] = await Promise.all(promises);
+			const [giftcardRewards,cashbackData,discountData,couponeData,loyaltyPointData] = await Promise.all(promises);
 
-			const arrays = [giftcardRewards, cashbackData,discountData,couponeData];
+			const arrays = [giftcardRewards, cashbackData,discountData,couponeData,loyaltyPointData];
 			const mergedArray = mergeRandomArrayObjects(arrays);
-
-			res.send(setRes(resCode.OK, true, "Get gift card detail successfully.",mergedArray))
-			
-
+			let result =  mergedArray.slice(skip, skip+limit);
+			// for(let data of result){
+			// 	console.log(data.type)
+			// }
+			if(!(_.isEmpty(request_type))){
+				result = _.filter(result, {type: request_type})
+			}
+			// 	result.totalRecord = mergedArray.length || 0;
+			res.send(setRes(resCode.OK, true, "Get rewards detail successfully.",result))
 		}else{
 			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 		}
@@ -404,6 +364,109 @@ function mergeRandomArrayObjects(arrays) {
       mergedArray.push(obj);
     });
   });
-
   return mergedArray;
 }
+// List Rewards END
+
+// View Rewards START
+exports.commonRewardsView =async(req,res) => {
+	try{
+		var data = req.params
+		var paramType = req.query.type
+		var giftCardModel = models.gift_cards
+		var cashbackModel = models.cashbacks
+		var discountModel = models.discounts
+		var couponeModel = models.coupones
+		var loyaltyPointModel = models.loyalty_points
+
+		var typeArr = ['gift_cards','cashbacks','discounts','coupones','loyalty_points'];
+		if((paramType) && !(typeArr.includes(paramType))){
+			return res.send(setRes(resCode.BadRequest, null, false, "Please select valid type."))
+		}else{
+			if(paramType == 'gift_cards') {
+				giftCardModel.findOne({
+					where:{
+						id:data.id,
+						status:true,
+						isDeleted:false
+					}
+				}).then(async giftCardData => {
+					if (giftCardData != null){
+						if(giftCardData.image != null){
+							var giftCardData_image = await awsConfig.getSignUrl(giftCardData.image).then(function(res){
+								giftCardData.image = res;
+							})
+						}else{
+							giftCardData.image = commonConfig.default_image;
+						}
+						res.send(setRes(resCode.OK, true, "Get gift card detail successfully.",giftCardData))
+					}
+					else{
+						res.send(setRes(resCode.ResourceNotFound,false, "Gift card not found.",null))
+					}
+				}).catch(error2 => {
+					res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
+				})
+			
+			}else if(paramType == 'cashbacks') {
+				cashbackModel.findOne({
+					where:{id:data.id,status:true,isDeleted:false}
+				}).then(async cashbackData => {
+					if (cashbackData != null){
+						res.send(setRes(resCode.OK, true, "Get cashbacks detail successfully.",cashbackData))
+					}
+					else{
+						res.send(setRes(resCode.ResourceNotFound,false, "Cashback not found.",null))
+					}
+				}).catch(error3 => {
+					res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
+				})
+			}else if(paramType == 'discounts'){
+				discountModel.findOne({
+					where:{id:data.id,status:true,isDeleted:false,deleted_at:null}
+				}).then(async discountData => {
+					if (discountData != null){
+						res.send(setRes(resCode.OK, true, "Get Discount detail successfully.",discountData))
+					}
+					else{
+						res.send(setRes(resCode.ResourceNotFound,false, "Discount not found.",null))
+					}
+				}).catch(error4 => {
+					res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
+				})
+			}else if(paramType == 'coupones'){
+				couponeModel.findOne({
+					where:{id:data.id,status:true,isDeleted:false,deleted_at:null}
+				}).then(async couponeData => {
+					if (couponeData != null){
+						res.send(setRes(resCode.OK, true, "Get Coupones detail successfully.",couponeData))
+					}
+					else{
+						res.send(setRes(resCode.ResourceNotFound,false, "Coupon not found.",null))
+					}
+				}).catch(error5 => {
+					res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
+				})
+			}else if(paramType == 'loyalty_points'){
+				loyaltyPointModel.findOne({
+					where:{id:data.id,status:true,isDeleted:false,deleted_at:null}
+				}).then(async loyaltyPointData => {
+					if (loyaltyPointData != null){
+						res.send(setRes(resCode.OK, true, "Get loyalty point detail successfully.",loyaltyPointData))
+					}
+					else{
+						res.send(setRes(resCode.ResourceNotFound,false, "loyalty point not found.",null))
+					}
+				}).catch(error2 => {
+					res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
+				})
+			}else {
+				res.send(setRes(resCode.BadRequest, null, false, "Please select valid type."))
+			}
+		}
+		
+	}catch(error){
+		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
+	}
+}
+// View Rewards END
