@@ -505,6 +505,7 @@ exports.forgotPassword = async (req, res) => {
 				})
 			  }
 			  data.otp = otp;
+			  data.otp_valid_till = moment.utc(commonConfig.email_otp_expired).format("mm:ss")
 			  data.expire_at = expire_at;
 						res.send(setRes(resCode.OK,true,'We have sent otp to your email address.',data))
 						
@@ -580,6 +581,7 @@ exports.forgotPassword = async (req, res) => {
 				})
 			  }
 			  data.otp = otp;
+			  data.otp_valid_till = moment.utc(commonConfig.email_otp_expired).format("mm:ss")
 			  data.expire_at = expire_at;
 						res.send(setRes(resCode.OK,true,'We have sent otp to your email address.',data))
 						
