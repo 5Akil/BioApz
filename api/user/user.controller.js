@@ -456,8 +456,8 @@ exports.forgotPassword = async (req, res) => {
 					
 					var currentDate = new Date();
 					var futureDate = new Date(currentDate.getTime() + commonConfig.email_otp_expired);
-					var new_date = futureDate.toLocaleString('en-US', { timeZone: 'UTC' });
-					var expire_at = moment(new_date).format('YYYY-MM-DD HH:mm:ss');
+					// var new_date = futureDate.toLocaleString('en-US', { timeZone: 'UTC' });
+					var expire_at = moment.utc(futureDate).format('YYYY-MM-DD HH:mm:ss');
 	
 					emailOtpVerifieModel.create({user_id:user.id,email:data.email,otp:otp,role_id:data.role,expire_at:expire_at}).then( function (OtpData){
 						
@@ -532,9 +532,9 @@ exports.forgotPassword = async (req, res) => {
 					
 					var currentDate = new Date();
 					var futureDate = new Date(currentDate.getTime() + commonConfig.email_otp_expired);
-					var new_date = futureDate.toLocaleString('en-US', { timeZone: 'UTC' });
-					var expire_at = moment(new_date).format('YYYY-MM-DD HH:mm:ss');
-					console.log(user.id);
+					// var new_date = futureDate.toLocaleString('en-US', { timeZone: 'UTC' });
+					var expire_at = moment.utc(futureDate).format('YYYY-MM-DD HH:mm:ss');
+					console.log(expire_at);
 					emailOtpVerifieModel.create({user_id:user.id,email:data.email,otp:otp,role_id:data.role,expire_at:expire_at}).then( function (OtpData){
 						
 						if (OtpData) {
@@ -674,7 +674,7 @@ exports.OtpVerify = async (req, res) => {
 				}
   			
   		}else{
-  			res.send(setRes(resCode.Unauthorized,false,"Invalid otp",null))
+  			res.send(setRes(resCode.BadRequest,false,"Invalid otp",null))
   		}
   	});
   }else{
