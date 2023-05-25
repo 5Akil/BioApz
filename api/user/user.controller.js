@@ -674,7 +674,7 @@ exports.OtpVerify = async (req, res) => {
 				}
   			
   		}else{ 
-  			res.send(setRes(resCode.BadRequest,false,"Invalid otp",null))
+  			res.send(setRes(resCode.BadRequest,false,"Please enter valid OTP.",null))
   		}
   	});
   }else{

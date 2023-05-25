@@ -6,7 +6,7 @@ const resCode = require('../config/res_code_config')
 function verifyToken(req, res, next) {
   const token = req.headers.authorization;
   if (!token) {
-    return res.send(setRes(resCode.Forbidden, null, true, "No token provided."))
+    return res.send(setRes(resCode.Forbidden, true, "No token provided.",null))
   }
 
   if (token == "rFpNuPj3dNMjLgSkUOkz"){
@@ -16,7 +16,7 @@ function verifyToken(req, res, next) {
 
 	return jwt.verify(token, 'secret', (err, decoded) => {
 		if (err) {
-		  return res.send(setRes(resCode.InternalServer, null, true, "Failed to verify token."))
+		  return res.send(setRes(resCode.Unauthorized, true, "Failed to verify token.", null))
 		}
 		// if everything good, save to request for use in other routes
 		req.userEmail = decoded.user;
@@ -48,7 +48,7 @@ function verifyToken(req, res, next) {
 							return next()
 						}
 						else{
-							return res.send(setRes(resCode.InternalServer, null, true, "Unauthorized Token"))
+							return res.send(setRes(resCode.Unauthorized, true, "Unauthorized Token",null))
 						}
 					})
 					
@@ -56,7 +56,7 @@ function verifyToken(req, res, next) {
 			})
 		  
 		}else{
-		  return res.send(setRes(resCode.InternalServer, null, true, "Failed to verify token."))
+		  return res.send(setRes(resCode.Unauthorized, true, "Failed to verify token.",null))
 		}
 		
 	  });
