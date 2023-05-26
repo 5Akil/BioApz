@@ -10,7 +10,7 @@ const {verifyToken} = require('../../config/token');
 
 var storage = multer.diskStorage({ 
     destination: function (req, file, cb) {
-      cb(null, 'public/')
+      cb(null, 'public/gift-cards')
     },
     filename: function (req, file, cb) {
       var fileExtension = file.mimetype.split('/')[1];

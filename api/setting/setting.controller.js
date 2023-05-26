@@ -22,29 +22,42 @@ exports.AddSettingData = async (req, res) => {
 
 	var data = req.body
 	var settingModel = models.settings
+	var businessModel = models.business
 
 	var requiredFields = _.reject(['business_id','setting_key', 'setting_label', 'setting_value'], (o) => { return _.has(data, o)  })
 
 	if(requiredFields == ""){
-
-		settingModel.findOne({
+		businessModel.findOne({
 			where:{
-				business_id:data.business_id,
-				setting_key:data.setting_key
+				id:data.business_id,
+				is_deleted:false,
+				is_active:true
 			}
-		}).then(settingDetail => {
-
-			if(settingDetail != null){
-				res.send(setRes(resCode.BadRequest,false,"This key data already exsit",null))
+		}).then(async business => {
+			if(_.isEmpty(business)){
+				res.send(setRes(resCode.ResourceNotFound, false, "Business not found.",null))
 			}else{
-
-				settingModel.create(data).then(settingData => {
-					res.send(setRes(resCode.OK,true,"Data added successfully",data))
-				}).catch(error => {
-					res.send(setRes(resCode.InternalServer,false,"Fail to add data",null))
+				settingModel.findOne({
+					where:{
+						business_id:data.business_id,
+						setting_key:data.setting_key
+					}
+				}).then(settingDetail => {
+		
+					if(settingDetail != null){
+						res.send(setRes(resCode.BadRequest,false,"This key data already exsit",null))
+					}else{
+		
+						settingModel.create(data).then(settingData => {
+							res.send(setRes(resCode.OK,true,"Data added successfully",data))
+						}).catch(error => {
+							res.send(setRes(resCode.InternalServer,false,"Fail to add data",null))
+						})
+					}
 				})
 			}
 		})
+		
 
 	}else{
 		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))

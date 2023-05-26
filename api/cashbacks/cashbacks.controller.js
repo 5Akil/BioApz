@@ -31,7 +31,7 @@ exports.cashbackCreate = async(req,res) =>{
 		var validation = true;
 
 		var requiredFields = _.reject(['business_id','title','cashback_on','cashback_type','cashback_value','product_category_id','product_id','validity_for'], (o) => { return _.has(data, o)  })
-		const result =  data.cashback_type == 0 ? (!((data.cashback_value >= Math.min(1,100)) && (data.cashback_value <= Math.max(1,100))) ? true : false) : '';
+		const result =  !_.isEmpty(data.cashback_type) && data.cashback_type == 0 ? (!((data.cashback_value >= Math.min(1,100)) && (data.cashback_value <= Math.max(1,100))) ? true : false) : '';
 		if(requiredFields == ""){
 			if(result){
 				res.send(setRes(resCode.BadRequest,false, "Please select valid cashback value in percentage(between 1 to 100)!",null))
@@ -137,70 +137,128 @@ exports.deleteGiftCard =async(req,res) => {
 // Delete Reward Cashback END
 
 // Update Reward Cashback START
-exports.cashbackUpdate = async(req,res) => {
-	try{
-		var data = req.body
-		var cashbackModel = models.cashbacks
-		var businessModel = models.business
-		var categoryModel = models.product_categorys
-		var productModel = models.products
+exports.cashbackUpdate = async (req, res) => {
+	try {
+		var data = req.body;
+		var cashbackModel = models.cashbacks;
 		var Op = models.Op;
 		var validation = true;
-		var requiredFields = _.reject(['id','title','cashback_on','cashback_type','cashback_value','product_category_id','product_id','validity_for'], (o) => { return _.has(data, o)  })
-		const result =  data.cashback_type == 0 ? (!((data.cashback_value >= Math.min(1,100)) && (data.cashback_value <= Math.max(1,100))) ? true : false) : '';
-		if(requiredFields == ""){
-			if(result){
-				res.send(setRes(resCode.BadRequest,false, "Please select valid cashback value in percentage(between 1 to 100)!",null))
-			}else{
-				cashbackModel.findOne({
-					where:{id: data.id,isDeleted: false,status: true,deleted_at:null}
-				}).then(async cashbackDetails => {
-					if(_.isEmpty(cashbackDetails)){
-						res.send(setRes(resCode.ResourceNotFound, false, "Cashback not found.",null))
-					}else{
-						await cashbackModel.findOne({
-							where:{isDeleted:false,status:true,deleted_at:null,title:{[Op.eq]: data.title},id:{[Op.ne]: data.id}}
-						}).then(async cashbackData => {
-							if(cashbackData == null){
-								await categoryModel.findOne({
-									where:{id:data.product_category_id,is_deleted:false,is_enable:true}
-								}).then(async productCategory => {
-									if(_.isEmpty(productCategory)){
-										res.send(setRes(resCode.ResourceNotFound, false, "Product Category not found.",null))
-									}else{
-										await productModel.findOne({
-											where:{id:data.product_id,is_deleted:false}
-										}).then(async products => {
-											if(_.isEmpty(products)){
-												res.send(setRes(resCode.ResourceNotFound, false, "Product not found.",null))
-											}else{
-												cashbackModel.update(data,
-													{where: {id:data.id,isDeleted:false,status:true,deleted_at:null}
-												}).then(async updateData => {
-													if(updateData){
-														cashbackModel.findOne({where:{id:data.id}}).then(async data => {
-															res.send(setRes(resCode.OK,true,'Cashback update successfully',data))
-														})
-													}else{
-														res.send(setRes(resCode.BadRequest, false, "Fail to update cashback.",null))
-													}
-												})
-											}
-										})
-									}
-								})
-							}else {
-								res.send(setRes(resCode.BadRequest,false, "Cashback title already taken.!",null))
-							}
-						})
-					}
+		var requiredFields = _.reject(["id"], (o) => {
+			return _.has(data, o);
+		});
+		if (requiredFields == "") {
+			cashbackModel
+				.findOne({
+					where: {
+						id: data.id,
+						isDeleted: false,
+						status: true,
+						deleted_at: null,
+					},
 				})
-			}
-		}else {
-			res.send(setRes(resCode.BadRequest,false, (requiredFields.toString() + ' are required'),null))
+				.then(async (cashbackDetails) => {
+					if (_.isEmpty(cashbackDetails)) {
+						res.send(
+							setRes(
+								resCode.ResourceNotFound,
+								false,
+								"Cashback not found.",
+								null
+							)
+						);
+					} else {
+						if (!(_.isEmpty(data.cashback_value))) {
+							const result =
+								data.cashback_type == 0
+									? !(
+										data.cashback_value >= Math.min(1, 100) &&
+										data.cashback_value <= Math.max(1, 100)
+									)
+										? true
+										: false
+									: "";
+							if (result) {
+								return res.send(
+									setRes(
+										resCode.BadRequest,
+										false,
+										"Please select valid cashback value in percentage(between 1 to 100)!",
+										null
+									)
+								);
+							}
+						}
+						await cashbackModel
+							.findOne({
+								where: {
+									isDeleted: false,
+									status: true,
+									deleted_at: null,
+									title: { [Op.eq]: data.title },
+									id: { [Op.ne]: data.id },
+								},
+							})
+							.then(async (cashbackData) => {
+								if (cashbackData == null) {
+									cashbackModel
+										.update(data, {
+											where: {
+												id: data.id,
+												isDeleted: false,
+												status: true,
+												deleted_at: null,
+											},
+										})
+										.then(async (updateData) => {
+											if (updateData) {
+												cashbackModel
+													.findOne({ where: { id: data.id } })
+													.then(async (data) => {
+														res.send(
+															setRes(
+																resCode.OK,
+																true,
+																"Cashback update successfully",
+																data
+															)
+														);
+													});
+											} else {
+												res.send(
+													setRes(
+														resCode.BadRequest,
+														false,
+														"Fail to update cashback.",
+														null
+													)
+												);
+											}
+										});
+								} else {
+									res.send(
+										setRes(
+											resCode.BadRequest,
+											false,
+											"Cashback title already taken.!",
+											null
+										)
+									);
+								}
+							});
+					}
+				});
+		} else {
+			res.send(
+				setRes(
+					resCode.BadRequest,
+					false,
+					requiredFields.toString() + " are required",
+					null
+				)
+			);
 		}
-	}catch(error){
-		res.send(setRes(resCode.BadRequest,false,"Something went wrong!",null))
+	} catch (error) {
+		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null));
 	}
-}
+};
 // Update REward Cashback END

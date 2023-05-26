@@ -26,12 +26,20 @@ exports.StoreFaq = async(req, res) => {
 	var requiredFields = _.reject(['business_id', 'title', 'description'], (o) => { return _.has(data, o)  })
 
 	if(requiredFields == ""){
-
-		faqModel.create(data).then(faqData => {
-			res.send(setRes(resCode.OK,true,"Faq added successfully",data))
-		}).catch(error => {
-			res.send(setRes(resCode.InternalServer,false,"Fail to add faq",null))
+		businessModel.findOne({
+			where: {id: data.business_id,is_deleted: false,is_active:true}
+		}).then(async business => {
+			if(business){
+				faqModel.create(data).then(faqData => {
+					res.send(setRes(resCode.OK,true,"Faq added successfully",data))
+				}).catch(error => {
+					res.send(setRes(resCode.InternalServer,false,"Fail to add faq",null))
+				})
+			}else{
+				res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
+			}
 		})
+		
 	}else{
 		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
@@ -89,7 +97,6 @@ exports.GetFaqById = async (req,res) => {
 		}
 	}).then(faqData => {
 		if(faqData != null){
-
 			res.send(setRes(resCode.OK,true,"Faq get successfully",faqData))
 		}else{
 			res.send(setRes(resCode.ResourceNotFound,false,"Faq not found",null))

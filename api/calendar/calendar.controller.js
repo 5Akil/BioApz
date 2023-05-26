@@ -26,6 +26,7 @@ exports.CreateEvent = async (req, res) => {
 	var filesData = req.files;
 	var comboModel = models.combo_calendar
 	var Op = models.Op
+	var businessModel = models.business
 	var validation = true;
 
 	var requiredFields = _.reject(['business_id', 'title', 'description', 'end_date', 'start_date', 'location'], (o) => { return _.has(data, o) })
@@ -72,69 +73,76 @@ exports.CreateEvent = async (req, res) => {
 
 		}
 		if (validation) {
+			businessModel.findOne({
+				where: {id: data.business_id,is_deleted: false,is_active:true}
+			}).then(async business => {
+				if(business){
+					var comboOffer = await createComboOffer(data)
 
-			var comboOffer = await createComboOffer(data)
+					if (comboOffer != '') {
+						const lastInsertId = comboOffer.id;
+						if (lastInsertId) {
 
-			if (comboOffer != '') {
-				const lastInsertId = comboOffer.id;
-				if (lastInsertId) {
+							var files = [];
+							for (const file of filesData) {
 
-					var files = [];
-					for (const file of filesData) {
+								const fileContent = await fs.promises.readFile(file.path);
+								const fileExt = `${file.originalname}`.split('.').pop()
+								const randomString = Math.floor(Math.random() * 1000000);
+								const fileName = `${Date.now()}_${randomString}.${fileExt}`;
+								const params = {
+									Bucket: awsConfig.Bucket,
+									Key: `combos/${lastInsertId}/${fileName}`,
+									Body: fileContent,
+								};
 
-						const fileContent = await fs.promises.readFile(file.path);
-						const fileExt = `${file.originalname}`.split('.').pop()
-						const randomString = Math.floor(Math.random() * 1000000);
-						const fileName = `${Date.now()}_${randomString}.${fileExt}`;
-						const params = {
-							Bucket: awsConfig.Bucket,
-							Key: `combos/${lastInsertId}/${fileName}`,
-							Body: fileContent,
-						};
-
-						const result = await awsConfig.s3.upload(params).promise();
-						if (result) {
-							files.push(`combos/${lastInsertId}/${fileName}`)
-							fs.unlinkSync(file.path)
-						}
-					}
-					var images = files.join(';');
-
-					comboModel.update({
-						images: images,
-						start_date: sDate_value[0],
-						start_time: sDate_value[1],
-						end_date: eDate_value[0],
-						end_time: eDate_value[1]
-					}, {
-						where: {
-							id: lastInsertId,
-
-						}
-					}).then(async comboData => {
-						if (comboData) {
-							comboModel.findOne({ where: { id: lastInsertId } }).then(async getData => {
-								var combo_images = getData.images
-								var image_array = [];
-								for (const data of combo_images) {
-									const signurl = await awsConfig.getSignUrl(data).then(function (res) {
-										image_array.push(res);
-									});
+								const result = await awsConfig.s3.upload(params).promise();
+								if (result) {
+									files.push(`combos/${lastInsertId}/${fileName}`)
+									fs.unlinkSync(file.path)
 								}
-								getData.dataValues.combo_images = image_array
+							}
+							var images = files.join(';');
 
-								res.send(setRes(resCode.OK, true, "Event created successfully", getData))
+							comboModel.update({
+								images: images,
+								start_date: sDate_value[0],
+								start_time: sDate_value[1],
+								end_date: eDate_value[0],
+								end_time: eDate_value[1]
+							}, {
+								where: {
+									id: lastInsertId,
+
+								}
+							}).then(async comboData => {
+								if (comboData) {
+									comboModel.findOne({ where: { id: lastInsertId } }).then(async getData => {
+										var combo_images = getData.images
+										var image_array = [];
+										for (const data of combo_images) {
+											const signurl = await awsConfig.getSignUrl(data).then(function (res) {
+												image_array.push(res);
+											});
+										}
+										getData.dataValues.combo_images = image_array
+
+										res.send(setRes(resCode.OK, true, "Event created successfully", getData))
+									})
+								} else {
+									res.send(setRes(resCode.InternalServer, getData, null, "Image not update"))
+								}
 							})
-						} else {
-							res.send(setRes(resCode.InternalServer, getData, null, "Image not update"))
 						}
-					})
-				}
 
-			}
-			else {
-				res.send(setRes(resCode.BadRequest, false, "Fail to create event.", null))
-			}
+					}
+					else {
+						res.send(setRes(resCode.BadRequest, false, "Fail to create event.", null))
+					}
+				}else{
+					res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
+				}
+			})
 		}
 
 	} else {
@@ -165,48 +173,52 @@ exports.removeImagesFromCombo = (req, res) => {
 				}
 			}).then(comboOffer => {
 
-				// console.log(JSON.parse(JSON.stringify(comboOffer)))
-				var replaceImages = _.filter(comboOffer.images, (img) => {
-					return img != data.image
-				})
-				var images = replaceImages.join(';');
-				comboModel.update({
-					images: images
-				}, {
-					where: {
-						id: data.combo_id
-					}
-				}).then(updatedOffer => {
+				if(comboOffer){
+					// console.log(JSON.parse(JSON.stringify(comboOffer)))
+					var replaceImages = _.filter(comboOffer.images, (img) => {
+						return img != data.image
+					})
+					var images = replaceImages.join(';');
+					comboModel.update({
+						images: images
+					}, {
+						where: {
+							id: data.combo_id
+						}
+					}).then(updatedOffer => {
 
-					if (updatedOffer > 0) {
-						const params = {
-							Bucket: awsConfig.Bucket,
-							Key: data.image
-						};
-						awsConfig.deleteImageAWS(params)
+						if (updatedOffer > 0) {
+							const params = {
+								Bucket: awsConfig.Bucket,
+								Key: data.image
+							};
+							awsConfig.deleteImageAWS(params)
 
-						comboModel.findOne({
-							where: {
-								id: data.combo_id
-							}
-						}).then(async combo => {
-							var combo_images = combo.images
-							var image_array = [];
-							for (const data of combo_images) {
-								const signurl = await awsConfig.getSignUrl(data).then(function (res) {
-									image_array.push(res);
-								});
-							}
-							combo.dataValues.combo_images = image_array
-							res.send(setRes(resCode.OK, true, "Image remove successfully", combo))
-						})
-					}
+							comboModel.findOne({
+								where: {
+									id: data.combo_id
+								}
+							}).then(async combo => {
+								var combo_images = combo.images
+								var image_array = [];
+								for (const data of combo_images) {
+									const signurl = await awsConfig.getSignUrl(data).then(function (res) {
+										image_array.push(res);
+									});
+								}
+								combo.dataValues.combo_images = image_array
+								res.send(setRes(resCode.OK, true, "Image remove successfully", combo))
+							})
+						}
 
-				}).catch(error => {
-					console.log('=======replace combo images error=========')
-					console.log(error.message)
-					res.send(setRes(resCode.InternalServer, null, true, "Internal server error."))
-				})
+					}).catch(error => {
+						console.log('=======replace combo images error=========')
+						console.log(error.message)
+						res.send(setRes(resCode.InternalServer, null, true, "Internal server error."))
+					})
+				}else{
+					res.send(setRes(resCode.ResourceNotFound, false, "Event not found.", null))
+				}
 
 			}).catch(error => {
 				console.log('===========remove images from combo offer========')

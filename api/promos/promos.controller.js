@@ -23,9 +23,7 @@ exports.CreatePromo = async (req, res) => {
 	var data = req.body
 	req.file ? data.image = `${req.file.key}`: '';
 	var promosModel = models.promos
-	
-	console.log(data);
-
+	var businessModel = models.business
 	var requiredFields = _.reject(['business_id', 'promo_code', 'description', 'repeat_every', 'end_date', 'start_date'], (o) => { return (o ? true : false) & _.has(data, o)  })
 
 	data.repeat_every == 1 ? (data.repeat_on ? '' : requiredFields.push('repeat_on')) : '';
@@ -39,19 +37,29 @@ exports.CreatePromo = async (req, res) => {
 	if (repeat_on_validation == '') {
 		
 		if (requiredFields == ''){
+			businessModel.findOne({
+				where:{
+					id:data.business_id,
+					is_deleted:false,
+					is_active:true
+				}
+			}).then(async business => {
+				if(_.isEmpty(business)){
+					res.send(setRes(resCode.ResourceNotFound, false, "Business not found.",null))
+				}else{
+					var Promo = await createPromo(data)
 
-			var Promo = await createPromo(data)
-
-			if (Promo != ''){
-				var Promo_image = await awsConfig.getSignUrl(Promo.image).then(function(res){
-					Promo.image = res
-				})
-				res.send(setRes(resCode.OK, true, 'Promo created successfully.',Promo))
-			}
-			else{
-				res.send(setRes(resCode.BadRequest, false, "Fail to create promo.",null))
-			}
-
+					if (Promo != ''){
+						var Promo_image = await awsConfig.getSignUrl(Promo.image).then(function(res){
+							Promo.image = res
+						})
+						res.send(setRes(resCode.OK, true, 'Promo created successfully.',Promo))
+					}
+					else{
+						res.send(setRes(resCode.BadRequest, false, "Fail to create promo.",null))
+					}
+						}
+			})			
 		}else{
 			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 		}

@@ -29,7 +29,7 @@ exports.giftCardCreate = async(req,res) => {
 		req.file ? data.image = `${req.file.key}`: '';
 		var validation = true;
 		var Op = models.Op;
-		let arrayFields = ['image','name','amount','expire_at','description','is_cashback'];
+		let arrayFields = ['business_id','image','name','amount','expire_at','description','is_cashback'];
 		const result =  data.is_cashback == 1 ? (arrayFields.push('cashback_percentage')) : '';
 
 		var requiredFields = _.reject(arrayFields, (o) => { return _.has(data, o)  })

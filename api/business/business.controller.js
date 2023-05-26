@@ -745,8 +745,6 @@ exports.CreateOffer = async (req, res) => {
 	req.file ? data.image = `${req.file.key}` : '';
 	var offerModel = models.offers
 
-	console.log(data);
-
 	var requiredFields = _.reject(['business_id', 'name', 'description', 'repeat_every', 'end_date', 'start_date'], (o) => { return _.has(data, o) })
 
 	data.repeat_every == 1 ? (data.repeat_on ? '' : requiredFields.push('repeat_on')) : '';
@@ -763,10 +761,13 @@ exports.CreateOffer = async (req, res) => {
 
 			var Offer = await createOffer(data)
 
-			if (Offer != '') {
-				Offer.image = await awsConfig.getSignUrl(Offer.image).then(function (res) {
+			if (data.image != null) {
+				Offer_image = await awsConfig.getSignUrl(data.image).then(function (res) {
 					Offer.image = res
 				})
+
+			}
+			if(Offer){
 				res.send(setRes(resCode.OK, true, 'Offer created successfully.', Offer))
 			}
 			else {

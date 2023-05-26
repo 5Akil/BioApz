@@ -26,24 +26,31 @@ exports.AddCms = async (req, res) => {
 	var requiredFields = _.reject(['business_id','page_key', 'page_label', 'page_value'], (o) => { return _.has(data, o)  })
 
 	if(requiredFields == ""){
-
-		cmsModel.findOne({
-			where:
-			{
-				page_key:data.page_key,
-				business_id:data.business_id
-			}
-		}).then(pageDetail => {
-
-			if(pageDetail != null){
-				res.send(setRes(resCode.BadRequest,true,"This page data already exsit",null))
-			}else{
-
-				cmsModel.create(data).then(cmsData => {
-					res.send(setRes(resCode.OK,true,"Data added successfully",data))
-				}).catch(error => {
-					res.send(setRes(resCode.InternalServer,false,"Fail to add cms data",null))
+		businessModel.findOne({
+			where: {id: data.business_id,is_deleted: false,is_active:true}
+		}).then(async business => {
+			if(business){
+				cmsModel.findOne({
+					where:
+					{
+						page_key:data.page_key,
+						business_id:data.business_id
+					}
+				}).then(pageDetail => {
+		
+					if(pageDetail != null){
+						res.send(setRes(resCode.BadRequest,true,"This page data already exist",null))
+					}else{
+		
+						cmsModel.create(data).then(cmsData => {
+							res.send(setRes(resCode.OK,true,"Data added successfully",data))
+						}).catch(error => {
+							res.send(setRes(resCode.InternalServer,false,"Fail to add cms data",null))
+						})
+					}
 				})
+			}else{
+				res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
 			}
 		})
 

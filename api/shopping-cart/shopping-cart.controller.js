@@ -19,35 +19,60 @@ exports.AddToCart = async(req,res) => {
 	var data = req.body
 	var shoppingCartModel = models.shopping_cart
 	var orderDetailsModel = models.order_details
+	var userModel = models.user
+	var productModel = models.products
 
 	var requiredFields = _.reject(['user_id', 'product_id', 'qty','price'], (o) => { return _.has(data, o)  })
 
 	if (requiredFields == ''){
-
-		orderDetailsModel.findOne({where: {product_id:data.product_id, is_deleted: false}}).then(OrderData => {
-			if(OrderData == null){
-
-				shoppingCartModel.findOne({where: {user_id: data.user_id,product_id : data.product_id, is_deleted: false}}).then(product => {
-					if(product == null){
-
-						shoppingCartModel.create(data).then(function (cartData) {
-							if (cartData) {
-								res.send(setRes(resCode.OK, true, 'Product added into cart successfully.',cartData));
-							} else {
-								res.send(setRes(resCode.BadRequest, false, 'Fail to add into cart',null));
-							}
-						});
-						
+		userModel.findOne({
+			where:{
+				id:data.user_id,
+				is_deleted:false,
+				is_active:true
+			}
+		}).then(async user => {
+			if(_.isEmpty(user)){
+				res.send(setRes(resCode.ResourceNotFound, false, "User not found.",null))
+			}else{
+				productModel.findOne({
+					where:{
+						id:data.product_id,
+						is_deleted:false
+					}
+				}).then(async product => {
+					if(_.isEmpty(product)){
+						res.send(setRes(resCode.ResourceNotFound, false, "Product not found.",null))
 					}else{
-
-						res.send(setRes(resCode.BadRequest, false, 'Product already into a cart...',null));
+						orderDetailsModel.findOne({where: {product_id:data.product_id, is_deleted: false}}).then(OrderData => {
+							if(OrderData == null){
+				
+								shoppingCartModel.findOne({where: {user_id: data.user_id,product_id : data.product_id, is_deleted: false}}).then(product => {
+									if(product == null){
+				
+										shoppingCartModel.create(data).then(function (cartData) {
+											if (cartData) {
+												res.send(setRes(resCode.OK, true, 'Product added into cart successfully.',cartData));
+											} else {
+												res.send(setRes(resCode.BadRequest, false, 'Fail to add into cart',null));
+											}
+										});
+										
+									}else{
+				
+										res.send(setRes(resCode.BadRequest, false, 'Product already into a cart...',null));
+									}
+								})
+							}else{
+				
+								res.send(setRes(resCode.ResourceNotFound,false,'Product out of stock',null))
+							}
+						})
 					}
 				})
-			}else{
-
-				res.send(setRes(resCode.ResourceNotFound,false,'Product out of stock',null))
 			}
 		})
+		
 	}else{
 		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
@@ -99,42 +124,69 @@ exports.RemoveProductCart = async(req,res) => {
 
 	var data = req.body;
 	var shoppingCartModel = models.shopping_cart;
+	var userModel = models.user
+	var productModel = models.products
 
 	var requiredFields = _.reject(['user_id','product_id'], (o) => { return _.has(data, o)  })
 
 	if(requiredFields == ""){
-		shoppingCartModel.findOne({
-			where: {
-				user_id: data.user_id,product_id : data.product_id, is_deleted: false
+		userModel.findOne({
+			where:{
+				id:data.user_id,
+				is_deleted:false,
+				is_active:true
 			}
-		}).then(UserCartData => {
-
-			if(UserCartData != null ){
-
-				shoppingCartModel.update({is_deleted:true}, {
-					where: {
-						user_id: data.user_id,product_id : data.product_id, is_deleted: false
+		}).then(async user => {
+			if(_.isEmpty(user)){
+				res.send(setRes(resCode.ResourceNotFound, false, "User not found.",null))
+			}else{
+				productModel.findOne({
+					where:{
+						id:data.product_id,
+						is_deleted:false
 					}
-				}).then(UpdateData =>{
-					if(UpdateData > 0){
+				}).then(async product => {
+					if(_.isEmpty(product)){
+						res.send(setRes(resCode.ResourceNotFound, false, "Product not found.",null))
+					}else{
 						shoppingCartModel.findOne({
 							where: {
-								user_id: data.user_id, is_deleted: false
+								user_id: data.user_id,product_id : data.product_id, is_deleted: false
 							}
-						}).then(data => {
-							
-							res.send(setRes(resCode.OK, true, "Product remove from cart successfully.",data))
-						}).catch(error => {
-							
-							res.send(setRes(resCode.InternalServer, false, "Fail to remove product from cart.",null))
+						}).then(UserCartData => {
+				
+							if(UserCartData != null ){
+				
+								shoppingCartModel.update({is_deleted:true}, {
+									where: {
+										user_id: data.user_id,product_id : data.product_id, is_deleted: false
+									}
+								}).then(UpdateData =>{
+									if(UpdateData > 0){
+										shoppingCartModel.findOne({
+											where: {
+												user_id: data.user_id, is_deleted: false
+											}
+										}).then(data => {
+											
+											res.send(setRes(resCode.OK, true, "Product remove from cart successfully.",data))
+										}).catch(error => {
+											
+											res.send(setRes(resCode.InternalServer, false, "Fail to remove product from cart.",null))
+										})
+									}
+									
+								})
+							}else{
+								res.send(setRes(resCode.ResourceNotFound, false, "Shopping card not found",null))
+							}
 						})
 					}
-					
 				})
-			}else{
-				res.send(setRes(resCode.BadRequest, false, "Invalid user id or product id",null))
 			}
 		})
+
+		
 	}else{
 		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
@@ -144,41 +196,66 @@ exports.QtyUpdate = async(req,res) => {
 
 	var data = req.body;
 	var shoppingCartModel = models.shopping_cart;
+	var userModel = models.user
+	var productModel = models.products
 
 	var requiredFields = _.reject(['user_id','product_id','qty'], (o) => { return _.has(data, o)  })
 	if(requiredFields == ""){
 
-		shoppingCartModel.findOne({
-			where: {
-				user_id: data.user_id,product_id : data.product_id, is_deleted: false
+		userModel.findOne({
+			where:{
+				id:data.user_id,
+				is_deleted:false,
+				is_active:true
 			}
-		}).then(UserCartData => {
-
-			if(UserCartData != null){
-				shoppingCartModel.update({qty:data.qty}, {
-					where: {
-						user_id: data.user_id,product_id : data.product_id, is_deleted: false
+		}).then(async user => {
+			if(_.isEmpty(user)){
+				res.send(setRes(resCode.ResourceNotFound, false, "User not found.",null))
+			}else{
+				productModel.findOne({
+					where:{
+						id:data.product_id,
+						is_deleted:false
 					}
-				}).then(UpdateData =>{
-					if(UpdateData > 0){
-
+				}).then(async product => {
+					if(_.isEmpty(product)){
+						res.send(setRes(resCode.ResourceNotFound, false, "Product not found.",null))
+					}else{
 						shoppingCartModel.findOne({
 							where: {
 								user_id: data.user_id,product_id : data.product_id, is_deleted: false
 							}
-						}).then(data => {
+						}).then(UserCartData => {
 							
-							res.send(setRes(resCode.OK, true, "Quantity update successfully.",data))
-						}).catch(error => {
-							
-							res.send(setRes(resCode.InternalServer, false ,"Fail to update quantity.",null))
+							if(UserCartData != null){
+								shoppingCartModel.update({qty:data.qty}, {
+									where: {
+										user_id: data.user_id,product_id : data.product_id, is_deleted: false
+									}
+								}).then(UpdateData =>{
+									if(UpdateData > 0){
+				
+										shoppingCartModel.findOne({
+											where: {
+												user_id: data.user_id,product_id : data.product_id, is_deleted: false
+											}
+										}).then(data => {
+											
+											res.send(setRes(resCode.OK, true, "Quantity update successfully.",data))
+										}).catch(error => {
+											
+											res.send(setRes(resCode.InternalServer, false ,"Fail to update quantity.",null))
+										})
+									}else{
+										res.send(setRes(resCode.InternalServer, false, "Fail to update quantity.",null))
+									}
+								});
+							}else{
+								res.send(setRes(resCode.ResourceNotFound,false,"Shopping cart not found",null))
+							}
 						})
-					}else{
-						res.send(setRes(resCode.InternalServer, false, "Fail to update quantity.",null))
 					}
-				});
-			}else{
-				res.send(setRes(resCode.ResourceNotFound,false,"Data not found",null))
+				})
 			}
 		})
 	}else{

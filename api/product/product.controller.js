@@ -311,6 +311,7 @@ exports.createProduct = async(req,res) => {
 		var data = req.body
 		var filesData = req.files;
 		var validation = true;
+		var businessModel = models.business
 		var requiredFields = _.reject(['business_id','category_id','name','price','description'], (o) => { return _.has(data, o)  })
 		if(requiredFields == ""){
 
@@ -338,62 +339,73 @@ exports.createProduct = async(req,res) => {
 				}
 				var productModel = models.products
 				if(validation){
-					productModel.create(data).then(async function(product)  {
-						const lastInsertId = product.id;
-						if(lastInsertId){
-							var files = [];
-							for(const file of filesData){
-								
-								const fileContent = await fs.promises.readFile(file.path);
-								const fileExt = `${file.originalname}`.split('.').pop()
-								const randomString = Math.floor(Math.random() * 1000000); 
-								const fileName = `${Date.now()}_${randomString}.${fileExt}`;
-								const params = {
-						       Bucket: awsConfig.Bucket,
-						       Key: `products/${lastInsertId}/${fileName}`,
-						       Body: fileContent,
-				     		};
-
-							  const result = await awsConfig.s3.upload(params).promise();
-							  if(result){
-									files.push(`products/${lastInsertId}/${fileName}`)
-									fs.unlinkSync(file.path)
-
-				     		}				  
-							}
-							var image = files.join(';');
-							productModel.update({
-								image: image
-							},{
-								where: {
-									id: lastInsertId,
-									
-								}
-							}).then(productData => {
-								if(productData){
-									productModel.findOne({where:{id:lastInsertId}}).then(async getData => {
-										var product_images = getData.image
-										var image_array = [];
-										for(const data of product_images){
-											const signurl = await awsConfig.getSignUrl(data).then(function(res){
-
-						  						image_array.push(res);
-											});
-										}
-										getData.dataValues.product_images = image_array
+					businessModel.findOne({
+						where:{
+							id:data.business_id,
+							is_deleted:false,
+							is_active:true
+						}
+					}).then(async business => {
+						if(_.isEmpty(business)){
+							res.send(setRes(resCode.ResourceNotFound, false, "Business not found.",null))
+						}else{
+							productModel.create(data).then(async function(product)  {
+								const lastInsertId = product.id;
+								if(lastInsertId){
+									var files = [];
+									for(const file of filesData){
 										
-										res.send(setRes(resCode.OK,true,"Product created successfully",getData))
+										const fileContent = await fs.promises.readFile(file.path);
+										const fileExt = `${file.originalname}`.split('.').pop()
+										const randomString = Math.floor(Math.random() * 1000000); 
+										const fileName = `${Date.now()}_${randomString}.${fileExt}`;
+										const params = {
+									   Bucket: awsConfig.Bucket,
+									   Key: `products/${lastInsertId}/${fileName}`,
+									   Body: fileContent,
+									 };
+		
+									  const result = await awsConfig.s3.upload(params).promise();
+									  if(result){
+											files.push(`products/${lastInsertId}/${fileName}`)
+											fs.unlinkSync(file.path)
+		
+									 }				  
+									}
+									var image = files.join(';');
+									productModel.update({
+										image: image
+									},{
+										where: {
+											id: lastInsertId,
+											
+										}
+									}).then(productData => {
+										if(productData){
+											productModel.findOne({where:{id:lastInsertId}}).then(async getData => {
+												var product_images = getData.image
+												var image_array = [];
+												for(const data of product_images){
+													const signurl = await awsConfig.getSignUrl(data).then(function(res){
+		
+														  image_array.push(res);
+													});
+												}
+												getData.dataValues.product_images = image_array
+												
+												res.send(setRes(resCode.OK,true,"Product created successfully",getData))
+											})
+										}else{
+											res.send(setRes(resCode.InternalServer,false,"Image not update",getData))
+										}
 									})
-								}else{
-									res.send(setRes(resCode.InternalServer,false,"Image not update",getData))
 								}
+							
+							}).catch(error => {
+								res.send(setRes(resCode.BadRequest,false, "Fail to add product or service.",null))
 							})
 						}
-					
-					}).catch(error => {
-						res.send(setRes(resCode.BadRequest,false, "Fail to add product or service.",null))
 					})
-
 				}
 		}else{
 			res.send(setRes(resCode.BadRequest,false, (requiredFields.toString() + ' are required'),null))
@@ -716,27 +728,39 @@ exports.CreateCategory = async (req, res) => {
 	var data = req.body
 	req.file ? data.image = `${req.file.key}`: '';
 	var productCategoryModel = models.product_categorys
+	var businessModel = models.business
 
 	var requiredFields = _.reject(['business_id','name','image','parent_id'], (o) => { return _.has(data, o)  })
 
-	if(requiredFields == ""){
-
-		productCategoryModel.create(data).then(async categoryData => {
-
-			if(categoryData){
-				if(data.image != null){
-
-					var image = await awsConfig.getSignUrl(data.image).then(function(res){
-						data.image = res
-					})
-				}else{
-					data.image = commonConfig.default_image
-				}
-				res.send(setRes(resCode.OK,true,"Category added successfully",data))
-			}else{
-				res.send(setRes(resCode.InternalServer,false,"Internal server error",null))
+		if(requiredFields == ""){
+		businessModel.findOne({
+			where:{
+				id:data.business_id,
+				is_deleted:false,
+				is_active:true
 			}
-		})
+		}).then(async business => {
+			if(_.isEmpty(business)){
+				res.send(setRes(resCode.ResourceNotFound, false, "Business not found.",null))
+			}else{
+				productCategoryModel.create(data).then(async categoryData => {
+
+					if(categoryData){
+						if(data.image != null){
+		
+							var image = await awsConfig.getSignUrl(data.image).then(function(res){
+								data.image = res
+							})
+						}else{
+							data.image = commonConfig.default_image
+						}
+						res.send(setRes(resCode.OK,true,"Category added successfully",data))
+					}else{
+						res.send(setRes(resCode.InternalServer,false,"Internal server error",null))
+					}
+				})
+			}})
+		
 	}else {
 		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
@@ -1124,49 +1148,73 @@ exports.removeProductType = async(req, res) => {
 exports.AddProductRattings = async(req,res) => {
 
 	var data = req.body
+	var userModel = models.user
+	var productModel = models.products
 	var productRattingModel = models.product_ratings
 	var requiredFields = _.reject(['user_id','product_id','ratings','description'], (o) => { return _.has(data, o) })
 
 	if(requiredFields == ""){
-
-		productRattingModel.findOne({
+		userModel.findOne({
 			where:{
-				user_id:data.user_id,
-				product_id:data.product_id,
-				is_deleted:false
+				id:data.user_id,
+				is_deleted:false,
+				is_active:true
 			}
-		}).then(rattingData => {
-			if(rattingData != null){
-				productRattingModel.update(data,{where:
-					{
-						user_id:data.user_id,
-						product_id:data.product_id
+		}).then(async user => {
+			if(_.isEmpty(user)){
+				res.send(setRes(resCode.ResourceNotFound, false, "User not found.",null))
+			}else{
+				productModel.findOne({
+					where:{
+						id:data.product_id,
+						is_deleted:false
 					}
-				}).then(updateData=>{
-
-					if(updateData == 1){
-
+				}).then(async product => {
+					if(_.isEmpty(product)){
+						res.send(setRes(resCode.ResourceNotFound, false, "Product not found.",null))
+					}else{
 						productRattingModel.findOne({
 							where:{
-								product_id : data.product_id,
-								user_id : data.user_id,
-								is_deleted: false
+								user_id:data.user_id,
+								product_id:data.product_id,
+								is_deleted:false
 							}
-						}).then(rattingDetails => {
-							res.send(setRes(resCode.OK,true,"Product ratting update successfully",rattingDetails))
+						}).then(rattingData => {
+							if(rattingData != null){
+								productRattingModel.update(data,{where:
+									{
+										user_id:data.user_id,
+										product_id:data.product_id
+									}
+								}).then(updateData=>{
+				
+									if(updateData == 1){
+				
+										productRattingModel.findOne({
+											where:{
+												product_id : data.product_id,
+												user_id : data.user_id,
+												is_deleted: false
+											}
+										}).then(rattingDetails => {
+											res.send(setRes(resCode.OK,true,"Product ratting update successfully",rattingDetails))
+										})
+									}else{
+										res.send(setRes(resCode.InternalServer,false,"Internal server error",null))
+									}
+								})
+							}else{
+								productRattingModel.create(data).then(addRattingData => {
+				
+									res.send(setRes(resCode.OK,true,"Product ratting save successfully",addRattingData))
+								})
+							}
+						}).catch(error => {
+							res.send(setRes(resCode.InternalServer,false,"Fail to add product ratting",null))
 						})
-					}else{
-						res.send(setRes(resCode.InternalServer,false,"Internal server error",null))
 					}
 				})
-			}else{
-				productRattingModel.create(data).then(addRattingData => {
-
-					res.send(setRes(resCode.OK,true,"Product ratting save successfully",addRattingData))
-				})
 			}
-		}).catch(error => {
-			res.send(setRes(resCode.InternalServer,false,"Fail to add product ratting",null))
 		})
 	}else{
 		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))

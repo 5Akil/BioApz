@@ -516,32 +516,35 @@ exports.DeleteProductOffers = (req, res) => {
 				}
 			}).then(product => {
 
-				//delete offer image from local directory
-				var product_images = product.image
-				_.each(product_images, (o) => {
-					const params = {
-						    Bucket: awsConfig.Bucket,
-						    Key: o
-						};
-					awsConfig.deleteImageAWS(params)
-				});
+				if(product){
+					//delete offer image from local directory
+					var product_images = product.image
+					_.each(product_images, (o) => {
+						const params = {
+								Bucket: awsConfig.Bucket,
+								Key: o
+							};
+						awsConfig.deleteImageAWS(params)
+					});
 
-				//delete record from database
-				productModel.update({is_deleted:true},{
-					where: {
-						id: data.product_id
-					}
-				}).then(DeleteProduct => {
-					if (DeleteProduct == 1){
-						res.send(setRes(resCode.OK, true, "Product deleted successfully.",{product_id: data.product_id}))
-					}
-					else{
-						res.send(setRes(resCode.BadRequest, false, "Fail to delete product.",null))
-					}
-				}).catch(DeleteProductError => {
-					res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
-				})
-	
+					//delete record from database
+					productModel.update({is_deleted:true},{
+						where: {
+							id: data.product_id
+						}
+					}).then(DeleteProduct => {
+						if (DeleteProduct == 1){
+							res.send(setRes(resCode.OK, true, "Product deleted successfully.",{product_id: data.product_id}))
+						}
+						else{
+							res.send(setRes(resCode.BadRequest, false, "Fail to delete product.",null))
+						}
+					}).catch(DeleteProductError => {
+						res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
+					})
+				}else{
+					res.send(setRes(resCode.ResourceNotFound,true,"Product not found.",null))
+				}
 			})
 			
 		}
@@ -552,32 +555,35 @@ exports.DeleteProductOffers = (req, res) => {
 					id: data.offer_id
 				}
 			}).then(offer => {
+				if(offer){
+					//delete offer image from local directory
+					const params = {
+						Bucket: awsConfig.Bucket,
+						Key: offer.image
+					};
+					awsConfig.deleteImageAWS(params)
 
-				//delete offer image from local directory
-				const params = {
-						    Bucket: awsConfig.Bucket,
-						    Key: offer.image
-						};
-				awsConfig.deleteImageAWS(params)
-
-				//delete record from database
-				offerModel.update({is_deleted:true},{
-					where: {
-						id: data.offer_id
-					}
-				}).then(DeleteOffer => {
-					if (DeleteOffer == 1){
-						res.send(setRes(resCode.OK, true, "Offer deleted successfully.",{offer_id: data.offer_id}))
-					}
-					else{
-						res.send(setRes(resCode.BadRequest, false, "Fail to delete offer.",null))
-					}
-				}).catch(DeleteOfferError => {
-					res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
-				})
+					//delete record from database
+					offerModel.update({is_deleted:true},{
+						where: {
+							id: data.offer_id
+						}
+					}).then(DeleteOffer => {
+						if (DeleteOffer == 1){
+							res.send(setRes(resCode.OK, true, "Offer deleted successfully.",{offer_id: data.offer_id}))
+						}
+						else{
+							res.send(setRes(resCode.BadRequest, false, "Fail to delete offer.",null))
+						}
+					}).catch(DeleteOfferError => {
+						res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
+					})
+				}else{
+					res.send(setRes(resCode.ResourceNotFound,false,"Offer not found.",null))
+				}
 
 			}).catch(error => {
-				res.send(setRes(resCode.ResourceNotFound,false,"Resource not found",null))
+				res.send(setRes(resCode.BadRequest,false,"Something went wrong.",null))
 			})
 			
 		}
