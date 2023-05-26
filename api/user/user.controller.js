@@ -15,6 +15,7 @@ var util = require('util')
 var notification = require('../../push_notification');
 var awsConfig = require('../../config/aws_S3_config');
 var moment = require('moment')
+const { verifyToken } = require('../../config/token')
 
 exports.Register = async (req, res) => {
 
@@ -74,13 +75,13 @@ exports.Register = async (req, res) => {
                   } else {
           				console.log("--------------------------send res------------")
 						console.log(result)
-						res.send(setRes(resCode.OK, true,`Email has been sended to ${users.email}, with account activation instuction.. `,true));
+						res.send(setRes(resCode.OK, true,`Email has been sent to ${users.email}, with account activation instuction.. `,true));
                   }
                 }
               )
             })
 
-			  res.send(setRes(resCode.OK,true, `Email has been sended to ${users.email}, with account activation instuction.. `, null));
+			  res.send(setRes(resCode.OK,true, `Email has been sent to ${users.email}, with account activation instuction.. `, null));
           } else {
               res.send(setRes(resCode.BadRequest, false, 'user registration fail',null));
           }
@@ -156,8 +157,8 @@ exports.Login = async (req, res) => {
 				if (!user) {
 					res.send(setRes(resCode.BadRequest, false ,'User not found.',null))
 				} else {
-					if (user.is_deleted == 1){
-						res.send(setRes(resCode.BadRequest, false,'User no longer available.',null))
+					if (user.is_deleted == 1 && user.is_active == 0){
+						res.send(setRes(resCode.BadRequest, false,'User not register.',null))
 					}
 					else if (user.is_active == 0){
 						res.send(setRes(resCode.BadRequest, false ,'Please verify your account.',null))
@@ -166,7 +167,7 @@ exports.Login = async (req, res) => {
 						bcrypt.compare(data.password, user.password, async function (err, result) {
 							if (result == true) {
 
-								const token =  jwt.sign({user: user.email}, 'secret', {expiresIn: 480 * 480})
+								const token =  jwt.sign({id:user.id,user: user.email,role_id:user.role_id}, 'secret', {expiresIn: 480 * 480})
 								delete user.dataValues.auth_token
 								user.dataValues.auth_token = token
 								// data.device_type = data.device_type.toLowerCase();
@@ -234,7 +235,7 @@ exports.Login = async (req, res) => {
 					bcrypt.compare(data.password, business.password, async function (err, result) {
 						if (result == true) {
 		
-							const token =  jwt.sign({user: business.email}, 'secret', {expiresIn: 480 * 480})
+							const token =  jwt.sign({id:business.id,user: business.email,role_id:business.role_id}, 'secret', {expiresIn: 480 * 480})
 							delete business.dataValues.auth_token
 							business.dataValues.auth_token = token
 
@@ -354,22 +355,50 @@ exports.UpdateProfile = async (req, res) => {
 				awsConfig.deleteImageAWS(params)
 			})
 		}
+		userModel.findOne({
+			where:{
+				id:data.id,
+				is_deleted:false,
+				is_active:true
+			}
+		}).then(async user => {
+			if(_.isEmpty(user)){
+				res.send(setRes(resCode.ResourceNotFound, false, "User not found.",null))
+			}else{
+				userModel.update(data, {
+					where: {
+						id: data.id
+					}
+				}).then(async user => {
+					if (user == 1){
+						userModel.findOne({
+							where:{
+								id:data.id,
+								is_deleted:false,
+								is_active:true
+							}
+						}).then(async userData => {
+							if(userData.profile_picture != null){
 
-		userModel.update(data, {
-			where: {
-				id: data.id
+								var banner = await awsConfig.getSignUrl(userData.profile_picture).then(function(res){
+									userData.profile_picture = res
+								})
+							}
+							else{
+								userData.profile_picture = commonConfig.default_user_image;
+							}
+							res.send(setRes(resCode.OK, true, "User Profile Updated Successfully.",userData))
+						})
+						
+					}
+					else{
+						res.send(setRes(resCode.BadRequest, false, "Fail to Update User Profile.",null))
+					}
+				}).catch(error => {
+					res.send(setRes(resCode.InternalServer, true, "Internal server error.",null))
+				})
 			}
-		}).then(user => {
-			if (user == 1){
-				res.send(setRes(resCode.OK, true, "User Profile Updated Successfully.",null))
-			}
-			else{
-				res.send(setRes(resCode.BadRequest, false, "Fail to Update User Profile.",null))
-			}
-		}).catch(error => {
-			res.send(setRes(resCode.InternalServer, true, "Internal server error.",null))
 		})
-
 	}else{
 		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
@@ -498,7 +527,7 @@ exports.forgotPassword = async (req, res) => {
 					} else {
 							  console.log("--------------------------send res------------")
 								console.log(result)
-								res.send(setRes(resCode.OK, true,`Email has been sended to ${users.email}, with account activation instuction.. `,null));
+								res.send(setRes(resCode.OK, true,`Email has been sent to ${users.email}, with account activation instuction.. `,null));
 					}
 				  }
 				  )
@@ -574,7 +603,7 @@ exports.forgotPassword = async (req, res) => {
 					} else {
 							  console.log("--------------------------send res------------")
 								console.log(result)
-								res.send(setRes(resCode.OK, true,`Email has been sended to ${users.email}, with account activation instuction.. `,null));
+								res.send(setRes(resCode.OK, true,`Email has been sent to ${users.email}, with account activation instuction.. `,null));
 					}
 				  }
 				  )
@@ -1149,5 +1178,71 @@ exports.GetAllBusiness = async (req, res) => {
 		})
 	}else{
 		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
+	}
+}
+
+exports.Logout = async (req, res) => {
+	try{
+		const authHeader = req.headers["authorization"];
+		var userModel = models.user
+		var businessModel = models.business
+		const TokenData =  jwt.verify(authHeader, 'secret', {expiresIn: 480 * 480})
+		var roleId = TokenData.role_id
+		
+		if (roleId == 2){
+			userModel.findOne({
+				where:{
+					id : TokenData.id
+				}
+			}).then(async user =>{
+				if(user){
+					const token =  jwt.sign({id:user.id,user: user.email,role_id:user.role_id}, 'secret', {expiresIn: 480 * 480})
+					delete user.dataValues.auth_token
+					user.dataValues.auth_token = token
+					userModel.update(
+						{auth_token: token,},
+						{where: {id: user.id}
+					})
+					.then(async function (newUser) {
+						if(newUser){
+							res.send(setRes(resCode.OK,true,'Logout successfully',null))
+						}else{
+							res.send(setRes(resCode.BadRequest, false, "Can't logged out.",null))
+						}
+					})
+				}else{
+					res.send(setRes(resCode.ResourceNotFound, false, "User not found.",null))
+				}
+			})
+		}else if(roleId == 3){
+			businessModel.findOne({
+				where:{
+					id : TokenData.id
+				}
+			}).then(async user =>{
+				if(user){
+					const token =  jwt.sign({id:user.id,user: user.email,role_id:user.role_id}, 'secret', {expiresIn: 480 * 480})
+					delete user.dataValues.auth_token
+					user.dataValues.auth_token = token
+					businessModel.update(
+						{auth_token: token,},
+						{where: {id: user.id}
+					})
+					.then(async function (newUser) {
+						if(newUser){
+							res.send(setRes(resCode.OK,true,'Logout successfully',null))
+						}else{
+							res.send(setRes(resCode.BadRequest, false, "Can't logged out.",null))
+						}
+					})
+				}else{
+					res.send(setRes(resCode.ResourceNotFound, false, "Business not found.",null))
+				}
+			})
+		}else{
+			res.send(setRes(resCode.BadRequest, false, 'Invalid role.',null))
+		}
+	}catch(error){
+		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
 	}
 }

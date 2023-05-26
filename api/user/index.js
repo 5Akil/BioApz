@@ -65,6 +65,7 @@ router.post('/update-profile', verifyToken, awsupload.single('profile_picture'),
 router.post('/change-password', verifyToken, controller.ChangePassword)
 router.post('/feedback', verifyToken, controller.SendFeedback)
 router.get('/all-business',verifyToken,controller.GetAllBusiness)
+router.post('/logout', verifyToken ,controller.Logout)
 
 
 module.exports = router;
