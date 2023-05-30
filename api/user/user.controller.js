@@ -16,6 +16,7 @@ var notification = require('../../push_notification');
 var awsConfig = require('../../config/aws_S3_config');
 var moment = require('moment')
 const { verifyToken } = require('../../config/token')
+const Sequelize = require('sequelize');
 
 exports.Register = async (req, res) => {
 
@@ -31,6 +32,7 @@ exports.Register = async (req, res) => {
       if (user == null){
         const token =  jwt.sign({user: data.email}, 'secret')
 		data.auth_token = token
+		data.email = (data.email).toLowerCase();
 		// data.device_type = data.device_type.toLowerCase();
 
         dbModel.create(data).then(function (users) {
@@ -75,13 +77,13 @@ exports.Register = async (req, res) => {
                   } else {
           				console.log("--------------------------send res------------")
 						console.log(result)
-						res.send(setRes(resCode.OK, true,`Email has been sent to ${users.email}, with account activation instuction.. `,true));
+						res.send(setRes(resCode.OK, true,`Email has been sent to ${(users.email).toLowerCase()}, with account activation instuction.. `,true));
                   }
                 }
               )
             })
 
-			  res.send(setRes(resCode.OK,true, `Email has been sent to ${users.email}, with account activation instuction.. `, null));
+			  res.send(setRes(resCode.OK,true, `Email has been sent to ${(users.email).toLowerCase()}, with account activation instuction.. `, null));
           } else {
               res.send(setRes(resCode.BadRequest, false, 'user registration fail',null));
           }
@@ -1115,8 +1117,9 @@ function FeedbackMail(user, data){
 
 exports.GetAllBusiness = async (req, res) => {
 
-	var data = req.body
+	var data = req.query;
 	var businessModel = models.business
+	var Op = models.Op;
 	var businesscateogryModel = models.business_categorys
 
 	var requiredFields = _.reject(['page', 'page_size'], (o) => { return _.has(data, o)  })
@@ -1152,14 +1155,22 @@ exports.GetAllBusiness = async (req, res) => {
 		}else{
 			condition.where = {is_deleted:false,is_active:true}
 		}
+		if(data.search && data.search != null){
+			condition.where = {[Op.or]: [{business_name: {[Op.like]: "%" + data.search + "%",}}],}
+		}
+		
 		businessModel.findAll(condition).then(async businessData => {
 
 			if(businessData.length > 0){
 
 				for(const data of businessData){
-					
-					data.dataValues.category_name = data.business_category.name
-					delete data.dataValues.business_category;
+
+					if (data.business_category != null) {
+						data.dataValues.category_name = data.business_category.name;
+						delete data.dataValues.business_category;
+					  } else {
+						data.dataValues.category_name = "";
+					  }
 					if(data.banner != null){
 
 						const signurl = await awsConfig.getSignUrl(data.banner).then(function(res){
@@ -1174,6 +1185,7 @@ exports.GetAllBusiness = async (req, res) => {
 				res.send(setRes(resCode.ResourceNotFound,false,'Business not found',null))
 			}
 		}).catch(error => {
+			console.log(error)
 			res.send(setRes(resCode.InternalServer,false,"Fail to get business",null))
 		})
 	}else{
@@ -1246,3 +1258,544 @@ exports.Logout = async (req, res) => {
 		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
 	}
 }
+
+// Home Screeen Details START
+exports.homeList = async (req, res) => {
+	try {
+		var data = req.body;
+		var businessModel = models.business;
+		var Op = models.Op;
+		var currentDate = moment().format('YYYY-MM-DD');
+		var giftCardModel = models.gift_cards
+		var cashbackModel = models.cashbacks
+		var discountModel = models.discounts
+		var couponeModel = models.coupones
+		var loyaltyPointModel = models.loyalty_points
+		var combocalenderModel = models.combo_calendar
+		var responseData = [];
+		var businessArray = [];
+		var eventArray = [];
+		const promises = [];
+
+		businessArray.push(
+			businessModel.findAll({
+				where: { is_deleted: false, is_active: true }
+			}).then(async business => {
+				if(business.length > 0){
+					const dataArray = [];
+					for (const data of business) {
+						if (data.banner != null) {
+							const signurl = await awsConfig.getSignUrl(data.banner).then(function (res) {
+								data.banner = res;
+							});
+						} else {
+							data.banner = commonConfig.default_user_image;
+						}
+					}
+					var array = shuffle(business);
+					var slicedArray = array.slice(0, 5);
+					let result = 	JSON.parse(JSON.stringify(slicedArray));
+					dataArray.push(result);
+					return result;
+				}
+				return [];
+			})
+		);
+		
+		const [businessData] = await Promise.all(businessArray);
+		const businessDataArray = businessData;
+
+		promises.push(
+			giftCardModel.findAll({
+				where:{isDeleted:false,status:true,deleted_at: null,expire_at: { 
+					[Op.gt]: currentDate
+				  },}
+			}).then(async giftCardData => {
+				if (giftCardData.length > 0){
+					const dataArray = [];
+					// Update Sign URL
+					for(const data of giftCardData){
+						if(data.image != null){
+							var images = data.image
+							const signurl = await awsConfig.getSignUrl(images.toString()).then(function(res){
+								data.image = res;
+							});
+						}else {
+							data.image = commonConfig.default_image;
+						}
+						let result = 	JSON.parse(JSON.stringify(data));
+						result.type="gift_cards";
+						dataArray.push(result);
+					}
+					return dataArray;
+				}
+				return [];
+			}),
+			cashbackModel.findAll({
+				where:{isDeleted:false,status:true,deleted_at: null,validity_for: { 
+					[Op.gt]: currentDate
+				},}
+			}).then(async CashbackData => {
+				if (CashbackData.length > 0){
+					const dataArray = [];
+					for(const data of CashbackData){
+					let result = 	JSON.parse(JSON.stringify(data));
+					result.type="cashbacks";
+					dataArray.push(result);
+					}
+					return dataArray;
+				}
+				return [];		
+			}),
+			discountModel.findAll({
+				where:{isDeleted:false,status:true,deleted_at: null,validity_for: { 
+					[Op.gt]: currentDate
+				},}
+			}).then(async DiscountData => {
+					if (DiscountData.length > 0){
+						const dataArray = [];
+						for(const data of DiscountData){
+							let result = 	JSON.parse(JSON.stringify(data));
+							result.type="discounts";
+							dataArray.push(result);
+							}
+							return dataArray;
+					}
+				return [];
+			}),
+			couponeModel.findAll({
+				where:{isDeleted:false,status:true,deleted_at: null,expire_at: { 
+					[Op.gt]: currentDate
+				},}
+			}).then(async CouponeData => {
+				if (CouponeData.length > 0){
+					const dataArray = [];
+					for(const data of CouponeData){
+					let result = 	JSON.parse(JSON.stringify(data));
+					result.type="coupones";
+					dataArray.push(result);
+					}
+					return dataArray;
+					
+				}
+				return [];
+			}),
+			loyaltyPointModel.findAll({
+				where:{isDeleted:false,status:true,deleted_at: null,validity: { 
+					[Op.gt]: currentDate
+				},}
+			}).then(async LoyaltyPointData => {
+				if (LoyaltyPointData.length > 0){
+					const dataArray = [];
+					for(const data of LoyaltyPointData){
+					let result = 	JSON.parse(JSON.stringify(data));
+					result.type="loyalty_points";
+					dataArray.push(result);
+					}
+					return dataArray;
+					
+				}
+				return [];
+			}),
+		);
+		const [giftcardRewards,cashbackData,discountData,couponeData,loyaltyData] = await Promise.all(promises);
+		const rewardsAndLoyaltyArray = [giftcardRewards, cashbackData,discountData,couponeData,loyaltyData];
+		const mergedArray = mergeRandomArrayObjects(rewardsAndLoyaltyArray);
+		let result =  mergedArray.slice(0, 5);
+		// console.log(result)
+
+		eventArray.push(
+			combocalenderModel.findAll({
+				where: { is_deleted: false ,end_date: { 
+					[Op.lt]: currentDate
+				  },}
+			}).then(async event => {
+				if(event.length > 0){
+					const dataArray = [];	
+					for (const data of event) {
+						var event_images = data.images
+						var image_array = [];
+						if(event_images != null){
+							for(const data of event_images){
+								const signurl = await awsConfig.getSignUrl(data).then(function(res){
+									  image_array.push(res);
+								});
+							}
+						}else{
+							image_array.push(commonConfig.default_image)
+						}
+						data.dataValues.event_images = image_array
+					}
+					var array = shuffle(event);
+					var slicedArray = array.slice(0, 5);
+					let result = 	JSON.parse(JSON.stringify(slicedArray));
+					dataArray.push(result);
+					return result;
+				}
+				return [];
+			})
+		);
+		
+		const [eventsData] = await Promise.all(eventArray);
+		const eventDataArray = eventsData;
+
+		let resData = {};
+		resData.businesses = businessDataArray;
+		resData.rewards_and_loyalty = mergedArray;
+		resData.upcoming_events = eventDataArray;
+
+		res.send(setRes(resCode.OK, true, "Get rewards list successfully.",resData))
+	} catch(error){
+		console.log(error)
+		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
+	}
+}
+
+function shuffle(array) {
+  let currentIndex = array.length,  randomIndex;
+
+  // While there remain elements to shuffle.
+  while (currentIndex != 0) {
+
+    // Pick a remaining element.
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex--;
+
+    // And swap it with the current element.
+    [array[currentIndex], array[randomIndex]] = [
+      array[randomIndex], array[currentIndex]];
+  }
+
+  return array;
+}
+// Home Screeen Details END
+
+// Rewards List START
+exports.rewardsList = async (req, res) => {
+	try{
+		var data = req.body
+		var giftCardModel = models.gift_cards
+		var cashbackModel = models.cashbacks
+		var discountModel = models.discounts
+		var couponeModel = models.coupones
+		var Op = models.Op
+		const promises = [];
+		var requiredFields = _.reject(['business_id','page','page_size'], (o) => { return _.has(data, o)  })
+
+		if(requiredFields == ""){
+			if(data.page < 0 || data.page == 0) {
+				return res.send(setRes(resCode.BadRequest, null, false, "invalid page number, should start with 1"))
+			}
+
+			let skip = data.page_size * (data.page - 1);
+			let limit = parseInt(data.page_size);
+			var currentDate = (moment().format('YYYY-MM-DD'))
+			
+			promises.push(
+				giftCardModel.findAll({
+					where:{isDeleted:false,status:true,deleted_at: null,expire_at: { 
+						[Op.gt]: currentDate
+					  },}
+				}).then(async giftCardData => {
+					if (giftCardData.length > 0){
+						const dataArray = [];
+						// Update Sign URL
+						for(const data of giftCardData){
+							if(data.image != null){
+								var images = data.image
+								const signurl = await awsConfig.getSignUrl(images.toString()).then(function(res){
+									data.image = res;
+								});
+							}else {
+								data.image = commonConfig.default_image;
+							}
+							let result = 	JSON.parse(JSON.stringify(data));
+							result.type="gift_cards";
+							dataArray.push(result);
+						}
+						return dataArray;
+					}
+					return [];
+				}),
+				cashbackModel.findAll({
+					where:{isDeleted:false,status:true,business_id:data.business_id,deleted_at: null,validity_for: { 
+						[Op.gt]: currentDate
+					},}
+				}).then(async CashbackData => {
+					if (CashbackData.length > 0){
+						const dataArray = [];
+						for(const data of CashbackData){
+						let result = 	JSON.parse(JSON.stringify(data));
+						result.type="cashbacks";
+						dataArray.push(result);
+						}
+						return dataArray;
+					}
+					return [];		
+				}),
+				discountModel.findAll({
+					where:{isDeleted:false,status:true,business_id:data.business_id,deleted_at: null,validity_for: { 
+						[Op.gt]: currentDate
+					},}
+				}).then(async DiscountData => {
+						if (DiscountData.length > 0){
+							const dataArray = [];
+							for(const data of DiscountData){
+								let result = 	JSON.parse(JSON.stringify(data));
+								result.type="discounts";
+								dataArray.push(result);
+								}
+								return dataArray;
+						}
+					return [];
+				}),
+				couponeModel.findAll({
+					where:{isDeleted:false,status:true,business_id:data.business_id,deleted_at: null,expire_at: { 
+						[Op.gt]: currentDate
+					},}
+				}).then(async CouponeData => {
+					if (CouponeData.length > 0){
+						const dataArray = [];
+						for(const data of CouponeData){
+						let result = 	JSON.parse(JSON.stringify(data));
+						result.type="coupones";
+						dataArray.push(result);
+						}
+						return dataArray;
+						
+					}
+					return [];
+				}),
+			);
+
+			const [giftcardRewards,cashbackData,discountData,couponeData] = await Promise.all(promises);
+
+			const arrays = [giftcardRewards, cashbackData,discountData,couponeData];
+			const mergedArray = mergeRandomArrayObjects(arrays);
+			let result =  mergedArray.slice(skip, skip+limit);
+			res.send(setRes(resCode.OK, true, "Get rewards list successfully.",result))
+		}else{
+			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
+		}
+	}catch(error){
+		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
+	}
+}
+
+function mergeRandomArrayObjects(arrays) {
+	const shuffledArrays = _.shuffle(arrays);
+	const mergedArray = [];
+  
+	_.each(shuffledArrays, function(array) {
+	  _.each(array, function(obj) {
+		_.extend(obj, { random: Math.random() });
+		mergedArray.push(obj);
+	  });
+	});
+	return mergedArray;
+}
+// Rewards List END
+
+// Rewards View START
+exports.rewardsView = async (req, res) => {
+	try{
+		var data = req.params
+		var paramType = req.query.type
+		var giftCardModel = models.gift_cards
+		var cashbackModel = models.cashbacks
+		var discountModel = models.discounts
+		var couponeModel = models.coupones
+		var currentDate = (moment().format('YYYY-MM-DD'))
+
+		var typeArr = ['gift_cards','cashbacks','discounts','coupones'];
+		if((paramType) && !(typeArr.includes(paramType))){
+			return res.send(setRes(resCode.BadRequest, null, false, "Please select valid type."))
+		}else{
+			if(paramType == 'gift_cards') {
+				giftCardModel.findOne({
+					where:{
+						id:data.id,
+						status:true,
+						isDeleted:false,
+						expire_at: { 
+							[Op.gt]: currentDate
+						},
+					}
+				}).then(async giftCardData => {
+					if (giftCardData != null){
+						if(giftCardData.image != null){
+							var giftCardData_image = await awsConfig.getSignUrl(giftCardData.image).then(function(res){
+								giftCardData.image = res;
+							})
+						}else{
+							giftCardData.image = commonConfig.default_image;
+						}
+						res.send(setRes(resCode.OK, true, "Get gift card detail successfully.",giftCardData))
+					}
+					else{
+						res.send(setRes(resCode.ResourceNotFound,false, "Gift card not found.",null))
+					}
+				}).catch(error2 => {
+					res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
+				})
+			
+			}else if(paramType == 'cashbacks') {
+				cashbackModel.findOne({
+					where:{id:data.id,status:true,isDeleted:false,validity_for: { 
+						[Op.gt]: currentDate
+					},}
+				}).then(async cashbackData => {
+					if (cashbackData != null){
+						res.send(setRes(resCode.OK, true, "Get cashbacks detail successfully.",cashbackData))
+					}
+					else{
+						res.send(setRes(resCode.ResourceNotFound,false, "Cashback not found.",null))
+					}
+				}).catch(error3 => {
+					res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
+				})
+			}else if(paramType == 'discounts'){
+				discountModel.findOne({
+					where:{id:data.id,status:true,isDeleted:false,deleted_at:null,validity_for: { 
+						[Op.gt]: currentDate
+					},}
+				}).then(async discountData => {
+					if (discountData != null){
+						res.send(setRes(resCode.OK, true, "Get Discount detail successfully.",discountData))
+					}
+					else{
+						res.send(setRes(resCode.ResourceNotFound,false, "Discount not found.",null))
+					}
+				}).catch(error4 => {
+					res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
+				})
+			}else if(paramType == 'coupones'){
+				couponeModel.findOne({
+					where:{id:data.id,status:true,isDeleted:false,deleted_at:null,expire_at: { 
+						[Op.gt]: currentDate
+					},}
+				}).then(async couponeData => {
+					if (couponeData != null){
+						res.send(setRes(resCode.OK, true, "Get Coupones detail successfully.",couponeData))
+					}
+					else{
+						res.send(setRes(resCode.ResourceNotFound,false, "Coupon not found.",null))
+					}
+				}).catch(error5 => {
+					res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
+				})
+			}else {
+				res.send(setRes(resCode.BadRequest, null, false, "Please select valid type."))
+			}
+		}
+		
+	}catch(error){
+		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
+	}
+}
+// Rewards View END
+
+// Loyalty List START
+exports.loyaltyList = async (req, res) => {
+  try {
+    var data = req.body;
+    var loyaltyPointModel = models.loyalty_points;
+    var businessModel = models.business;
+    var productModel = models.products;
+    const Op = models.Op;
+	var currentDate = (moment().format('YYYY-MM-DD'))
+    var requiredFields = _.reject(["business_id", "page", "page_size"], (o) => {
+      return _.has(data, o);
+    });
+    if (requiredFields == "") {
+      if (data.page < 0 || data.page == 0) {
+        return res.send(
+          setRes(
+            resCode.BadRequest,
+            null,
+            false,
+            "invalid page number, should start with 1"
+          )
+        );
+      }
+
+      let skip = data.page_size * (data.page - 1);
+      let limit = parseInt(data.page_size);
+
+      loyaltyPointModel
+        .findAll({
+          where: {
+            isDeleted: false,
+            status: true,
+            business_id: data.business_id,
+            deleted_at: null,
+			validity: { 
+				[Op.gt]: currentDate
+			},
+          },
+          include: [
+            {
+              model: businessModel,
+              attributes: ["id", "business_name"],
+            },
+            {
+              model: productModel,
+              attributes: ["id", "name"],
+            },
+          ],
+        })
+        .then(async (loyaltyData) => {
+          if (loyaltyData.length > 0) {
+            for (const data of loyaltyData) {
+
+              // Get businesss name
+              if (data.business != null) {
+                data.dataValues.business_name = data.business.business_name;
+                delete data.dataValues.business;
+              } else {
+                data.dataValues.business_name = "";
+              }
+              // Get products name
+              if (data.product != null) {
+                data.dataValues.product_name = data.product.name;
+                delete data.dataValues.product;
+              } else {
+                data.dataValues.product_name = "";
+              }
+            }
+            res.send(
+              setRes(
+                resCode.OK,
+                true,
+                "Get loyalty list successfully",
+                loyaltyData
+              )
+            );
+          } else {
+            res.send(
+              setRes(resCode.ResourceNotFound, false, "Loyalty not found", null)
+            );
+          }
+        });
+    } else {
+      res.send(
+        setRes(
+          resCode.BadRequest,
+          false,
+          requiredFields.toString() + " are required",
+          null
+        )
+      );
+    }
+  } catch (error) {
+    console.log(error);
+    res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null));
+  }
+};
+// Loyalty List END
+
+// Business BIO START
+exports.businessBIO = async (req, res) => {
+	console.log('hi')
+}
+// Business BIO END

@@ -68,4 +68,11 @@ router.get('/all-business',verifyToken,controller.GetAllBusiness)
 router.post('/logout', verifyToken ,controller.Logout)
 
 
+// Home Screen Route
+router.get('/home', verifyToken, controller.homeList)
+router.post('/rewards/list', verifyToken, controller.rewardsList)
+router.post('/rewards/view/:id', verifyToken, controller.rewardsView)
+router.post('/loyalty/list', verifyToken, controller.loyaltyList)
+router.post('/business/bio', verifyToken, controller.businessBIO)
+
 module.exports = router;
