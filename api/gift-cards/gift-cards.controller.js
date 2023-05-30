@@ -157,65 +157,72 @@ exports.deleteGiftCard =async(req,res) => {
 // Delete Reward Gift Card END
 
 // Update Reward Gift Card START
-exports.giftCardUpdate =async(req,res) => {
-	try{
+exports.giftCardUpdate = async (req, res) => {
+	try {
 		var data = req.body;
-		req.file ? data.image = `${req.file.key}`: '';
+		req.file ? data.image = `${req.file.key}` : '';
 		var giftCardModel = models.gift_cards;
 		var Op = models.Op;
-		let arrayFields = ['id','image','name','amount','expire_at','description','is_cashback'];
-		const result =  data.is_cashback == 1 ? (arrayFields.push('cashback_percentage')) : '';
+		let arrayFields = ['id', 'name', 'amount', 'expire_at', 'description', 'is_cashback'];
+		const result = data.is_cashback == 1 ? (arrayFields.push('cashback_percentage')) : '';
 
-		var requiredFields = _.reject( arrayFields, (o) => { return _.has(data, o)  })
+		var requiredFields = _.reject(arrayFields, (o) => { return _.has(data, o) })
 
-		if(requiredFields.length == 0){
+		if (requiredFields.length == 0) {
 			var currentDate = (moment().format('YYYY-MM-DD') == moment(data.expire_at).format('YYYY-MM-DD'))
-			var pastDate = moment(data.expire_at,'YYYY-MM-DD').isBefore(moment());
-			if((result != '' && !(data.cashback_percentage >= Math.min(1,100)) && (data.cashback_percentage <= Math.max(1,100)))){
-				res.send(setRes(resCode.BadRequest,false, "Please select valid cashback percentage!",null))
-			}else if(currentDate || pastDate){
-				res.send(setRes(resCode.BadRequest,false, "You can't select past and current date.!",null))
-			}else{
+			var pastDate = moment(data.expire_at, 'YYYY-MM-DD').isBefore(moment());
+			if ((result != '' && !(data.cashback_percentage >= Math.min(1, 100)) && (data.cashback_percentage <= Math.max(1, 100)))) {
+				res.send(setRes(resCode.BadRequest, false, "Please select valid cashback percentage!", null))
+			} else if (currentDate || pastDate) {
+				res.send(setRes(resCode.BadRequest, false, "You can't select past and current date.!", null))
+			} else {
 				giftCardModel.findOne({
-					where:{id: data.id,isDeleted: false,status: true}
+					where: { id: data.id, isDeleted: false, status: true }
 				}).then(async giftCardDetail => {
-					if(_.isEmpty(giftCardDetail)){
-						res.send(setRes(resCode.ResourceNotFound, false, "Gift Card not found.",null))
-					}else{
+					if (_.isEmpty(giftCardDetail)) {
+						res.send(setRes(resCode.ResourceNotFound, false, "Gift Card not found.", null))
+					} else {
 						giftCardModel.findOne({
-							where:{isDeleted:false,status:true,name:{[Op.eq]: data.name},id:{[Op.ne]: data.id}}
+							where: { isDeleted: false, status: true, name: { [Op.eq]: data.name }, id: { [Op.ne]: data.id } }
 						}).then(async giftCardData => {
-							if(giftCardData == null){
+							if (giftCardData == null) {
 								giftCardModel.update(data,
-									{where: {id:data.id,isDeleted:false,status:true}
-								}).then(async updateData => {
-									if(giftCardDetail.image){
-										const params = {Bucket: awsConfig.Bucket,Key: giftCardDetail.image};awsConfig.deleteImageAWS(params)}
-										if(updateData == 1){
-											if(data.image != null){
-												var updateData_image = await awsConfig.getSignUrl(data.image).then(function(res){
+									{
+										where: { id: data.id, isDeleted: false, status: true }
+									}).then(async updateData => {
+										if (data.image != null) {
+											const params = { Bucket: awsConfig.Bucket, Key: giftCardDetail.image }; awsConfig.deleteImageAWS(params)
+										}
+										if (updateData == 1) {
+											if (data.image != null) {
+												var updateData_image = await awsConfig.getSignUrl(data.image).then(function (res) {
 													giftCardDetail.image = res;
 												})
-											}else{
+											} else if (giftCardDetail.image != null) {
+												var updateData_image = await awsConfig.getSignUrl(giftCardDetail.image).then(function (res) {
+													giftCardDetail.image = res;
+												})
+											}
+											else {
 												giftCardDetail.image = awsConfig.default_image;
 											}
-											res.send(setRes(resCode.OK,true,'Gift card update successfully',giftCardDetail))
-										}else{
-											res.send(setRes(resCode.BadRequest, false, "Fail to update gift card.",null))
+											res.send(setRes(resCode.OK, true, 'Gift card update successfully', giftCardDetail))
+										} else {
+											res.send(setRes(resCode.BadRequest, false, "Fail to update gift card.", null))
 										}
 									})
-							}else{
-								res.send(setRes(resCode.BadRequest,false, "Gift card name already taken.!",null))
+							} else {
+								res.send(setRes(resCode.BadRequest, false, "Gift card name already taken.!", null))
 							}
 						})
 					}
 				})
 			}
-		}else{
-			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
+		} else {
+			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
 		}
-	}catch(error){
-		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
+	} catch (error) {
+		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
 	}
 }
 // Update Reward Gift Card END

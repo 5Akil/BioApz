@@ -39,6 +39,7 @@ module.exports = (sequelize, DataTypes) => {
   LoyaltyPoints.associate = function(models) {
     // associations can be defined here
     LoyaltyPoints.belongsTo(models.business, {foreignKey: 'business_id'})
+    LoyaltyPoints.belongsTo(models.products, {foreignKey: 'product_id'})
   };
   return LoyaltyPoints;
 };

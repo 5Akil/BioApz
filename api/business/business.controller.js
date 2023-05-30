@@ -62,6 +62,7 @@ exports.createInquiry = async (req, res) => {
 						}
 					}).then((inquiry) => {
 						if (inquiry == null) {
+							data.email = (data.email).toLowerCase();
 							dbModel.create(data).then(function (inquiry) {
 								if (inquiry) {
 									res.send(setRes(resCode.OK, true, 'Business inquiry submitted successfully', inquiry));
@@ -1014,6 +1015,7 @@ exports.CreateBusiness = async (req, res) => {
 				}
 			}).then(async (validation) => {
 				if (validation == null) {
+					data.email = (data.email).toLowerCase();
 					await businessModel.create(data).then(async business => {
 
 						if (data.id) {
@@ -1035,7 +1037,6 @@ exports.CreateBusiness = async (req, res) => {
 
 						}
 						else {
-							if (business.banner != null) {
 								if (business.banner != null) {
 									var business_banner = await awsConfig.getSignUrl(business.banner).then(function (res) {
 										business.banner = res
@@ -1044,7 +1045,6 @@ exports.CreateBusiness = async (req, res) => {
 								else {
 									business.banner = commonConfig.default_user_image;
 								}
-							}
 							res.send(setRes(resCode.OK, true, "Business created successfully.", business))
 						}
 					})

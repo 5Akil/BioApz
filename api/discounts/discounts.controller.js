@@ -29,6 +29,15 @@ exports.create = async(req,res) =>{
 		var productModel = models.products
 		var Op = models.Op;
 		var validation = true;
+		
+		var currentDate = (moment().format('YYYY-MM-DD') == moment(data.validity_for).format('YYYY-MM-DD'))
+		var pastDate = moment(data.validity_for, 'YYYY-MM-DD').isBefore(moment());
+
+		if(!_.isEmpty(data.validity_for)){
+			if(currentDate || pastDate){
+				return res.send(setRes(resCode.BadRequest, false, "You can't select past and current date.!", null))
+			}
+		}
 
 		var requiredFields = _.reject(['business_id','title','discount_type','discount_value','product_category_id','product_id','validity_for'], (o) => { return _.has(data, o)  })
 		const result =  data.discount_type == 0 ? (!((data.discount_value >= Math.min(1,100)) && (data.discount_value <= Math.max(1,100))) ? true : false) : '';
@@ -140,6 +149,14 @@ exports.update =async(req,res) => {
 		var productModel = models.products
 		var Op = models.Op;
 		var validation = true;
+		var currentDate = (moment().format('YYYY-MM-DD') == moment(data.validity_for).format('YYYY-MM-DD'))
+		var pastDate = moment(data.validity_for, 'YYYY-MM-DD').isBefore(moment());
+
+		if(!_.isEmpty(data.validity_for)){
+			if(currentDate || pastDate){
+				return res.send(setRes(resCode.BadRequest, false, "You can't select past and current date.!", null))
+			}
+		}
 
 		var requiredFields = _.reject(['id','title','discount_type','discount_value','product_category_id','product_id','validity_for'], (o) => { return _.has(data, o)  })
 		const result =  data.discount_type == 0 ? (!((data.discount_value >= Math.min(1,100)) && (data.discount_value <= Math.max(1,100))) ? true : false) : '';

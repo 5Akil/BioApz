@@ -40,6 +40,16 @@ exports.create = async(req,res) =>{
 				res.send(setRes(resCode.BadRequest,false, "You can't select past and current date.!",null))
 			}else{
 				if(validation){
+					if(data.product_id != null){
+						var productModel = models.products
+						productModel.findOne({
+							where:{id:data.product_id,is_deleted:false}
+						}).then(async product => {
+							if(_.isEmpty(product)){
+								return res.send(setRes(resCode.ResourceNotFound,false, "Product not found!",null))
+							}
+						})
+					}
 					businessModel.findOne({
 						where:{id:data.business_id,is_deleted:false,is_active:true}
 					}).then(async business => {

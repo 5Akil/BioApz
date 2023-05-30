@@ -29,12 +29,16 @@ exports.cashbackCreate = async(req,res) =>{
 		var productModel = models.products
 		var Op = models.Op;
 		var validation = true;
+		var currentDate = (moment().format('YYYY-MM-DD') == moment(data.validity_for).format('YYYY-MM-DD'))
+		var pastDate = moment(data.validity_for, 'YYYY-MM-DD').isBefore(moment());
 
 		var requiredFields = _.reject(['business_id','title','cashback_on','cashback_type','cashback_value','product_category_id','product_id','validity_for'], (o) => { return _.has(data, o)  })
 		const result =  !_.isEmpty(data.cashback_type) && data.cashback_type == 0 ? (!((data.cashback_value >= Math.min(1,100)) && (data.cashback_value <= Math.max(1,100))) ? true : false) : '';
 		if(requiredFields == ""){
 			if(result){
 				res.send(setRes(resCode.BadRequest,false, "Please select valid cashback value in percentage(between 1 to 100)!",null))
+			}else if(currentDate || pastDate){
+				res.send(setRes(resCode.BadRequest, false, "You can't select past and current date.!", null))
 			}else{
 				if(validation){{
 				businessModel.findOne({
@@ -146,6 +150,8 @@ exports.cashbackUpdate = async (req, res) => {
 		var requiredFields = _.reject(["id"], (o) => {
 			return _.has(data, o);
 		});
+		var currentDate = (moment().format('YYYY-MM-DD') == moment(data.validity_for).format('YYYY-MM-DD'))
+		var pastDate = moment(data.validity_for, 'YYYY-MM-DD').isBefore(moment());
 		if (requiredFields == "") {
 			cashbackModel
 				.findOne({
@@ -186,6 +192,11 @@ exports.cashbackUpdate = async (req, res) => {
 										null
 									)
 								);
+							}
+						}
+						if(!_.isEmpty(data.validity_for)){
+							if(currentDate || pastDate){
+								return res.send(setRes(resCode.BadRequest, false, "You can't select past and current date.!", null))
 							}
 						}
 						await cashbackModel
