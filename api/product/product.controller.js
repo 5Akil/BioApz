@@ -91,6 +91,7 @@ exports.GetAllProducts = async (req, res) => {
 	var category = models.business_categorys;
 	var product_category = models.product_categorys
 	var productRattingModel = models.product_ratings
+	var Op = models.Op
 	var categoryModel = models.product_categorys
 	var data = req.body
 	var requiredFields = _.reject(['page','page_size','business_id','category_id'], (o) => { return _.has(data, o)  })
@@ -107,7 +108,7 @@ exports.GetAllProducts = async (req, res) => {
 			limit : limit,
 			subQuery:false,
 			order: [
-				['createdAt', 'DESC']
+				['createdAt', 'DESC'],
 			],
 			include:[
 				{
@@ -131,11 +132,19 @@ exports.GetAllProducts = async (req, res) => {
 			group: ['products.id'],
 		}
 		condition.where = {business_id:data.business_id,category_id:data.category_id}
+		condition.attributes = { exclude:['is_deleted','createdAt','updatedAt']}
+		if(!_.isEmpty(data.price)){
+			if(data.price == 1){
+				condition.order = Sequelize.literal('price DESC')
+			}else{
+				condition.order = Sequelize.literal('price ASC')
+			}
+		}
+
 		if(data.sub_category_id) {
-			
 			condition.where = {business_id:data.business_id,category_id:data.category_id,sub_category_id:data.sub_category_id}
 		}
-		
+
 		
 		productModel.findAll(condition).then(async(products) => {
 			
@@ -185,6 +194,7 @@ exports.GetAllProducts = async (req, res) => {
 			}
 		})
 		.catch((error) => {
+			console.log(error)
 			res.send(setRes(resCode.InternalServer,false, "Fail to get product list",null))
 			
 		})
@@ -1009,16 +1019,9 @@ exports.ProductTypeList = async(req, res) => {
 	var categoryModel = models.product_categorys
 	var Op = models.Op;
 
-	var requiredFields = _.reject(['business_id','page','page_size'], (o) => { return _.has(data, o) })
+	var requiredFields = _.reject(['business_id'], (o) => { return _.has(data, o) })
 	if(requiredFields == ""){
-		if(data.page < 0 || data.page === 0) {
-			res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1",null))
-		}
-		var skip = data.page_size * (data.page - 1)
-		var limit = parseInt(data.page_size)
 		var condition = {
-			offset:skip,
-			limit : limit,
 			subQuery:false,
 			order: [
 				['createdAt', 'DESC']
@@ -1028,6 +1031,8 @@ exports.ProductTypeList = async(req, res) => {
 		condition.where = {business_id:data.business_id,parent_id:{
 				[Op.ne]: 0	
 			},is_deleted:false}
+			condition.attributes =  { exclude: ['is_deleted', 'is_enable','createdAt','updatedAt'] }
+
 		if(data.category_id) {
 			
 			condition.where = {business_id:data.business_id,parent_id:data.category_id,is_deleted:false}
