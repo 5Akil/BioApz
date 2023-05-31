@@ -1121,6 +1121,7 @@ exports.GetAllBusiness = async (req, res) => {
 	var businessModel = models.business
 	var Op = models.Op;
 	var businesscateogryModel = models.business_categorys
+	var settingModel = models.settings
 
 	var requiredFields = _.reject(['page', 'page_size'], (o) => { return _.has(data, o)  })
 
@@ -1138,6 +1139,9 @@ exports.GetAllBusiness = async (req, res) => {
 				model: businesscateogryModel,
 				attributes: ['name'] 
 			},
+			include: {
+				model: settingModel,
+			},
 			offset:skip,
 			limit:limit,
 			order: [
@@ -1145,7 +1149,7 @@ exports.GetAllBusiness = async (req, res) => {
 			],
 			attributes: { exclude: ['is_deleted', 'is_enable','auth_token','device_type',
 				'role_id','sections','template_id','color_code','approve_by',
-				'booking_facility','abn_no','address','password','account_name','person_name',
+				'booking_facility','abn_no','password','account_name','person_name',
 				'reset_pass_token','reset_pass_expire','device_token','business_category','account_number',
 				'latitude','longitude','email','device_id','phone'] }
 		}
@@ -1178,6 +1182,17 @@ exports.GetAllBusiness = async (req, res) => {
 						})
 					}else{
 						data.banner = commonConfig.default_image;
+					}
+
+					if (data.setting != null) {
+						var date =  data.setting.setting_value
+						var arr1 = date.split('_');
+						var from = moment(arr1[0], "HH:mm").format("hh:mm A");
+						var to = moment(arr1[1], "HH:mm").format("hh:mm A");
+						data.dataValues.available = `${from} - ${to}`;
+						delete data.dataValues.setting;
+					} else {
+						data.dataValues.available = "";
 					}
 				}
 				res.send(setRes(resCode.OK,true,'Get Business successfully',businessData))
@@ -1272,7 +1287,6 @@ exports.homeList = async (req, res) => {
 		var couponeModel = models.coupones
 		var loyaltyPointModel = models.loyalty_points
 		var combocalenderModel = models.combo_calendar
-		var responseData = [];
 		var businessArray = [];
 		var eventArray = [];
 		const promises = [];
@@ -1441,10 +1455,10 @@ exports.homeList = async (req, res) => {
 
 		let resData = {};
 		resData.businesses = businessDataArray;
-		resData.rewards_and_loyalty = mergedArray;
+		resData.rewards_and_loyalty = result;
 		resData.upcoming_events = eventDataArray;
 
-		res.send(setRes(resCode.OK, true, "Get rewards list successfully.",resData))
+		res.send(setRes(resCode.OK, true, "Get home page details successfully.",resData))
 	} catch(error){
 		console.log(error)
 		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))

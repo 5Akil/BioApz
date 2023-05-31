@@ -137,4 +137,8 @@ router.post('/getOffers', verifyToken, controller.GetOffers)
 //booking api for react restaurants templates
 router.post('/restaurants-booking', verifyToken, controller.RestaurantsBooking)
 
+
+// Home Page
+router.get('/home', verifyToken, controller.homeList)
+
 module.exports = router;

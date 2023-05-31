@@ -271,16 +271,16 @@ exports.GetAllEvents = async (req, res) => {
 
 	var requiredFields = _.reject(['business_id'], (o) => { return _.has(data, o) })
 	if (requiredFields == '') {
-		comboModel.update({
-			is_deleted: true
-		}, {
-			where: {
-				is_deleted: false,
-				end_date: {
-					[Op.lt]: moment().format('YYYY-MM-DD')
-				}
-			}
-		}).then(async updatedOffers => {
+		// comboModel.update({
+		// 	is_deleted: true
+		// }, {
+		// 	where: {
+		// 		is_deleted: false,
+		// 		end_date: {
+		// 			[Op.lt]: moment().format('YYYY-MM-DD')
+		// 		}
+		// 	}
+		// }).then(async updatedOffers => {
 		 	await comboModel.findAll({
 				where: {
 					business_id: data.business_id,
@@ -291,70 +291,70 @@ exports.GetAllEvents = async (req, res) => {
 				],
 				subQuery: false
 			}).then(async combos => {
-				await _.each(combos, (o) => {
-					let one = Moment.range(moment(`${data.from_date}T00:00:00.0000Z`), moment(`${data.to_date}T23:59:59.999Z`))
-					let two = Moment.range(moment(`${o.start_date}T00:00:00.0000Z`), moment(`${o.end_date}T23:59:59.999Z`))
-					let three = one.intersect(two)
-					let four = three != null ? three.snapTo('day') : ''
-					let five = three != null ? Array.from(three.by('days')) : ''
-					_.each(five, (v) => {
-						v = v.format('DD-MM-YYYY')
-						if (o.repeat_every === 0) {
-							if (v === moment(o.start_date).format('DD-MM-YYYY')) {
-								_.has(resObj, v) === false ? resObj[v] = o : ''
-							}
-						} else if (o.repeat_every === 1) {
-							var start = moment(o.start_date),
-								end = moment(o.end_date),
-								day = o.repeat_on.map(function (v) {
-									return parseInt(v);
-								});
-							var now = start;
-							while (now.isBefore(end) || now.isSame(end)) {
-								if (v === moment(now).format('DD-MM-YYYY') && day.includes(moment(now, 'YYYY-MM-DD').day())) {
-									_.has(resObj, v) === false ? resObj[v] = o : ''
-								}
-								now.add(1, 'days');
-							}
-						} else if (o.repeat_every === 2) {
-							_.has(resObj, v) === false ? resObj[v] = o : ''
-						}
-					})
-				})
-				console.log(resObj)
-				// get N element from object
-				let arrRes = []
-				if (data.limit && data.limit > 0) {
-					function firstN(obj, n) {
-						return _.chain(obj)
-							.keys()
-							.sort()
-							.take(n)
-							.reduce(function (memo, current) {
-								arrRes.push(obj[current]);
-								return memo;
-							}, {})
-							.value();
-					}
+				console.log(combos)
+				// await _.each(combos, (o) => {
+				// 	let one = Moment.range(moment(`${data.from_date}T00:00:00.0000Z`), moment(`${data.to_date}T23:59:59.999Z`))
+				// 	let two = Moment.range(moment(`${o.start_date}T00:00:00.0000Z`), moment(`${o.end_date}T23:59:59.999Z`))
+				// 	let three = one.intersect(two)
+				// 	let four = three != null ? three.snapTo('day') : ''
+				// 	let five = three != null ? Array.from(three.by('days')) : ''
+				// 	_.each(five, (v) => {
+				// 		v = v.format('DD-MM-YYYY')
+				// 		if (o.repeat_every === 0) {
+				// 			if (v === moment(o.start_date).format('DD-MM-YYYY')) {
+				// 				_.has(resObj, v) === false ? resObj[v] = o : ''
+				// 			}
+				// 		} else if (o.repeat_every === 1) {
+				// 			var start = moment(o.start_date),
+				// 				end = moment(o.end_date),
+				// 				day = o.repeat_on.map(function (v) {
+				// 					return parseInt(v);
+				// 				});
+				// 			var now = start;
+				// 			while (now.isBefore(end) || now.isSame(end)) {
+				// 				if (v === moment(now).format('DD-MM-YYYY') && day.includes(moment(now, 'YYYY-MM-DD').day())) {
+				// 					_.has(resObj, v) === false ? resObj[v] = o : ''
+				// 				}
+				// 				now.add(1, 'days');
+				// 			}
+				// 		} else if (o.repeat_every === 2) {
+				// 			_.has(resObj, v) === false ? resObj[v] = o : ''
+				// 		}
+				// 	})
+				// })
+				// // get N element from object
+				// let arrRes = []
+				// if (data.limit && data.limit > 0) {
+				// 	function firstN(obj, n) {
+				// 		return _.chain(obj)
+				// 			.keys()
+				// 			.sort()
+				// 			.take(n)
+				// 			.reduce(function (memo, current) {
+				// 				arrRes.push(obj[current]);
+				// 				return memo;
+				// 			}, {})
+				// 			.value();
+				// 	}
 
-					firstN(resObj, data.limit)
-				}
-				const offer_dates = Object.keys(resObj);
+				// 	firstN(resObj, data.limit)
+				// }
+				// const offer_dates = Object.keys(resObj);
 
-				for (const offer of offer_dates) {
-					var image = resObj[offer].dataValues.images;
-					var images = image.split(";");
-					var image_array = [];
-					for (const data of images) {
-						const signurl = await awsConfig.getSignUrl(data).then(function (res) {
-							image_array.push(res);
-						});
-					}
-					resObj[offer].dataValues.images_url = image_array;
-				}
-				console.log(arrRes)
+				// for (const offer of offer_dates) {
+				// 	var image = resObj[offer].dataValues.images;
+				// 	var images = image.split(";");
+				// 	var image_array = [];
+				// 	for (const data of images) {
+				// 		const signurl = await awsConfig.getSignUrl(data).then(function (res) {
+				// 			image_array.push(res);
+				// 		});
+				// 	}
+				// 	resObj[offer].dataValues.images_url = image_array;
+				// }
+				// console.log(arrRes)
 				res.send(setRes(resCode.OK, true, "Available events list.", (data.limit ? arrRes : resObj)))
-			})
+			// })
 				.catch(error => {
 					console.log('============get combo error==========')
 					console.log(error.message)

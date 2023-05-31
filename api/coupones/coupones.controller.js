@@ -69,10 +69,10 @@ exports.create = async(req,res) =>{
 								if(couponSame){
 									res.send(setRes(resCode.BadRequest,false, "Coupon title already taken.!",null))
 								}else{
-									couponeModel.create({
+									couponeModel.create(
+										{
 										business_id:!(_.isEmpty(data.business_id) && data.business_id == null) ? data.business_id : null,
 										title:!(_.isEmpty(data.title) && data.title == null) ? data.title : null,
-										coupon_code:!(_.isEmpty(couponCode) && couponCode == null) ? couponCode : null,
 										coupon_type:!(_.isEmpty(data.coupon_type) && data.coupon_type == null) ? data.coupon_type : null,
 										product_category_id:(!(_.isEmpty(data.product_category_id) && data.product_category_id == null)) && data.coupon_type == 0 ? data.product_category_id : null,
 										product_id:(!(_.isEmpty(data.product_id) && data.product_id == null)) && (!_.isEmpty(data.product_category_id)) && data.coupon_type == 0  ? data.product_id : null,
@@ -81,7 +81,8 @@ exports.create = async(req,res) =>{
 										validity_for:!(_.isEmpty(data.validity_for) && data.validity_for == null) ? data.validity_for : null,
 										expire_at:!(_.isEmpty(data.expire_at) && data.expire_at == null) ? data.expire_at : null,
 										description:!(_.isEmpty(data.description) && data.description == null) ? data.description : null
-									}).then(async couponeData => {
+									}
+									).then(async couponeData => {
 										if(couponeData){
 											res.send(setRes(resCode.OK,true,"Coupon added successfully",couponeData))
 										}else{

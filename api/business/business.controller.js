@@ -1394,3 +1394,185 @@ exports.RestaurantsBooking = (req, res) => {
 	}
 
 }
+
+// Home Page API START
+exports.homeList = async (req, res) => {
+	try {
+		var data = req.query
+		var giftCardModel = models.gift_cards
+		var cashbackModel = models.cashbacks
+		var discountModel = models.discounts
+		var couponeModel = models.coupones
+		var loyaltyPointModel = models.loyalty_points
+		var combocalenderModel = models.combo_calendar
+		var businessModel = models.business;
+		var Op = models.Op;
+		const promises = [];
+		var eventArray = [];
+
+		promises.push(
+			giftCardModel.findAll({
+				where: { business_id:data.business_id,isDeleted: false, status: true, deleted_at: null }
+			}).then(async giftCardData => {
+				if (giftCardData.length > 0) {
+					const dataArray = [];
+					// Update Sign URL
+					for (const data of giftCardData) {
+						if (data.image != null) {
+							var images = data.image
+							const signurl = await awsConfig.getSignUrl(images.toString()).then(function (res) {
+								data.image = res;
+							});
+						} else {
+							data.image = commonConfig.default_image;
+						}
+						let result = JSON.parse(JSON.stringify(data));
+						result.type = "gift_cards";
+						dataArray.push(result);
+					}
+					return dataArray;
+				}
+				return [];
+			}),
+			cashbackModel.findAll({
+				where: { business_id:data.business_id,isDeleted: false, status: true, deleted_at: null }
+			}).then(async CashbackData => {
+				if (CashbackData.length > 0) {
+					const dataArray = [];
+					for (const data of CashbackData) {
+						let result = JSON.parse(JSON.stringify(data));
+						result.type = "cashbacks";
+						dataArray.push(result);
+					}
+					return dataArray;
+				}
+				return [];
+			}),
+			discountModel.findAll({
+				where: { business_id:data.business_id,isDeleted: false, status: true, deleted_at: null }
+			}).then(async DiscountData => {
+				if (DiscountData.length > 0) {
+					const dataArray = [];
+					for (const data of DiscountData) {
+						let result = JSON.parse(JSON.stringify(data));
+						result.type = "discounts";
+						dataArray.push(result);
+					}
+					return dataArray;
+				}
+				return [];
+			}),
+			couponeModel.findAll({
+				where: { business_id:data.business_id,isDeleted: false, status: true, deleted_at: null }
+			}).then(async CouponeData => {
+				if (CouponeData.length > 0) {
+					const dataArray = [];
+					for (const data of CouponeData) {
+						let result = JSON.parse(JSON.stringify(data));
+						result.type = "coupones";
+						dataArray.push(result);
+					}
+					return dataArray;
+
+				}
+				return [];
+			}),
+			loyaltyPointModel.findAll({
+				where: { business_id:data.business_id,isDeleted: false, status: true, deleted_at: null }
+			}).then(async LoyaltyPointData => {
+				if (LoyaltyPointData.length > 0) {
+					const dataArray = [];
+					for (const data of LoyaltyPointData) {
+						let result = JSON.parse(JSON.stringify(data));
+						result.type = "loyalty_points";
+						dataArray.push(result);
+					}
+					return dataArray;
+
+				}
+				return [];
+			}),
+		);
+		const [giftcardRewards, cashbackData, discountData, couponeData, loyaltyData] = await Promise.all(promises);
+		const rewardsAndLoyaltyArray = [giftcardRewards, cashbackData, discountData, couponeData, loyaltyData];
+		const mergedArray = mergeRandomArrayObjects(rewardsAndLoyaltyArray);
+		let result = mergedArray.slice(0, 5);
+
+		eventArray.push(
+			combocalenderModel.findAll({
+				where: { is_deleted: false,business_id:data.business_id}
+			}).then(async event => {
+				if(event.length > 0){
+					const dataArray = [];	
+					for (const data of event) {
+						var event_images = data.images
+						var image_array = [];
+						if(event_images != null){
+							for(const data of event_images){
+								const signurl = await awsConfig.getSignUrl(data).then(function(res){
+									  image_array.push(res);
+								});
+							}
+						}else{
+							image_array.push(commonConfig.default_image)
+						}
+						data.dataValues.event_images = image_array
+					}
+					var array = shuffle(event);
+					var slicedArray = array.slice(0, 5);
+					let result = 	JSON.parse(JSON.stringify(slicedArray));
+					dataArray.push(result);
+					return result;
+				}
+				return [];
+			})
+		);
+		
+		const [eventsData] = await Promise.all(eventArray);
+		const eventDataArray = eventsData;
+
+		let resData = {};
+		resData.total_sale = "";
+		resData.total_ongoing = "";
+		resData.total_products = "";
+		resData.rewards_and_loyalty = result;
+		resData.events = eventDataArray;
+
+		res.send(setRes(resCode.OK, true, "Get home page details successfully.",resData))
+	} catch (error) {
+		console.log(error)
+		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
+	}
+}
+
+function mergeRandomArrayObjects(arrays) {
+	const shuffledArrays = _.shuffle(arrays);
+	const mergedArray = [];
+
+	_.each(shuffledArrays, function (array) {
+		_.each(array, function (obj) {
+			_.extend(obj, { random: Math.random() });
+			mergedArray.push(obj);
+		});
+	});
+	return mergedArray;
+}
+
+function shuffle(array) {
+	let currentIndex = array.length,  randomIndex;
+  
+	// While there remain elements to shuffle.
+	while (currentIndex != 0) {
+  
+	  // Pick a remaining element.
+	  randomIndex = Math.floor(Math.random() * currentIndex);
+	  currentIndex--;
+  
+	  // And swap it with the current element.
+	  [array[currentIndex], array[randomIndex]] = [
+		array[randomIndex], array[currentIndex]];
+	}
+  
+	return array;
+}
+// Home Page API END

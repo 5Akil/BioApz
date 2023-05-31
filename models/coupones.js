@@ -40,6 +40,23 @@ module.exports = (sequelize, DataTypes) => {
      deletedAt: 'deleted_at',
     // timestamps: false
   });
+
+  Coupones.beforeCreate(async (coupones, options) => {
+    function generateCouponCode(length) {
+      const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      let couponCode = '';
+      for (let i = 0; i < length; i++) {
+        const randomIndex = Math.floor(Math.random() * characters.length);
+        couponCode += characters.charAt(randomIndex);
+      }
+      return couponCode;
+    }
+    // Generate a unique coupon code with a length of 6 characters
+    const couponCode = generateCouponCode(6);
+    let id = couponCode;
+    coupones.coupon_code = id;
+  });
+  
   Coupones.associate = function(models) {
     // associations can be defined here
     Coupones.belongsTo(models.business, {foreignKey: 'business_id'})
