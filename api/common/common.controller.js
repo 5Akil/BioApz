@@ -717,64 +717,64 @@ exports.DeleteProductOffers = (req, res) => {
 	}
 }
 
-exports.BusinessSearch = async (req, res) => {
+// exports.BusinessSearch = async (req, res) => {
 
-	var data = req.body;
-    var businessModel = models.business;
-    var businesscateogryModel = models.business_categorys
-    var Op = models.Op;
+// 	var data = req.body;
+//     var businessModel = models.business;
+//     var businesscateogryModel = models.business_categorys
+//     var Op = models.Op;
 
-    var requiredFields = _.reject(['page','page_size'], (o) => { return _.has(data, o)  })
-    if(requiredFields == ""){
+//     var requiredFields = _.reject(['page','page_size'], (o) => { return _.has(data, o)  })
+//     if(requiredFields == ""){
 
-	    if(data.page < 0 || data.page === 0) {
-			res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1",null))
-		}
-	    var skip = data.page_size * (data.page - 1)
-		var limit = parseInt(data.page_size)
-	    var condition = {
-	    	offset:skip,
-			limit : limit,
-			include: {
-				model: businesscateogryModel,
-				attributes: ['name'] 
-			},
-			attributes: { exclude: ['is_deleted', 'is_enable','auth_token','device_type',
-				'role_id','sections','template_id','color_code','approve_by',
-				'booking_facility','abn_no','address','password','account_name','person_name',
-				'reset_pass_token','reset_pass_expire','device_token','business_category','account_number',
-				'latitude','longitude','email','device_id','phone'] }
-		};
-		condition.where = {
-	            business_name: {
-			      [Op.like]: `%${data.str}%`
-			    },
-			    is_deleted: false,
+// 	    if(data.page < 0 || data.page === 0) {
+// 			res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1",null))
+// 		}
+// 	    var skip = data.page_size * (data.page - 1)
+// 		var limit = parseInt(data.page_size)
+// 	    var condition = {
+// 	    	offset:skip,
+// 			limit : limit,
+// 			include: {
+// 				model: businesscateogryModel,
+// 				attributes: ['name'] 
+// 			},
+// 			attributes: { exclude: ['is_deleted', 'is_enable','auth_token','device_type',
+// 				'role_id','sections','template_id','color_code','approve_by',
+// 				'booking_facility','abn_no','address','password','account_name','person_name',
+// 				'reset_pass_token','reset_pass_expire','device_token','business_category','account_number',
+// 				'latitude','longitude','email','device_id','phone'] }
+// 		};
+// 		condition.where = {
+// 	            business_name: {
+// 			      [Op.like]: `%${data.str}%`
+// 			    },
+// 			    is_deleted: false,
 			    
-	        }
-	    businessModel.findAll(condition).then(async business => {
+// 	        }
+// 	    businessModel.findAll(condition).then(async business => {
 
-	    	if(business.length > 0){
-		        for(const data of business){
-		        data.dataValues.category_name = data.business_category.name
-				delete data.dataValues.business_category;
-		        	if(data.banner != null){
+// 	    	if(business.length > 0){
+// 		        for(const data of business){
+// 		        data.dataValues.category_name = data.business_category.name
+// 				delete data.dataValues.business_category;
+// 		        	if(data.banner != null){
 
-					  	const signurl = await awsConfig.getSignUrl(data.banner).then(function(res){
-					  		data.banner = res
-					  	})
-		        	}
-				}
+// 					  	const signurl = await awsConfig.getSignUrl(data.banner).then(function(res){
+// 					  		data.banner = res
+// 					  	})
+// 		        	}
+// 				}
 
-	    	}else{
-	    		res.send(setRes(resCode.ResourceNotFound,false,"Business not found",null))
-	    	}
-	        res.send(setRes(resCode.OK, false, "Business search completed.",business))
-	    }).catch(error => {
-	        res.send(setRes(resCode.InternalServer, false, "Fail to get business",null))
-	    })
-    }else{
-    	res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
-    }
+// 	    	}else{
+// 	    		res.send(setRes(resCode.ResourceNotFound,false,"Business not found",null))
+// 	    	}
+// 	        res.send(setRes(resCode.OK, false, "Business search completed.",business))
+// 	    }).catch(error => {
+// 	        res.send(setRes(resCode.InternalServer, false, "Fail to get business",null))
+// 	    })
+//     }else{
+//     	res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
+//     }
 
-}
+// }

@@ -110,11 +110,13 @@ var awsuploadbanner = multer({
 })
 var controller = require('./business.controller')
 
-const {verifyToken} = require('../../config/token');
+const {verifyToken,authorize} = require('../../config/token');
 
 const uploadImage = multer({ dest: 'business_gallery/' });
 
-router.post('/inquiry', verifyToken, controller.createInquiry)
+
+
+router.post('/inquiry', verifyToken,authorize([3]), controller.createInquiry)
 router.post('/recommended', verifyToken, controller.GetRecommendedBusiness)
 router.post('/getBusinessDetail', verifyToken, controller.GetBusinessDetail);
 router.post('/updateBusinessDetail', verifyToken, awsuploadbanner.single('banner'), controller.UpdateBusinessDetail)

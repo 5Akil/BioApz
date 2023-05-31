@@ -117,6 +117,10 @@ Business.associate = function(models) {
     Business.hasMany(models.discounts, {foreignKey: 'business_id'})
     Business.hasMany(models.coupones, {foreignKey: 'business_id'})
     Business.hasMany(models.loyalty_points, {foreignKey: 'business_id'})
+    Business.hasOne(models.settings, {foreignKey: 'business_id'})
+    Business.hasOne(models.cms_pages, {foreignKey: 'business_id'})
+    Business.hasOne(models.faqs, {foreignKey: 'business_id'})
+
   };
   return Business;
 };

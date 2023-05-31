@@ -1469,7 +1469,7 @@ function shuffle(array) {
   return array;
 }
 // Home Screeen Details END
-
+// =========================================Online STORE START=========================================
 // Rewards List START
 exports.rewardsList = async (req, res) => {
 	try{
@@ -1605,6 +1605,7 @@ exports.rewardsView = async (req, res) => {
 		var cashbackModel = models.cashbacks
 		var discountModel = models.discounts
 		var couponeModel = models.coupones
+		var Op = models.Op
 		var currentDate = (moment().format('YYYY-MM-DD'))
 
 		var typeArr = ['gift_cards','cashbacks','discounts','coupones'];
@@ -1693,6 +1694,7 @@ exports.rewardsView = async (req, res) => {
 		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
 	}
 }
+
 // Rewards View END
 
 // Loyalty List START
@@ -1794,8 +1796,144 @@ exports.loyaltyList = async (req, res) => {
 };
 // Loyalty List END
 
+// Loyalty View START
+exports.loyaltyView = async (req, res) => {
+	try {
+	  var data = req.params;
+	  var loyaltyPointModel = models.loyalty_points;
+	  var businessModel = models.business;
+	  var productModel = models.products;
+	  const Op = models.Op;
+
+	  var currentDate = (moment().format('YYYY-MM-DD'))
+		  loyaltyPointModel.findOne({
+			where: {
+			  isDeleted: false,
+			  status: true,
+			  id: data.id,
+			  deleted_at: null,
+			  validity: { 
+				  [Op.gt]: currentDate
+			  },
+			},
+			include: [
+			  {
+				model: businessModel,
+				attributes: ["id", "business_name"],
+			  },
+			  {
+				model: productModel,
+				attributes: ["id", "name"],
+			  },
+			],
+		  })
+		  .then(async (loyaltyData) => {
+			if (loyaltyData) {
+			  res.send(
+				setRes(
+				  resCode.OK,
+				  true,
+				  "Get loyalty point details successfully",
+				  loyaltyData
+				)
+			  );
+			} else {
+			  res.send(
+				setRes(resCode.ResourceNotFound, false, "Loyalty not found", null)
+			  );
+			}
+		  });
+	} catch (error) {
+	  console.log(error);
+	  res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null));
+	}
+  };
+  // Loyalty List END
+
 // Business BIO START
 exports.businessBIO = async (req, res) => {
-	console.log('hi')
-}
+  var data = req.query;
+  var businessModel = models.business;
+  var businessCategory = models.business_categorys
+  var cmsModels = models.cms_pages
+  var settingModel = models.settings
+  var faqModel = models.faqs
+  businessModel
+    .findOne({
+      where: { id: data.business_id, is_active: true, is_deleted: false },
+	  attributes: ['id', 'business_name','description'], 
+	  include: [
+		{
+			model: businessCategory,
+			attributes: ['id','name'],
+			where: {is_deleted:false}
+		},
+		{
+			model: settingModel,
+			attributes:['id','setting_value']
+		},
+		{
+			model: cmsModels,
+			attributes:['id','page_value','page_label'],
+			where: {page_key:'terms_of_service'},		
+		},
+		{
+			model: faqModel,
+			attributes: ['id','title','description']
+		}
+	  ],
+    })
+    .then(async (bio) => {
+		if (bio != null) {
+			//  Category name Get
+			if (bio.business_category != null) {
+				bio.dataValues.business_category_name = bio.business_category.name;
+				delete bio.dataValues.business_category;
+			} else {
+				bio.dataValues.business_category_name = "";
+			}
+
+			// FAQ Details
+			if (bio.faq != null) {
+				bio.dataValues.faq = bio.faq.description;
+			} else {
+				bio.dataValues.faq = "";
+			}
+
+			//  Opening Time
+			if (bio.setting != null) {
+				var date =  bio.setting.setting_value
+				var arr1 = date.split('_');
+				var from = moment(arr1[0], "HH:mm").format("hh:mm A");
+				var to = moment(arr1[1], "HH:mm").format("hh:mm A");
+				bio.dataValues.available = `${from} - ${to}`;
+				delete bio.dataValues.setting;
+			} else {
+				bio.dataValues.available = "";
+			}
+
+			// Terms And Conditions GET
+			if (bio.cms_page != null) {
+				bio.dataValues.terms_and_condition = bio.cms_page.page_value;
+				delete bio.dataValues.cms_page;
+			} else {
+				bio.dataValues.terms_and_condition = "";
+			}
+			
+			res.send(
+				setRes(
+					resCode.OK,
+					true,
+					"Get bussiness bio detail successfully.",
+					bio
+				)
+			);
+		} else {
+			res.send(
+				setRes(resCode.ResourceNotFound, false, "Bussiness not found.", null)
+			);
+		}
+    });
+};
 // Business BIO END
+// =========================================Online STORE END=========================================

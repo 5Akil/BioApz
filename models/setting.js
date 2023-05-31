@@ -23,7 +23,7 @@ module.exports = (sequelize, DataTypes) => {
   });
   Setting.associate = function(models) {
     // associations can be defined here
-
+    Setting.belongsTo(models.business, {foreignKey: 'business_id'})
   };
   return Setting;
 };

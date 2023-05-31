@@ -237,6 +237,7 @@ exports.commonRewardsList =async(req,res) => {
 		var couponeModel = models.coupones
 		var loyaltyPointModel = models.loyalty_points
 		var Op = models.Op
+		var currentDate = (moment().format('YYYY-MM-DD'))
 		const promises = [];
 		var request_type = data.type
 
@@ -258,7 +259,10 @@ exports.commonRewardsList =async(req,res) => {
 
 			promises.push(
 				giftCardModel.findAll({
-					where:{isDeleted:false,status:true,business_id:data.business_id,deleted_at: null,[Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],}
+					where:{isDeleted:false,status:true,business_id:data.business_id,deleted_at: null,[Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],
+					expire_at: { 
+						[Op.gt]: currentDate
+					},}
 				}).then(async giftCardData => {
 					if (giftCardData.length > 0){
 						const dataArray = [];
@@ -281,7 +285,10 @@ exports.commonRewardsList =async(req,res) => {
 					return [];
 				}),
 				cashbackModel.findAll({
-					where:{isDeleted:false,status:true,business_id:data.business_id,deleted_at: null,[Op.or]: [{title: {[Op.like]: "%" + data.search + "%",}}],}
+					where:{isDeleted:false,status:true,business_id:data.business_id,deleted_at: null,[Op.or]: [{title: {[Op.like]: "%" + data.search + "%",}}],
+					validity_for: { 
+						[Op.gt]: currentDate
+					},}
 				}).then(async CashbackData => {
 					if (CashbackData.length > 0){
 						const dataArray = [];
@@ -295,7 +302,10 @@ exports.commonRewardsList =async(req,res) => {
 					return [];		
 				}),
 				discountModel.findAll({
-					where:{isDeleted:false,status:true,business_id:data.business_id,deleted_at: null,[Op.or]: [{title: {[Op.like]: "%" + data.search + "%",}}],}
+					where:{isDeleted:false,status:true,business_id:data.business_id,deleted_at: null,[Op.or]: [{title: {[Op.like]: "%" + data.search + "%",}}],
+					validity_for: { 
+						[Op.gt]: currentDate
+					},}
 				}).then(async DiscountData => {
 						if (DiscountData.length > 0){
 							const dataArray = [];
@@ -309,7 +319,10 @@ exports.commonRewardsList =async(req,res) => {
 					return [];
 				}),
 				couponeModel.findAll({
-					where:{isDeleted:false,status:true,business_id:data.business_id,deleted_at: null,[Op.or]: [{title: {[Op.like]: "%" + data.search + "%",}}],}
+					where:{isDeleted:false,status:true,business_id:data.business_id,deleted_at: null,[Op.or]: [{title: {[Op.like]: "%" + data.search + "%",}}],
+					expire_at: { 
+						[Op.gt]: currentDate
+					},}
 				}).then(async CouponeData => {
 					if (CouponeData.length > 0){
 						const dataArray = [];
@@ -324,7 +337,10 @@ exports.commonRewardsList =async(req,res) => {
 					return [];
 				}),
 				loyaltyPointModel.findAll({
-					where:{isDeleted:false,status:true,business_id:data.business_id,deleted_at: null,[Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],}
+					where:{isDeleted:false,status:true,business_id:data.business_id,deleted_at: null,[Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],
+					validity: { 
+						[Op.gt]: currentDate
+					},}
 					}).then(async LoyaltyPointData => {
 						if(LoyaltyPointData.length  > 0){
 							const dataArray = [];
@@ -385,6 +401,8 @@ exports.commonRewardsView =async(req,res) => {
 		var discountModel = models.discounts
 		var couponeModel = models.coupones
 		var loyaltyPointModel = models.loyalty_points
+		var Op = models.Op
+		var currentDate = (moment().format('YYYY-MM-DD'))
 
 		var typeArr = ['gift_cards','cashbacks','discounts','coupones','loyalty_points'];
 		if((paramType) && !(typeArr.includes(paramType))){
@@ -395,7 +413,10 @@ exports.commonRewardsView =async(req,res) => {
 					where:{
 						id:data.id,
 						status:true,
-						isDeleted:false
+						isDeleted:false,
+						expire_at: { 
+							[Op.gt]: currentDate
+						},
 					}
 				}).then(async giftCardData => {
 					if (giftCardData != null){
@@ -417,7 +438,9 @@ exports.commonRewardsView =async(req,res) => {
 			
 			}else if(paramType == 'cashbacks') {
 				cashbackModel.findOne({
-					where:{id:data.id,status:true,isDeleted:false}
+					where:{id:data.id,status:true,isDeleted:false,validity_for: { 
+						[Op.gt]: currentDate
+					},}
 				}).then(async cashbackData => {
 					if (cashbackData != null){
 						res.send(setRes(resCode.OK, true, "Get cashbacks detail successfully.",cashbackData))
@@ -430,7 +453,9 @@ exports.commonRewardsView =async(req,res) => {
 				})
 			}else if(paramType == 'discounts'){
 				discountModel.findOne({
-					where:{id:data.id,status:true,isDeleted:false,deleted_at:null}
+					where:{id:data.id,status:true,isDeleted:false,deleted_at:null,validity_for: { 
+						[Op.gt]: currentDate
+					},}
 				}).then(async discountData => {
 					if (discountData != null){
 						res.send(setRes(resCode.OK, true, "Get Discount detail successfully.",discountData))
@@ -443,7 +468,9 @@ exports.commonRewardsView =async(req,res) => {
 				})
 			}else if(paramType == 'coupones'){
 				couponeModel.findOne({
-					where:{id:data.id,status:true,isDeleted:false,deleted_at:null}
+					where:{id:data.id,status:true,isDeleted:false,deleted_at:null,expire_at: { 
+						[Op.gt]: currentDate
+					},}
 				}).then(async couponeData => {
 					if (couponeData != null){
 						res.send(setRes(resCode.OK, true, "Get Coupones detail successfully.",couponeData))
@@ -456,7 +483,9 @@ exports.commonRewardsView =async(req,res) => {
 				})
 			}else if(paramType == 'loyalty_points'){
 				loyaltyPointModel.findOne({
-					where:{id:data.id,status:true,isDeleted:false,deleted_at:null}
+					where:{id:data.id,status:true,isDeleted:false,deleted_at:null,validity: { 
+						[Op.gt]: currentDate
+					},}
 				}).then(async loyaltyPointData => {
 					if (loyaltyPointData != null){
 						res.send(setRes(resCode.OK, true, "Get loyalty point detail successfully.",loyaltyPointData))
@@ -473,6 +502,7 @@ exports.commonRewardsView =async(req,res) => {
 		}
 		
 	}catch(error){
+		console.log(error)
 		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
 	}
 }

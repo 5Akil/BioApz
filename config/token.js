@@ -65,6 +65,54 @@ function verifyToken(req, res, next) {
   
 }
 
+function authorize(roles = []){
+	let rolesData = roles;
+	
+  	if (typeof rolesData === 'string') {
+    	rolesData = [rolesData];
+  	}
+	  return [
+		(req, res, next) => {
+			console.log(rolesData)
+			console.log(req.headers.authorization)
+		  // Bearer <token>
+		  if (req.headers.authorization) {
+			const [token] = req.headers.authorization.split(' ');
+			// const token = req.headers.authorization.split(' ')[1];
+			// console.log(bearer)
+			console.log(token)
+
+			try {
+			  if (token) {
+				const decoded = jwt.verify(token,'secret');
+				console.log(decoded)
+				req.user = decoded;
+				console.log(rolesData.length)
+				console.log(rolesData)
+				if (rolesData.length && !rolesData.includes(req.user.role_id)) {
+					return res.send(setRes(resCode.Unauthorized, true, "Forbidden/Unauthorized.",null))
+				}
+				return next();
+			  }
+			  return res.send(setRes(resCode.Unauthorized, true, "Invalid Token Access denied/Unauthorized.",null))
+			} catch (err) {
+			  return response(
+				res,
+				err,
+				{},
+				'Invalid Token Access denied/Unauthorized',
+				httpStatus.FORBIDDEN
+			  );
+			}
+		  }
+			return res.send(setRes(resCode.Forbidden, true, "No token provided.",null))
+		},
+	  ];
+	
+}
+
 module.exports = {
-  verifyToken
+  verifyToken,
+  authorize
 };
+
