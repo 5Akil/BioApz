@@ -17,6 +17,8 @@ var awsConfig = require('../../config/aws_S3_config');
 var moment = require('moment')
 const { verifyToken } = require('../../config/token')
 const Sequelize = require('sequelize');
+const { model } = require('mongoose')
+const { error } = require('console')
 
 exports.Register = async (req, res) => {
 
@@ -1155,12 +1157,12 @@ exports.GetAllBusiness = async (req, res) => {
 		}
 
 		if(data.category_id){
-			condition.where = {category_id:data.category_id,is_deleted:false,is_active:true}
+			condition.where = {...condition.where,...{category_id:data.category_id,is_deleted:false,is_active:true}}
 		}else{
-			condition.where = {is_deleted:false,is_active:true}
+			condition.where = {...condition.where,...{is_deleted:false,is_active:true}}
 		}
 		if(data.search && data.search != null){
-			condition.where = {[Op.or]: [{business_name: {[Op.like]: "%" + data.search + "%",}}],}
+			condition.where = {...condition.where,...{[Op.or]: [{business_name: {[Op.like]: "%" + data.search + "%",}}],}}
 		}
 		
 		businessModel.findAll(condition).then(async businessData => {
@@ -1287,13 +1289,15 @@ exports.homeList = async (req, res) => {
 		var couponeModel = models.coupones
 		var loyaltyPointModel = models.loyalty_points
 		var combocalenderModel = models.combo_calendar
+		var businesscateogryModel = models.business_categorys
 		var businessArray = [];
 		var eventArray = [];
 		const promises = [];
 
 		businessArray.push(
 			businessModel.findAll({
-				where: { is_deleted: false, is_active: true }
+				where: { is_deleted: false, is_active: true },
+				attributes: ['id','banner','business_name','address','description'] 
 			}).then(async business => {
 				if(business.length > 0){
 					const dataArray = [];
@@ -1323,8 +1327,20 @@ exports.homeList = async (req, res) => {
 			giftCardModel.findAll({
 				where:{isDeleted:false,status:true,deleted_at: null,expire_at: { 
 					[Op.gt]: currentDate
-				  },}
-			}).then(async giftCardData => {
+				  },
+			}, include:[
+				{
+					model:businessModel,
+					attributes: ['id','business_name','category_id'],
+					include:[
+						{
+							model:businesscateogryModel,
+							attributes: ['id','name'],
+						},
+					]
+				},
+			], attributes: ['id','image','name','amount','cashback_percentage','expire_at'] },
+			).then(async giftCardData => {
 				if (giftCardData.length > 0){
 					const dataArray = [];
 					// Update Sign URL
@@ -1334,11 +1350,24 @@ exports.homeList = async (req, res) => {
 							const signurl = await awsConfig.getSignUrl(images.toString()).then(function(res){
 								data.image = res;
 							});
-						}else {
+						} else {
 							data.image = commonConfig.default_image;
 						}
-						let result = 	JSON.parse(JSON.stringify(data));
-						result.type="gift_cards";
+
+							// Gset businesss name
+							if (data.business != null) {
+								data.dataValues.business_name = data.business.business_name;
+							} else {
+								data.dataValues.business_name = "";
+							}
+							if(data.business.business_category != null){
+								data.dataValues.category_name = data.business.business_category.name;
+							} else {
+								data.dataValues.category_name = "";
+							}
+							delete data.dataValues.business;
+						let result = JSON.parse(JSON.stringify(data));
+						result.type = "gift_cards";
 						dataArray.push(result);
 					}
 					return dataArray;
@@ -1348,8 +1377,8 @@ exports.homeList = async (req, res) => {
 			cashbackModel.findAll({
 				where:{isDeleted:false,status:true,deleted_at: null,validity_for: { 
 					[Op.gt]: currentDate
-				},}
-			}).then(async CashbackData => {
+				},
+			},attributes: ['id','title','cashback_value','product_category_id','product_id','description','validity_for']}).then(async CashbackData => {
 				if (CashbackData.length > 0){
 					const dataArray = [];
 					for(const data of CashbackData){
@@ -1364,8 +1393,8 @@ exports.homeList = async (req, res) => {
 			discountModel.findAll({
 				where:{isDeleted:false,status:true,deleted_at: null,validity_for: { 
 					[Op.gt]: currentDate
-				},}
-			}).then(async DiscountData => {
+				},
+			},attributes: ['id']}).then(async DiscountData => {
 					if (DiscountData.length > 0){
 						const dataArray = [];
 						for(const data of DiscountData){
@@ -1380,8 +1409,8 @@ exports.homeList = async (req, res) => {
 			couponeModel.findAll({
 				where:{isDeleted:false,status:true,deleted_at: null,expire_at: { 
 					[Op.gt]: currentDate
-				},}
-			}).then(async CouponeData => {
+				},
+			},attributes: ['id']}).then(async CouponeData => {
 				if (CouponeData.length > 0){
 					const dataArray = [];
 					for(const data of CouponeData){
@@ -1397,8 +1426,8 @@ exports.homeList = async (req, res) => {
 			loyaltyPointModel.findAll({
 				where:{isDeleted:false,status:true,deleted_at: null,validity: { 
 					[Op.gt]: currentDate
-				},}
-			}).then(async LoyaltyPointData => {
+				},
+			},attributes: ['id']}).then(async LoyaltyPointData => {
 				if (LoyaltyPointData.length > 0){
 					const dataArray = [];
 					for(const data of LoyaltyPointData){
@@ -1422,7 +1451,7 @@ exports.homeList = async (req, res) => {
 			combocalenderModel.findAll({
 				where: { is_deleted: false ,end_date: { 
 					[Op.lt]: currentDate
-				  },}
+				  },},attributes: ['id','images','title','description','start_date','end_date','start_time','end_time']
 			}).then(async event => {
 				if(event.length > 0){
 					const dataArray = [];	
@@ -1742,6 +1771,8 @@ exports.loyaltyList = async (req, res) => {
         .findAll({
           where: {
             isDeleted: false,
+			offset:skip,
+			limit:limit,
             status: true,
             business_id: data.business_id,
             deleted_at: null,
@@ -1951,3 +1982,268 @@ exports.businessBIO = async (req, res) => {
 };
 // Business BIO END
 // =========================================Online STORE END=========================================
+
+// Business event list
+exports.businessEventList = async (req, res) => {
+	try {
+		var data = req.query;
+		var combocalenderModel = models.combo_calendar;
+		var currentDate = moment().format("YYYY-MM-DD");
+		var Op = models.Op;
+		var requiredFields = _.reject(["page", "page_size"], (o) => {
+			return _.has(data, o);
+		});
+		if (requiredFields == "") {
+			if (data.page < 0 || data.page == 0) {
+				return res.send(
+					setRes(
+						resCode.BadRequest,
+						null,
+						false,
+						"invalid page number, should start with 1"
+					)
+				);
+			}
+
+			let skip = data.page_size * (data.page - 1);
+			let limit = parseInt(data.page_size);
+			var condition = {
+				offset:skip, 
+				limit:limit,
+				attributes: ['id','business_id','images','title','description','start_date','end_date','start_time','end_time']
+			}	
+			condition.where = {is_deleted: false,end_date: {[Op.lt]: currentDate},[Op.or]: [{title: {[Op.like]: "%" + data.search + "%",}}]}
+			if(data.business_id){
+				condition.where = {...condition.where,...{business_id:data.business_id}}
+			}
+			combocalenderModel.findAll(condition).then(async event => {
+				if(event.length > 0){
+					const dataArray = [];	
+					for (const data of event) {
+						var event_images = data.images
+						var image_array = [];
+						if(event_images != null){
+							for(const data of event_images){
+								const signurl = await awsConfig.getSignUrl(data).then(function(res){
+									  image_array.push(res);
+								});
+							}
+						}else{
+							image_array.push(commonConfig.default_image)
+						}
+						data.dataValues.event_images = image_array
+					}
+					res.send(
+						setRes(
+						  resCode.OK,
+						  true,
+						  "Business Event List successfully",
+						  event
+						)
+					  );
+				}else {
+					res.send(
+					  setRes(resCode.ResourceNotFound, false, "Event not found", null)
+					);
+				  }
+			})
+		} else {
+			res.send(
+				setRes(
+					resCode.BadRequest,
+					false,
+					requiredFields.toString() + " are required",
+					null
+				)
+			);
+		}
+	} catch (error) {
+		console.log(error);
+		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null));
+	}
+}
+
+// Register user in event
+exports.eventUserRegister = async (req, res) => {
+	try {
+		var data = req.body
+		var businessModel = models.business
+		var comboModel = models.combo_calendar
+		var userModel = models.user
+		var eventUserModel = models.user_events
+		const Op = models.Op;
+		var currentDate = (moment().format('YYYY-MM-DD'))
+		var requiredFields = _.reject(["business_id","event_id", "user_id"], (o) => {
+			return _.has(data, o);
+		});
+		if (requiredFields == "") { 
+			if(data.business_id){
+				businessModel.findOne({
+					where: {id: data.business_id,is_deleted: false,is_active:true}
+				}).then(async business => {
+					if(_.isEmpty(business)){
+						return res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
+					}
+				})
+			}
+
+			if(data.event_id){
+				var condition = {}		
+				if(!_.isEmpty(data.business_id)){
+					condition.where = {business_id:data.business_id}
+				}
+				condition.where = {...condition.where,...{id: data.event_id,is_deleted: false,end_date: {
+					[Op.gt]: currentDate
+				},}}
+				comboModel.findOne(condition).then(async event => {
+					if(_.isEmpty(event)){
+						return res.send(setRes(resCode.ResourceNotFound, false, "Event not found.", null))
+					}
+				})
+			}
+
+			if(data.user_id){
+				userModel.findOne({
+					where: {id:data.user_id,is_deleted: false,is_active:true}
+				}).then(async user => {
+					if(_.isEmpty(user)){
+						return res.send(setRes(resCode.ResourceNotFound, false, "User not found.", null))
+					}
+				})
+			}
+
+			eventUserModel.create(data).then(event_user => {
+				if(event_user){
+					res.send(setRes(resCode.OK,true,"You are successfully register in this event.",event_user))
+				}
+			}).catch(error => {
+				console.log(error)
+				res.send(setRes(resCode.BadRequest, false, "Fail to register in this event!", null))
+			})
+		} else {
+			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
+		}
+	} catch (error) {
+		console.log(error)
+		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
+	}
+} 
+
+// User Event Listing API
+exports.userEventList = async (req, res) => {
+	var data = req.query;
+	var combocalenderModel = models.combo_calendar;
+	var userEventModel = models.user_events
+	var currentDate = moment().format("YYYY-MM-DD");
+	var Op = models.Op;
+	var requiredFields = _.reject(["page", "page_size","user_id"], (o) => {
+		return _.has(data, o);
+	});
+	if (requiredFields == "") {
+		if (data.page < 0 || data.page == 0) {
+			return res.send(setRes(resCode.BadRequest,null,false,"invalid page number, should start with 1"));
+		}
+		let skip = data.page_size * (data.page - 1);
+		let limit = parseInt(data.page_size);
+
+		var condition = {
+			offset:skip, 
+			limit:limit,
+			attributes: ['id','business_id','images','title','description','start_date','end_date','start_time','end_time'],
+			include: [
+				{
+				  model: userEventModel,
+				  attributes: ["id","user_id"],
+				  where:{user_id:data.user_id}
+				},
+			],
+		}	
+		condition.where = {
+			is_deleted: false,
+			end_date: {
+				[Op.gt]: currentDate
+			},
+		}
+		if(!_.isEmpty(data.search)){
+			condition.where = {...condition.where,
+				...{[Op.or]: [{
+					title: {
+						[Op.like]: "%" + data.search + "%",
+					}
+				}]}
+			}
+		}
+
+		if(!_.isEmpty(data.from_date) && !_.isEmpty(data.to_date)){
+			var startDate = moment(data.from_date).format('YYYY-MM-DD')
+			var endDate = moment(data.to_date).format('YYYY-MM-DD')
+			condition.where = {...condition.where, ...{
+					start_date: {
+						[Op.between]: [startDate,endDate]
+					}
+				}
+			}
+		}
+		combocalenderModel.findAll(condition).then(async event => {
+			if(event.length > 0){
+				const dataArray = [];	
+				for (const data of event) {
+					var event_images = data.images
+					var image_array = [];
+					if(event_images != null){
+						for(const data of event_images){
+							const signurl = await awsConfig.getSignUrl(data).then(function(res){
+								  image_array.push(res);
+							});
+						}
+					}else{
+						image_array.push(commonConfig.default_image)
+					}
+					data.dataValues.event_images = image_array
+				}
+				res.send(
+					setRes(
+					  resCode.OK,
+					  true,
+					  "Business Event List successfully",
+					  event
+					)
+				  );
+			}else {
+				res.send(
+				  setRes(resCode.ResourceNotFound, false, "Event not found", null)
+				);
+			  }
+		})
+	}else {
+		res.send(setRes(resCode.BadRequsest,false,requiredFields.toString() + " are required",null));
+	}
+}
+
+// User Leave API
+// exports.eventUserLeave = async (req, res) => {
+// 	try {
+// 		var param = req.params
+// 		var data = req.body
+// 		var businessModel = models.business
+// 		var comboModel = models.combo_calendar
+// 		var userModel = models.user
+// 		var eventUserModel = models.user_events
+// 		const Op = models.Op;
+// 		var currentDate = (moment().format('YYYY-MM-DD'))
+// 		var requiredFields = _.reject(["business_id", "event_id", "user_id"], (o) => {
+// 			return _.has(data, o);
+// 		});
+// 		if (requiredFields == "") {
+// 			// eventUserModel.findOne({})
+// 		} else {
+// 			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
+// 		}
+// 	} catch (error) {
+// 		console.log(error)
+// 		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
+// 	}
+// 	console.log(param)
+// 	console.log(data)
+
+// }

@@ -19,10 +19,6 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.BOOLEAN,
       defaultValue: true
     },
-    status: {
-      type: DataTypes.INTEGER,
-      defaultValue: true
-    },
     is_deleted: {
       type: DataTypes.BOOLEAN,
       defaultValue: false
@@ -33,7 +29,7 @@ module.exports = (sequelize, DataTypes) => {
   UserEvents.associate = function (models) {
     // associations can be defined here
     UserEvents.belongsTo(models.business, { foreignKey: 'business_id' })
-    UserEvents.belongsTo(models.user_events, {foreignKey: 'event_id'})
+    UserEvents.belongsTo(models.combo_calendar, {foreignKey: 'event_id'})
     UserEvents.belongsTo(models.user, {as: 'users', foreignKey: 'user_id' })
   };
   return UserEvents;

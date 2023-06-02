@@ -70,10 +70,17 @@ router.post('/logout', verifyToken ,controller.Logout)
 
 // Home Screen Route
 router.get('/home', verifyToken, controller.homeList)
+// business routes
 router.post('/rewards/list', verifyToken, controller.rewardsList)
 router.post('/rewards/view/:id', verifyToken, controller.rewardsView)
 router.post('/loyalty/list', verifyToken, controller.loyaltyList)
 router.get('/loyalty/view/:id', verifyToken, controller.loyaltyView)
 router.get('/business/bio', verifyToken, controller.businessBIO)
+
+// Event routes
+router.get('/business/event/list', verifyToken, controller.businessEventList)
+router.get('/event/list', verifyToken, controller.userEventList)
+router.post('/event/register', verifyToken, controller.eventUserRegister)
+// router.patch('/event/leave/:id', verifyToken, controller.eventUserLeave)
 
 module.exports = router;

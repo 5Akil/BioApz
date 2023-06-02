@@ -43,11 +43,11 @@ exports.CreateEvent = async (req, res) => {
 
 	if (requiredFields == '') {
 		// Start date save different columns logic
-		var startDate = moment(data.start_date).format('DD-MM-YYYY HH:mm:ss');
+		var startDate = moment(data.start_date).format('YYYY-MM-DD HH:mm:ss');
 		var sDate_value = startDate.split(" ");
 
 		// End date time save different columns logic
-		var endDate = moment(data.end_date).format('DD-MM-YYYY HH:mm:ss');
+		var endDate = moment(data.end_date).format('YYYY-MM-DD HH:mm:ss');
 		var eDate_value = endDate.split(" ");
 
 		if (filesData.length == 0) {
@@ -271,6 +271,13 @@ exports.GetAllEvents = async (req, res) => {
 
 	var requiredFields = _.reject(['business_id'], (o) => { return _.has(data, o) })
 	if (requiredFields == '') {
+
+		if(data.page < 0 || data.page === 0) {
+			res.send(setRes(resCode.BadRequest, null, true, "invalid page number, should start with 1"))
+		}
+		var skip = data.page_size * (data.page - 1)
+		var limit = parseInt(data.page_size)
+
 		// comboModel.update({
 		// 	is_deleted: true
 		// }, {
@@ -280,86 +287,42 @@ exports.GetAllEvents = async (req, res) => {
 		// 			[Op.lt]: moment().format('YYYY-MM-DD')
 		// 		}
 		// 	}
-		// }).then(async updatedOffers => {
-		 	await comboModel.findAll({
-				where: {
-					business_id: data.business_id,
-					is_deleted: false,
-				},
+			var condition = {
+				offset:skip,
+				limit : limit,
+				subQuery:false,
 				order: [
 					['createdAt', 'DESC']
 				],
-				subQuery: false
-			}).then(async combos => {
-				console.log(combos)
-				// await _.each(combos, (o) => {
-				// 	let one = Moment.range(moment(`${data.from_date}T00:00:00.0000Z`), moment(`${data.to_date}T23:59:59.999Z`))
-				// 	let two = Moment.range(moment(`${o.start_date}T00:00:00.0000Z`), moment(`${o.end_date}T23:59:59.999Z`))
-				// 	let three = one.intersect(two)
-				// 	let four = three != null ? three.snapTo('day') : ''
-				// 	let five = three != null ? Array.from(three.by('days')) : ''
-				// 	_.each(five, (v) => {
-				// 		v = v.format('DD-MM-YYYY')
-				// 		if (o.repeat_every === 0) {
-				// 			if (v === moment(o.start_date).format('DD-MM-YYYY')) {
-				// 				_.has(resObj, v) === false ? resObj[v] = o : ''
-				// 			}
-				// 		} else if (o.repeat_every === 1) {
-				// 			var start = moment(o.start_date),
-				// 				end = moment(o.end_date),
-				// 				day = o.repeat_on.map(function (v) {
-				// 					return parseInt(v);
-				// 				});
-				// 			var now = start;
-				// 			while (now.isBefore(end) || now.isSame(end)) {
-				// 				if (v === moment(now).format('DD-MM-YYYY') && day.includes(moment(now, 'YYYY-MM-DD').day())) {
-				// 					_.has(resObj, v) === false ? resObj[v] = o : ''
-				// 				}
-				// 				now.add(1, 'days');
-				// 			}
-				// 		} else if (o.repeat_every === 2) {
-				// 			_.has(resObj, v) === false ? resObj[v] = o : ''
-				// 		}
-				// 	})
-				// })
-				// // get N element from object
-				// let arrRes = []
-				// if (data.limit && data.limit > 0) {
-				// 	function firstN(obj, n) {
-				// 		return _.chain(obj)
-				// 			.keys()
-				// 			.sort()
-				// 			.take(n)
-				// 			.reduce(function (memo, current) {
-				// 				arrRes.push(obj[current]);
-				// 				return memo;
-				// 			}, {})
-				// 			.value();
-				// 	}
+			}
+			condition.where = {business_id: data.business_id,is_deleted: false,}
+			condition.attributes = { exclude: ['createdAt','updatedAt','is_deleted','repeat','repeat_every','repeat_on']}
 
-				// 	firstN(resObj, data.limit)
-				// }
-				// const offer_dates = Object.keys(resObj);
+			var startDate = (moment(data.from_date).format('YYYY-MM-DD'))
+			var endDate = (moment(data.to_date).format('YYYY-MM-DD'))
 
-				// for (const offer of offer_dates) {
-				// 	var image = resObj[offer].dataValues.images;
-				// 	var images = image.split(";");
-				// 	var image_array = [];
-				// 	for (const data of images) {
-				// 		const signurl = await awsConfig.getSignUrl(data).then(function (res) {
-				// 			image_array.push(res);
-				// 		});
-				// 	}
-				// 	resObj[offer].dataValues.images_url = image_array;
-				// }
-				// console.log(arrRes)
-				res.send(setRes(resCode.OK, true, "Available events list.", (data.limit ? arrRes : resObj)))
-			// })
-				.catch(error => {
-					console.log('============get combo error==========')
-					console.log(error.message)
-					res.send(setRes(resCode.InternalServer, false, "Internal server error", null))
-				})
+			if(!_.isEmpty(data.from_date) && !_.isEmpty(data.to_date)){
+					condition.where = {...condition.where,...{start_date: {[Op.between]: [startDate, endDate]}}}
+			}
+
+		 	await comboModel.findAll(condition).then(async combos => {
+				if(combos.length > 0){
+					for (const data of combos) {
+						var event_images = data.images
+						var image_array = [];
+						if(event_images != null){
+							for(const data of event_images){
+								const signurl = await awsConfig.getSignUrl(data).then(function(res){
+									  image_array.push(res);
+								});
+							}
+						}else{
+							image_array.push(commonConfig.default_image)
+						}
+						data.dataValues.event_images = image_array
+					}
+				}
+				res.send(setRes(resCode.OK, true, "Available events list.", (combos)))
 		}).catch(error => {
 			console.log(error.message + ' ...calendar.controller');
 			res.send(setRes(resCode.InternalServer, false, 'Internal server error.', null))
@@ -371,7 +334,8 @@ exports.GetAllEvents = async (req, res) => {
 
 // View Event
 exports.ViewEvent = async (req, res) => {
-	data = req.params;
+	var data = req.params;
+	var val = req.query
 	var comboModel = models.combo_calendar
 	var userEventsModel = models.user_events
 	var usersModel = models.user
@@ -379,8 +343,10 @@ exports.ViewEvent = async (req, res) => {
 	comboModel.findOne({
 		where: {
 			id: data.id,
+			business_id:val.business_id,
 			is_deleted: false
-		}
+		},
+		attributes: {exclude: ['createdAt','updatedAt','is_deleted','repeat','repeat_every','repeat_on']}
 	}).then(async event => {
 		if (event != null) {
 			var event_images = event.images
@@ -395,10 +361,12 @@ exports.ViewEvent = async (req, res) => {
 			} else {
 				image_array.push(commonConfig.default_image)
 			}
+			event.dataValues.event_images = image_array
 			await userEventsModel.findAll({
 				where: {
 					event_id: event.id,
-					is_deleted: false
+					is_deleted: false,
+					is_available:true
 				},
 				include: [
 					{
@@ -411,6 +379,15 @@ exports.ViewEvent = async (req, res) => {
 					// var profile_image = awsConfig.getSignUrl(itm.users.dataValues.profile_picture)
 					this.push(_.pick(itm.users.dataValues, ["id","username","profile_picture"])) 
 					}, event_users);
+					for (const data of event_users) {
+						if(data.profile_picture != null){
+							const signurl = await awsConfig.getSignUrl(data.profile_picture).then(function (res) {
+								data.profile_picture = res
+							});
+						}else{
+							data.profile_picture = commonConfig.default_user_image;
+						}
+					}
 			})
 			event = JSON.parse(JSON.stringify(event));
 			event.users = event_users;
@@ -592,3 +569,4 @@ function createComboOffer(data) {
 
 	})
 }
+
