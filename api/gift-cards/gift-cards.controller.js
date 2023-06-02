@@ -274,6 +274,11 @@ exports.commonRewardsList =async(req,res) => {
 								data.image = commonConfig.default_image;
 							}
 							let result = 	JSON.parse(JSON.stringify(data));
+							if(result.expire_at < currentDate){
+								result.expire_status = 1;
+							}else{
+								result.expire_status = 0;
+							}
 							result.type="gift_cards";
 							dataArray.push(result);
 						}
@@ -288,6 +293,11 @@ exports.commonRewardsList =async(req,res) => {
 						const dataArray = [];
 						for(const data of CashbackData){
 						let result = 	JSON.parse(JSON.stringify(data));
+						if(result.validity_for < currentDate){
+							result.expire_status = 1;
+						}else{
+							result.expire_status = 0;
+						}
 						result.type="cashbacks";
 						dataArray.push(result);
 						}
@@ -302,6 +312,11 @@ exports.commonRewardsList =async(req,res) => {
 							const dataArray = [];
 							for(const data of DiscountData){
 								let result = 	JSON.parse(JSON.stringify(data));
+								if(result.validity_for < currentDate){
+									result.expire_status = 1;
+								}else{
+									result.expire_status = 0;
+								}
 								result.type="discounts";
 								dataArray.push(result);
 								}
@@ -316,6 +331,11 @@ exports.commonRewardsList =async(req,res) => {
 						const dataArray = [];
 						for(const data of CouponeData){
 						let result = 	JSON.parse(JSON.stringify(data));
+						if(result.expire_at < currentDate){
+							result.expire_status = 1;
+						}else{
+							result.expire_status = 0;
+						}
 						result.type="coupones";
 						dataArray.push(result);
 						}
@@ -331,6 +351,11 @@ exports.commonRewardsList =async(req,res) => {
 							const dataArray = [];
 							for(const data of LoyaltyPointData){
 								let result = 	JSON.parse(JSON.stringify(data));
+								if(result.validity < currentDate){
+									result.expire_status = 1;
+								}else{
+									result.expire_status = 0;
+								}
 								result.type="loyalty_points";
 								dataArray.push(result);
 						}

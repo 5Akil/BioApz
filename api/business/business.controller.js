@@ -385,22 +385,26 @@ exports.ChangePassword = async (req, res) => {
 			if (business != null) {
 				bcrypt.compare(data.old_password, business.password, function (error, isValid) {
 					if (!error && isValid == true) {
-						bcrypt.hash(data.new_password, 10).then(hash => {
-							businessModel.update({
-								password: hash
-							}, {
-								where: {
-									id: data.id
-								}
-							}).then(updated => {
-								if (updated == 1) {
-									res.send(setRes(resCode.OK, true, 'Password updated successfully.', null))
-								}
-								else {
-									res.send(setRes(resCode.InternalServer, false, "Fail to update password.", null))
-								}
+						if (data.new_password == data.confirm_password){
+							bcrypt.hash(data.new_password, 10).then(hash => {
+								businessModel.update({
+									password: hash
+								}, {
+									where: {
+										id: data.id
+									}
+								}).then(updated => {
+									if (updated == 1) {
+										res.send(setRes(resCode.OK, true, 'Password updated successfully.', null))
+									}
+									else {
+										res.send(setRes(resCode.InternalServer, false, "Fail to update password.", null))
+									}
+								})
 							})
-						})
+						}else{
+							res.send(setRes(resCode.BadRequest, false, "New Password and confirem password not match.",null))
+						}
 					}
 					else {
 						res.send(setRes(resCode.BadRequest, false, "Old password not match.", null))
@@ -1427,6 +1431,11 @@ exports.homeList = async (req, res) => {
 							data.image = commonConfig.default_image;
 						}
 						let result = JSON.parse(JSON.stringify(data));
+						if(result.expire_at < currentDate){
+							result.expire_status = 1;
+						}else{
+							result.expire_status = 0;
+						}
 						result.type = "gift_cards";
 						dataArray.push(result);
 					}
@@ -1441,6 +1450,11 @@ exports.homeList = async (req, res) => {
 					const dataArray = [];
 					for (const data of CashbackData) {
 						let result = JSON.parse(JSON.stringify(data));
+						if(result.validity_for < currentDate){
+							result.expire_status = 1;
+						}else{
+							result.expire_status = 0;
+						}
 						result.type = "cashbacks";
 						dataArray.push(result);
 					}
@@ -1455,6 +1469,11 @@ exports.homeList = async (req, res) => {
 					const dataArray = [];
 					for (const data of DiscountData) {
 						let result = JSON.parse(JSON.stringify(data));
+						if(result.validity_for < currentDate){
+							result.expire_status = 1;
+						}else{
+							result.expire_status = 0;
+						}
 						result.type = "discounts";
 						dataArray.push(result);
 					}
@@ -1469,6 +1488,11 @@ exports.homeList = async (req, res) => {
 					const dataArray = [];
 					for (const data of CouponeData) {
 						let result = JSON.parse(JSON.stringify(data));
+						if(result.expire_at < currentDate){
+							result.expire_status = 1;
+						}else{
+							result.expire_status = 0;
+						}
 						result.type = "coupones";
 						dataArray.push(result);
 					}
@@ -1484,6 +1508,11 @@ exports.homeList = async (req, res) => {
 					const dataArray = [];
 					for (const data of LoyaltyPointData) {
 						let result = JSON.parse(JSON.stringify(data));
+						if(result.validity < currentDate){
+							result.expire_status = 1;
+						}else{
+							result.expire_status = 0;
+						}
 						result.type = "loyalty_points";
 						dataArray.push(result);
 					}

@@ -423,22 +423,27 @@ exports.ChangePassword = async (req, res) => {
 			if (user != null){
 				bcrypt.compare(data.old_password, user.password, function(error, isValid){
 					if (!error && isValid == true){
-						bcrypt.hash(data.new_password, 10).then(hash => {
-							userModel.update({
-								password:hash
-							},{
-								where:{
-									id: data.id
-								}
-							}).then(updated => {
-								if (updated == 1){
-									res.send(setRes(resCode.OK, true, 'Password updated successfully.',null))
-								}
-								else{
-									res.send(setRes(resCode.InternalServer, false, "Fail to update password.",null))
-								}
+						if (data.new_password == data.confirm_password){
+							bcrypt.hash(data.new_password, 10).then(hash => {
+								userModel.update({
+									password:hash
+								},{
+									where:{
+										id: data.id
+									}
+								}).then(updated => {
+									if (updated == 1){
+										res.send(setRes(resCode.OK, true, 'Password updated successfully.',null))
+									}
+									else{
+										res.send(setRes(resCode.InternalServer, false, "Fail to update password.",null))
+									}
+								})
 							})
-						})
+						}else{
+							res.send(setRes(resCode.BadRequest, false, "New Password and confirem password not match.",null))
+						}
+						
 					}
 					else{
 						res.send(setRes(resCode.BadRequest, false, "Old password not match.",null))
@@ -1137,13 +1142,12 @@ exports.GetAllBusiness = async (req, res) => {
 		var limit = parseInt(data.page_size)
 
 		var condition = {
-			include: {
+			include: [{
 				model: businesscateogryModel,
 				attributes: ['name'] 
-			},
-			include: {
+			}, {
 				model: settingModel,
-			},
+			}],
 			offset:skip,
 			limit:limit,
 			order: [
@@ -1166,7 +1170,6 @@ exports.GetAllBusiness = async (req, res) => {
 		}
 		
 		businessModel.findAll(condition).then(async businessData => {
-
 			if(businessData.length > 0){
 
 				for(const data of businessData){
@@ -2221,29 +2224,96 @@ exports.userEventList = async (req, res) => {
 }
 
 // User Leave API
-// exports.eventUserLeave = async (req, res) => {
-// 	try {
-// 		var param = req.params
-// 		var data = req.body
-// 		var businessModel = models.business
-// 		var comboModel = models.combo_calendar
-// 		var userModel = models.user
-// 		var eventUserModel = models.user_events
-// 		const Op = models.Op;
-// 		var currentDate = (moment().format('YYYY-MM-DD'))
-// 		var requiredFields = _.reject(["business_id", "event_id", "user_id"], (o) => {
-// 			return _.has(data, o);
-// 		});
-// 		if (requiredFields == "") {
-// 			// eventUserModel.findOne({})
-// 		} else {
-// 			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
-// 		}
-// 	} catch (error) {
-// 		console.log(error)
-// 		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
-// 	}
-// 	console.log(param)
-// 	console.log(data)
+exports.eventUserLeave = async (req, res) => {
+	try {
+		var param = req.params
+		var data = req.body
+		var businessModel = models.business
+		var comboModel = models.combo_calendar
+		var userModel = models.user
+		var eventUserModel = models.user_events
+		const Op = models.Op;
+		var currentDate = (moment().format('YYYY-MM-DD'))
+		var requiredFields = _.reject(["business_id", "event_id", "user_id"], (o) => {
+			return _.has(data, o);
+		});
+		if(param){
+			if (requiredFields == "") {
+				eventUserModel.findOne({
+					where: {id: param.id,is_deleted: false,is_available:true}
+				}).then(async event_user => {
+					if(_.isEmpty(event_user)){
+						return res.send(setRes(resCode.ResourceNotFound, false, "User Event not not found.", null))
+					}
+				})
 
-// }
+				if(data.business_id){
+					businessModel.findOne({
+						where: {id: data.business_id,is_deleted: false,is_active:true}
+					}).then(async business => {
+						if(_.isEmpty(business)){
+							return res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
+						}
+					})
+				}
+	
+				if(data.event_id){
+					var condition = {}		
+					if(!_.isEmpty(data.business_id)){
+						condition.where = {business_id:data.business_id}
+					}
+					condition.where = {...condition.where,...{id: data.event_id,is_deleted: false,end_date: {
+						[Op.gt]: currentDate
+					},}}
+					comboModel.findOne(condition).then(async event => {
+						if(_.isEmpty(event)){
+							return res.send(setRes(resCode.ResourceNotFound, false, "Event not found.", null))
+						}
+					})
+				}
+	
+				if(data.user_id){
+					userModel.findOne({
+						where: {id:data.user_id,is_deleted: false,is_active:true}
+					}).then(async user => {
+						if(_.isEmpty(user)){
+							return res.send(setRes(resCode.ResourceNotFound, false, "User not found.", null))
+						}
+					})
+				}
+
+				eventUserModel.findOne({
+					where: {id: param.id,business_id:data.business_id,event_id:data.event_id,user_id:data.user_id,is_deleted: false,is_available:true},
+				}).then(async event_user => {
+					if(_.isEmpty(event_user)){
+						return res.send(setRes(resCode.ResourceNotFound, false, "User not found in any event.", null))
+					}else{
+						eventUserModel.update(
+							{is_deleted:true,
+							is_available:false}
+							,{
+							where: {id: param.id,business_id:data.business_id,event_id:data.event_id,user_id:data.user_id,is_deleted: false,is_available:true}
+						}).then(async data =>{
+							if(data){
+								eventUserModel.findOne({
+									where: {id: param.id},
+								}).then(async user_data => {
+									res.send(setRes(resCode.OK, false, 'Leave successfully from event', user_data))
+								})
+							}
+						}).catch(error => {
+							res.send(setRes(resCode.BadRequest, false, 'Fail to leave from event.', null))
+						})
+					}
+				})
+			} else {
+				res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
+			}
+		}else{
+			res.send(setRes(resCode.BadRequest, false, ('Id are required'), null))
+		}
+	} catch (error) {
+		console.log(error)
+		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
+	}
+}

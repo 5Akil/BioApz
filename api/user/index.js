@@ -81,6 +81,6 @@ router.get('/business/bio', verifyToken, controller.businessBIO)
 router.get('/business/event/list', verifyToken, controller.businessEventList)
 router.get('/event/list', verifyToken, controller.userEventList)
 router.post('/event/register', verifyToken, controller.eventUserRegister)
-// router.patch('/event/leave/:id', verifyToken, controller.eventUserLeave)
+router.patch('/event/leave/:id', verifyToken, controller.eventUserLeave)
 
 module.exports = router;

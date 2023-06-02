@@ -17,6 +17,6 @@ router.post('/create', verifyToken, uploadImage.array('images'), controller.Crea
 router.post('/list', verifyToken, controller.GetAllEvents)
 router.post('/update', verifyToken, uploadImage.array('images'), controller.UpdateEvent)
 router.post('/removeImages', verifyToken, controller.removeImagesFromCombo);
-router.post('/delete/:id', verifyToken, controller.DeleteEvent)
+router.delete('/delete/:id', verifyToken, controller.DeleteEvent)
 router.get('/view/:id', verifyToken, controller.ViewEvent)
 module.exports = router;

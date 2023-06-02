@@ -240,7 +240,8 @@ exports.DeleteEvent = async (req, res) => {
 	var data = req.params
 	var comboModel = models.combo_calendar
 	var businessModel = models.business
-	var Op = models.Op;
+	var eventUserModel = models.user_events
+
 	if (data.id) {
 		comboModel.findOne({
 			where: {
@@ -248,12 +249,21 @@ exports.DeleteEvent = async (req, res) => {
 				is_deleted: false
 			}
 		}).then(eventData => {
-			if (eventData) {
-				eventData.update({ is_deleted: true })
-				res.send(setRes(resCode.OK, true, "Event deleted successfully", null))
-			} else {
-				res.send(setRes(resCode.ResourceNotFound, false, "Event not found", null))
-			}
+			eventUserModel.findAll({
+				where: { event_id: data.id, is_deleted: false, is_available: true }
+			}).then(async eventUsers => {
+				if(eventUsers.length == 0){
+					if (eventData) {
+						eventData.update({ is_deleted: true,status:4 })
+						res.send(setRes(resCode.OK, true, "Event deleted successfully", null))
+					} else {
+						res.send(setRes(resCode.ResourceNotFound, false, "Event not found", null))
+					}
+				}else{
+					res.send(setRes(resCode.BadRequest, false, "can't delete event because some users registered or active.", null))
+				}
+			})
+			
 		}).catch(error => {
 			res.send(setRes(resCode.BadRequest, false, "Internal server error.", null))
 		})
