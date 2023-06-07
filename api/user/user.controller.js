@@ -285,7 +285,7 @@ exports.Login = async (req, res) => {
 			businessModel.findOne({
 				where: {
 					email: data.email,
-					is_active: true,
+					// is_active: true,
 					is_deleted: false
 				},
 				include: [
@@ -293,13 +293,10 @@ exports.Login = async (req, res) => {
 					categoryModel]
 		}).then(function (business) {
 			if (!business) {
-				res.send(setRes(resCode.BadRequest, false ,'Business not found.',null))
+				res.send(setRes(resCode.ResourceNotFound, false ,'Business not found.',null))
 			} else {
-				if (business.is_deleted == 1){
-					res.send(setRes(resCode.BadRequest,false,'Business no longer available.Please contact Admin.',null))
-				}
-				else if (business.is_active == 0){
-					res.send(setRes(resCode.BadRequest, false,'Please verify your business.',null))
+				if (business.is_active == 0){
+					res.send(setRes(resCode.BadRequest, false,'Your business account is inactive, so please contact admin.',null))
 				}
 				else{
 					bcrypt.compare(data.password, business.password, async function (err, result) {
