@@ -57,23 +57,25 @@ router.post('/inquiry', verifyToken, controller.createInquiry)
 router.post('/getAll', verifyToken, controller.GetAllProducts)
 router.post('/getBooking', verifyToken, controller.GetBookingInquiry)
 router.post('/isRead', verifyToken, controller.IsReadStatus)
-router.post('/creatProduct', verifyToken, uploadImage.array('image'), controller.createProduct)
+router.post('/create', verifyToken, uploadImage.array('image'), controller.createProduct)
 router.post('/updateProduct', verifyToken, uploadImage.array('image'), controller.UpdateProductDetail)
 router.post('/removeImage',verifyToken,controller.RemoveProductImage)
 
 
 // router.post('/initChat', verifyToken, controller.ChatInitialize)
-router.get('/byId/:id', verifyToken, controller.GetProductById)
+router.get('/view/:id', verifyToken, controller.GetProductById)
 
 router.post('/createCategory',verifyToken, categoryawsupload.single('image'), controller.CreateCategory)
 router.post('/category-list/',verifyToken,controller.CategoryList)
 router.get('/categoryById/:id',verifyToken,controller.GetCategoryById)
 router.post('/updateCategory',verifyToken,categoryawsupload.single('image'), controller.UpdateCategory)
-router.delete('/removeCategory/:id',verifyToken, controller.RemoveCategory)
+router.delete('/category/delete/:id',verifyToken, controller.RemoveCategory)
 
 router.post('/productTypeList',verifyToken,controller.ProductTypeList)
-router.delete('/removeProductType/:id',verifyToken,controller.removeProductType)
+router.delete('/sub-category/delete/:id',verifyToken,controller.removeProductType)
 
 router.post('/add-product-ratings',verifyToken,controller.AddProductRattings)
 router.post('/get-product-ratings',verifyToken,controller.GetProductRattings)
+
+router.get('/get-similar-products/:id',verifyToken,controller.simillarProducts)
 module.exports = router;

@@ -1001,11 +1001,15 @@ exports.CreateBusiness = async (req, res) => {
 
 	var mailId = data.email;
 	var emailFormat = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/;
+	var mobilenumber = /^[0-9]+$/;
 	if (requiredFields == '') {
+		if((data.business_name).length > 100){
+			return res.send(setRes(resCode.BadRequest, false, 'Business name must be less than 100 characters',null));
+		}
 		if (mailId.match(emailFormat) == null) {
 			res.send(setRes(resCode.BadRequest, false, 'Please enter valid email format.', null));
 		}
-		else if ((data.phone.length > 12) || (data.phone.length < 7)) {
+		else if ((data.phone.length > 12) || (data.phone.length < 7) || !(mobilenumber.test(data.phone))) {
 			res.send(setRes(resCode.BadRequest, false, 'Please enter valid mobile number.', null));
 		}
 		else {
@@ -1055,7 +1059,7 @@ exports.CreateBusiness = async (req, res) => {
 				} else if (validation.phone == data.phone) {
 					res.send(setRes(resCode.BadRequest, false, 'Mobile number already exist.', null));
 				}
-				else if (validation.email == data.email) {
+				else if ((validation.email).toLowerCase() == (data.email).toLowerCase()) {
 					res.send(setRes(resCode.BadRequest, false, 'Business already exist on this email.', null));
 				} else {
 					res.send(setRes(resCode.InternalServer, false, 'Internal server error.', null));

@@ -29,7 +29,18 @@ exports.Register = async (req, res) => {
   var requiredFields = _.reject(['username', 'email', 'password', 'address', 'mobile','confirm_password','latitude', 'longitude'], (o) => { return _.has(data, o)  })
 
   if (requiredFields == ''){
-
+	var mobilenumber = /^[0-9]+$/;
+	var mailId = data.email;
+	var emailFormat = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/;
+	if((data.username).length > 100){
+		return res.send(setRes(resCode.BadRequest, false, 'Username must be less than 100 characters',null));
+	}
+	if (mailId.match(emailFormat) == null) {
+		return res.send(setRes(resCode.BadRequest, false, 'Please enter valid email format.', null));
+	}
+	if ((data.mobile.length > 12) || (data.mobile.length < 7) || !(mobilenumber.test(data.mobile))) {
+		return res.send(setRes(resCode.BadRequest, false, 'Please enter valid mobile number.', null));
+	}
     dbModel.findOne({where: {email: data.email, is_deleted: false}}).then((user) => {
       if (user == null){
         const token =  jwt.sign({user: data.email}, 'secret')
@@ -151,20 +162,75 @@ exports.Login = async (req, res) => {
 		//user login
 		if (data.role == 2){
 
+			// userModel.findOne({
+			// 	where: {
+			// 		email:data.email,
+			// 		is_active:false,
+			// 		is_deleted:false
+			// 	}
+			// }).then(async userData => {
+			// 	if(userData){
+			// 		res.send(setRes(resCode.BadRequest, false ,'Please verify your account.',null))
+			// 	}else{
+			// 		if(user.is_deleted == true){
+			// 			res.send(setRes(resCode.BadRequest, false,'User not found.',null))
+			// 		}else{
+			// 			bcrypt.compare(data.password, user.password, async function (err, result) {
+			// 				if (result == true) {
+
+			// 					const token =  jwt.sign({id:user.id,user: user.email,role_id:user.role_id}, 'secret', {expiresIn: 480 * 480})
+			// 					delete user.dataValues.auth_token
+			// 					user.dataValues.auth_token = token
+			// 					// data.device_type = data.device_type.toLowerCase();
+
+			// 					userModel.update(
+			// 						{
+			// 							auth_token: token,
+			// 							// device_type: data.device_type,
+			// 							device_token: data.device_token,
+			// 							// device_id: data.device_id
+			// 						},
+			// 						{where: {id: user.id}
+			// 					})
+			// 					.then(async function (newUser) {
+			// 						if (newUser){
+			// 							// var messagedata = await notification.SendNotification(data)
+			// 							// console.log('*********************************')
+			// 							// console.log(messagedata)
+			// 							if(user.profile_picture != null){
+
+			// 								var profile_picture = await awsConfig.getSignUrl(user.profile_picture).then(function(res){
+			// 									user.profile_picture = res
+			// 								})
+			// 							}
+			// 							else{
+			// 								user.profile_picture = commonConfig.default_user_image;
+			// 							}
+			// 							res.send(setRes(resCode.OK, true, 'You are successfully logged in',user))
+			// 						}else{
+			// 							res.send(setRes(resCode.InternalServer, false, 'Token not updated',null))
+			// 						}
+			// 					})
+
+			// 				} else {
+			// 					res.send(setRes(resCode.BadRequest, false, "Invalid Email id or password",null))
+			// 				}
+			// 			});
+			// 		}
+			// 	}
+			// })
+
 			userModel.findOne({
 			where: {
 				email: data.email,
 				// is_active: 1,
-				// is_deleted: 0
+				is_deleted: false
 			}
 			}).then(function (user) {
 				if (!user) {
-					res.send(setRes(resCode.BadRequest, false ,'User not found.',null))
+					res.send(setRes(resCode.ResourceNotFound, false ,'User not found.',null))
 				} else {
-					if (user.is_deleted == 1 && user.is_active == 0){
-						res.send(setRes(resCode.BadRequest, false,'User not register.',null))
-					}
-					else if (user.is_active == 0){
+					if (user.is_active == false){
 						res.send(setRes(resCode.BadRequest, false ,'Please verify your account.',null))
 					}
 					else{

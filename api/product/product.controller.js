@@ -18,6 +18,7 @@ var awsConfig = require('../../config/aws_S3_config')
 const fs = require('fs');
 var multer = require('multer');
 const multerS3 = require('multer-s3');
+const { condition } = require('sequelize')
 
 exports.createInquiry = async (req, res) => {
 	
@@ -140,6 +141,10 @@ exports.GetAllProducts = async (req, res) => {
 				condition.order = Sequelize.literal('price ASC')
 			}
 		}
+
+		if(data.search && data.search != null && !_.isEmpty(data.search)){
+			condition.where = {[Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],}
+		} 
 
 		if(data.sub_category_id) {
 			condition.where = {business_id:data.business_id,category_id:data.category_id,sub_category_id:data.sub_category_id}
@@ -317,108 +322,146 @@ exports.IsReadStatus = async (req, res) => {
 
 exports.createProduct = async(req,res) => {
 	try{
-
 		var data = req.body
 		var filesData = req.files;
 		var validation = true;
 		var businessModel = models.business
+		var categoryModel = models.product_categorys
+		var Op = models.Op
 		var requiredFields = _.reject(['business_id','category_id','name','price','description'], (o) => { return _.has(data, o)  })
-		if(requiredFields == ""){
-
-				if(filesData.length == 0){
-					res.send(setRes(resCode.BadRequest,false, 'At least one image is required for product',null))
-					validation = false;
-				}else if(filesData.length > 5){
-					validation = false;
-					res.send(setRes(resCode.BadRequest,false, 'You can upload only 5 images',null))
-				}
-				if(filesData.length !=0 && filesData.length <= 5){
-					for(const image of filesData){
-						const fileContent = await fs.promises.readFile(image.path);
-						const fileExt = `${image.originalname}`.split('.').pop();
-						if(image.size > commonConfig.maxFileSize){
-							validation = false;
-							res.send(setRes(resCode.BadRequest,false, 'You can upload only 5 mb files, some file size is too large',null))
-						}else if (!commonConfig.allowedExtensions.includes(fileExt)) {
-						  // the file extension is not allowed
-						  validation = false;
-						  res.send(setRes(resCode.BadRequest, false, 'You can upload only jpg, jpeg, png, gif files',null))
+		if (requiredFields == "") {
+			if (data.category_id) {
+				categoryModel.findOne({
+					where: {
+						id: data.category_id,
+						is_enable: true,
+						is_deleted: false,
+						parent_id:{
+							[Op.eq] : 0,
 						}
 					}
+				}).then(async productCategory => {
+					if (productCategory == null) {
+						validation = false;
+						return res.send(setRes(resCode.ResourceNotFound, false, "Product category not found.", null))
+					}
+				})
+			}
 
-				}
-				var productModel = models.products
-				if(validation){
-					businessModel.findOne({
-						where:{
-							id:data.business_id,
-							is_deleted:false,
-							is_active:true
+			if (data.sub_category_id) {
+				categoryModel.findOne({
+					where: {
+						id: data.sub_category_id,
+						is_enable: true,
+						is_deleted: false,
+						parent_id:{
+							[Op.ne] : 0,
 						}
-					}).then(async business => {
-						if(_.isEmpty(business)){
-							res.send(setRes(resCode.ResourceNotFound, false, "Business not found.",null))
-						}else{
-							productModel.create(data).then(async function(product)  {
-								const lastInsertId = product.id;
-								if(lastInsertId){
-									var files = [];
-									for(const file of filesData){
-										
-										const fileContent = await fs.promises.readFile(file.path);
-										const fileExt = `${file.originalname}`.split('.').pop()
-										const randomString = Math.floor(Math.random() * 1000000); 
-										const fileName = `${Date.now()}_${randomString}.${fileExt}`;
-										const params = {
-									   Bucket: awsConfig.Bucket,
-									   Key: `products/${lastInsertId}/${fileName}`,
-									   Body: fileContent,
-									 };
-		
-									  const result = await awsConfig.s3.upload(params).promise();
-									  if(result){
-											files.push(`products/${lastInsertId}/${fileName}`)
-											fs.unlinkSync(file.path)
-		
-									 }				  
+					}
+				}).then(async productSubCategory => {
+					if (productSubCategory == null) {
+						validation = false;
+						return res.send(setRes(resCode.ResourceNotFound, false, "Product sub category not found.", null))
+					}
+				})
+			}
+
+			if (filesData.length == 0) {
+				res.send(setRes(resCode.BadRequest, false, 'At least one image is required for product', null))
+				validation = false;
+			} else if (filesData.length > 5) {
+				validation = false;
+				res.send(setRes(resCode.BadRequest, false, 'You can upload only 5 images', null))
+			}
+			if (filesData.length != 0 && filesData.length <= 5) {
+				for (const image of filesData) {
+					const fileContent = await fs.promises.readFile(image.path);
+					const fileExt = `${image.originalname}`.split('.').pop();
+					if (image.size > commonConfig.maxFileSize) {
+						validation = false;
+						res.send(setRes(resCode.BadRequest, false, 'You can upload only 5 mb files, some file size is too large', null))
+					} else if (!commonConfig.allowedExtensions.includes(fileExt)) {
+						// the file extension is not allowed
+						validation = false;
+						res.send(setRes(resCode.BadRequest, false, 'You can upload only jpg, jpeg, png, gif files', null))
+					}
+				}
+
+			}
+
+			var productModel = models.products
+			if (validation) {
+				businessModel.findOne({
+					where: {
+						id: data.business_id,
+						is_deleted: false,
+						is_active: true
+					}
+				}).then(async business => {
+					if (_.isEmpty(business)) {
+						res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
+					} else {
+						productModel.create(data).then(async function (product) {
+							const lastInsertId = product.id;
+							if (lastInsertId) {
+								var files = [];
+								for (const file of filesData) {
+
+									const fileContent = await fs.promises.readFile(file.path);
+									const fileExt = `${file.originalname}`.split('.').pop()
+									const randomString = Math.floor(Math.random() * 1000000);
+									const fileName = `${Date.now()}_${randomString}.${fileExt}`;
+									const params = {
+										Bucket: awsConfig.Bucket,
+										Key: `products/${lastInsertId}/${fileName}`,
+										Body: fileContent,
+									};
+
+									const result = await awsConfig.s3.upload(params).promise();
+									if (result) {
+										files.push(`products/${lastInsertId}/${fileName}`)
+										fs.unlinkSync(file.path)
+
 									}
-									var image = files.join(';');
-									productModel.update({
-										image: image
-									},{
-										where: {
-											id: lastInsertId,
-											
-										}
-									}).then(productData => {
-										if(productData){
-											productModel.findOne({where:{id:lastInsertId}}).then(async getData => {
-												var product_images = getData.image
-												var image_array = [];
-												for(const data of product_images){
-													const signurl = await awsConfig.getSignUrl(data).then(function(res){
-		
-														  image_array.push(res);
-													});
-												}
-												getData.dataValues.product_images = image_array
-												
-												res.send(setRes(resCode.OK,true,"Product created successfully",getData))
-											})
-										}else{
-											res.send(setRes(resCode.InternalServer,false,"Image not update",getData))
-										}
-									})
 								}
-							
-							}).catch(error => {
-								res.send(setRes(resCode.BadRequest,false, "Fail to add product or service.",null))
-							})
-						}
-					})
-				}
-		}else{
-			res.send(setRes(resCode.BadRequest,false, (requiredFields.toString() + ' are required'),null))
+								var image = files.join(';');
+								productModel.update({
+									image: image
+								}, {
+									where: {
+										id: lastInsertId,
+
+									}
+								}).then(productData => {
+									if (productData) {
+										productModel.findOne({ where: { id: lastInsertId } }).then(async getData => {
+											var product_images = getData.image
+											var image_array = [];
+											for (const data of product_images) {
+												const signurl = await awsConfig.getSignUrl(data).then(function (res) {
+
+													image_array.push(res);
+												});
+											}
+											getData.dataValues.product_images = image_array
+
+											res.send(setRes(resCode.OK, true, "Product created successfully", getData))
+										})
+									} else {
+										res.send(setRes(resCode.InternalServer, false, "Image not update", getData))
+									}
+								})
+							}
+
+						}).catch(error => {
+							console.log(error)
+							res.send(setRes(resCode.BadRequest, false, "Fail to add product or service.", null))
+						})
+					}
+				})
+			}
+		} else {
+			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
 		}
 	}catch(error){
 		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
@@ -584,7 +627,7 @@ exports.UpdateProductDetail = async (req, res) => {
 
 exports.GetProductById =  (req, res) => {
 
-	data = req.params
+	var data = req.params
 	var productModel = models.products
 	var productRattingModel = models.product_ratings
 	var categoryModel = models.product_categorys
@@ -615,8 +658,7 @@ exports.GetProductById =  (req, res) => {
 			[Sequelize.fn('AVG', Sequelize.col('product_ratings.ratings')),'rating']
 		]},
 	}).then(async product => {
-		
-		if (product != null){
+		if (product && product.id != null){
 			
 			var product_images = product.image
 			var image_array = [];
@@ -937,8 +979,11 @@ exports.RemoveCategory = async(req, res) => {
 
 		productModel.findAll({
 			where:{
-				category_id:data.id,
-				is_deleted:false
+				[Op.or]:{
+					category_id:data.id,
+					sub_category_id:data.id
+				},
+				is_deleted:false,
 			}
 		}).then(productData => {
 			var product_ids = [];
@@ -982,22 +1027,36 @@ exports.RemoveCategory = async(req, res) => {
 								if(orderData.length > 0){
 									res.send(setRes(resCode.BadRequest,false,"You can not delete this category because some ongoing order of this sub-category product",null))
 								}else{
-									productCategoryModel.findOne({
+									productCategoryModel.findAll({
 										where:{
-											id:data.id,
+											parent_id:data.id,
 											is_deleted:false,
-											is_enable:true
+											is_enable:true,
 										}
-									}).then(categoryData => {
-
-										if(categoryData != null){
-
-											categoryData.update({is_deleted:true,is_enable:false})
-											res.send(setRes(resCode.OK,true,"Product category deleted successfully",null))
+									}).then(async subCategoryData => {
+										if(subCategoryData.length > 0){
+											return res.send(setRes(resCode.BadRequest,false,"You can not delete this category because some sub category are active.",null))
 										}else{
-											res.send(setRes(resCode.ResourceNotFound,false,"Product category not found",null))
+											productCategoryModel.findOne({
+												where:{
+													id:data.id,
+													is_deleted:false,
+													is_enable:true,
+													parent_id: {
+														[Op.eq]:0
+													}
+												}
+											}).then(categoryData => {
+												if(categoryData != null){
+													categoryData.update({is_deleted:true,is_enable:false})
+													res.send(setRes(resCode.OK,true,"Product category deleted successfully",null))
+												}else{
+													res.send(setRes(resCode.ResourceNotFound,false,"Product category not found",null))
+												}
+											})
 										}
 									})
+									
 								}
 							})
 						}
@@ -1034,8 +1093,10 @@ exports.ProductTypeList = async(req, res) => {
 			condition.attributes =  { exclude: ['is_deleted', 'is_enable','createdAt','updatedAt'] }
 
 		if(data.category_id) {
-			
 			condition.where = {business_id:data.business_id,parent_id:data.category_id,is_deleted:false}
+		}
+		if(data.search && data.search != null){
+			condition.where = {[Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],}
 		}
 		categoryModel.findAll(condition).then(async subCategoryData => {
 			if (subCategoryData != '' && subCategoryData != null ){
@@ -1127,16 +1188,19 @@ exports.removeProductType = async(req, res) => {
 									where:{
 										id:data.id,
 										is_deleted:false,
-										is_enable:true
+										is_enable:true,
+										parent_id: {
+											[Op.ne]:0,
+										}
 									}
 								}).then(subCategoryData => {
 
 									if(subCategoryData != null){
 
 										subCategoryData.update({is_deleted:true})
-										res.send(setRes(resCode.OK,true,"Product type deleted successfully",null))
+										res.send(setRes(resCode.OK,true,"Product sub category deleted successfully",null))
 									}else{
-										res.send(setRes(resCode.ResourceNotFound,false,"Product type not found",null))
+										res.send(setRes(resCode.ResourceNotFound,false,"Product sub category not found",null))
 									}
 								})
 							}
@@ -1271,5 +1335,70 @@ exports.GetProductRattings = async(req,res)=>{
 		})
 	}else{
 		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))	
+	}
+}
+
+//  Simillar product get 
+exports.simillarProducts = async(req,res) => {
+	var val = req.params;
+	var productModel = models.products
+	var productCategoryModel = models.product_categorys
+	var Op = models.Op
+	var requiredFields = _.reject(['id'], (o) => { return _.has(val, o)  })
+
+	if (requiredFields == ''){
+		productModel.findOne({
+			where:{
+				id:val.id,
+				is_deleted:false
+			}
+		}).then(async product => {
+			if((_.isEmpty(product) || product == null || product == 0)){
+				return res.send(setRes(resCode.ResourceNotFound, null, true, "Product not found."))
+			}else{
+				var condition = {}
+				condition.where = {
+					is_deleted:false,
+					id:{
+						[Op.ne] : product.id
+					},
+					category_id:product.category_id
+				}
+				condition.attributes = ['id','name','description','category_id','image'] 
+				productModel.findAll(condition).then(async categoryData => {
+					if(categoryData.length > 0){
+						const shuffledArrays = _.shuffle(categoryData);
+						let responseData = shuffledArrays.slice(0, 5);
+						for (const data of responseData) {
+							var product_images = data.image
+							var image_array = [];
+							if (product_images != null) {
+								for (const data of product_images) {
+									const signurl = await awsConfig.getSignUrl(data).then(function (res) {
+										image_array.push(res);
+									});
+								}
+							} else{
+								image_array.push(commonConfig.default_image)
+							}
+							if(product_images.length == 0) {
+								image_array.push(commonConfig.default_image)
+							}
+							data.dataValues.product_images = image_array
+						}
+						return res.send(setRes(resCode.OK, true,'Get simillar products details.',responseData))
+					}else{
+						res.send(setRes(resCode.ResourceNotFound, null, true, "Product not found."))
+					}
+				})
+			}
+		}).catch(error => {
+			console.log(error)
+			res.send(setRes(resCode.InternalServer, false,'Fail to get simillar products.',null))
+		})
+
+	}else{
+		
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 }
