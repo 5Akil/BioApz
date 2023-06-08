@@ -76,7 +76,7 @@ exports.Register = async (req, res) => {
 			//   return
               transporter.sendMail(
                 {
-                  from: 'BioApz <do-not-reply@mail.com>',
+                  from: 'b.a.s.e. <do-not-reply@mail.com>',
 				//   to: 'abc@yopmail.com',
 				to: data.email,
                 //   cc: ['test1@yopmail.com', 'test2@yopmail.com'],
@@ -587,7 +587,7 @@ exports.forgotPassword = async (req, res) => {
 				){
 								transporter.sendMail(
 								{
-									from: 'BioApz <do-not-reply@mail.com>',
+									from: 'b.a.s.e. <do-not-reply@mail.com>',
 									to: data.email,
 									subject: 'Email OTP Verification',
 					html: html
@@ -663,7 +663,7 @@ exports.forgotPassword = async (req, res) => {
 				){
 								transporter.sendMail(
 								{
-									from: 'BioApz <do-not-reply@mail.com>',
+									from: 'b.a.s.e. <do-not-reply@mail.com>',
 									to: data.email,
 									subject: 'Email OTP Verification',
 					html: html
@@ -861,7 +861,7 @@ function sendForgotPasswordMail(user, key){
 				//   console.log(html)
 				  transporter.sendMail(
 					{
-					  from: 'BioApz <do-not-reply@mail.com>',
+					  from: 'b.a.s.e. <do-not-reply@mail.com>',
 					//   to: 'abc@yopmail.com',
 					to : user.email,
 					//   cc: ['chintan.shah@technostacks.com', 'vishal@technostacks.com'],
@@ -1142,8 +1142,8 @@ function FeedbackMail(user, data){
 				//   console.log(html)
 				  transporter.sendMail(
 					{
-					  from: 'BioApz <do-not-reply@mail.com>',
-					  to: 'bioapz@yopmail.com',
+					  from: 'b.a.s.e. <do-not-reply@mail.com>',
+					  to: 'base@yopmail.com',
 					  subject: 'Feedback From Customer',
 					  html: html
 					},
