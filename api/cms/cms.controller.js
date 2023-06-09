@@ -39,7 +39,7 @@ exports.AddCms = async (req, res) => {
 				}).then(pageDetail => {
 		
 					if(pageDetail != null){
-						res.send(setRes(resCode.BadRequest,true,"This page data already exist",null))
+						res.send(setRes(resCode.BadRequest,false,"This page data already exist",null))
 					}else{
 		
 						cmsModel.create(data).then(cmsData => {
@@ -93,7 +93,7 @@ exports.GetPageDetails = async (req , res) => {
 				res.send(setRes(resCode.ResourceNotFound,false,'Data not found',null))
 			}
 		}).catch(error => {
-			res.send(setRes(resCode.InternalServer,false,"Fail to get page details",true))
+			res.send(setRes(resCode.BadRequest,false,"Fail to get page details",true))
 		})
 	}else{
 		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
@@ -138,7 +138,7 @@ exports.UpdatePageData = async (req, res) => {
 							res.send(setRes(resCode.OK,true,'Page data update successfully',pageDetails))
 						})
 					}else{
-						res.send(setRes(resCode.InternalServer,true,'Internal server error',null))
+						res.send(setRes(resCode.InternalServer,false,'Internal server error',null))
 					}
 				})
 			}else{

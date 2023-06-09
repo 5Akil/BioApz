@@ -99,7 +99,7 @@ exports.GetAllProducts = async (req, res) => {
 
 	if (requiredFields == ''){
 		if(data.page < 0 || data.page === 0) {
-			res.send(setRes(resCode.BadRequest, null, true, "invalid page number, should start with 1"))
+			res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1",null))
 		}
 		var skip = data.page_size * (data.page - 1)
 		var limit = parseInt(data.page_size)
@@ -256,7 +256,7 @@ exports.GetBookingInquiry = async (req, res) => {
 					}
 
 				}).catch((calenderError) => {
-					res.send(setRes(resCode.InternalServer,false, "Get booking error.",null))
+					res.send(setRes(resCode.InternalServer,false, "Internal server error.",null))
 					
 				})
 
@@ -265,7 +265,7 @@ exports.GetBookingInquiry = async (req, res) => {
 			}
 
 		}).catch((error) => {
-			res.send(setRes(resCode.InternalServer, false, "get business error.",null))
+			res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
 		})
 		
 	}else{
@@ -301,14 +301,14 @@ exports.IsReadStatus = async (req, res) => {
 							res.send(setRes(resCode.OK,true, "Product inquiry is readed..",UpdatedInquiry))
 						}
 						else{
-							res.send(setRes(resCode.InternalServer,false, "Fail to get inquiry.",null))		
+							res.send(setRes(resCode.BadRequest,false, "Fail to get inquiry.",null))		
 						}
 					}).catch(GetInquiryError => {
-						res.send(setRes(resCode.BadRequest,false, GetInquiryError,null))
+						res.send(setRes(resCode.InternalServer,false, "Internal server error.",null))
 					})
 					
 				}else{
-					res.send(setRes(resCode.InternalServer,false, "Fail to read inquiry.",null))
+					res.send(setRes(resCode.BadRequest,false, "Fail to read inquiry.",null))
 				}
 			}).catch(error => {
 				res.send(setRes(resCode.BadRequest,false, error,null))
@@ -448,7 +448,7 @@ exports.createProduct = async(req,res) => {
 											res.send(setRes(resCode.OK, true, "Product created successfully", getData))
 										})
 									} else {
-										res.send(setRes(resCode.InternalServer, false, "Image not update", getData))
+										res.send(setRes(resCode.BadRequest, false, "Image not update", getData))
 									}
 								})
 							}
@@ -560,22 +560,22 @@ exports.UpdateProductDetail = async (req, res) => {
 							image_array.push(commonConfig.default_image)
 						}
 						UpdatedProduct.dataValues.product_images = image_array
-						res.send(setRes(resCode.OK, UpdatedProduct, false, "Product Or Service updated successfully."))
+						res.send(setRes(resCode.OK, true, "Product Or Service updated successfully.",UpdatedProduct))
 					}
 					else{
-						res.send(setRes(resCode.BadRequest, null, true, "Fail to update product or service."))		
+						res.send(setRes(resCode.BadRequest, false, "Fail to update product or service.",null))		
 					}
 				})
 			}
 			else{
-				res.send(setRes(resCode.BadRequest, null, true, "Fail to update product or service."))
+				res.send(setRes(resCode.BadRequest, false, "Fail to update product or service.",null))
 			}
 		}).catch(UpdateProductError => {
-			res.send(setRes(resCode.BadRequest, null, true, "Fail to updated product or service."))
+			res.send(setRes(resCode.BadRequest, false, "Fail to updated product or service.",null))
 		})
 	}
 	else{
-		res.send(setRes(resCode.BadRequest, null, true, ('id is required')))
+		res.send(setRes(resCode.BadRequest, false, 'id is required',null))
 	}
 }
 
@@ -698,7 +698,7 @@ exports.GetProductById =  (req, res) => {
 
 		}
 	}).catch(GetProductError => {
-		res.send(setRes(resCode.InternalServer, GetProductError, "Internal server error.",null))
+		res.send(setRes(resCode.InternalServer,false, "Internal server error.",null))
 		
 	})
 
@@ -765,7 +765,7 @@ exports.RemoveProductImage = async(req, res) => {
 				})
 
 			}).catch(error => {
-				res.send(setRes(resCode.InternalServer, false, "Fail to remove image from product.",null))
+				res.send(setRes(resCode.BadRequest, false, "Fail to remove image from product.",null))
 			})
 
 		} else {
@@ -829,7 +829,7 @@ exports.CategoryList = async(req, res) => {
 	var requiredFields = _.reject(['business_id','page','page_size'], (o) => { return _.has(data, o)  })
 	if(requiredFields == ""){
 		if(data.page < 0 || data.page === 0) {
-			res.send(setRes(resCode.BadRequest, null, true, "invalid page number, should start with 1"))
+			res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1",null))
 		}
 		var skip = data.page_size * (data.page - 1)
 		var limit = parseInt(data.page_size)
@@ -961,7 +961,7 @@ exports.UpdateCategory = async(req, res) => {
 			}
 		})
 	}else{
-		res.send(setRes(resCode.BadRequest, false, ('id are required'),null))
+		res.send(setRes(resCode.BadRequest, false, 'id are required',null))
 	}
 }
 
@@ -1064,10 +1064,10 @@ exports.RemoveCategory = async(req, res) => {
 				}
 			})			
 		}).catch(error => {
-			res.send(setRes(resCode.BadRequest, false, "Internal server error.",null))
+			res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
 		})
 	}else{
-		res.send(setRes.BadRequest,false,"id is require",null)
+		res.send(setRes.BadRequest,false,"id is required.",null)
 	}
 
 }
@@ -1279,7 +1279,7 @@ exports.AddProductRattings = async(req,res) => {
 								})
 							}
 						}).catch(error => {
-							res.send(setRes(resCode.InternalServer,false,"Fail to add product ratting",null))
+							res.send(setRes(resCode.BadRequest,false,"Fail to add product ratting",null))
 						})
 					}
 				})
@@ -1331,7 +1331,7 @@ exports.GetProductRattings = async(req,res)=>{
 			}
 			res.send(setRes(resCode.OK,true,'Get ratings successfully',ratingData))
 		}).catch(error => {
-			res.send(setRes(resCode.InternalServer, false,'Fail to get ratings',null))
+			res.send(setRes(resCode.BadRequest, false,'Fail to get ratings',null))
 		})
 	}else{
 		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))	
@@ -1394,7 +1394,7 @@ exports.simillarProducts = async(req,res) => {
 			}
 		}).catch(error => {
 			console.log(error)
-			res.send(setRes(resCode.InternalServer, false,'Fail to get simillar products.',null))
+			res.send(setRes(resCode.BadRequest, false,'Fail to get simillar products.',null))
 		})
 
 	}else{

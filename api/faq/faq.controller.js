@@ -31,9 +31,9 @@ exports.StoreFaq = async(req, res) => {
 		}).then(async business => {
 			if(business){
 				faqModel.create(data).then(faqData => {
-					res.send(setRes(resCode.OK,true,"Faq added successfully",data))
+					res.send(setRes(resCode.OK,true,"FAQ added successfully.",data))
 				}).catch(error => {
-					res.send(setRes(resCode.InternalServer,false,"Fail to add faq",null))
+					res.send(setRes(resCode.BadRequest,false,"Fail to add FAQ.",null))
 				})
 			}else{
 				res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
@@ -54,7 +54,7 @@ exports.GetFaqList = async(req, res ) => {
 
 	if(requiredFields == ""){
 		if(data.page < 0 || data.page === 0) {
-			res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1",null))
+			res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1.",null))
 		}
 		var skip = data.page_size * (data.page - 1)
 		var limit = parseInt(data.page_size)
@@ -72,15 +72,15 @@ exports.GetFaqList = async(req, res ) => {
 		}).then(faqData => {
 			if(faqData.length > 0){
 
-				res.send(setRes(resCode.OK,true,"Faq get successfully",faqData))
+				res.send(setRes(resCode.OK,true,"FAQ get successfully.",faqData))
 			}else{
-				res.send(setRes(resCode.ResourceNotFound,false,"Faq not found",null))
+				res.send(setRes(resCode.ResourceNotFound,false,"FAQ not found.",null))
 			}
 		}).catch(error => {
-			res.send(setRes(resCode.InternalServer,false,"Fail to get faq",null))
+			res.send(setRes(resCode.BadRequest,false,"Fail to get FAQ.",null))
 		})
 	}else{
-		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))	
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required.'),null))	
 	}
 
 }
@@ -97,12 +97,12 @@ exports.GetFaqById = async (req,res) => {
 		}
 	}).then(faqData => {
 		if(faqData != null){
-			res.send(setRes(resCode.OK,true,"Faq get successfully",faqData))
+			res.send(setRes(resCode.OK,true,"FAQ get successfully.",faqData))
 		}else{
-			res.send(setRes(resCode.ResourceNotFound,false,"Faq not found",null))
+			res.send(setRes(resCode.ResourceNotFound,false,"FAQ not found.",null))
 		}
 	}).catch(error => {
-		res.send(setRes(resCode.InternalServer,false,"Fail to get faq",null))
+		res.send(setRes(resCode.BadRequest,false,"Fail to get FAQ.",null))
 	})
 }
 
@@ -138,17 +138,17 @@ exports.UpdateFaq = async (req, res ) => {
 								is_deleted:false
 							}
 						}).then(faqDetail => {
-							res.send(setRes(resCode.OK,true,"Faq update successfully",faqDetail))
+							res.send(setRes(resCode.OK,true,"FAQ update successfully.",faqDetail))
 						})
 					}else{
-						res.send(setRes(resCode.InternalServer,false,'Fail to update',null))
+						res.send(setRes(resCode.BadRequest,false,'Fail to update FAQ.',null))
 					}
 				})
 			}else{
-				res.send(setRes(resCode.ResourceNotFound,false,"Faq not found",null))
+				res.send(setRes(resCode.ResourceNotFound,false,"FAQ not found.",null))
 			}
 		}).catch(error => {
-			res.send(setRes(resCode.InternalServer,false,'Fail to update',null))
+			res.send(setRes(resCode.InternalServer,false,'Internal server error.',null))
 		})
 	}else{
 		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))	
@@ -170,11 +170,11 @@ exports.RemoveFaq = async (req, res ) => {
 		if(faqData != null){
 
 			faqData.update({is_deleted:true})
-			res.send(setRes(resCode.OK,true,"Faq deleted successfully",null))
+			res.send(setRes(resCode.OK,true,"FAQ deleted successfully.",null))
 		}else{
-			res.send(setRes(resCode.ResourceNotFound,false,"Faq not found",null))
+			res.send(setRes(resCode.ResourceNotFound,false,"FAQ not found.",null))
 		}
 	}).catch(error => {
-		res.send(setRes(resCode.InternalServer,false,"Fail to delete ",null))
+		res.send(setRes(resCode.BadRequest,false,"Fail to delete FAQ.",null))
 	})
 }

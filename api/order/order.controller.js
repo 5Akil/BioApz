@@ -124,7 +124,7 @@ exports.OrderDetail = async (req,res) => {
 		}
 		res.send(setRes(resCode.OK,true,'Get order details successfully',orderDetails))
 	}).catch(error => {	
-		res.send(setRes(resCode.InternalServer,false,'Fail to get order details',null))
+		res.send(setRes(resCode.BadRequest,false,'Fail to get order details',null))
 	})
 }
 
@@ -269,6 +269,6 @@ exports.BusinessOrderDetail = async (req,res) => {
 		orderDetails = datas
 		res.send(setRes(resCode.OK,true,'Get order details successfully',orderDetails))
 	}).catch(error => {	
-		res.send(setRes(resCode.InternalServer,false,'Fail to get order details',null))
+		res.send(setRes(resCode.InternalServer,false,'Internal server error.',null))
 	})
 }

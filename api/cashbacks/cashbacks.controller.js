@@ -129,7 +129,7 @@ exports.deleteGiftCard =async(req,res) => {
 					res.send(setRes(resCode.ResourceNotFound, false, "Cashback not found", null))
 				}
 			}).catch(error => {
-				res.send(setRes(resCode.BadRequest, false, error, null))
+				res.send(setRes(resCode.BadRequest, false, "Fail to delete cashbackq!", null))
 			})
 		}else{
 			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))

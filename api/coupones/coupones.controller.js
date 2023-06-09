@@ -86,7 +86,7 @@ exports.create = async(req,res) =>{
 										if(couponeData){
 											res.send(setRes(resCode.OK,true,"Coupon added successfully",couponeData))
 										}else{
-											res.send(setRes(resCode.InternalServer,false,"Fail to create coupon.",null))
+											res.send(setRes(resCode.BadRequest,false,"Fail to create coupon.",null))
 										}
 									})
 								}
@@ -132,7 +132,7 @@ exports.delete = async(req,res) => {
 					});
 					res.send(setRes(resCode.OK, true, "Coupones deleted successfully", null))
 				} else {
-					res.send(setRes(resCode.ResourceNotFound, false, "Coupone not found", null))
+					res.send(setRes(resCode.ResourceNotFound, false, "Coupon not found", null))
 				}
 			}).catch(error => {
 				res.send(setRes(resCode.BadRequest, false, error, null))

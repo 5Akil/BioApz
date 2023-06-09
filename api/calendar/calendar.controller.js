@@ -130,7 +130,7 @@ exports.CreateEvent = async (req, res) => {
 										res.send(setRes(resCode.OK, true, "Event created successfully", getData))
 									})
 								} else {
-									res.send(setRes(resCode.InternalServer, getData, null, "Image not update"))
+									res.send(setRes(resCode.BadRequest, false, null, "Image not update"))
 								}
 							})
 						}
@@ -214,7 +214,7 @@ exports.removeImagesFromCombo = (req, res) => {
 					}).catch(error => {
 						console.log('=======replace combo images error=========')
 						console.log(error.message)
-						res.send(setRes(resCode.InternalServer, null, true, "Internal server error."))
+						res.send(setRes(resCode.InternalServer, null, false, "Internal server error."))
 					})
 				}else{
 					res.send(setRes(resCode.ResourceNotFound, false, "Event not found.", null))
@@ -223,11 +223,11 @@ exports.removeImagesFromCombo = (req, res) => {
 			}).catch(error => {
 				console.log('===========remove images from combo offer========')
 				console.log(error.message)
-				res.send(setRes(resCode.InternalServer, null, true, "Fail to remove image from combo offer."))
+				res.send(setRes(resCode.InternalServer, null, false, "Fail to remove image from combo offer."))
 			})
 
 		} else {
-			res.send(setRes(resCode.BadRequest, null, true, "Please Select image first..."))
+			res.send(setRes(resCode.BadRequest, null, false, "Please Select image first..."))
 		}
 
 	} else {
@@ -283,7 +283,7 @@ exports.GetAllEvents = async (req, res) => {
 	if (requiredFields == '') {
 
 		if(data.page < 0 || data.page === 0) {
-			res.send(setRes(resCode.BadRequest, null, true, "invalid page number, should start with 1"))
+			res.send(setRes(resCode.BadRequest, null, false, "invalid page number, should start with 1"))
 		}
 		var skip = data.page_size * (data.page - 1)
 		var limit = parseInt(data.page_size)
@@ -407,7 +407,7 @@ exports.ViewEvent = async (req, res) => {
 		}
 
 	}).catch(error => {
-		res.send(setRes(resCode.InternalServer, error, "Internal server error.", null))
+		res.send(setRes(resCode.InternalServer, false, "Internal server error.", null))
 	})
 }
 

@@ -160,7 +160,7 @@ exports.RemoveProductWishlist = async(req,res) => {
 									
 								})
 							}else{
-								res.send(setRes(resCode.ResourceNotFound, false, "Data not found",null))
+								res.send(setRes(resCode.ResourceNotFound, false, "Wishlist data not found",null))
 							}
 						})
 					}

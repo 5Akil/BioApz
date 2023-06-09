@@ -46,7 +46,7 @@ exports.create = async(req,res) =>{
 							where:{id:data.product_id,is_deleted:false}
 						}).then(async product => {
 							if(_.isEmpty(product)){
-								return res.send(setRes(resCode.ResourceNotFound,false, "Product not found!",null))
+								return res.send(setRes(resCode.ResourceNotFound,false, "Product not found.!",null))
 							}
 						})
 					}
@@ -74,7 +74,7 @@ exports.create = async(req,res) =>{
 										product_id:(!(_.isEmpty(data.product_id) && data.product_id == null && _.isEmpty(data.product_id)) && data.loyalty_type == 1) ? data.product_id : null,
 									}).then(async loyaltyData => {
 										if(loyaltyData){
-											res.send(setRes(resCode.OK,true,"Loyalty Point added successfully",loyaltyData))
+											res.send(setRes(resCode.OK,true,"Loyalty Point added successfully.",loyaltyData))
 										}else{
 											res.send(setRes(resCode.BadRequest,false,"Fail to create loyalty point.",null))
 										}
@@ -86,7 +86,7 @@ exports.create = async(req,res) =>{
 				}
 			}
 		}else{
-			res.send(setRes(resCode.BadRequest,false, (requiredFields.toString() + ' are required'),null))
+			res.send(setRes(resCode.BadRequest,false, (requiredFields.toString() + ' are required.'),null))
 		}
 	}catch(error){
 		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
@@ -119,15 +119,15 @@ exports.delete = async(req,res) => {
 								});
 						}
 					});
-					res.send(setRes(resCode.OK, true, "loyalty point deleted successfully", null))
+					res.send(setRes(resCode.OK, true, "loyalty point deleted successfully.", null))
 				} else {
-					res.send(setRes(resCode.ResourceNotFound, false, "Coupone not found", null))
+					res.send(setRes(resCode.ResourceNotFound, false, "Coupone not found.", null))
 				}
 			}).catch(error => {
-				res.send(setRes(resCode.BadRequest, false, error, null))
+				res.send(setRes(resCode.BadRequest, false, "Fail to delete loyalty point.", null))
 			})
 		}else{
-			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
+			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required.'),null))
 		}
 	}catch(error){
 		res.send(setRes(resCode.BadRequest,false,"Something went wrong!",null))
@@ -181,7 +181,7 @@ exports.update = async(req,res) => {
 								}).then(async updateData => {
 									if(updateData){
 										loyaltyPointModel.findOne({where:{id:data.id}}).then(async data => {
-											res.send(setRes(resCode.OK,true,'Loyalty point update successfully',data))
+											res.send(setRes(resCode.OK,true,'Loyalty point update successfully.',data))
 										})
 									}else{
 										res.send(setRes(resCode.BadRequest, false, "Fail to update loyalty point.",null))
@@ -195,7 +195,7 @@ exports.update = async(req,res) => {
 				})
 			}
 		}else{
-			res.send(setRes(resCode.BadRequest,false, (requiredFields.toString() + ' are required'),null))
+			res.send(setRes(resCode.BadRequest,false, (requiredFields.toString() + ' are required.'),null))
 		}
 
 	}catch(error){

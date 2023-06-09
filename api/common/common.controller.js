@@ -448,15 +448,15 @@ exports.Searching = (req, res) => {
 
 						}
 						else{
-							res.send(setRes(resCode.ResourceNotFound, false, "Resource not found.",null))		
+							res.send(setRes(resCode.ResourceNotFound, false, "Business not found.",null))		
 						}
 					})
 				}
 				else{
-					res.send(setRes(resCode.ResourceNotFound, false, "Resource not found.",null))
+					res.send(setRes(resCode.ResourceNotFound, false, "Category not found.",null))
 				}
 			}).catch(error => {
-				res.send(setRes(resCode.InternalServer, false, error.message,null))
+				res.send(setRes(resCode.InternalServer, false, "Internal server error",null))
 			})
 		}
 		else{

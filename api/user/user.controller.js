@@ -102,14 +102,14 @@ exports.Register = async (req, res) => {
           }
 		})
 		.catch(err => {
-			res.send(setRes(resCode.InternalServer, false, err.message,null))
+			res.send(setRes(resCode.BadRequest, false, "Fail to register user.",null))
 		});
       }
       else{
         res.send(setRes(resCode.BadRequest, false, 'User already exist',true));
       }
     }).catch(error => {
-		res.send(setRes(resCode.InternalServer, false, error,null))
+		res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
 	})
     
 
@@ -231,7 +231,7 @@ exports.Login = async (req, res) => {
 					res.send(setRes(resCode.ResourceNotFound, false ,'User not found.',null))
 				} else {
 					if (user.is_active == false){
-						res.send(setRes(resCode.BadRequest, false ,'Your account has been deactivated by admin.',null))
+						res.send(setRes(resCode.BadRequest, false ,'Your account has been deactivated. Please contact administrator.',null))
 					}
 					else{
 						bcrypt.compare(data.password, user.password, async function (err, result) {
@@ -267,7 +267,7 @@ exports.Login = async (req, res) => {
 										}
 										res.send(setRes(resCode.OK, true, 'You are successfully logged in',user))
 									}else{
-										res.send(setRes(resCode.InternalServer, false, 'Token not updated',null))
+										res.send(setRes(resCode.BadRequest, false, 'Token not updated',null))
 									}
 								})
 
@@ -499,7 +499,7 @@ exports.ChangePassword = async (req, res) => {
 										res.send(setRes(resCode.OK, true, 'Password updated successfully.',null))
 									}
 									else{
-										res.send(setRes(resCode.InternalServer, false, "Fail to update password.",null))
+										res.send(setRes(resCode.BadRequest, false, "Fail to update password.",null))
 									}
 								})
 							})
@@ -611,7 +611,7 @@ exports.forgotPassword = async (req, res) => {
 						res.send(setRes(resCode.OK,true,'We have sent otp to your email address.',data))
 						
 					}).catch(err => {
-							res.send(setRes(resCode.InternalServer, false, err.message,null))
+							res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
 					});
 					
 				}else{
@@ -687,7 +687,7 @@ exports.forgotPassword = async (req, res) => {
 						res.send(setRes(resCode.OK,true,'We have sent otp to your email address.',data))
 						
 					}).catch(err => {
-							res.send(setRes(resCode.InternalServer, false, err.message,null))
+							res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
 					});
 					
 				}else{
@@ -724,14 +724,14 @@ exports.OtpVerify = async (req, res) => {
 				var expire_time = moment(otpUser.expire_at).format('YYYY-MM-DD HH:mm:ss');
 	
 				if(now_date_time > expire_time){
-					res.send(setRes(resCode.Unauthorized,false,"Oops, This Reset Password Link is Expired!",null));
+					res.send(setRes(resCode.BadRequest,false,"Oops, This Reset Password Link is Expired!",null));
 				}else{
 					
 					if (data.role == 2){
 
 						userModel.findOne({where: {email: otpUser.email, is_deleted: false}}).then(async (user) => {
 							if (user == null){
-								res.send(setRes(resCode.BadRequest, false, 'User not found.',null));
+								res.send(setRes(resCode.ResourceNotFound, false, 'User not found.',null));
 							}
 							else{
 								var response = await sendForgotPasswordMail(user, 2)
@@ -752,7 +752,7 @@ exports.OtpVerify = async (req, res) => {
 						// check email is exist or not
 						businessModel.findOne({where: {email: otpUser.email, is_deleted: false}}).then(async (business) => {
 							if (business == null){
-								res.send(setRes(resCode.BadRequest, false, 'User not found.',null));
+								res.send(setRes(resCode.ResourceNotFound, false, 'User not found.',null));
 							}
 							else{
 								var response = await sendForgotPasswordMail(business, 3)
@@ -933,7 +933,7 @@ exports.GetResetPasswordForm = async (req, res) => {
 			})
 		}
   }).catch((GetUserError) => {
-	res.send(setRes(resCode.ResourceNotFound, null, true, GetUserError.message))
+	res.send(setRes(resCode.BadRequest, null, true, GetUserError.message))
   })
 }
 
@@ -976,7 +976,7 @@ exports.UpdatePassword = function (req, res) {
 					res.send(setRes(resCode.BadRequest, false, "Fail to Update Password.",null))		
 				}
 			}).catch(UpdateUserError => {
-				res.send(setRes(resCode.ResourceNotFound, false, UpdateUserError.message,null))			
+				res.send(setRes(resCode.BadRequest, false, UpdateUserError.message,null))			
 			})
 		}
 		else{
@@ -1009,21 +1009,21 @@ exports.UpdatePassword = function (req, res) {
 							res.send(setRes(resCode.BadRequest, false, "Fail to Update Password.",null))		
 						}
 					}).catch(UpdateBusinessError => {
-						res.send(setRes(resCode.ResourceNotFound, false, UpdateBusinessError.message,null))			
+						res.send(setRes(resCode.BadRequest, false, UpdateBusinessError.message,null))			
 					})
 				}
 				else{
 					res.send(setRes(resCode.BadRequest, false, "Fail to Update Password.",null))
 				}
 			}).catch(GetBusinessError => {
-				res.send(setRes(resCode.ResourceNotFound,false, GetBusinessError.message,true))			
+				res.send(setRes(resCode.BadRequest,false, GetBusinessError.message,true))			
 			})
 		}
 	
 	//   res.sendFile(path.join(__dirname, '../../template', 'reset-password.html'))
 	// res.send(setRes(resCode.OK, user, false, ""))
   }).catch((GetUserError) => {
-	res.send(setRes(resCode.ResourceNotFound, false, GetUserError.message,null))
+	res.send(setRes(resCode.BadRequest, false,"Internal server error." ,null))
   })
 }
 
@@ -1064,7 +1064,7 @@ exports.SendFeedback = async (req, res) => {
 					res.send(setRes(resCode.ResourceNotFound, false, "User not found.",null))
 				}
 			}).catch(getUserError => {
-				res.send(setRes(resCode.InternalServer, false, getUserError.message,null))
+				res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
 			})
 
 		}
@@ -1269,7 +1269,7 @@ exports.GetAllBusiness = async (req, res) => {
 			}
 		}).catch(error => {
 			console.log(error)
-			res.send(setRes(resCode.InternalServer,false,"Fail to get business",null))
+			res.send(setRes(resCode.BadRequest,false,"Fail to get business",null))
 		})
 	}else{
 		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
@@ -1593,7 +1593,7 @@ exports.rewardsList = async (req, res) => {
 
 		if(requiredFields == ""){
 			if(data.page < 0 || data.page == 0) {
-				return res.send(setRes(resCode.BadRequest, null, false, "invalid page number, should start with 1"))
+				return res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1",null))
 			}
 
 			let skip = data.page_size * (data.page - 1);
@@ -1719,7 +1719,7 @@ exports.rewardsView = async (req, res) => {
 
 		var typeArr = ['gift_cards','cashbacks','discounts','coupones'];
 		if((paramType) && !(typeArr.includes(paramType))){
-			return res.send(setRes(resCode.BadRequest, null, false, "Please select valid type."))
+			return res.send(setRes(resCode.BadRequest, false, "Please select valid type.",null))
 		}else{
 			if(paramType == 'gift_cards') {
 				giftCardModel.findOne({
@@ -1795,7 +1795,7 @@ exports.rewardsView = async (req, res) => {
 					res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
 				})
 			}else {
-				res.send(setRes(resCode.BadRequest, null, false, "Please select valid type."))
+				res.send(setRes(resCode.BadRequest, false, "Please select valid type.",null))
 			}
 		}
 		
@@ -2207,7 +2207,7 @@ exports.userEventList = async (req, res) => {
 	});
 	if (requiredFields == "") {
 		if (data.page < 0 || data.page == 0) {
-			return res.send(setRes(resCode.BadRequest,null,false,"invalid page number, should start with 1"));
+			return res.send(setRes(resCode.BadRequest,false,"invalid page number, should start with 1",null));
 		}
 		let skip = data.page_size * (data.page - 1);
 		let limit = parseInt(data.page_size);

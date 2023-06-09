@@ -65,7 +65,7 @@ exports.AddToCart = async(req,res) => {
 								})
 							}else{
 				
-								res.send(setRes(resCode.ResourceNotFound,false,'Product out of stock',null))
+								res.send(setRes(resCode.ResourceNotFound,false,'Product not available..',null))
 							}
 						})
 					}
@@ -110,7 +110,7 @@ exports.CartList = async(req,res) => {
 				}
 				res.send(setRes(resCode.OK, true, 'Your cart details.',cartData));
 			}else{
-				res.send(setRes(resCode.OK, false, "Your cart is empty.",null))
+				res.send(setRes(resCode.OK, true, "Your cart is empty.",null))
 			}
 		}).catch(error => {
 			res.send(setRes(resCode.InternalServer,false,"Internal server error",null))
@@ -244,10 +244,10 @@ exports.QtyUpdate = async(req,res) => {
 											res.send(setRes(resCode.OK, true, "Quantity update successfully.",data))
 										}).catch(error => {
 											
-											res.send(setRes(resCode.InternalServer, false ,"Fail to update quantity.",null))
+											res.send(setRes(resCode.BadRequest, false ,"Fail to update quantity.",null))
 										})
 									}else{
-										res.send(setRes(resCode.InternalServer, false, "Fail to update quantity.",null))
+										res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
 									}
 								});
 							}else{

@@ -45,13 +45,13 @@ exports.AddSettingData = async (req, res) => {
 				}).then(settingDetail => {
 		
 					if(settingDetail != null){
-						res.send(setRes(resCode.BadRequest,false,"This key data already exsit",null))
+						res.send(setRes(resCode.BadRequest,false,"This key data already exist.",null))
 					}else{
 		
 						settingModel.create(data).then(settingData => {
 							res.send(setRes(resCode.OK,true,"Data added successfully",data))
 						}).catch(error => {
-							res.send(setRes(resCode.InternalServer,false,"Fail to add data",null))
+							res.send(setRes(resCode.InternalServer,false,"Internal server error.",null))
 						})
 					}
 				})
@@ -98,7 +98,7 @@ exports.GetSettingDetails = async (req , res) => {
 				res.send(setRes(resCode.ResourceNotFound,false,'Data not found',null))
 			}
 		}).catch(error => {
-			res.send(setRes(resCode.InternalServer,false,"Fail to get setting details",null))
+			res.send(setRes(resCode.InternalServer,false,"Internal server error.",null))
 		})
 	}else{
 		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
@@ -143,7 +143,7 @@ exports.UpdateSettingData = async (req, res) => {
 							res.send(setRes(resCode.OK,true,'Setting data update successfully',settingDetails))
 						})
 					}else{
-						res.send(setRes(resCode.InternalServer,false,'Fail to update data',null))
+						res.send(setRes(resCode.BadRequest,false,'Fail to update data',null))
 					}
 				})
 			}else{

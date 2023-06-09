@@ -42,11 +42,11 @@ exports.createInquiry = async (req, res) => {
 		}).then(business => {
 			if (business != null) {
 				if (business.phone == data.phone) {
-					res.send(setRes(resCode.BadRequest, false, 'This number already register with business.', null));
+					res.send(setRes(resCode.BadRequest, false, 'Business already registered on this phone number.', null));
 				} else if (business.email == data.email) {
-					res.send(setRes(resCode.BadRequest, false, 'This email already register with business.', null));
+					res.send(setRes(resCode.BadRequest, false, 'Business already registered on this email.', null));
 				} else {
-					res.send(setRes(resCode.BadRequest, false, 'This name already register with business.', null));
+					res.send(setRes(resCode.BadRequest, false, 'Business already registered on this business name.!', null));
 				}
 			}
 			else {
@@ -181,7 +181,7 @@ exports.GetRecommendedBusiness = async (req, res) => {
 			res.send(setRes(resCode.OK, true, "Available businesses near you.", business))
 		})
 			.catch((err) => {
-				res.send(setRes(resCode.BadRequest, false, "Internal server error", null))
+				res.send(setRes(resCode.InternalServer, false, "Internal server error", null))
 			})
 
 	} else {
@@ -402,7 +402,7 @@ exports.ChangePassword = async (req, res) => {
 										res.send(setRes(resCode.OK, true, 'Password updated successfully.', null))
 									}
 									else {
-										res.send(setRes(resCode.InternalServer, false, "Fail to update password.", null))
+										res.send(setRes(resCode.BadRequest, false, "Fail to update password.", null))
 									}
 								})
 							})
@@ -626,7 +626,7 @@ exports.UpdateOffer = (req, res) => {
 						}).catch(error => {
 							console.log('===========update offer========')
 							console.log(error.message)
-							res.send(setRes(resCode.InternalServer, false, "Fail to update offer.", null))
+							res.send(setRes(resCode.BadRequest, false, "Fail to update offer.", null))
 						})
 
 					}
@@ -1043,7 +1043,7 @@ exports.CreateBusiness = async (req, res) => {
 									res.send(setRes(resCode.OK, true, "Your Business Account Created Successfully.", business))
 								}
 								else {
-									res.send(setRes(resCode.InternalServer, false, "Fail to remove Inquity.", null))
+									res.send(setRes(resCode.BadRequest, false, "Fail to remove Inquity.", null))
 								}
 							})
 
@@ -1173,7 +1173,7 @@ exports.ChatInitialize = async (req, res) => {
 								var InquiryDetailRes = await UpdateProInquiry
 									(proInquery.id)
 
-								InquiryDetailRes != null ? res.send(setRes(resCode.OK, InquiryDetailRes, false, "Chat Initialize Successfully..")) : res.send(setRes(resCode.InternalServer, null, true, "Fail to initialize chat."))
+								InquiryDetailRes != null ? res.send(setRes(resCode.OK, InquiryDetailRes, true, "Chat Initialize Successfully..")) : res.send(setRes(resCode.InternalServer, null, false, "Fail to initialize chat."))
 							}
 							else {
 								var setBusiness_ids = db.ref(`customers/${proInquery.user_id}`)
@@ -1196,7 +1196,7 @@ exports.ChatInitialize = async (req, res) => {
 								var InquiryDetailRes = await UpdateProInquiry
 									(proInquery.id)
 
-								InquiryDetailRes != null ? res.send(setRes(resCode.OK, InquiryDetailRes, false, "Chat Initialize Successfully..")) : res.send(setRes(resCode.InternalServer, null, true, "Fail to initialize chat."))
+								InquiryDetailRes != null ? res.send(setRes(resCode.OK, InquiryDetailRes, true, "Chat Initialize Successfully..")) : res.send(setRes(resCode.InternalServer, null, true, "Fail to initialize chat."))
 							}
 
 						})
@@ -1233,7 +1233,7 @@ exports.ChatInitialize = async (req, res) => {
 								var InquiryDetailRes = await UpdateProInquiry
 									(proInquery.id)
 
-								InquiryDetailRes != null ? res.send(setRes(resCode.OK, InquiryDetailRes, false, "Chat Initialize Successfully..")) : res.send(setRes(resCode.InternalServer, null, true, "Fail to initialize chat."))
+								InquiryDetailRes != null ? res.send(setRes(resCode.OK, InquiryDetailRes, true, "Chat Initialize Successfully..")) : res.send(setRes(resCode.InternalServer, null, true, "Fail to initialize chat."))
 							}
 							else {
 								var setBusiness_ids = db.ref(`customers/${proInquery.user_id}`)
@@ -1256,7 +1256,7 @@ exports.ChatInitialize = async (req, res) => {
 								var InquiryDetailRes = await UpdateProInquiry
 									(proInquery.id)
 
-								InquiryDetailRes != null ? res.send(setRes(resCode.OK, InquiryDetailRes, false, "Chat Initialize Successfully..")) : res.send(setRes(resCode.InternalServer, null, true, "Fail to initialize chat."))
+								InquiryDetailRes != null ? res.send(setRes(resCode.OK, InquiryDetailRes, true, "Chat Initialize Successfully..")) : res.send(setRes(resCode.InternalServer, null, true, "Fail to initialize chat."))
 							}
 
 						})
@@ -1300,7 +1300,7 @@ function UpdateProInquiry(inquiryId) {
 				}).then(UpdatedInquiry => {
 					if (UpdatedInquiry != '') {
 						resolve(UpdatedInquiry)
-						// res.send(setRes(resCode.OK, UpdatedInquiry , false, "Chat Initialize Successfully.."))
+						// res.send(setRes(resCode.OK, UpdatedInquiry , true, "Chat Initialize Successfully.."))
 					}
 					else {
 						resolve(null)
@@ -1616,106 +1616,114 @@ function shuffle(array) {
 
 
 exports.getUserProfile = async (req, res) => {
+	try {
+		var data = req.params
+		var businessModel = models.business
+		var categoryModel = models.business_categorys
 
-	var data = req.params
-	var businessModel = models.business
-	var categoryModel = models.business_categorys
-
-	businessModel.findOne({
-		where: {
-			id: data.id,
-			is_active:true,
-			is_deleted: false
-		},
-		attributes:['id','person_name','profile_picture','phone','email','address','abn_no','business_name','password']
-	}).then(async business => {
-		if (business) {
-			if (business.profile_picture != null) {
-				var business_profile = await awsConfig.getSignUrl(business.profile_picture).then(function (res) {
-					business.profile_picture = res
-				});
+		businessModel.findOne({
+			where: {
+				id: data.id,
+				is_active: true,
+				is_deleted: false
+			},
+			attributes: ['id', 'person_name', 'profile_picture', 'phone', 'email', 'address', 'abn_no', 'business_name', 'password']
+		}).then(async business => {
+			if (business) {
+				if (business.profile_picture != null) {
+					var business_profile = await awsConfig.getSignUrl(business.profile_picture).then(function (res) {
+						business.profile_picture = res
+					});
+				}
+				else {
+					business.profile_picture = commonConfig.default_user_image;
+				}
+				res.send(setRes(resCode.OK, true, "Get business user profile successfully.", business))
 			}
 			else {
-				business.profile_picture = commonConfig.default_user_image;
+				res.send(setRes(resCode.ResourceNotFound, false, "Business user not found.", null))
 			}
-			res.send(setRes(resCode.OK, true, "Get business user profile successfully.", business))
-		}
-		else {
-			res.send(setRes(resCode.ResourceNotFound, false, "Business user not found.", null))
-		}
-	}).catch(userError => {
-		res.send(setRes(resCode.InternalServer, false, "Fail to get business profile.", null))
-	})
+		}).catch(userError => {
+			res.send(setRes(resCode.BadRequest, false, "Fail to get business profile.", null))
+		})
+	} catch (error) {
+		console.log(error)
+		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
+	}
 
 }
 
 exports.updateUserDetils = async (req, res) => {
+	try {
+		var data = req.body
+		req.file ? data.profile_picture = `${req.file.key}` : '';
+		var businessModel = models.business
+		var Op = models.Op;
+		var requiredFields = _.reject(['id'], (o) => { return _.has(data, o) })
+		var mailId = data.email;
+		var emailFormat = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/;
 
-	var data = req.body
-	req.file ? data.profile_picture = `${req.file.key}` : '';
-	var businessModel = models.business
-	var Op = models.Op;
-	var requiredFields = _.reject(['id'], (o) => { return _.has(data, o) })
-	var mailId = data.email;
-	var emailFormat = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/;
-
-	if (requiredFields == '') {
-		var mobilenumber = /^[0-9]+$/;
-		if(!_.isEmpty(data.phone)){
-			if ((data.phone.length > 12) || (data.phone.length < 7) || !(mobilenumber.test(data.phone))) {
-				return res.send(setRes(resCode.BadRequest, false, 'Please enter valid phone number.', null));
+		if (requiredFields == '') {
+			var mobilenumber = /^[0-9]+$/;
+			if (!_.isEmpty(data.phone)) {
+				if ((data.phone.length > 12) || (data.phone.length < 7) || !(mobilenumber.test(data.phone))) {
+					return res.send(setRes(resCode.BadRequest, false, 'Please enter valid phone number.', null));
+				}
 			}
+			if (!_.isEmpty(data.email)) {
+				if (mailId.match(emailFormat) == null) {
+					res.send(setRes(resCode.BadRequest, false, 'Please enter valid email format.', null));
+				}
+			}
+			businessModel.findOne({
+				where: { id: data.id, is_deleted: false, is_active: true }
+			}).then(async businessDetail => {
+				if (_.isEmpty(businessDetail)) {
+					res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
+				} else {
+					businessModel.findOne({
+						where: { is_deleted: false, is_active: true, email: { [Op.eq]: data.email }, id: { [Op.ne]: data.id } }
+					}).then(async emailData => {
+						if (emailData == null) {
+							businessModel.update(data,
+								{
+									where: { id: data.id, is_deleted: false, is_active: true }
+								}).then(async updateData => {
+									if (updateData == 1) {
+										businessModel.findOne({
+											where: { id: data.id, is_deleted: false, is_active: true },
+											attributes: ['id', 'person_name', 'profile_picture', 'phone', 'email', 'address', 'abn_no', 'business_name', 'password']
+										}).then(async dataDetail => {
+											if (data.profile_picture != null) {
+												const params = { Bucket: awsConfig.Bucket, Key: businessDetail.profile_picture }; awsConfig.deleteImageAWS(params);
+												var updateData_image = await awsConfig.getSignUrl(data.profile_picture).then(function (res) {
+													dataDetail.profile_picture = res;
+												})
+											} else if (dataDetail.profile_picture != null) {
+												var old_image = await awsConfig.getSignUrl(dataDetail.profile_picture).then(function (res) {
+													dataDetail.profile_picture = res;
+												})
+											}
+											else {
+												dataDetail.profile_picture = commonConfig.default_user_image;
+											}
+											res.send(setRes(resCode.OK, true, 'Business profile update successfully', dataDetail))
+										})
+									} else {
+										res.send(setRes(resCode.BadRequest, false, "Fail to update business.", null))
+									}
+								})
+						} else {
+							res.send(setRes(resCode.BadRequest, false, "Business already registered on this email.!", null))
+						}
+					})
+				}
+			})
+		} else {
+			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
 		}
-		if(!_.isEmpty(data.email)){
-			if (mailId.match(emailFormat) == null) {
-				res.send(setRes(resCode.BadRequest, false, 'Please enter valid email format.', null));
-			}
-		}
-		businessModel.findOne({
-			where: { id: data.id, is_deleted: false, is_active: true }
-		}).then(async businessDetail => {
-			if (_.isEmpty(businessDetail)) {
-				res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
-			} else {
-				businessModel.findOne({
-					where: { is_deleted: false, is_active: true, email: { [Op.eq]: data.email }, id: { [Op.ne]: data.id } }
-				}).then(async emailData => {
-					if (emailData == null) {
-						businessModel.update(data,
-							{
-								where: { id: data.id, is_deleted: false, is_active: true }
-							}).then(async updateData => {
-								if (updateData == 1) {
-									businessModel.findOne({
-										where: { id: data.id, is_deleted: false, is_active: true },
-										attributes:['id','person_name','profile_picture','phone','email','address','abn_no','business_name','password']
-									}).then(async dataDetail => {
-										if (data.profile_picture != null) {
-											const params = { Bucket: awsConfig.Bucket, Key: businessDetail.profile_picture }; awsConfig.deleteImageAWS(params);
-											var updateData_image = await awsConfig.getSignUrl(data.profile_picture).then(function (res) {
-												dataDetail.profile_picture = res;
-											})
-										} else if (dataDetail.profile_picture != null) {
-											var old_image = await awsConfig.getSignUrl(dataDetail.profile_picture).then(function (res) {
-												dataDetail.profile_picture = res;
-											})
-										}
-										else {
-											dataDetail.profile_picture = commonConfig.default_user_image;
-										}
-										res.send(setRes(resCode.OK, true, 'Business profile update successfully', dataDetail))
-									})
-								} else {
-									res.send(setRes(resCode.BadRequest, false, "Fail to update business.", null))
-								}
-							})
-					} else {
-						res.send(setRes(resCode.BadRequest, false, "Business already registered on this email.!", null))
-					}
-				})
-			}
-		})
-	} else {
-		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
+	} catch (error) {
+		console.log(error)
+		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
 	}
 }

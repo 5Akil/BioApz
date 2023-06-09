@@ -143,14 +143,14 @@ exports.UpdatePromo = (req, res) => {
 							res.send(setRes(resCode.OK,true, "Promo updated successfully.",promo))
 						}).catch(error => {
 							
-							res.send(setRes(resCode.InternalServer, false, "Fail to update promo.",null))
+							res.send(setRes(resCode.BadRequest, false, "Fail to update promo.",null))
 						})
 
 					}
 				})
 
 			} else {
-				res.send(setRes(resCode.ResourceNotFound, false, "Resource not found.",null))
+				res.send(setRes(resCode.ResourceNotFound, false, "Promo not found.",null))
 			}
 		}).catch(error => {
 			res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
