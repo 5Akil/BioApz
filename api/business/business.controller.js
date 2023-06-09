@@ -256,7 +256,7 @@ exports.GetBusinessDetail = async (req, res) => {
 
 }
 
-exports.GetProfile = async (req, res) => {
+exports.GetBusinessProfile = async (req, res) => {
 
 	var data = req.params
 	var businessModel = models.business
@@ -265,8 +265,10 @@ exports.GetProfile = async (req, res) => {
 	businessModel.findOne({
 		where: {
 			id: data.id,
+			is_active:true,
 			is_deleted: false
 		},
+		attributes: ['id','category_id','banner','person_name','business_name','email','phone','address','abn_no','account_name','account_number'],
 		include: [categoryModel]
 	}).then(async business => {
 		if (business) {
@@ -276,7 +278,7 @@ exports.GetProfile = async (req, res) => {
 				});
 			}
 			else {
-				business.banner = commonConfig.default_user_image;
+				business.banner = commonConfig.default_image;
 			}
 			res.send(setRes(resCode.OK, true, "Get business profile successfully.", business))
 		}
@@ -301,10 +303,11 @@ exports.UpdateBusinessDetail = async (req, res) => {
 	var emailFormat = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/;
 
 	if (requiredFields == '') {
+		var mobilenumber = /^[0-9]+$/;
 		if (mailId.match(emailFormat) == null) {
 			res.send(setRes(resCode.BadRequest, false, 'Please enter valid email format.', null));
 		}
-		else if ((data.phone.length > 10) || (data.phone.length < 7)) {
+		else if ((data.phone.length > 12) || (data.phone.length < 7) || !(mobilenumber.test(data.phone))) {
 			res.send(setRes(resCode.BadRequest, false, 'Please enter valid mobile number.', null));
 		} else {
 			businessModel.findOne({
@@ -330,7 +333,8 @@ exports.UpdateBusinessDetail = async (req, res) => {
 											}
 											if (updateData == 1) {
 												businessModel.findOne({
-													where: { id: data.id, is_deleted: false, is_active: true }
+													where: { id: data.id, is_deleted: false, is_active: true },
+													attributes: ['id','category_id','banner','person_name','business_name','email','phone','address','abn_no','account_name','account_number'],
 												}).then(async dataDetail => {
 													if (data.banner != null) {
 														var updateData_image = await awsConfig.getSignUrl(data.banner).then(function (res) {
@@ -1051,7 +1055,7 @@ exports.CreateBusiness = async (req, res) => {
 									});
 								}
 								else {
-									business.banner = commonConfig.default_user_image;
+									business.banner = commonConfig.default_image;
 								}
 							res.send(setRes(resCode.OK, true, "Your Business Account Created Successfully.", business))
 						}
@@ -1609,3 +1613,109 @@ function shuffle(array) {
 	return array;
 }
 // Home Page API END
+
+
+exports.getUserProfile = async (req, res) => {
+
+	var data = req.params
+	var businessModel = models.business
+	var categoryModel = models.business_categorys
+
+	businessModel.findOne({
+		where: {
+			id: data.id,
+			is_active:true,
+			is_deleted: false
+		},
+		attributes:['id','person_name','profile_picture','phone','email','address','abn_no','business_name','password']
+	}).then(async business => {
+		if (business) {
+			if (business.profile_picture != null) {
+				var business_profile = await awsConfig.getSignUrl(business.profile_picture).then(function (res) {
+					business.profile_picture = res
+				});
+			}
+			else {
+				business.profile_picture = commonConfig.default_user_image;
+			}
+			res.send(setRes(resCode.OK, true, "Get business user profile successfully.", business))
+		}
+		else {
+			res.send(setRes(resCode.ResourceNotFound, false, "Business user not found.", null))
+		}
+	}).catch(userError => {
+		res.send(setRes(resCode.InternalServer, false, "Fail to get business profile.", null))
+	})
+
+}
+
+exports.updateUserDetils = async (req, res) => {
+
+	var data = req.body
+	req.file ? data.profile_picture = `${req.file.key}` : '';
+	var businessModel = models.business
+	var Op = models.Op;
+	var requiredFields = _.reject(['id'], (o) => { return _.has(data, o) })
+	var mailId = data.email;
+	var emailFormat = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/;
+
+	if (requiredFields == '') {
+		var mobilenumber = /^[0-9]+$/;
+		if(!_.isEmpty(data.phone)){
+			if ((data.phone.length > 12) || (data.phone.length < 7) || !(mobilenumber.test(data.phone))) {
+				return res.send(setRes(resCode.BadRequest, false, 'Please enter valid phone number.', null));
+			}
+		}
+		if(!_.isEmpty(data.email)){
+			if (mailId.match(emailFormat) == null) {
+				res.send(setRes(resCode.BadRequest, false, 'Please enter valid email format.', null));
+			}
+		}
+		businessModel.findOne({
+			where: { id: data.id, is_deleted: false, is_active: true }
+		}).then(async businessDetail => {
+			if (_.isEmpty(businessDetail)) {
+				res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
+			} else {
+				businessModel.findOne({
+					where: { is_deleted: false, is_active: true, email: { [Op.eq]: data.email }, id: { [Op.ne]: data.id } }
+				}).then(async emailData => {
+					if (emailData == null) {
+						businessModel.update(data,
+							{
+								where: { id: data.id, is_deleted: false, is_active: true }
+							}).then(async updateData => {
+								if (updateData == 1) {
+									businessModel.findOne({
+										where: { id: data.id, is_deleted: false, is_active: true },
+										attributes:['id','person_name','profile_picture','phone','email','address','abn_no','business_name','password']
+									}).then(async dataDetail => {
+										if (data.profile_picture != null) {
+											const params = { Bucket: awsConfig.Bucket, Key: businessDetail.profile_picture }; awsConfig.deleteImageAWS(params);
+											var updateData_image = await awsConfig.getSignUrl(data.profile_picture).then(function (res) {
+												dataDetail.profile_picture = res;
+											})
+										} else if (dataDetail.profile_picture != null) {
+											var old_image = await awsConfig.getSignUrl(dataDetail.profile_picture).then(function (res) {
+												dataDetail.profile_picture = res;
+											})
+										}
+										else {
+											dataDetail.profile_picture = commonConfig.default_user_image;
+										}
+										res.send(setRes(resCode.OK, true, 'Business profile update successfully', dataDetail))
+									})
+								} else {
+									res.send(setRes(resCode.BadRequest, false, "Fail to update business.", null))
+								}
+							})
+					} else {
+						res.send(setRes(resCode.BadRequest, false, "Business already registered on this email.!", null))
+					}
+				})
+			}
+		})
+	} else {
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
+	}
+}

@@ -45,6 +45,17 @@ var banner =  multer({
     })
 })
 
+var profile = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'public/profile_picture')
+  },
+  filename: function (req, file, cb) {
+    // var fileExtension = file.mimetype.split('/')[1];
+    // cb(null, `${uuidv1()}_${moment().unix()}.${fileExtension}`)
+    cb(null, `${file.originalname}`)
+  }
+})
+
 const fileFilter = (req,file,cb) => {
 
   if(file.mimetype === 'image/jpeg' || file.mimetype === 'image/png'){
@@ -108,6 +119,26 @@ var awsuploadbanner = multer({
   },
   fileFilter,
 })
+
+var awsuploadprofile = multer({
+  storage:multerS3({
+    fileFilter,
+    s3:awsConfig.s3,
+    bucket:awsConfig.Bucket,
+    
+    key:function(req,file,cb){
+      const fileExt = file.originalname.split('.').pop(); // get file extension
+      const randomString = Math.floor(Math.random() * 1000000); // generate random string
+      const fileName = `${Date.now()}_${randomString}.${fileExt}`;
+      cb(null,'profile_picture/'+fileName);
+    }
+  }),
+  limits: {
+    fileSize: commonConfig.maxFileSize,
+  },
+  fileFilter,
+})
+
 var controller = require('./business.controller')
 
 const {verifyToken,authorize} = require('../../config/token');
@@ -119,7 +150,6 @@ const uploadImage = multer({ dest: 'business_gallery/' });
 router.post('/inquiry', verifyToken,authorize([3]), controller.createInquiry)
 router.post('/recommended', verifyToken, controller.GetRecommendedBusiness)
 router.post('/getBusinessDetail', verifyToken, controller.GetBusinessDetail);
-router.post('/updateBusinessDetail', verifyToken, awsuploadbanner.single('banner'), controller.UpdateBusinessDetail)
 router.post('/getImages', verifyToken, controller.GetImages);
 router.post('/uploadImages', verifyToken, awsuploadcompanyImages.array('images'), controller.UploadCompanyImages)
 router.post('/getAll', verifyToken, controller.GetAllOffers)
@@ -128,15 +158,20 @@ router.post('/banner_booking', verifyToken , awsuploadbanner.single('banner'), c
 router.get('/category-list',controller.GetCategory)
 router.post('/register', awsuploadbanner.single('banner'),controller.CreateBusiness)
 router.post('/initChat', verifyToken, controller.ChatInitialize)
-router.get('/get-profile/:id',verifyToken,controller.GetProfile)
 router.post('/change-password',verifyToken,controller.ChangePassword)
-
 router.post('/createOffer', verifyToken, awsupload.single('image'), controller.CreateOffer)
 router.post('/updateOffer', verifyToken, awsupload.single('image'), controller.UpdateOffer)
 router.post('/getOffers', verifyToken, controller.GetOffers)
 //booking api for react restaurants templates
 router.post('/restaurants-booking', verifyToken, controller.RestaurantsBooking)
 
+// Business Profile
+router.get('/get-business-profile/:id',verifyToken,controller.GetBusinessProfile)
+router.post('/updateBusinessDetail', verifyToken, awsuploadbanner.single('banner'), controller.UpdateBusinessDetail)
+
+// Business User Profile
+router.get('/profile/view/:id',verifyToken,controller.getUserProfile)
+router.post('/profile/update', verifyToken, awsuploadprofile.single('profile_picture'), controller.updateUserDetils)
 
 // Home Page
 router.get('/home', verifyToken, controller.homeList)

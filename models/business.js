@@ -41,6 +41,7 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       // unique: true
     },
+    profile_picture: DataTypes.STRING,
     booking_facility: {
       type: DataTypes.BOOLEAN,
       defaultValue: false
