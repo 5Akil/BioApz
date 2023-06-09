@@ -231,7 +231,7 @@ exports.Login = async (req, res) => {
 					res.send(setRes(resCode.ResourceNotFound, false ,'User not found.',null))
 				} else {
 					if (user.is_active == false){
-						res.send(setRes(resCode.BadRequest, false ,'Please verify your account.',null))
+						res.send(setRes(resCode.BadRequest, false ,'Your account has been deactivated by admin.',null))
 					}
 					else{
 						bcrypt.compare(data.password, user.password, async function (err, result) {
@@ -724,7 +724,7 @@ exports.OtpVerify = async (req, res) => {
 				var expire_time = moment(otpUser.expire_at).format('YYYY-MM-DD HH:mm:ss');
 	
 				if(now_date_time > expire_time){
-					res.send(setRes(resCode.Unauthorized,false,"Your otp has been expired.",null));
+					res.send(setRes(resCode.Unauthorized,false,"Oops, This Reset Password Link is Expired!",null));
 				}else{
 					
 					if (data.role == 2){
