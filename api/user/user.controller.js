@@ -296,7 +296,7 @@ exports.Login = async (req, res) => {
 				res.send(setRes(resCode.ResourceNotFound, false ,'Business not found.',null))
 			} else {
 				if (business.is_active == 0){
-					res.send(setRes(resCode.BadRequest, false,'Your business account is inactive, so please contact admin.',null))
+					res.send(setRes(resCode.BadRequest, false,'Your account has been deactivated. Please contact administrator.',null))
 				}
 				else{
 					bcrypt.compare(data.password, business.password, async function (err, result) {
