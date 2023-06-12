@@ -6,7 +6,7 @@ const resCode = require('../config/res_code_config')
 function verifyToken(req, res, next) {
   const token = req.headers.authorization;
   if (!token) {
-    return res.send(setRes(resCode.Forbidden, true, "No token provided.",null))
+    return res.send(setRes(resCode.ResourceNotFound, true, "No token provided.",null))
   }
 
   if (token == "rFpNuPj3dNMjLgSkUOkz"){
@@ -90,7 +90,7 @@ function authorize(roles = []){
 				console.log(rolesData.length)
 				console.log(rolesData)
 				if (rolesData.length && !rolesData.includes(req.user.role_id)) {
-					return res.send(setRes(resCode.Unauthorized, true, "Forbidden/Unauthorized.",null))
+					return res.send(setRes(resCode.Unauthorized, true, "Unauthorized user.",null))
 				}
 				return next();
 			  }
@@ -105,7 +105,7 @@ function authorize(roles = []){
 			  );
 			}
 		  }
-			return res.send(setRes(resCode.Forbidden, true, "No token provided.",null))
+			return res.send(setRes(resCode.ResourceNotFound, true, "No token provided.",null))
 		},
 	  ];
 	
