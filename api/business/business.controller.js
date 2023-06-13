@@ -298,7 +298,7 @@ exports.UpdateBusinessDetail = async (req, res) => {
 	var businessModel = models.business
 	var categoryModel = models.business_categorys
 	var Op = models.Op;
-	var requiredFields = _.reject(['id','auth_token','business_name', 'person_name', 'abn_no', 'email', 'phone', 'description'], (o) => { return _.has(data, o) })
+	var requiredFields = _.reject(['id','business_name', 'person_name', 'abn_no', 'email', 'phone', 'description'], (o) => { return _.has(data, o) })
 	var mailId = data.email;
 	var emailFormat = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/;
 
@@ -334,7 +334,7 @@ exports.UpdateBusinessDetail = async (req, res) => {
 											if (updateData == 1) {
 												businessModel.findOne({
 													where: { id: data.id, is_deleted: false, is_active: true },
-													attributes: ['id','category_id','banner','person_name','business_name','email','phone','address','abn_no','account_name','account_number'],
+													attributes: ['id','auth_token','category_id','banner','person_name','business_name','email','phone','address','abn_no','account_name','account_number'],
 												}).then(async dataDetail => {
 													if (data.banner != null) {
 														var updateData_image = await awsConfig.getSignUrl(data.banner).then(function (res) {
