@@ -854,7 +854,7 @@ function sendForgotPasswordMail(user, key){
 	
 				var templates = new EmailTemplates()
 				var context = {
-				  resetUrl: commonConfig.app_url+'/api/user/resetPassword/' + token,
+				  resetUrl: commonConfig.local_url+'/api/user/resetPassword/' + token,
 				  username: user.username
 				// resetUrl: '#'
 				}
@@ -935,7 +935,7 @@ exports.GetResetPasswordForm = async (req, res) => {
 					  res.sendFile(path.join(__dirname, '../../template', 'reset-password.html'))
 				}
 				else{
-					res.sendFile(path.join(__dirname, '../../template', '404.html'))
+					res.sendFile(path.join(__dirname, '../../template', 'page-expire.html'))
 				}
 			})
 		}

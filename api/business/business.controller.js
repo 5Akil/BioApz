@@ -268,7 +268,7 @@ exports.GetBusinessProfile = async (req, res) => {
 			is_active:true,
 			is_deleted: false
 		},
-		attributes: ['id','category_id','banner','person_name','business_name','email','phone','address','abn_no','account_name','account_number'],
+		attributes: ['id','auth_token','category_id','banner','person_name','business_name','email','phone','address','abn_no','account_name','account_number'],
 		include: [categoryModel]
 	}).then(async business => {
 		if (business) {
@@ -298,7 +298,7 @@ exports.UpdateBusinessDetail = async (req, res) => {
 	var businessModel = models.business
 	var categoryModel = models.business_categorys
 	var Op = models.Op;
-	var requiredFields = _.reject(['id','business_name', 'person_name', 'abn_no', 'email', 'phone', 'description'], (o) => { return _.has(data, o) })
+	var requiredFields = _.reject(['id','auth_token','business_name', 'person_name', 'abn_no', 'email', 'phone', 'description'], (o) => { return _.has(data, o) })
 	var mailId = data.email;
 	var emailFormat = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/;
 
