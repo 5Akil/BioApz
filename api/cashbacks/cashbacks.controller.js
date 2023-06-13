@@ -37,7 +37,7 @@ exports.cashbackCreate = async (req, res) => {
 		if (requiredFields == "") {
 			if (result) {
 				return res.send(setRes(resCode.BadRequest, false, "Please select valid cashback value in percentage(between 1 to 100)!", null))
-			} 
+			}
 			if (currentDate || pastDate) {
 				return res.send(setRes(resCode.BadRequest, false, "You can't select past and current date.!", null))
 			}
@@ -49,15 +49,21 @@ exports.cashbackCreate = async (req, res) => {
 						res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
 					} else {
 						categoryModel.findOne({
-							where: { id: data.product_category_id, is_deleted: false, is_enable: true, business_id: data.business_id }
+							where: {
+								id: data.product_category_id, is_deleted: false, is_enable: true, business_id: data.business_id, parent_id: {
+									[Op.eq]: 0
+								}
+							}
 						}).then(async productCategory => {
 							if (_.isEmpty(productCategory)) {
 								res.send(setRes(resCode.ResourceNotFound, false, "Product Category not found.", null))
 							} else {
-								await productModel.findOne({
-									where: { id: data.product_id, is_deleted: false, business_id: data.business_id }
+								var products = !_.isEmpty(data.product_id) ? data.product_id : '';
+								var proArray = products.split(",");
+								await productModel.findAll({
+									where: { id: { [Op.in]: proArray }, is_deleted: false, business_id: data.business_id, category_id: productCategory.id }
 								}).then(async products => {
-									if (_.isEmpty(products)) {
+									if (_.isEmpty(products) || (products.length != proArray.length)) {
 										res.send(setRes(resCode.ResourceNotFound, false, "Product not found.", null))
 									} else {
 										await cashbackModel.findOne({
@@ -81,12 +87,9 @@ exports.cashbackCreate = async (req, res) => {
 								})
 							}
 						})
-
 					}
 				})
-
 			}
-
 		} else {
 			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
 		}
@@ -97,33 +100,33 @@ exports.cashbackCreate = async (req, res) => {
 // Create Reward cashbacks END
 
 // Delete Reward Cashback START
-exports.deleteGiftCard =async(req,res) => {
-	try{
+exports.deleteCashback = async (req, res) => {
+	try {
 		var data = req.params
 		var cashbackModel = models.cashbacks
-		var requiredFields = _.reject(['id'], (o) => { return _.has(data, o)  })
+		var requiredFields = _.reject(['id'], (o) => { return _.has(data, o) })
 
-		if(requiredFields == ""){
+		if (requiredFields == "") {
 			cashbackModel.findOne({
-			where: {
-				id: data.id,
-				status:true,
-				isDeleted: false
-			}
+				where: {
+					id: data.id,
+					status: true,
+					isDeleted: false
+				}
 			}).then(async cashbackData => {
 				if (cashbackData) {
-					await cashbackData.update({ 
+					await cashbackData.update({
 						isDeleted: true,
-						status:false
+						status: false
 					}).then(async deleteData => {
-						if(deleteData){
+						if (deleteData) {
 							await cashbackModel.findOne({
 								where: {
 									id: deleteData.id
 								}
-								}).then(async Data => {
-									Data.destroy();
-								});
+							}).then(async Data => {
+								Data.destroy();
+							});
 						}
 					});
 					res.send(setRes(resCode.OK, true, "Cashback deleted successfully", null))
@@ -133,11 +136,11 @@ exports.deleteGiftCard =async(req,res) => {
 			}).catch(error => {
 				res.send(setRes(resCode.BadRequest, false, "Fail to delete cashbackq!", null))
 			})
-		}else{
-			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
+		} else {
+			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
 		}
-	}catch(error){
-		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
+	} catch (error) {
+		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
 	}
 }
 // Delete Reward Cashback END
@@ -147,6 +150,7 @@ exports.cashbackUpdate = async (req, res) => {
 	try {
 		var data = req.body;
 		var cashbackModel = models.cashbacks;
+		var categoryModel = models.product_categorys;
 		var Op = models.Op;
 		var validation = true;
 		var requiredFields = _.reject(["id"], (o) => {
@@ -166,7 +170,7 @@ exports.cashbackUpdate = async (req, res) => {
 				})
 				.then(async (cashbackDetails) => {
 					if (_.isEmpty(cashbackDetails)) {
-						res.send(
+						return res.send(
 							setRes(
 								resCode.ResourceNotFound,
 								false,
@@ -177,7 +181,7 @@ exports.cashbackUpdate = async (req, res) => {
 					} else {
 						if (!(_.isEmpty(data.cashback_value))) {
 							const result =
-								data.cashback_type == 0
+							cashbackDetails.cashback_type == 0
 									? !(
 										data.cashback_value >= Math.min(1, 100) &&
 										data.cashback_value <= Math.max(1, 100)
@@ -196,8 +200,8 @@ exports.cashbackUpdate = async (req, res) => {
 								);
 							}
 						}
-						if(!_.isEmpty(data.validity_for)){
-							if(currentDate || pastDate){
+						if (!_.isEmpty(data.validity_for)) {
+							if (currentDate || pastDate) {
 								return res.send(setRes(resCode.BadRequest, false, "You can't select past and current date.!", null))
 							}
 						}

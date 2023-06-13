@@ -6,7 +6,7 @@ const resCode = require('../config/res_code_config')
 function verifyToken(req, res, next) {
   const token = req.headers.authorization;
   if (!token) {
-    return res.send(setRes(resCode.ResourceNotFound, true, "No token provided.",null))
+    return res.send(setRes(resCode.ResourceNotFound, false, "No token provided.",null))
   }
 
   if (token == "rFpNuPj3dNMjLgSkUOkz"){
@@ -16,7 +16,7 @@ function verifyToken(req, res, next) {
 
 	return jwt.verify(token, 'secret', (err, decoded) => {
 		if (err) {
-		  return res.send(setRes(resCode.Unauthorized, true, "Failed to verify token.", null))
+		  return res.send(setRes(resCode.Unauthorized, false, "Failed to verify token.", null))
 		}
 		// if everything good, save to request for use in other routes
 		req.userEmail = decoded.user;
@@ -48,7 +48,7 @@ function verifyToken(req, res, next) {
 							return next()
 						}
 						else{
-							return res.send(setRes(resCode.Unauthorized, true, "Unauthorized Token",null))
+							return res.send(setRes(resCode.Unauthorized, false, "Unauthorized Token",null))
 						}
 					})
 					
@@ -56,7 +56,7 @@ function verifyToken(req, res, next) {
 			})
 		  
 		}else{
-		  return res.send(setRes(resCode.Unauthorized, true, "Failed to verify token.",null))
+		  return res.send(setRes(resCode.Unauthorized, false, "Failed to verify token.",null))
 		}
 		
 	  });
@@ -94,7 +94,7 @@ function authorize(roles = []){
 				}
 				return next();
 			  }
-			  return res.send(setRes(resCode.Unauthorized, true, "Invalid Token Access denied/Unauthorized.",null))
+			  return res.send(setRes(resCode.Unauthorized, false, "Invalid Token Access denied/Unauthorized.",null))
 			} catch (err) {
 			  return response(
 				res,
@@ -105,7 +105,7 @@ function authorize(roles = []){
 			  );
 			}
 		  }
-			return res.send(setRes(resCode.ResourceNotFound, true, "No token provided.",null))
+			return res.send(setRes(resCode.ResourceNotFound, false, "No token provided.",null))
 		},
 	  ];
 	

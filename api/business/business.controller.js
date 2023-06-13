@@ -42,9 +42,9 @@ exports.createInquiry = async (req, res) => {
 		}).then(business => {
 			if (business != null) {
 				if (business.phone == data.phone) {
-					res.send(setRes(resCode.BadRequest, false, 'Business already registered on this phone number.', null));
+					res.send(setRes(resCode.BadRequest, false, 'This phone number is already accociated with another account.', null));
 				} else if (business.email == data.email) {
-					res.send(setRes(resCode.BadRequest, false, 'Business already registered on this email.', null));
+					res.send(setRes(resCode.BadRequest, false, 'This email is already accociated with another account.', null));
 				} else {
 					res.send(setRes(resCode.BadRequest, false, 'Business already registered on this business name.!', null));
 				}
@@ -1022,7 +1022,8 @@ exports.CreateBusiness = async (req, res) => {
 					is_deleted: false,
 					[Op.or]: [
 						{ email: data.email },
-						{ phone: data.phone }
+						{ phone: data.phone },
+						{ business_name: data.business_name }
 					]
 				}
 			}).then(async (validation) => {
@@ -1061,11 +1062,13 @@ exports.CreateBusiness = async (req, res) => {
 						}
 					})
 				} else if (validation.phone == data.phone) {
-					res.send(setRes(resCode.BadRequest, false, 'Mobile number already exist.', null));
+					res.send(setRes(resCode.BadRequest, false, 'This mobile number is already accociated with another account.', null));
 				}
 				else if ((validation.email).toLowerCase() == (data.email).toLowerCase()) {
-					res.send(setRes(resCode.BadRequest, false, 'Business already exist on this email.', null));
-				} else {
+					res.send(setRes(resCode.BadRequest, false, 'This email is already accociated with another account.', null));
+				}else if ((validation.email).toLowerCase() == (data.email).toLowerCase()) {
+					res.send(setRes(resCode.BadRequest, false, 'This business name is already accociated with another account.', null));
+				}else {
 					res.send(setRes(resCode.InternalServer, false, 'Internal server error.', null));
 				}
 			}).catch(error => {
@@ -1627,7 +1630,7 @@ exports.getUserProfile = async (req, res) => {
 				is_active: true,
 				is_deleted: false
 			},
-			attributes: ['id', 'person_name', 'profile_picture', 'phone', 'email', 'address', 'abn_no', 'business_name', 'password']
+			attributes: ['id', 'person_name', 'profile_picture', 'phone', 'email', 'address', 'abn_no', 'business_name', 'password','auth_token']
 		}).then(async business => {
 			if (business) {
 				if (business.profile_picture != null) {
@@ -1692,7 +1695,7 @@ exports.updateUserDetils = async (req, res) => {
 									if (updateData == 1) {
 										businessModel.findOne({
 											where: { id: data.id, is_deleted: false, is_active: true },
-											attributes: ['id', 'person_name', 'profile_picture', 'phone', 'email', 'address', 'abn_no', 'business_name', 'password']
+											attributes: ['id', 'person_name', 'profile_picture', 'phone', 'email', 'address', 'abn_no', 'business_name', 'password','auth_token']
 										}).then(async dataDetail => {
 											if (data.profile_picture != null) {
 												const params = { Bucket: awsConfig.Bucket, Key: businessDetail.profile_picture }; awsConfig.deleteImageAWS(params);

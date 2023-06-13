@@ -33,7 +33,7 @@ var controller = require('./cashbacks.controller')
 
 // Cashbacks Routes
 router.post('/create', verifyToken, controller.cashbackCreate)
-router.delete('/delete/:id', verifyToken,controller.deleteGiftCard)
+router.delete('/delete/:id', verifyToken,controller.deleteCashback)
 router.post('/update',verifyToken,controller.cashbackUpdate)
 // Cashbackss Section END
 

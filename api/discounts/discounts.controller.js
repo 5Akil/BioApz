@@ -58,10 +58,12 @@ exports.create = async(req,res) =>{
 								if(_.isEmpty(productCategory)){
 									res.send(setRes(resCode.ResourceNotFound, false, "Product Category not found.",null))
 								}else{
-									await productModel.findOne({
-										where:{id:data.product_id,is_deleted:false,business_id:data.business_id}
+									var products = !_.isEmpty(data.product_id) ? data.product_id : '';
+									var proArray = products.split(",");
+									await productModel.findAll({
+										where: { id: { [Op.in]: proArray }, is_deleted: false, business_id: data.business_id, category_id: data.product_category_id }
 									}).then(async products => {
-										if(_.isEmpty(products)){
+										if(_.isEmpty(products) || (products.length != proArray.length)){
 											res.send(setRes(resCode.ResourceNotFound, false, "Product not found.",null))
 										}else{
 											await discountModel.findOne({
@@ -154,6 +156,7 @@ exports.update =async(req,res) => {
 
 		if(!_.isEmpty(data.validity_for)){
 			if(currentDate || pastDate){
+				validation = false;
 				return res.send(setRes(resCode.BadRequest, false, "You can't select past and current date.!", null))
 			}
 		}
@@ -162,8 +165,10 @@ exports.update =async(req,res) => {
 		const result =  data.discount_type == 0 ? (!((data.discount_value >= Math.min(1,100)) && (data.discount_value <= Math.max(1,100))) ? true : false) : '';
 		if(requiredFields == ""){
 			if(result){
+				validation = false;
 				res.send(setRes(resCode.BadRequest,false, "Please select valid cashback value in percentage(between 1 to 100)!",null))
-			}else{
+			}
+			if(validation){
 				discountModel.findOne({
 					where:{id: data.id,isDeleted: false,status: true,deleted_at:null}
 				}).then(async discountDetails => {

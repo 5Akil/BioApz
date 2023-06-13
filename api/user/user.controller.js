@@ -25,6 +25,7 @@ exports.Register = async (req, res) => {
   var data = req.body
   req.file ? data.profile_picture = `${req.file.key}`: '';
   var dbModel = models.user;
+  var Op = models.Op
 
   var requiredFields = _.reject(['username', 'email', 'password', 'address', 'mobile','confirm_password','latitude', 'longitude'], (o) => { return _.has(data, o)  })
 
@@ -41,78 +42,84 @@ exports.Register = async (req, res) => {
 	if ((data.mobile.length > 12) || (data.mobile.length < 7) || !(mobilenumber.test(data.mobile))) {
 		return res.send(setRes(resCode.BadRequest, false, 'Please enter valid mobile number.', null));
 	}
-    dbModel.findOne({where: {email: data.email, is_deleted: false}}).then((user) => {
-      if (user == null){
-        const token =  jwt.sign({user: data.email}, 'secret')
-		data.auth_token = token
-		data.email = (data.email).toLowerCase();
-		// data.device_type = data.device_type.toLowerCase();
 
-        dbModel.create(data).then(function (users) {
-          if (users) {
+	  dbModel.findOne({
+		  where: { email: data.email, is_deleted: false }
+	  }).then(async emailValidation => {
+		  if (emailValidation != null) {
+			  res.send(setRes(resCode.BadRequest, false, 'This email is already accociated with another account.', null));
+		  } else {
+			  dbModel.findOne({
+				  where: { mobile: data.mobile, is_deleted: false }
+			  }).then(async phoneValidation => {
+				  if (phoneValidation != null) {
+					  res.send(setRes(resCode.BadRequest, false, 'This mobile number is already accociated with another account.', null));
+				  } else {
+					  const token = jwt.sign({ user: data.email }, 'secret')
+					  data.auth_token = token
+					  data.email = (data.email).toLowerCase();
+					  // data.device_type = data.device_type.toLowerCase();
 
-            var transporter = nodemailer.createTransport({
-              host: mailConfig.host,
-              port: mailConfig.port,
-              secure: mailConfig.secure,
-              auth: mailConfig.auth,
-              tls: mailConfig.tls
-            })
+					  dbModel.create(data).then(function (users) {
+						  if (users) {
 
-            var templates = new EmailTemplates()
-            var context = {
-			  resetUrl: commonConfig.app_url+'/api/user/account-activation/' + token,
-			  username: data.username
-			}
-			
+							  var transporter = nodemailer.createTransport({
+								  host: mailConfig.host,
+								  port: mailConfig.port,
+								  secure: mailConfig.secure,
+								  auth: mailConfig.auth,
+								  tls: mailConfig.tls
+							  })
 
-            templates.render(path.join(__dirname, '../../', 'template', 'account-activation.html'), context, function (
-              err,
-              html,
-              text,
-              subject
-            ) {
-			//   console.log(html)
-			//   return
-              transporter.sendMail(
-                {
-                  from: 'b.a.s.e. <do-not-reply@mail.com>',
-				//   to: 'abc@yopmail.com',
-				to: data.email,
-                //   cc: ['test1@yopmail.com', 'test2@yopmail.com'],
-                  subject: 'Account Activation',
-                  html: html
-                },
-                function (err, result) {
-                  if (err) {
-					    console.log("--------------------------err------------")
-					    console.log(err)
-                  } else {
-          				console.log("--------------------------send res------------")
-						console.log(result)
-						res.send(setRes(resCode.OK, true,`Email has been sent to ${(users.email).toLowerCase()}, with account activation instuction.. `,true));
-                  }
-                }
-              )
-            })
+							  var templates = new EmailTemplates()
+							  var context = {
+								  resetUrl: commonConfig.app_url + '/api/user/account-activation/' + token,
+								  username: data.username
+							  }
 
-			  res.send(setRes(resCode.OK,true, `Email has been sent to ${(users.email).toLowerCase()}, with account activation instuction.. `, null));
-          } else {
-              res.send(setRes(resCode.BadRequest, false, 'user registration fail',null));
-          }
-		})
-		.catch(err => {
-			res.send(setRes(resCode.BadRequest, false, "Fail to register user.",null))
-		});
-      }
-      else{
-        res.send(setRes(resCode.BadRequest, false, 'User already exist',true));
-      }
-    }).catch(error => {
-		res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
-	})
-    
 
+							  templates.render(path.join(__dirname, '../../', 'template', 'account-activation.html'), context, function (
+								  err,
+								  html,
+								  text,
+								  subject
+							  ) {
+								  //   console.log(html)
+								  //   return
+								  transporter.sendMail(
+									  {
+										  from: 'b.a.s.e. <do-not-reply@mail.com>',
+										  //   to: 'abc@yopmail.com',
+										  to: data.email,
+										  //   cc: ['test1@yopmail.com', 'test2@yopmail.com'],
+										  subject: 'Account Activation',
+										  html: html
+									  },
+									  function (err, result) {
+										  if (err) {
+											  console.log("--------------------------err------------")
+											  console.log(err)
+										  } else {
+											  console.log("--------------------------send res------------")
+											  console.log(result)
+											  res.send(setRes(resCode.OK, true, `Email has been sent to ${(users.email).toLowerCase()}, with account activation instuction.. `, true));
+										  }
+									  }
+								  )
+							  })
+
+							  res.send(setRes(resCode.OK, true, `Email has been sent to ${(users.email).toLowerCase()}, with account activation instuction.. `, null));
+						  } else {
+							  res.send(setRes(resCode.BadRequest, false, 'user registration fail', null));
+						  }
+					  })
+						  .catch(err => {
+							  res.send(setRes(resCode.BadRequest, false, "Fail to register user.", null))
+						  });
+				  }
+			  })
+		  }
+	  })
   }else{
     res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
   }

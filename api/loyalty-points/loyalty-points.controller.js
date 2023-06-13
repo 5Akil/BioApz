@@ -35,21 +35,25 @@ exports.create = async(req,res) =>{
 			var currentDate = (moment().format('YYYY-MM-DD') == moment(data.validity).format('YYYY-MM-DD'))
 			var pastDate = moment(data.validity,'YYYY-MM-DD').isBefore(moment());
 			if(data.amount != undefined && !(Number.isInteger(Number(data.amount))) && data.loyalty_type == 0 && !_.isEmpty(data.amount)){
-				res.send(setRes(resCode.BadRequest,false, "Amount field invalid.!",null))
-			}else if(currentDate || pastDate){
-				res.send(setRes(resCode.BadRequest,false, "You can't select past and current date.!",null))
-			}else{
+				validation = false;
+				return res.send(setRes(resCode.BadRequest,false, "Amount field invalid.!",null))
+			} 
+			if(currentDate || pastDate){
+				validation = false;
+				return res.send(setRes(resCode.BadRequest,false, "You can't select past and current date.!",null))
+			}
+				if(data.product_id != null){
+					var productModel = models.products
+					await productModel.findOne({
+						where:{id:data.product_id,is_deleted:false}
+					}).then(async product => {
+						if(_.isEmpty(product)){
+							validation = false;
+							return res.send(setRes(resCode.ResourceNotFound,false, "Product not found.!",null))
+						}
+					})
+				}
 				if(validation){
-					if(data.product_id != null){
-						var productModel = models.products
-						productModel.findOne({
-							where:{id:data.product_id,is_deleted:false}
-						}).then(async product => {
-							if(_.isEmpty(product)){
-								return res.send(setRes(resCode.ResourceNotFound,false, "Product not found.!",null))
-							}
-						})
-					}
 					businessModel.findOne({
 						where:{id:data.business_id,is_deleted:false,is_active:true}
 					}).then(async business => {
@@ -84,7 +88,7 @@ exports.create = async(req,res) =>{
 						}
 					})
 				}
-			}
+			
 		}else{
 			res.send(setRes(resCode.BadRequest,false, (requiredFields.toString() + ' are required.'),null))
 		}
