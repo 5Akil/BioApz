@@ -986,7 +986,8 @@ exports.UpdatePassword = function (req, res) {
 				}
 			}).then(updateUser => {
 				if (updateUser == 1){
-					res.send(setRes(resCode.OK,true, "Password Updated Successfully.",user))
+					res.sendFile(path.join(__dirname, '../../template', 'password-update.html'))
+					// res.send(setRes(resCode.OK,true, "Password Updated Successfully.",user))
 				}
 				else{
 					res.send(setRes(resCode.BadRequest, false, "Fail to Update Password.",null))		
