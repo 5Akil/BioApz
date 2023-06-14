@@ -268,7 +268,7 @@ exports.GetBusinessProfile = async (req, res) => {
 			is_active:true,
 			is_deleted: false
 		},
-		attributes: ['id','auth_token','category_id','banner','person_name','business_name','email','phone','address','abn_no','account_name','account_number'],
+		// attributes: ['id','auth_token','category_id','banner','person_name','business_name','email','phone','address','abn_no','account_name','account_number'],
 		include: [categoryModel]
 	}).then(async business => {
 		if (business) {
@@ -334,7 +334,7 @@ exports.UpdateBusinessDetail = async (req, res) => {
 											if (updateData == 1) {
 												businessModel.findOne({
 													where: { id: data.id, is_deleted: false, is_active: true },
-													attributes: ['id','auth_token','category_id','banner','person_name','business_name','email','phone','address','abn_no','account_name','account_number'],
+													// attributes: ['id','auth_token','category_id','banner','person_name','business_name','email','phone','address','abn_no','account_name','account_number'],
 												}).then(async dataDetail => {
 													if (data.banner != null) {
 														var updateData_image = await awsConfig.getSignUrl(data.banner).then(function (res) {
@@ -1630,7 +1630,7 @@ exports.getUserProfile = async (req, res) => {
 				is_active: true,
 				is_deleted: false
 			},
-			attributes: ['id', 'person_name', 'profile_picture', 'phone', 'email', 'address', 'abn_no', 'business_name', 'password','auth_token']
+			// attributes: ['id', 'person_name', 'profile_picture', 'phone', 'email', 'address', 'abn_no', 'business_name', 'password','auth_token']
 		}).then(async business => {
 			if (business) {
 				if (business.profile_picture != null) {
@@ -1695,7 +1695,7 @@ exports.updateUserDetils = async (req, res) => {
 									if (updateData == 1) {
 										businessModel.findOne({
 											where: { id: data.id, is_deleted: false, is_active: true },
-											attributes: ['id', 'person_name', 'profile_picture', 'phone', 'email', 'address', 'abn_no', 'business_name', 'password','auth_token']
+											// attributes: ['id', 'person_name', 'profile_picture', 'phone', 'email', 'address', 'abn_no', 'business_name', 'password','auth_token']
 										}).then(async dataDetail => {
 											if (data.profile_picture != null) {
 												const params = { Bucket: awsConfig.Bucket, Key: businessDetail.profile_picture }; awsConfig.deleteImageAWS(params);
