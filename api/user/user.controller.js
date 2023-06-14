@@ -92,7 +92,7 @@ exports.Register = async (req, res) => {
 										  //   to: 'abc@yopmail.com',
 										  to: data.email,
 										  //   cc: ['test1@yopmail.com', 'test2@yopmail.com'],
-										  subject: 'Account Activation',
+										  subject: 'Welcome to b.a.s.e.! Activate Your Account',
 										  html: html
 									  },
 									  function (err, result) {
