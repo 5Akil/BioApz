@@ -92,7 +92,7 @@ exports.Register = async (req, res) => {
 										  //   to: 'abc@yopmail.com',
 										  to: data.email,
 										  //   cc: ['test1@yopmail.com', 'test2@yopmail.com'],
-										  subject: 'Welcome to b.a.s.e.! Activate Your Account',
+										  subject: 'Welcome to b.a.s.e.! Activate our Account',
 										  html: html
 									  },
 									  function (err, result) {
@@ -324,13 +324,17 @@ exports.Login = async (req, res) => {
 							})
 							.then(async function (newBusiness) {
 								if (newBusiness){
-
+									if(business.profile_picture == null){
+										business.profile_picture = commonConfig.default_user_image;
+									}
 									//custome template url
 									if(business.banner != null){
 
 										var banner = await awsConfig.getSignUrl(business.banner).then(function(res){
 											business.banner = res
 										})
+									}else{
+										business.banner = commonConfig.default_image;
 									}
 									// if(business.template != null){
 
@@ -697,7 +701,13 @@ exports.forgotPassword = async (req, res) => {
 							data.otp = otp;
 							data.otp_valid_till = moment.utc(commonConfig.email_otp_expired).format("mm:ss")
 							data.expire_at = expire_at;
+							if(data.otp_flag == 1){
+							res.send(setRes(resCode.OK, true, 'We have resend otp to your email address.', data))
+
+							}else{
 							res.send(setRes(resCode.OK, true, 'We have sent otp to your email address.', data))
+
+							}
 
 						}).catch(err => {
 							res.send(setRes(resCode.InternalServer, false, "Internal server error.", null))
