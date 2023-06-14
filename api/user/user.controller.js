@@ -1993,7 +1993,7 @@ exports.businessBIO = async (req, res) => {
 		{
 			model: businessCategory,
 			attributes: ['id','name'],
-			where: {is_deleted:false}
+			// where: {is_deleted:false}
 		},
 		{
 			model: settingModel,
@@ -2002,7 +2002,7 @@ exports.businessBIO = async (req, res) => {
 		{
 			model: cmsModels,
 			attributes:['id','page_value','page_label'],
-			where: {page_key:'terms_of_service'},		
+			// where: {page_key:'terms_of_service'},			
 		},
 		{
 			model: faqModel,
