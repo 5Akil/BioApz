@@ -1066,7 +1066,7 @@ exports.CreateBusiness = async (req, res) => {
 				}
 				else if ((validation.email).toLowerCase() == (data.email).toLowerCase()) {
 					res.send(setRes(resCode.BadRequest, false, 'This email is already accociated with another account.', null));
-				}else if ((validation.email).toLowerCase() == (data.email).toLowerCase()) {
+				}else if ((validation.business_name) == (data.business_name)) {
 					res.send(setRes(resCode.BadRequest, false, 'This business name is already accociated with another account.', null));
 				}else {
 					res.send(setRes(resCode.InternalServer, false, 'Internal server error.', null));

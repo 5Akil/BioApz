@@ -537,178 +537,187 @@ exports.SendOtp = async(req,res) => {
 	if(requiredFields == ''){
 		res.send(setRes(resCode.BadRequest))
 	}else{
-		res.send(setRes(resCode.BadRequest, null, true, (requiredFields.toString() + ' are required')))
+		res.send(setRes(resCode.BadRequest, true, (requiredFields.toString() + ' are required')),null)
 	}
 }
 exports.forgotPassword = async (req, res) => {
-  var data = req.body
+	var data = req.body
 	var userModel = models.user
 	var businessModel = models.business
-		var emailOtpVerifieModel = models.email_otp_verifies
+	var emailOtpVerifieModel = models.email_otp_verifies
 
-	var requiredFields = _.reject(['email','role'],(o) => { return _.has(data, o) })
+	var requiredFields = _.reject(['email', 'role'], (o) => { return _.has(data, o) })
 
-	if(requiredFields == ''){
-		if(data.role == 2){
+	if (requiredFields == '') {
+		if (data.role == 2) {
 			userModel.findOne({
-				where:{
-					email:data.email,
-					role_id : data.role,
-					is_deleted:false
+				where: {
+					email: data.email,
+					role_id: data.role,
+					is_deleted: false
 				}
 			}).then(user => {
-	
-				if(user != null){
-	
-					const otp = Math.floor(Math.random() * 9000) + 1000;
-					
-					var currentDate = new Date();
-					var futureDate = new Date(currentDate.getTime() + commonConfig.email_otp_expired);
-					// var new_date = futureDate.toLocaleString('en-US', { timeZone: 'UTC' });
-					var expire_at = moment.utc(futureDate).format('YYYY-MM-DD HH:mm:ss');
-	
-					emailOtpVerifieModel.create({user_id:user.id,email:data.email,otp:otp,role_id:data.role,expire_at:expire_at}).then( function (OtpData){
-						
-						if (OtpData) {
-	
-							var transporter = nodemailer.createTransport({
-				  host: mailConfig.host,
-				  port: mailConfig.port,
-				  secure: mailConfig.secure,
-				  auth: mailConfig.auth,
-				  tls: mailConfig.tls
-				})
-	
-				var templates = new EmailTemplates();
-				var context = {
-							  otp : otp,
-							  username: user.username,
-							  expire_at : expire_at
-							}
-							console.log(context)
-							templates.render(path.join(__dirname, '../../', 'template', 'email-otp.html'), context, function (
-								err,
-				  html,
-				  text,
-				  subject
-				){
-								transporter.sendMail(
-								{
-									from: 'b.a.s.e. <do-not-reply@mail.com>',
-									to: data.email,
-									subject: 'Email OTP Verification',
-					html: html
-								},
-								function (err, result) {
-					if (err) {
-							 console.log("--------------------------err------------")
-							 console.log(err)
+
+				if (user != null) {
+
+					if (user.is_active == false) {
+						res.send(setRes(resCode.BadRequest, false, "Your account has been deactivated. Please contact administrator.", null))
 					} else {
-							  console.log("--------------------------send res------------")
-								console.log(result)
-								res.send(setRes(resCode.OK, true,`Email has been sent to ${users.email}, with account activation instuction.. `,null));
-					}
-				  }
-				  )
-				})
-			  }
-			  data.otp = otp;
-			  data.otp_valid_till = moment.utc(commonConfig.email_otp_expired).format("mm:ss")
-			  data.expire_at = expire_at;
-						res.send(setRes(resCode.OK,true,'We have sent otp to your email address.',data))
-						
-					}).catch(err => {
-							res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
-					});
-					
-				}else{
-					res.send(setRes(resCode.ResourceNotFound, false, "User not found.",null))
-				}
-			})	
-		}else if(data.role == 3){
-			businessModel.findOne({
-				where:{
-					email:data.email,
-					role_id : data.role,
-					is_deleted:false
-				}
-			}).then(user => {
-	
-				if(user != null){
-					
-					const otp = Math.floor(Math.random() * 9000) + 1000;
-					
-					var currentDate = new Date();
-					var futureDate = new Date(currentDate.getTime() + commonConfig.email_otp_expired);
-					// var new_date = futureDate.toLocaleString('en-US', { timeZone: 'UTC' });
-					var expire_at = moment.utc(futureDate).format('YYYY-MM-DD HH:mm:ss');
-					console.log(expire_at);
-					emailOtpVerifieModel.create({user_id:user.id,email:data.email,otp:otp,role_id:data.role,expire_at:expire_at}).then( function (OtpData){
-						
-						if (OtpData) {
-	
-							var transporter = nodemailer.createTransport({
-				  host: mailConfig.host,
-				  port: mailConfig.port,
-				  secure: mailConfig.secure,
-				  auth: mailConfig.auth,
-				  tls: mailConfig.tls
-				})
-	
-				var templates = new EmailTemplates();
-				var context = {
-							  otp : otp,
-							  username: user.person_name,
-							  expire_at : expire_at,
-							  logo_image : `../../../public/logo.png`,
+						const otp = Math.floor(Math.random() * 9000) + 1000;
+
+						var currentDate = new Date();
+						var futureDate = new Date(currentDate.getTime() + commonConfig.email_otp_expired);
+						// var new_date = futureDate.toLocaleString('en-US', { timeZone: 'UTC' });
+						var expire_at = moment.utc(futureDate).format('YYYY-MM-DD HH:mm:ss');
+
+						emailOtpVerifieModel.create({ user_id: user.id, email: data.email, otp: otp, role_id: data.role, expire_at: expire_at }).then(function (OtpData) {
+
+							if (OtpData) {
+
+								var transporter = nodemailer.createTransport({
+									host: mailConfig.host,
+									port: mailConfig.port,
+									secure: mailConfig.secure,
+									auth: mailConfig.auth,
+									tls: mailConfig.tls
+								})
+
+								var templates = new EmailTemplates();
+								var context = {
+									otp: otp,
+									username: user.username,
+									expire_at: expire_at
+								}
+								console.log(context)
+								templates.render(path.join(__dirname, '../../', 'template', 'email-otp.html'), context, function (
+									err,
+									html,
+									text,
+									subject
+								) {
+									transporter.sendMail(
+										{
+											from: 'b.a.s.e. <do-not-reply@mail.com>',
+											to: data.email,
+											subject: 'Email OTP Verification',
+											html: html
+										},
+										function (err, result) {
+											if (err) {
+												console.log("--------------------------err------------")
+												console.log(err)
+											} else {
+												console.log("--------------------------send res------------")
+												console.log(result)
+												res.send(setRes(resCode.OK, true, `Email has been sent to ${users.email}, with account activation instuction.. `, null));
+											}
+										}
+									)
+								})
 							}
-							templates.render(path.join(__dirname, '../../', 'template', 'email-otp.html'), context, function (
-								err,
-				  html,
-				  text,
-				  subject
-				){
-								transporter.sendMail(
-								{
-									from: 'b.a.s.e. <do-not-reply@mail.com>',
-									to: data.email,
-									subject: 'Email OTP Verification',
-					html: html
-								},
-								function (err, result) {
-					if (err) {
-							 console.log("--------------------------err------------")
-							 console.log(err)
-					} else {
-							  console.log("--------------------------send res------------")
-								console.log(result)
-								res.send(setRes(resCode.OK, true,`Email has been sent to ${users.email}, with account activation instuction.. `,null));
+							data.otp = otp;
+							data.otp_valid_till = moment.utc(commonConfig.email_otp_expired).format("mm:ss")
+							data.expire_at = expire_at;
+							res.send(setRes(resCode.OK, true, 'We have sent otp to your email address.', data))
+
+						}).catch(err => {
+							res.send(setRes(resCode.InternalServer, false, "Internal server error.", null))
+						});
 					}
-				  }
-				  )
-				})
-			  }
-			  data.otp = otp;
-			  data.otp_valid_till = moment.utc(commonConfig.email_otp_expired).format("mm:ss")
-			  data.expire_at = expire_at;
-						res.send(setRes(resCode.OK,true,'We have sent otp to your email address.',data))
-						
-					}).catch(err => {
-							res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
-					});
-					
-				}else{
-					res.send(setRes(resCode.ResourceNotFound, false, "User not found.",null))
+
+				} else {
+					res.send(setRes(resCode.ResourceNotFound, false, "User not found.", null))
 				}
 			})
-		}else{
-			res.send(setRes(resCode.ResourceNotFound, false, "Role Not Found",null))
+		} else if (data.role == 3) {
+			businessModel.findOne({
+				where: {
+					email: data.email,
+					role_id: data.role,
+					is_deleted: false
+				}
+			}).then(user => {
+
+				if (user != null) {
+					if (user.is_active == false) {
+						res.send(setRes(resCode.BadRequest, false, "Your account has been deactivated. Please contact administrator.", null))
+					} else {
+						const otp = Math.floor(Math.random() * 9000) + 1000;
+
+						var currentDate = new Date();
+						var futureDate = new Date(currentDate.getTime() + commonConfig.email_otp_expired);
+						// var new_date = futureDate.toLocaleString('en-US', { timeZone: 'UTC' });
+						var expire_at = moment.utc(futureDate).format('YYYY-MM-DD HH:mm:ss');
+						console.log(expire_at);
+						emailOtpVerifieModel.create({ user_id: user.id, email: data.email, otp: otp, role_id: data.role, expire_at: expire_at }).then(function (OtpData) {
+
+							if (OtpData) {
+
+								var transporter = nodemailer.createTransport({
+									host: mailConfig.host,
+									port: mailConfig.port,
+									secure: mailConfig.secure,
+									auth: mailConfig.auth,
+									tls: mailConfig.tls
+								})
+
+								var templates = new EmailTemplates();
+								var context = {
+									otp: otp,
+									username: user.person_name,
+									expire_at: expire_at,
+									logo_image: `../../../public/logo.png`,
+								}
+								templates.render(path.join(__dirname, '../../', 'template', 'email-otp.html'), context, function (
+									err,
+									html,
+									text,
+									subject
+								) {
+									transporter.sendMail(
+										{
+											from: 'b.a.s.e. <do-not-reply@mail.com>',
+											to: data.email,
+											subject: 'Email OTP Verification',
+											html: html
+										},
+										function (err, result) {
+											if (err) {
+												console.log("--------------------------err------------")
+												console.log(err)
+											} else {
+												console.log("--------------------------send res------------")
+												console.log(result)
+												res.send(setRes(resCode.OK, true, `Email has been sent to ${users.email}, with account activation instuction.. `, null));
+											}
+										}
+									)
+								})
+							}
+							data.otp = otp;
+							data.otp_valid_till = moment.utc(commonConfig.email_otp_expired).format("mm:ss")
+							data.expire_at = expire_at;
+							res.send(setRes(resCode.OK, true, 'We have sent otp to your email address.', data))
+
+						}).catch(err => {
+							res.send(setRes(resCode.InternalServer, false, "Internal server error.", null))
+						});
+					}
+
+
+
+				} else {
+					res.send(setRes(resCode.ResourceNotFound, false, "User not found.", null))
+				}
+			})
+		} else {
+			res.send(setRes(resCode.ResourceNotFound, false, "Role Not Found", null))
 		}
-		
-	}else{
-		res.send(setRes(resCode.BadRequest, false,(requiredFields.toString() + ' are required'),null))
+
+	} else {
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
 	}
-  
+
 
 }
 
@@ -731,7 +740,7 @@ exports.OtpVerify = async (req, res) => {
 				var expire_time = moment(otpUser.expire_at).format('YYYY-MM-DD HH:mm:ss');
 	
 				if(now_date_time > expire_time){
-					res.send(setRes(resCode.BadRequest,false,"Oops, This Reset Password Link is Expired!",null));
+					res.send(setRes(resCode.BadRequest,false,"This otp is expired!",null));
 				}else{
 					
 					if (data.role == 2){
@@ -854,7 +863,7 @@ function sendForgotPasswordMail(user, key){
 	
 				var templates = new EmailTemplates()
 				var context = {
-				  resetUrl: commonConfig.local_url+'/api/user/resetPassword/' + token,
+				  resetUrl: commonConfig.app_url+'/api/user/resetPassword/' + token,
 				  username: user.username
 				// resetUrl: '#'
 				}
