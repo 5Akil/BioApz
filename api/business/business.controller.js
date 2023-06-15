@@ -975,14 +975,19 @@ exports.GetCategory = async (req, res) => {
 	categoryModel.findAll({
 		where: {
 			is_deleted: false
+			status:true
 		},
 		order: [
 			['createdAt', 'DESC']
 		],
-
+		attributes: {
+			exclude: ['is_deleted','createdAt','updatedAt']
+		  },
 	}).then(categories => {
 		if (categories != '' && categories != null) {
-
+			for(const data of categories){
+				data.dataValues.image = commonConfig.default_image
+			}
 			res.send(setRes(resCode.OK, true, "Get business category successfully..", categories))
 		} else {
 			res.send(setRes(resCode.ResourceNotFound, true, "Business category not found.", null))

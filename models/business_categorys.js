@@ -7,6 +7,10 @@ module.exports = (sequelize, DataTypes) => {
       autoIncrement: true,
     },
     name: DataTypes.STRING,
+    status: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true
+    }, 
     is_deleted: {
         type: DataTypes.BOOLEAN,
         defaultValue: false

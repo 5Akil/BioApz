@@ -391,7 +391,7 @@ exports.Searching = (req, res) => {
 			category.findOne({
 				where: {
 					[Op.and]:[
-						{ is_deleted: false },
+						{ is_deleted: false,status:true },
 						Sequelize.where(Sequelize.fn('lower', Sequelize.col('name')), {[Op.like]: `%${data.filter}%`})
 					  ]
 				}
