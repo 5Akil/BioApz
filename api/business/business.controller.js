@@ -1046,7 +1046,7 @@ exports.CreateBusiness = async (req, res) => {
 								}
 							}).then(inquiry => {
 								if (inquiry > 0) {
-									res.send(setRes(resCode.OK, true, "Your Business Account Created Successfully.", business))
+									res.send(setRes(resCode.OK, true, "Business created successfully, please wait your account is under verification", business))
 								}
 								else {
 									res.send(setRes(resCode.BadRequest, false, "Fail to remove Inquity.", null))
@@ -1063,7 +1063,7 @@ exports.CreateBusiness = async (req, res) => {
 								else {
 									business.banner = commonConfig.default_image;
 								}
-							res.send(setRes(resCode.OK, true, "Your Business Account Created Successfully.", business))
+							res.send(setRes(resCode.OK, true, "Business created successfully, please wait your account is under verification.", business))
 						}
 					})
 				} else if (validation.phone == data.phone) {
