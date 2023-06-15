@@ -974,7 +974,7 @@ exports.GetCategory = async (req, res) => {
 	var categoryModel = models.business_categorys;
 	categoryModel.findAll({
 		where: {
-			is_deleted: false
+			is_deleted: false,
 			status:true
 		},
 		order: [
