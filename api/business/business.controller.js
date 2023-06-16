@@ -1034,6 +1034,7 @@ exports.CreateBusiness = async (req, res) => {
 			}).then(async (validation) => {
 				if (validation == null) {
 					data.email = (data.email).toLowerCase();
+					data.is_active = false;
 					await businessModel.create(data).then(async business => {
 
 						if (data.id) {

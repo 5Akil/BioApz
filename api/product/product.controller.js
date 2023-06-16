@@ -1354,7 +1354,7 @@ exports.simillarProducts = async(req,res) => {
 			}
 		}).then(async product => {
 			if((_.isEmpty(product) || product == null || product == 0)){
-				return res.send(setRes(resCode.ResourceNotFound, null, true, "Product not found."))
+				return res.send(setRes(resCode.ResourceNotFound, true, "Product not found.",null))
 			}else{
 				var condition = {}
 				condition.where = {
@@ -1390,7 +1390,7 @@ exports.simillarProducts = async(req,res) => {
 						// console.log(responseData)
 						return res.send(setRes(resCode.OK, true,'Get simillar products details.',responseData))
 					}else{
-						res.send(setRes(resCode.ResourceNotFound, null, true, "Product not found."))
+						res.send(setRes(resCode.ResourceNotFound, true, "Get simillar products details not found.",[]))
 					}
 				})
 			}

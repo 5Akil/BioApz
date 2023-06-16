@@ -702,7 +702,8 @@ exports.forgotPassword = async (req, res) => {
 							data.otp_valid_till = moment.utc(commonConfig.email_otp_expired).format("mm:ss")
 							data.expire_at = expire_at;
 							if(data.otp_flag == 1){
-							res.send(setRes(resCode.OK, true, 'We have resend otp to your email address.', data))
+								// Resend otp sent successfully on your email
+							res.send(setRes(resCode.OK, true, 'Resend otp sent successfully on your email', data))
 
 							}else{
 							res.send(setRes(resCode.OK, true, 'We have sent otp to your email address.', data))
@@ -748,8 +749,8 @@ exports.OtpVerify = async (req, res) => {
   			
 				var now_date_time = new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '');
 				var expire_time = moment(otpUser.expire_at).format('YYYY-MM-DD HH:mm:ss');
-	
 				if(now_date_time > expire_time){
+					// otpUser.destroy();
 					res.send(setRes(resCode.BadRequest,false,"This otp is expired!",null));
 				}else{
 					
@@ -778,7 +779,7 @@ exports.OtpVerify = async (req, res) => {
 						// check email is exist or not
 						businessModel.findOne({where: {email: otpUser.email, is_deleted: false}}).then(async (business) => {
 							if (business == null){
-								res.send(setRes(resCode.ResourceNotFound, false, 'User not found.',null));
+								res.send(setRes(resCode.ResourceNotFound, false, 'Business not found.',null));
 							}
 							else{
 								var response = await sendForgotPasswordMail(business, 3)
@@ -2165,16 +2166,18 @@ exports.eventUserRegister = async (req, res) => {
 		var userModel = models.user
 		var eventUserModel = models.user_events
 		const Op = models.Op;
+		var validation = true;
 		var currentDate = (moment().format('YYYY-MM-DD'))
 		var requiredFields = _.reject(["business_id","event_id", "user_id"], (o) => {
 			return _.has(data, o);
 		});
 		if (requiredFields == "") { 
 			if(data.business_id){
-				businessModel.findOne({
+				await businessModel.findOne({
 					where: {id: data.business_id,is_deleted: false,is_active:true}
 				}).then(async business => {
 					if(_.isEmpty(business)){
+						validation = false;
 						return res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
 					}
 				})
@@ -2188,31 +2191,35 @@ exports.eventUserRegister = async (req, res) => {
 				condition.where = {...condition.where,...{id: data.event_id,is_deleted: false,end_date: {
 					[Op.gt]: currentDate
 				},}}
-				comboModel.findOne(condition).then(async event => {
+				await comboModel.findOne(condition).then(async event => {
 					if(_.isEmpty(event)){
+						validation = false;
 						return res.send(setRes(resCode.ResourceNotFound, false, "Event not found.", null))
 					}
 				})
 			}
 
 			if(data.user_id){
-				userModel.findOne({
+				await userModel.findOne({
 					where: {id:data.user_id,is_deleted: false,is_active:true}
 				}).then(async user => {
 					if(_.isEmpty(user)){
+						validation = false;
 						return res.send(setRes(resCode.ResourceNotFound, false, "User not found.", null))
 					}
 				})
 			}
-
-			eventUserModel.create(data).then(event_user => {
-				if(event_user){
-					res.send(setRes(resCode.OK,true,"You are successfully register in this event.",event_user))
-				}
-			}).catch(error => {
-				console.log(error)
-				res.send(setRes(resCode.BadRequest, false, "Fail to register in this event!", null))
-			})
+			console.log(validation);
+			if(validation){
+				await eventUserModel.create(data).then(event_user => {
+					if(event_user){
+						res.send(setRes(resCode.OK,true,"You are successfully register in this event.",event_user))
+					}
+				}).catch(error => {
+					console.log(error)
+					res.send(setRes(resCode.BadRequest, false, "Fail to register in this event!", null))
+				})
+			}
 		} else {
 			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
 		}
