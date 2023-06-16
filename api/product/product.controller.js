@@ -1364,28 +1364,30 @@ exports.simillarProducts = async(req,res) => {
 					},
 					category_id:product.category_id
 				}
-				condition.attributes = ['id','name','description','category_id','image'] 
+				condition.attributes = ['id','name','price','description','category_id','image'] 
 				productModel.findAll(condition).then(async categoryData => {
 					if(categoryData.length > 0){
 						const shuffledArrays = _.shuffle(categoryData);
 						let responseData = shuffledArrays.slice(0, 5);
 						for (const data of responseData) {
-							var product_images = data.image
+							var product_image = data.image
 							var image_array = [];
-							if (product_images != null) {
-								for (const data of product_images) {
+							if (product_image != null) {
+								for (const data of product_image) {
 									const signurl = await awsConfig.getSignUrl(data).then(function (res) {
 										image_array.push(res);
 									});
 								}
-							} else{
+							}else{
 								image_array.push(commonConfig.default_image)
 							}
-							if(product_images.length == 0) {
+							if(product_image.length == 0) {
 								image_array.push(commonConfig.default_image)
 							}
-							data.dataValues.product_images = image_array
+							data.dataValues.product_image = _.first(image_array);
+							delete data.dataValues.image;
 						}
+						// console.log(responseData)
 						return res.send(setRes(resCode.OK, true,'Get simillar products details.',responseData))
 					}else{
 						res.send(setRes(resCode.ResourceNotFound, null, true, "Product not found."))
