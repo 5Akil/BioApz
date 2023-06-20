@@ -39,7 +39,7 @@ exports.Register = async (req, res) => {
 	if (mailId.match(emailFormat) == null) {
 		return res.send(setRes(resCode.BadRequest, false, 'Please enter valid email format.', null));
 	}
-	if ((data.mobile.length > 12) || (data.mobile.length < 7) || !(mobilenumber.test(data.mobile))) {
+	if ((data.mobile.length > 15) || (data.mobile.length < 7) || !(mobilenumber.test(data.mobile))) {
 		return res.send(setRes(resCode.BadRequest, false, 'Please enter valid mobile number.', null));
 	}
 
@@ -622,6 +622,14 @@ exports.forgotPassword = async (req, res) => {
 							data.otp = otp;
 							data.otp_valid_till = moment.utc(commonConfig.email_otp_expired).format("mm:ss")
 							data.expire_at = expire_at;
+							if(data.otp_flag == 1){
+								// Resend otp sent successfully on your email
+							res.send(setRes(resCode.OK, true, 'Resend otp sent successfully on your email', data))
+
+							}else{
+							res.send(setRes(resCode.OK, true, 'We have sent otp to your email address.', data))
+
+							}
 							res.send(setRes(resCode.OK, true, 'We have sent otp to your email address.', data))
 
 						}).catch(err => {

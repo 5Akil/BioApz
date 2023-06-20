@@ -298,8 +298,6 @@ exports.GetAllEvents = async (req, res) => {
 		// 		}
 		// 	}
 			var condition = {
-				offset:skip,
-				limit : limit,
 				subQuery:false,
 				order: [
 					['createdAt', 'DESC']
@@ -334,7 +332,7 @@ exports.GetAllEvents = async (req, res) => {
 				}
 				res.send(setRes(resCode.OK, true, "Available events list.", (combos)))
 		}).catch(error => {
-			console.log(error.message + ' ...calendar.controller');
+			console.log(error);
 			res.send(setRes(resCode.InternalServer, false, 'Internal server error.', null))
 		})
 	} else {

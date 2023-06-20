@@ -1018,7 +1018,7 @@ exports.CreateBusiness = async (req, res) => {
 		if (mailId.match(emailFormat) == null) {
 			res.send(setRes(resCode.BadRequest, false, 'Please enter valid email format.', null));
 		}
-		else if ((data.phone.length > 12) || (data.phone.length < 7) || !(mobilenumber.test(data.phone))) {
+		else if ((data.phone.length > 15) || (data.phone.length < 7) || !(mobilenumber.test(data.phone))) {
 			res.send(setRes(resCode.BadRequest, false, 'Please enter valid mobile number.', null));
 		}
 		else {
