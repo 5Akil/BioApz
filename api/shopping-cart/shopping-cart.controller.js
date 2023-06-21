@@ -83,6 +83,7 @@ exports.CartList = async(req,res) => {
 
 	var data = req.body
 	var shoppingCartModel = models.shopping_cart
+	var productCategoryModel = models.product_categorys
 	var productModel = models.products;
 
 	var requiredFields = _.reject(['user_id'], (o) => { return _.has(data, o)  })
@@ -97,22 +98,81 @@ exports.CartList = async(req,res) => {
 			include: [
 				{
 					model: productModel
+				},
+				{
+					model: productCategoryModel
 				}
 			],
+			attributes: {exclude: ['createdAt','updatedAt','is_deleted']}
 		}).then(async cartData => {
 
 			if(cartData != null && cartData != ""){
 				for(data of cartData){
 
-					var product_image = await awsConfig.getSignUrl(data.product.image[0]).then(function(res){
-						data.product.image = res;
-					})
+					if(data.product != null){
+						if(data.product.image != null && !_.isEmpty(data.product.image)){
+							var product_image = await awsConfig.getSignUrl(data.product.image[0]).then(function(res){
+								data.dataValues.product_image = res;
+							})
+						}else{
+							data.dataValues.product_image = commonConfig.default_image
+						}
+
+						// console.log(data)
+						if(data.product.name != null){
+
+							data.dataValues.product_name = data.product.name
+						}else{
+							data.dataValues.product_name = null
+						}
+
+						// console.log(data)
+						if(data.product.price != null){
+
+							data.dataValues.price = data.product.price
+						}else{
+							data.dataValues.price = null
+						}
+						
+						if(data.product.description != null){
+
+							data.dataValues.description = data.product.description
+						}else{
+							data.dataValues.description = null
+						}
+
+						if(data.product != null){
+
+							data.dataValues.rating = null
+						}else{
+							data.dataValues.rating = null
+						}
+						delete data.dataValues.product
+					}
+
+					// console.log(data)
+					if(data.product_category != null){
+
+						data.dataValues.category_name = data.product_category.name
+						delete data.dataValues.product_category
+					}else{
+						data.dataValues.category_name = ""
+					}
+					// if(data.sub_category != null){
+
+					// 	data.dataValues.product_type = data.sub_category.name
+					// 	delete data.dataValues.sub_category
+					// }else{
+					// 	data.dataValues.product_type = "";
+					// }
 				}
+				
 				res.send(setRes(resCode.OK, true, 'Your cart details.',cartData));
 			}else{
 				res.send(setRes(resCode.OK, true, "Your cart is empty.",null))
 			}
 		}).catch(error => {
+			console.log(error)
 			res.send(setRes(resCode.InternalServer,false,"Internal server error",null))
 		})
 	}else{
