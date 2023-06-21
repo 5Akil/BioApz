@@ -20,6 +20,7 @@ module.exports = (sequelize, DataTypes) => {
     // associations can be defined here
     WishList.belongsTo(models.products, {foreignKey: 'product_id'})
     WishList.belongsTo(models.user, {foreignKey: 'user_id'})
+    WishList.belongsTo(models.product_categorys, {foreignKey: 'category_id'})
   };
   return WishList;
 };

@@ -14,6 +14,7 @@ var awsConfig = require('../../config/aws_S3_config')
 var util = require('util')
 var notification = require('../../push_notification');
 var commonConfig = require('../../config/common_config')
+const { condition } = require('sequelize')
 
 exports.AddToCart = async(req,res) => {
 	
@@ -91,21 +92,35 @@ exports.CartList = async(req,res) => {
 
 	if (requiredFields == ''){
 
-		shoppingCartModel.findAll({
-			where:{
-				user_id: data.user_id,
-				is_deleted: false
-			},
+		var condition = {
 			include: [
 				{
-					model: productModel
-				},
-				{
-					model: productCategoryModel
+					model: productModel,
+					include:[
+						{
+							model: productCategoryModel,
+							as: 'product_categorys',
+							attributes:['name']
+						},
+						{
+							model: productCategoryModel,
+							as: 'sub_category',
+							attributes:['name']
+						}
+					]
 				}
 			],
-			attributes: {exclude: ['createdAt','updatedAt','is_deleted']}
-		}).then(async cartData => {
+		}
+		condition.where = {
+			user_id: data.user_id,
+			is_deleted: false
+		}
+		condition.attributes = {exclude: ['createdAt','updatedAt','is_deleted']}
+
+		if(data.search && data.search != null && !_.isEmpty(data.search)){
+			condition.where = {[Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],}
+		} 
+		shoppingCartModel.findAll(condition).then(async cartData => {
 
 			if(cartData != null && cartData != ""){
 				for(data of cartData){
@@ -118,36 +133,44 @@ exports.CartList = async(req,res) => {
 						}else{
 							data.dataValues.product_image = commonConfig.default_image
 						}
-
-						// console.log(data)
-						if(data.product.name != null){
-
-							data.dataValues.product_name = data.product.name
+						
+						if(data.product != null){
+							data.dataValues.business_id = data.product.business_id;
 						}else{
-							data.dataValues.product_name = null
+							data.dataValues.business_id = null;
 						}
 
-						// console.log(data)
-						if(data.product.price != null){
-
-							data.dataValues.price = data.product.price
+						if(data.product != null){
+							data.dataValues.product_name = data.product.name;
 						}else{
-							data.dataValues.price = null
+							data.dataValues.product_name = null;
+						}
+
+						if(data.product.product_categorys != null){
+							data.dataValues.category_name = data.product.product_categorys.name;
+						}else{
+							data.dataValues.category_name = null;
+						}
+						if(data.product.sub_category != null){
+							data.dataValues.sub_category_name = data.product.sub_category.name;
+						}else{
+							data.dataValues.sub_category_name = null;
 						}
 						
 						if(data.product.description != null){
-
+		
 							data.dataValues.description = data.product.description
 						}else{
 							data.dataValues.description = null
 						}
-
+		
 						if(data.product != null){
-
+		
 							data.dataValues.rating = null
 						}else{
 							data.dataValues.rating = null
 						}
+						delete data.dataValues.category_id
 						delete data.dataValues.product
 					}
 

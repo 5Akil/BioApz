@@ -280,6 +280,14 @@ exports.GetBusinessProfile = async (req, res) => {
 			else {
 				business.banner = commonConfig.default_image;
 			}
+			if (business.profile_picture != null) {
+				var profile_picture = await awsConfig.getSignUrl(business.profile_picture).then(function (res) {
+					business.profile_picture = res
+				});
+			}
+			else {
+				business.profile_picture = commonConfig.default_user_image;
+			}
 			res.send(setRes(resCode.OK, true, "Get business profile successfully.", business))
 		}
 		else {
@@ -347,6 +355,14 @@ exports.UpdateBusinessDetail = async (req, res) => {
 													}
 													 else {
 														dataDetail.banner = awsConfig.default_image;
+													}
+													if (dataDetail.profile_picture != null) {
+														var profile_picture = await awsConfig.getSignUrl(dataDetail.profile_picture).then(function (res) {
+															dataDetail.profile_picture = res
+														});
+													}
+													else {
+														dataDetail.profile_picture = commonConfig.default_user_image;
 													}
 													res.send(setRes(resCode.OK, true, 'Business profile update successfully', dataDetail))
 												})
