@@ -13,6 +13,7 @@ var mailConfig = require('../../config/mail_config')
 var awsConfig = require('../../config/aws_S3_config')
 var util = require('util')
 var notification = require('../../push_notification');
+var commonConfig = require('../../config/common_config')
 
 exports.AddToCart = async(req,res) => {
 	
