@@ -667,7 +667,7 @@ exports.forgotPassword = async (req, res) => {
 
 
 				} else {
-					res.send(setRes(resCode.ResourceNotFound, false, "User not found.", null))
+					res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
 				}
 			})
 		} else {

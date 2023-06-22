@@ -32,7 +32,6 @@ function getSignUrl (key) {
               Expires: 3600
             };
             const signedUrl = s3.getSignedUrl('getObject', urlParams);
-            console.log(signedUrl)
             resolve(signedUrl);
           }
         });

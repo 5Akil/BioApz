@@ -325,17 +325,17 @@ exports.UpdateBusinessDetail = async (req, res) => {
 					res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
 				} else {
 					businessModel.findOne({
-						where: { is_deleted: false, is_active: true, email: { [Op.eq]: data.email }, id: { [Op.ne]: data.id } }
+						where: { is_deleted: false, email: { [Op.eq]: data.email }, id: { [Op.ne]: data.id } }
 					}).then(async nameData => {
 						if(nameData != null){
 							res.send(setRes(resCode.BadRequest, false, "This business name is already associated with another account.!", null))
 						}else{
 							businessModel.findOne({
-								where: { is_deleted: false, is_active: true, email: { [Op.eq]: data.email }, id: { [Op.ne]: data.id } }
+								where: { is_deleted: false, email: { [Op.eq]: data.email }, id: { [Op.ne]: data.id } }
 							}).then(async emailData => {
 								if (emailData == null) {
 									businessModel.findOne({
-										where: { is_deleted: false, is_active: true, phone: { [Op.eq]: data.phone }, id: { [Op.ne]: data.id } }
+										where: { is_deleted: false, phone: { [Op.eq]: data.phone }, id: { [Op.ne]: data.id } }
 									}).then(async phoneData => {
 										if (phoneData == null) {
 											businessModel.update(data,
@@ -1717,7 +1717,7 @@ exports.updateUserDetils = async (req, res) => {
 				} else {
 
 					await businessModel.findOne({
-						where: { is_deleted: false, is_active: true, business_name: { [Op.eq]: data.business_name }, id: { [Op.ne]: data.id } }
+						where: { is_deleted: false, business_name: { [Op.eq]: data.business_name }, id: { [Op.ne]: data.id } }
 					}).then(async nameData => {
 						if (nameData != null) {
 							validation =false;
@@ -1726,7 +1726,7 @@ exports.updateUserDetils = async (req, res) => {
 					})
 
 					await businessModel.findOne({
-						where: { is_deleted: false, is_active: true, email: { [Op.eq]: data.email }, id: { [Op.ne]: data.id } }
+						where: { is_deleted: false, email: { [Op.eq]: data.email }, id: { [Op.ne]: data.id } }
 					}).then(async emailData => {
 						if (emailData != null) {
 							validation =false;
@@ -1735,7 +1735,7 @@ exports.updateUserDetils = async (req, res) => {
 					})
 
 					await businessModel.findOne({
-						where: { is_deleted: false, is_active: true, phone: { [Op.eq]: data.phone }, id: { [Op.ne]: data.id } }
+						where: { is_deleted: false, phone: { [Op.eq]: data.phone }, id: { [Op.ne]: data.id } }
 					}).then(async phoneData => {
 						if(phoneData != null){
 							validation =false;

@@ -102,68 +102,13 @@ exports.GetAllProducts = async (req, res) => {
 			res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1",null))
 		}
 
-		var applyCondition = null;
-
-		var condition2 = {
-			is_deleted:false,
-			// offset:skip,
-			// limit : limit,
-			subQuery:false,
-			order: [
-				['createdAt', 'DESC'],
-			],
-			include:[
-				{
-					model:productRattingModel,
-					attributes: []
-				},
-				{
-			        model: categoryModel,
-			        as: 'product_categorys',
-			        attributes:['name']
-			    },
-			    {
-			        model: categoryModel,
-			        as: 'sub_category',
-			        attributes:['name']
-			    }
-			],
-			attributes: { include : [
-				[Sequelize.fn('AVG', Sequelize.col('product_ratings.ratings')),'rating']
-			]},
-			group: ['products.id'],
-		}
-		condition2.where = {business_id:data.business_id,category_id:data.category_id}
-		condition2.attributes = { exclude:['is_deleted','createdAt','updatedAt']}
-		if(!_.isEmpty(data.price)){
-			if(data.price == 1){
-				condition2.order = Sequelize.literal('price DESC')
-			}else{
-				condition2.order = Sequelize.literal('price ASC')
-			}
-		}
-
-		if(data.search && data.search != null && !_.isEmpty(data.search)){
-			condition2.where = {[Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],}
-		} 
-
-		if(data.sub_category_id) {
-			condition2.where = {business_id:data.business_id,category_id:data.category_id,sub_category_id:data.sub_category_id}
-		}
-
 		var totalRecords = null
-
-		productModel.findAll(condition2).then(async(products) => {
-			totalRecords = products.length
-		})
 
 		var skip = data.page_size * (data.page - 1)
 		var limit = parseInt(data.page_size)
 		
 		var condition = {
 			is_deleted:false,
-			offset:skip,
-			limit : limit,
 			subQuery:false,
 			order: [
 				['createdAt', 'DESC'],
@@ -206,10 +151,15 @@ exports.GetAllProducts = async (req, res) => {
 		if(data.sub_category_id) {
 			condition.where = {business_id:data.business_id,category_id:data.category_id,sub_category_id:data.sub_category_id}
 		}
-		
+
+		if(data.page_size != 0 && !_.isEmpty(data.page_size)){
+			condition.offset = skip,
+			condition.limit = limit
+		}
 		productModel.findAll(condition).then(async(products) => {
 			
 			if (products){
+				totalRecords = products.length
 				for(const data of products){
 					
 				  	var product_images = data.image
@@ -255,12 +205,12 @@ exports.GetAllProducts = async (req, res) => {
 				}
 
 				var response = {};
-				response.totalPages = Math.ceil(products.length/limit);
+				response.totalPages = (data.page_size != 0) ? Math.ceil(products.length/limit) : 1;
 				response.currentPage = parseInt(data.page);
-				response.per_page = parseInt(data.page_size);
+				response.per_page =  (data.page_size != 0) ? parseInt(data.page_size) : products.length;
 				response.total_records = totalRecords;
 				response.data = products;
-				response.previousPage = previous_page;
+				response.previousPage = (previous_page == 0) ? null : previous_page ;
 				response.nextPage = next_page;
 				response.lastPage = last_page;
 
@@ -270,7 +220,7 @@ exports.GetAllProducts = async (req, res) => {
 		})
 		.catch((error) => {
 			console.log(error)
-			res.send(setRes(resCode.InternalServer,false, "Fail to get product list",null))
+			res.send(setRes(resCode.InternalServer,false, error,null))
 			
 		})
 	}else{
