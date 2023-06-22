@@ -101,56 +101,11 @@ exports.GetAllProducts = async (req, res) => {
 		if(data.page < 0 || data.page === 0) {
 			res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1",null))
 		}
-		var skip = data.page_size * (data.page - 1)
-		var limit = parseInt(data.page_size)
-		
-		var condition = {
-			offset:skip,
-			limit : limit,
-			subQuery:false,
-			order: [
-				['createdAt', 'DESC'],
-			],
-			include:[
-				{
-					model:productRattingModel,
-					attributes: []
-				},
-				{
-			        model: categoryModel,
-			        as: 'product_categorys',
-			        attributes:['name']
-			    },
-			    {
-			        model: categoryModel,
-			        as: 'sub_category',
-			        attributes:['name']
-			    }
-			],
-			attributes: { include : [
-				[Sequelize.fn('AVG', Sequelize.col('product_ratings.ratings')),'rating']
-			]},
-			group: ['products.id'],
-		}
-		condition.where = {business_id:data.business_id,category_id:data.category_id}
-		condition.attributes = { exclude:['is_deleted','createdAt','updatedAt']}
-		if(!_.isEmpty(data.price)){
-			if(data.price == 1){
-				condition.order = Sequelize.literal('price DESC')
-			}else{
-				condition.order = Sequelize.literal('price ASC')
-			}
-		}
 
-		if(data.search && data.search != null && !_.isEmpty(data.search)){
-			condition.where = {[Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],}
-		} 
-
-		if(data.sub_category_id) {
-			condition.where = {business_id:data.business_id,category_id:data.category_id,sub_category_id:data.sub_category_id}
-		}
+		var applyCondition = null;
 
 		var condition2 = {
+			is_deleted:false,
 			// offset:skip,
 			// limit : limit,
 			subQuery:false,
@@ -201,10 +156,60 @@ exports.GetAllProducts = async (req, res) => {
 		productModel.findAll(condition2).then(async(products) => {
 			totalRecords = products.length
 		})
+
+		var skip = data.page_size * (data.page - 1)
+		var limit = parseInt(data.page_size)
+		
+		var condition = {
+			is_deleted:false,
+			offset:skip,
+			limit : limit,
+			subQuery:false,
+			order: [
+				['createdAt', 'DESC'],
+			],
+			include:[
+				{
+					model:productRattingModel,
+					attributes: []
+				},
+				{
+			        model: categoryModel,
+			        as: 'product_categorys',
+			        attributes:['name']
+			    },
+			    {
+			        model: categoryModel,
+			        as: 'sub_category',
+			        attributes:['name']
+			    }
+			],
+			attributes: { include : [
+				[Sequelize.fn('AVG', Sequelize.col('product_ratings.ratings')),'rating']
+			]},
+			group: ['products.id'],
+		}
+		condition.where = {business_id:data.business_id,category_id:data.category_id}
+		condition.attributes = { exclude:['is_deleted','createdAt','updatedAt']}
+		if(!_.isEmpty(data.price)){
+			if(data.price == 1){
+				condition.order = Sequelize.literal('price DESC')
+			}else{
+				condition.order = Sequelize.literal('price ASC')
+			}
+		}
+
+		if(data.search && data.search != null && !_.isEmpty(data.search)){
+			condition.where = {[Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],}
+		} 
+
+		if(data.sub_category_id) {
+			condition.where = {business_id:data.business_id,category_id:data.category_id,sub_category_id:data.sub_category_id}
+		}
 		
 		productModel.findAll(condition).then(async(products) => {
 			
-			if (products.length > 0){
+			if (products){
 				for(const data of products){
 					
 				  	var product_images = data.image
@@ -214,7 +219,6 @@ exports.GetAllProducts = async (req, res) => {
 							if(product_images != null){
 
 								for(const data of product_images){
-
 									const signurl = await awsConfig.getSignUrl(data).then(function(res){
 
 				  						image_array.push(res);
@@ -261,9 +265,6 @@ exports.GetAllProducts = async (req, res) => {
 				response.lastPage = last_page;
 
 				res.send(setRes(resCode.OK, true, "Get product list successfully",response))
-				
-			}else{
-				res.send(setRes(resCode.ResourceNotFound,false, "Products not found",null))
 				
 			}
 		})
