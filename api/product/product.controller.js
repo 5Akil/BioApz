@@ -150,6 +150,57 @@ exports.GetAllProducts = async (req, res) => {
 			condition.where = {business_id:data.business_id,category_id:data.category_id,sub_category_id:data.sub_category_id}
 		}
 
+		var condition2 = {
+			// offset:skip,
+			// limit : limit,
+			subQuery:false,
+			order: [
+				['createdAt', 'DESC'],
+			],
+			include:[
+				{
+					model:productRattingModel,
+					attributes: []
+				},
+				{
+			        model: categoryModel,
+			        as: 'product_categorys',
+			        attributes:['name']
+			    },
+			    {
+			        model: categoryModel,
+			        as: 'sub_category',
+			        attributes:['name']
+			    }
+			],
+			attributes: { include : [
+				[Sequelize.fn('AVG', Sequelize.col('product_ratings.ratings')),'rating']
+			]},
+			group: ['products.id'],
+		}
+		condition2.where = {business_id:data.business_id,category_id:data.category_id}
+		condition2.attributes = { exclude:['is_deleted','createdAt','updatedAt']}
+		if(!_.isEmpty(data.price)){
+			if(data.price == 1){
+				condition2.order = Sequelize.literal('price DESC')
+			}else{
+				condition2.order = Sequelize.literal('price ASC')
+			}
+		}
+
+		if(data.search && data.search != null && !_.isEmpty(data.search)){
+			condition2.where = {[Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],}
+		} 
+
+		if(data.sub_category_id) {
+			condition2.where = {business_id:data.business_id,category_id:data.category_id,sub_category_id:data.sub_category_id}
+		}
+
+		var totalRecords = null
+
+		productModel.findAll(condition2).then(async(products) => {
+			totalRecords = products.length
+		})
 		
 		productModel.findAll(condition).then(async(products) => {
 			
@@ -191,7 +242,25 @@ exports.GetAllProducts = async (req, res) => {
 					}
 
 				}
-				res.send(setRes(resCode.OK, true, "Get product list successfully",products))
+				const previous_page = (data.page - 1);
+				const last_page = Math.ceil(totalRecords / data.page_size);
+				var next_page = null;
+				if(last_page > data.page){
+					var pageNumber = data.page;
+					next_page = pageNumber++;
+				}
+
+				var response = {};
+				response.totalPages = Math.ceil(products.length/limit);
+				response.currentPage = parseInt(data.page);
+				response.per_page = parseInt(data.page_size);
+				response.total_records = totalRecords;
+				response.data = products;
+				response.previousPage = previous_page;
+				response.nextPage = next_page;
+				response.lastPage = last_page;
+
+				res.send(setRes(resCode.OK, true, "Get product list successfully",response))
 				
 			}else{
 				res.send(setRes(resCode.ResourceNotFound,false, "Products not found",null))
@@ -631,6 +700,8 @@ exports.GetProductById =  (req, res) => {
 	var productModel = models.products
 	var productRattingModel = models.product_ratings
 	var categoryModel = models.product_categorys
+	var shoppingCartModel = models.shopping_cart
+	var wishlistModel = models.wishlists
 
 	 productModel.findOne({
 		where: {
@@ -660,6 +731,29 @@ exports.GetProductById =  (req, res) => {
 	}).then(async product => {
 		if (product && product.id != null){
 			
+			var isFav = false;
+			var isAddCart = false;
+
+			await shoppingCartModel.findAll({
+				where: {
+					product_id: product.id,
+					is_deleted: false
+				},}).then(async fav => {
+					if(fav.length > 0){
+						isFav = true;
+					}
+				})
+
+				await wishlistModel.findAll({
+					where: {
+						product_id: product.id,
+						is_deleted: false
+					},}).then(async addcart => {
+						if(addcart.length > 0){
+							isAddCart = true;
+						}
+					})
+
 			var product_images = product.image
 			var image_array = [];
 			if(product_images != null){
@@ -689,6 +783,9 @@ exports.GetProductById =  (req, res) => {
 				product.dataValues.product_type = "";
 			}
 
+				product.dataValues.is_fav = isFav;
+				product.dataValues.is_added_cart = isAddCart;
+
 			res.send(setRes(resCode.OK, true, "Get product detail successfully.",product))
 			
 		}
@@ -698,6 +795,7 @@ exports.GetProductById =  (req, res) => {
 
 		}
 	}).catch(GetProductError => {
+		console.log(GetProductError)
 		res.send(setRes(resCode.InternalServer,false, "Internal server error.",null))
 		
 	})
@@ -833,7 +931,21 @@ exports.CategoryList = async(req, res) => {
 		}
 		var skip = data.page_size * (data.page - 1)
 		var limit = parseInt(data.page_size)
+		var condition = {where:{
+			business_id:data.business_id,
+			is_deleted: false,
+			is_enable: true,
+			parent_id:0
+		},
+		order: [
+			['createdAt', 'DESC']
+		]}
 
+		var totalRecords = null
+
+		productCategoryModel.findAll(condition).then(async(categoriesList) => {
+			totalRecords = categoriesList.length
+		})
 		productCategoryModel.findAll({
 			where:{
 				business_id:data.business_id,
@@ -861,7 +973,26 @@ exports.CategoryList = async(req, res) => {
 					  	data.image = commonConfig.default_image;
 					  }
 				}
-				res.send(setRes(resCode.OK, true, "Get category detail successfully.",categoryData))
+
+				const previous_page = (data.page - 1);
+				const last_page = Math.ceil(totalRecords / data.page_size);
+				var next_page = null;
+				if(last_page > data.page){
+					var pageNumber = data.page;
+					next_page = pageNumber++;
+				}
+
+				var response = {};
+				response.totalPages = Math.ceil(categoryData.length/limit);
+				response.currentPage = parseInt(data.page);
+				response.per_page = parseInt(data.page_size);
+				response.total_records = totalRecords;
+				response.data = categoryData;
+				response.previousPage = previous_page;
+				response.nextPage = next_page;
+				response.lastPage = last_page;
+
+				res.send(setRes(resCode.OK, true, "Get category detail successfully.",response))
 			}else{
 				res.send(setRes(resCode.ResourceNotFound, false, "Category not found.",null))
 			}
@@ -1078,9 +1209,18 @@ exports.ProductTypeList = async(req, res) => {
 	var categoryModel = models.product_categorys
 	var Op = models.Op;
 
-	var requiredFields = _.reject(['business_id'], (o) => { return _.has(data, o) })
+	var requiredFields = _.reject(['page','page_size','business_id'], (o) => { return _.has(data, o) })
 	if(requiredFields == ""){
+
+		if(data.page < 0 || data.page === 0) {
+			res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1",null))
+		}
+		var skip = data.page_size * (data.page - 1)
+		var limit = parseInt(data.page_size)
+
 		var condition = {
+			offset:skip,
+			limit:limit,
 			subQuery:false,
 			order: [
 				['createdAt', 'DESC']
@@ -1098,6 +1238,33 @@ exports.ProductTypeList = async(req, res) => {
 		if(data.search && data.search != null){
 			condition.where = {[Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],}
 		}
+
+		var condition2 = {
+			subQuery:false,
+			order: [
+				['createdAt', 'DESC']
+			],
+			
+		};
+		condition2.where = {business_id:data.business_id,parent_id:{
+				[Op.ne]: 0	
+			},is_deleted:false}
+			condition2.attributes =  { exclude: ['is_deleted', 'is_enable','createdAt','updatedAt'] }
+
+		if(data.category_id) {
+			condition2.where = {business_id:data.business_id,parent_id:data.category_id,is_deleted:false}
+		}
+		if(data.search && data.search != null){
+			condition2.where = {[Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],}
+		}
+
+		var totalRecords = null
+
+		categoryModel.findAll(condition2).then(async(CartList) => {
+			totalRecords = CartList.length
+		})
+
+
 		categoryModel.findAll(condition).then(async subCategoryData => {
 			if (subCategoryData != '' && subCategoryData != null ){
 			// Update Sign URL
@@ -1113,7 +1280,24 @@ exports.ProductTypeList = async(req, res) => {
 				  }
 
 			}
-				res.send(setRes(resCode.OK, true, "Get product type  details successfully.",subCategoryData))
+				const previous_page = (data.page - 1);
+				const last_page = Math.ceil(totalRecords / data.page_size);
+				var next_page = null;
+				if(last_page > data.page){
+					var pageNumber = data.page;
+					next_page = pageNumber++;
+				}
+				
+				var response = {};
+				response.totalPages = Math.ceil(subCategoryData.length/limit);
+				response.currentPage = parseInt(data.page);
+				response.per_page = parseInt(data.page_size);
+				response.total_records = totalRecords;
+				response.data = subCategoryData;
+				response.previousPage = previous_page;
+				response.nextPage = next_page;
+				response.lastPage = last_page;
+				res.send(setRes(resCode.OK, true, "Get product type  details successfully.",response))
 			}else{
 				res.send(setRes(resCode.ResourceNotFound, true, "Product type not found.",null))
 			}
@@ -1401,6 +1585,46 @@ exports.simillarProducts = async(req,res) => {
 
 	}else{
 		
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
+	}
+}
+
+exports.deleteProduct = async(req,res) => {
+	var data = req.params
+	var productModel = models.products
+	var requiredFields = _.reject(['id'], (o) => { return _.has(data, o)  })
+
+	if (requiredFields == ''){
+		productModel.findOne({
+			where: {
+				id: data.id,
+				is_deleted: false
+			}
+			}).then(async product => {
+				if (product != null) {
+					await product.update({ 
+						is_deleted: true,
+					}).then(async deleteData => {
+						if(deleteData){
+							var product_images = deleteData.image
+							var image_array = [];
+							if (product_images != null) {
+								for (const data of product_images) {
+									const params = {
+										Bucket: awsConfig.Bucket,
+										Key: data
+									};
+									awsConfig.deleteImageAWS(params)
+								}
+							}
+						}
+					res.send(setRes(resCode.OK, true, "Product deleted successfully", null))
+					});
+				}else{
+					res.send(setRes(resCode.ResourceNotFound, false, 'Product not found.',null))
+				}
+			})
+	}else{
 		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 }

@@ -1248,7 +1248,7 @@ exports.GetAllBusiness = async (req, res) => {
 				model: settingModel,
 			}],
 			offset:skip,
-			limit:limit,
+			limit : limit,
 			order: [
 				['createdAt', 'DESC']
 			],
@@ -1267,6 +1267,38 @@ exports.GetAllBusiness = async (req, res) => {
 		if(data.search && data.search != null){
 			condition.where = {...condition.where,...{[Op.or]: [{business_name: {[Op.like]: "%" + data.search + "%",}}],}}
 		}
+		condition2 =  {
+			include: [{
+				model: businesscateogryModel,
+				attributes: ['name'] 
+			}, {
+				model: settingModel,
+			}],
+			
+			order: [
+				['createdAt', 'DESC']
+			],
+			attributes: { exclude: ['is_deleted', 'is_enable','auth_token','device_type',
+				'role_id','sections','template_id','color_code','approve_by',
+				'booking_facility','abn_no','password','account_name','person_name',
+				'reset_pass_token','reset_pass_expire','device_token','business_category','account_number',
+				'latitude','longitude','email','device_id','phone'] }
+		}
+
+		if(data.category_id){
+			condition2.where = {...condition2.where,...{category_id:data.category_id,is_deleted:false,is_active:true}}
+		}else{
+			condition2.where = {...condition2.where,...{is_deleted:false,is_active:true}}
+		}
+		if(data.search && data.search != null){
+			condition2.where = {...condition2.where,...{[Op.or]: [{business_name: {[Op.like]: "%" + data.search + "%",}}],}}
+		};
+
+		var totalRecords = null
+
+		businessModel.findAll(condition2).then(async(businesses) => {
+			totalRecords = businesses.length
+		})
 		
 		businessModel.findAll(condition).then(async businessData => {
 			if(businessData.length > 0){
@@ -1299,7 +1331,23 @@ exports.GetAllBusiness = async (req, res) => {
 						data.dataValues.available = "";
 					}
 				}
-				res.send(setRes(resCode.OK,true,'Get Business successfully',businessData))
+					const previous_page = (data.page - 1);
+					const last_page = Math.ceil(totalRecords / data.page_size);
+					var next_page = null;
+					if(last_page > data.page){
+						var pageNumber = data.page;
+						next_page = pageNumber++;
+					}
+					var response = {};
+					response.totalPages = Math.ceil(businessData.length/limit);
+					response.currentPage = parseInt(data.page);
+					response.per_page = parseInt(data.page_size);
+					response.total_records = totalRecords;
+					response.data = businessData;
+					response.previousPage = previous_page;
+					response.nextPage = next_page;
+					response.lastPage = last_page;
+				res.send(setRes(resCode.OK,true,'Get Business successfully',response))
 			}else{
 				res.send(setRes(resCode.ResourceNotFound,false,'Business not found',null))
 			}

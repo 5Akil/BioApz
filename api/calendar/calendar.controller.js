@@ -279,7 +279,7 @@ exports.GetAllEvents = async (req, res) => {
 	var comboModel = models.combo_calendar
 	var Op = models.Op
 
-	var requiredFields = _.reject(['business_id'], (o) => { return _.has(data, o) })
+	var requiredFields = _.reject(['page','page_size','business_id'], (o) => { return _.has(data, o) })
 	if (requiredFields == '') {
 
 		if(data.page < 0 || data.page === 0) {
@@ -287,6 +287,28 @@ exports.GetAllEvents = async (req, res) => {
 		}
 		var skip = data.page_size * (data.page - 1)
 		var limit = parseInt(data.page_size)
+
+		var condition2 = {
+			subQuery:false,
+			order: [
+				['createdAt', 'DESC']
+			],
+		}
+		condition2.where = {business_id: data.business_id,is_deleted: false,}
+		condition2.attributes = { exclude: ['createdAt','updatedAt','is_deleted','repeat','repeat_every','repeat_on']}
+
+		var startDate = (moment(data.from_date).format('YYYY-MM-DD'))
+		var endDate = (moment(data.to_date).format('YYYY-MM-DD'))
+
+		if(!_.isEmpty(data.from_date) && !_.isEmpty(data.to_date)){
+			condition2.where = {...condition2.where,...{start_date: {[Op.between]: [startDate, endDate]}}}
+		}
+
+		var totalRecords = null
+
+		comboModel.findAll(condition2).then(async(eventList) => {
+			totalRecords = eventList.length
+		})
 
 		// comboModel.update({
 		// 	is_deleted: true
@@ -298,6 +320,8 @@ exports.GetAllEvents = async (req, res) => {
 		// 		}
 		// 	}
 			var condition = {
+				offset:skip,
+			limit:limit,
 				subQuery:false,
 				order: [
 					['createdAt', 'DESC']
@@ -330,7 +354,25 @@ exports.GetAllEvents = async (req, res) => {
 						data.dataValues.event_images = image_array
 					}
 				}
-				res.send(setRes(resCode.OK, true, "Available events list.", (combos)))
+
+				const previous_page = (data.page - 1);
+				const last_page = Math.ceil(totalRecords / data.page_size);
+				var next_page = null;
+				if(last_page > data.page){
+					var pageNumber = data.page;
+					next_page = pageNumber++;
+				}
+				
+				var response = {};
+				response.totalPages = Math.ceil(combos.length/limit);
+				response.currentPage = parseInt(data.page);
+				response.per_page = parseInt(data.page_size);
+				response.total_records = totalRecords;
+				response.data = combos;
+				response.previousPage = previous_page;
+				response.nextPage = next_page;
+				response.lastPage = last_page;
+				res.send(setRes(resCode.OK, true, "Available events list.", response))
 		}).catch(error => {
 			console.log(error);
 			res.send(setRes(resCode.InternalServer, false, 'Internal server error.', null))

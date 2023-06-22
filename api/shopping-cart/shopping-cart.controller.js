@@ -88,11 +88,19 @@ exports.CartList = async(req,res) => {
 	var productCategoryModel = models.product_categorys
 	var productModel = models.products;
 
-	var requiredFields = _.reject(['user_id'], (o) => { return _.has(data, o)  })
+	var requiredFields = _.reject(['page','page_size','user_id'], (o) => { return _.has(data, o)  })
 
 	if (requiredFields == ''){
 
+		if(data.page < 0 || data.page === 0) {
+			res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1",null))
+		}
+		var skip = data.page_size * (data.page - 1)
+		var limit = parseInt(data.page_size)
+
 		var condition = {
+			offset:skip,
+			limit:limit,
 			include: [
 				{
 					model: productModel,
@@ -120,67 +128,105 @@ exports.CartList = async(req,res) => {
 		if(data.search && data.search != null && !_.isEmpty(data.search)){
 			condition.where = {[Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],}
 		} 
+
+
+		var condition2 = {
+			include: [
+				{
+					model: productModel,
+					include:[
+						{
+							model: productCategoryModel,
+							as: 'product_categorys',
+							attributes:['name']
+						},
+						{
+							model: productCategoryModel,
+							as: 'sub_category',
+							attributes:['name']
+						}
+					]
+				}
+			],
+		}
+		condition2.where = {
+			user_id: data.user_id,
+			is_deleted: false
+		}
+		condition2.attributes = {exclude: ['createdAt','updatedAt','is_deleted']}
+
+		if(data.search && data.search != null && !_.isEmpty(data.search)){
+			condition2.where = {[Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],}
+		}
+
+		var totalRecords = null
+
+		shoppingCartModel.findAll(condition).then(async(CartList) => {
+			totalRecords = CartList.length
+		})
+
+
 		shoppingCartModel.findAll(condition).then(async cartData => {
 
 			if(cartData != null && cartData != ""){
-				for(data of cartData){
+				for(dataVal of cartData){
 
-					if(data.product != null){
-						if(data.product.image != null && !_.isEmpty(data.product.image)){
-							var product_image = await awsConfig.getSignUrl(data.product.image[0]).then(function(res){
-								data.dataValues.product_image = res;
+					if(dataVal.product != null){
+						if(dataVal.product.image != null && !_.isEmpty(dataVal.product.image)){
+							var product_image = await awsConfig.getSignUrl(dataVal.product.image[0]).then(function(res){
+								dataVal.dataValues.product_image = res;
 							})
 						}else{
-							data.dataValues.product_image = commonConfig.default_image
+							dataVal.dataValues.product_image = commonConfig.default_image
 						}
 						
-						if(data.product != null){
-							data.dataValues.business_id = data.product.business_id;
+						if(dataVal.product != null){
+							dataVal.dataValues.business_id = dataVal.product.business_id;
 						}else{
-							data.dataValues.business_id = null;
+							dataVal.dataValues.business_id = null;
 						}
 
-						if(data.product != null){
-							data.dataValues.product_name = data.product.name;
+						if(dataVal.product != null){
+							dataVal.dataValues.product_name = dataVal.product.name;
 						}else{
-							data.dataValues.product_name = null;
+							dataVal.dataValues.product_name = null;
 						}
 
-						if(data.product.product_categorys != null){
-							data.dataValues.category_name = data.product.product_categorys.name;
+						if(dataVal.product.product_categorys != null){
+							dataVal.dataValues.category_name = dataVal.product.product_categorys.name;
 						}else{
-							data.dataValues.category_name = null;
+							dataVal.dataValues.category_name = null;
 						}
-						if(data.product.sub_category != null){
-							data.dataValues.sub_category_name = data.product.sub_category.name;
+						if(dataVal.product.sub_category != null){
+							dataVal.dataValues.sub_category_name = dataVal.product.sub_category.name;
 						}else{
-							data.dataValues.sub_category_name = null;
+							dataVal.dataValues.sub_category_name = null;
 						}
 						
-						if(data.product.description != null){
+						if(dataVal.product.description != null){
 		
-							data.dataValues.description = data.product.description
+							dataVal.dataValues.description = dataVal.product.description
 						}else{
-							data.dataValues.description = null
+							dataVal.dataValues.description = null
 						}
 		
-						if(data.product != null){
+						if(dataVal.product != null){
 		
-							data.dataValues.rating = null
+							dataVal.dataValues.rating = null
 						}else{
-							data.dataValues.rating = null
+							dataVal.dataValues.rating = null
 						}
-						delete data.dataValues.category_id
-						delete data.dataValues.product
+						delete dataVal.dataValues.category_id
+						delete dataVal.dataValues.product
 					}
 
 					// console.log(data)
-					if(data.product_category != null){
+					if(dataVal.product_category != null){
 
-						data.dataValues.category_name = data.product_category.name
-						delete data.dataValues.product_category
+						dataVal.dataValues.category_name = dataVal.product_category.name
+						delete dataVal.dataValues.product_category
 					}else{
-						data.dataValues.category_name = ""
+						dataVal.dataValues.category_name = ""
 					}
 					// if(data.sub_category != null){
 
@@ -190,8 +236,26 @@ exports.CartList = async(req,res) => {
 					// 	data.dataValues.product_type = "";
 					// }
 				}
+
+				const previous_page = (data.page - 1);
+				const last_page = Math.ceil(totalRecords / data.page_size);
+				var next_page = null;
+				if(last_page > data.page){
+					var pageNumber = data.page;
+					next_page = pageNumber++;
+				}
 				
-				res.send(setRes(resCode.OK, true, 'Your cart details.',cartData));
+				var response = {};
+				response.totalPages = Math.ceil(cartData.length/limit);
+				response.currentPage = parseInt(data.page);
+				response.per_page = parseInt(data.page_size);
+				response.total_records = totalRecords;
+				response.data = cartData;
+				response.previousPage = previous_page;
+				response.nextPage = next_page;
+				response.lastPage = last_page;
+				
+				res.send(setRes(resCode.OK, true, 'Your cart details.',response));
 			}else{
 				res.send(setRes(resCode.OK, true, "Your cart is empty.",null))
 			}

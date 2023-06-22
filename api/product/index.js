@@ -55,6 +55,7 @@ const {verifyToken} = require('../../config/token');
 
 router.post('/inquiry', verifyToken, controller.createInquiry)
 router.post('/getAll', verifyToken, controller.GetAllProducts)
+router.post('/delete/:id', verifyToken, controller.deleteProduct)
 router.post('/getBooking', verifyToken, controller.GetBookingInquiry)
 router.post('/isRead', verifyToken, controller.IsReadStatus)
 router.post('/create', verifyToken, uploadImage.array('image'), controller.createProduct)

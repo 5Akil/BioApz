@@ -76,98 +76,186 @@ exports.wishlistData = async (req, res) => {
 	var wishlistModel = models.wishlists
 	var productCategoryModel = models.product_categorys
 	var productModel = models.products
+	var shoppingCartModel = models.shopping_cart
 	var Op = models.Op;
 
-	var conditonFilter = {
-		is_deleted:false
-	}
-	if(query.search && query.search != null && !_.isEmpty(query.search)){
-		conditonFilter = {...conditonFilter, ...{[Op.or]: [{name: {[Op.like]: "%" + query.search + "%",}}],}}
-	} 
-	console.log(JSON.stringify(conditonFilter));
-	var condition = {
-		include: [
-			{
-				model: productModel,
-				where: conditonFilter,
-				// where:{[Op.or]: [{name: {[Op.like]: "%" + query.search + "%",}}],},
-				include:[
-					{
-						model: productCategoryModel,
-						as: 'product_categorys',
-						attributes:['name'],
-						
-					},
-					{
-						model: productCategoryModel,
-						as: 'sub_category',
-						attributes:['name']
+	var requiredFields = _.reject(['page','page_size'], (o) => { return _.has(query, o)  })
+
+	if (requiredFields == ''){
+
+		if(query.page < 0 || query.page === 0) {
+			res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1",null))
+		}
+		var skip = query.page_size * (query.page - 1)
+		var limit = parseInt(query.page_size)
+
+		var conditonFilter = {
+			is_deleted:false
+		}
+		if(query.search && query.search != null && !_.isEmpty(query.search)){
+			conditonFilter = {...conditonFilter, ...{[Op.or]: [{name: {[Op.like]: "%" + query.search + "%",}}],}}
+		} 
+
+		var condition2 = {
+			include: [
+				{
+					model: productModel,
+					where: conditonFilter,
+					// where:{[Op.or]: [{name: {[Op.like]: "%" + query.search + "%",}}],},
+					include:[
+						{
+							model: productCategoryModel,
+							as: 'product_categorys',
+							attributes:['name'],
+							
+						},
+						{
+							model: productCategoryModel,
+							as: 'sub_category',
+							attributes:['name']
+						}
+					]
+				}
+			],
+		}
+		condition2.where = {
+			user_id: data.id,
+			is_deleted: false
+		}
+		condition2.attributes = {exclude: ['createdAt','updatedAt','is_deleted']}
+
+		var totalRecords = null
+
+		wishlistModel.findAll(condition2).then(async(wishlist) => {
+			totalRecords = wishlist.length
+		})
+
+		var condition = {
+			offset:skip,
+			limit:limit,
+			include: [
+				{
+					model: productModel,
+					where: conditonFilter,
+					// where:{[Op.or]: [{name: {[Op.like]: "%" + query.search + "%",}}],},
+					include:[
+						{
+							model: productCategoryModel,
+							as: 'product_categorys',
+							attributes:['name'],
+							
+						},
+						{
+							model: productCategoryModel,
+							as: 'sub_category',
+							attributes:['name']
+						}
+					]
+				}
+			],
+		}
+		condition.where = {
+			user_id: data.id,
+			is_deleted: false
+		}
+		condition.attributes = {exclude: ['createdAt','updatedAt','is_deleted']}
+		wishlistModel.findAll(condition).then(async wishlistData => {
+	
+			if(wishlistData != null && wishlistData != ""){
+	
+				for(var data of wishlistData){
+					var isAddCart = false;
+					if(data.product != null){
+						await shoppingCartModel.findAll({
+							where: {
+								product_id: data.product.id,
+								is_deleted: false
+							},}).then(async addcart => {
+								if(addcart.length > 0){
+									isAddCart = true;
+								}
+							})
 					}
-				]
-			}
-		],
-	}
-	condition.where = {
-		user_id: data.id,
-		is_deleted: false
-	}
-	condition.attributes = {exclude: ['createdAt','updatedAt','is_deleted']}
-	wishlistModel.findAll(condition).then(async wishlistData => {
-
-		if(wishlistData != null && wishlistData != ""){
-
-			for(data of wishlistData){
-
-				if(data.product.image != null && !_.isEmpty(data.product.image)){
-					var product_image = await awsConfig.getSignUrl(data.product.image[0]).then(function(res){
-						data.dataValues.product_image = res;
-					})
-				}else{
-					data.dataValues.product_image = commonConfig.default_image
+					
+	
+					if(data.product.image != null && !_.isEmpty(data.product.image)){
+						var product_image = await awsConfig.getSignUrl(data.product.image[0]).then(function(res){
+							data.dataValues.product_image = res;
+						})
+					}else{
+						data.dataValues.product_image = commonConfig.default_image
+					}
+					if(data.product != null){
+						data.dataValues.product_name = data.product.name;
+					}else{
+						data.dataValues.product_name = null;
+					}
+					if(data.product != null){
+						data.dataValues.business_id = data.product.business_id;
+					}else{
+						data.dataValues.business_id = null;
+					}
+	
+					if(data.product.product_categorys != null){
+						data.dataValues.category_name = data.product.product_categorys.name;
+					}else{
+						data.dataValues.category_name = null;
+					}
+					if(data.product.sub_category != null){
+						data.dataValues.sub_category_name = data.product.sub_category.name;
+					}else{
+						data.dataValues.sub_category_name = null;
+					}
+					
+					if(data.product.description != null){
+	
+						data.dataValues.description = data.product.description
+					}else{
+						data.dataValues.description = null
+					}
+	
+					if(data.product != null){
+	
+						data.dataValues.rating = null
+					}else{
+						data.dataValues.rating = null
+					}
+					
+					data.dataValues.is_added_cart = isAddCart
+	
+					delete data.dataValues.category_id
+					delete data.dataValues.product
 				}
-				if(data.product != null){
-					data.dataValues.product_name = data.product.name;
-				}else{
-					data.dataValues.product_name = null;
-				}
-				if(data.product != null){
-					data.dataValues.business_id = data.product.business_id;
-				}else{
-					data.dataValues.business_id = null;
-				}
 
-				if(data.product.product_categorys != null){
-					data.dataValues.category_name = data.product.product_categorys.name;
-				}else{
-					data.dataValues.category_name = null;
-				}
-				if(data.product.sub_category != null){
-					data.dataValues.sub_category_name = data.product.sub_category.name;
-				}else{
-					data.dataValues.sub_category_name = null;
+				const previous_page = (query.page - 1);
+				const last_page = Math.ceil(totalRecords / query.page_size);
+				var next_page = null;
+				if(last_page > query.page){
+					var pageNumber = query.page;
+					next_page = pageNumber++;
 				}
 				
-				if(data.product.description != null){
+				var response = {};
+				response.totalPages = Math.ceil(wishlistData.length/limit);
+				response.currentPage = parseInt(query.page);
+				response.per_page = parseInt(query.page_size);
+				response.total_records = totalRecords;
+				response.data = wishlistData;
+				response.previousPage = previous_page;
+				response.nextPage = next_page;
+				response.lastPage = last_page;
 
-					data.dataValues.description = data.product.description
-				}else{
-					data.dataValues.description = null
-				}
-
-				if(data.product != null){
-
-					data.dataValues.rating = null
-				}else{
-					data.dataValues.rating = null
-				}
-				delete data.dataValues.category_id
-				delete data.dataValues.product
+				res.send(setRes(resCode.OK, true, 'Your wishlist details.',response));
+			}else{
+				res.send(setRes(resCode.ResourceNotFound, false, "Your wishlist is empty.",[]))
 			}
-			res.send(setRes(resCode.OK, true, 'Your wishlist details.',wishlistData));
-		}else{
-			res.send(setRes(resCode.ResourceNotFound, false, "Your wishlist is empty.",[]))
-		}
-	})
+		})
+
+	}else{
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
+	}
+
+	
 }
 
 exports.RemoveProductWishlist = async(req,res) => {
