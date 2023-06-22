@@ -108,10 +108,9 @@ exports.GetAllProducts = async (req, res) => {
 		var limit = parseInt(data.page_size)
 		
 		var condition = {
-			is_deleted:false,
 			subQuery:false,
 			order: [
-				['createdAt', 'DESC'],
+				['createdAt', 'DESC'	],
 			],
 			include:[
 				{
@@ -134,7 +133,7 @@ exports.GetAllProducts = async (req, res) => {
 			]},
 			group: ['products.id'],
 		}
-		condition.where = {business_id:data.business_id,category_id:data.category_id}
+		condition.where = {business_id:data.business_id,category_id:data.category_id,is_deleted:false,}
 		condition.attributes = { exclude:['is_deleted','createdAt','updatedAt']}
 		if(!_.isEmpty(data.price)){
 			if(data.price == 1){
@@ -156,6 +155,7 @@ exports.GetAllProducts = async (req, res) => {
 			condition.offset = skip,
 			condition.limit = limit
 		}
+		console.log(condition);
 		productModel.findAll(condition).then(async(products) => {
 			
 			if (products){
