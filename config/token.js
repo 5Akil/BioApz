@@ -18,40 +18,29 @@ function verifyToken(req, res, next) {
 		if (err) {
 		  return res.send(setRes(resCode.Unauthorized, false, "Failed to verify token.", null))
 		}
+		var role = decoded.role_id
+
+		var authModel = ((role == 2) && (role != 3)) ? models.user : models.business;
 		// if everything good, save to request for use in other routes
 		req.userEmail = decoded.user;
 		// console.log(decoded.user);
 		if (decoded.user != '' && decoded.user != undefined){
-	
-			  var User = models.user
-			User.findOne({
+			authModel.findOne({
 				where: {
 					email: decoded.user,
-					is_active:1,
 					is_deleted: 0
 				}
-			}).then(user => {
-				if (user != '' && user != null){
-					return next();
+			}).then(async authenticateUser => {
+				console.log(authenticateUser)
+				if (authenticateUser != '' && authenticateUser != null){
+					if(authenticateUser.is_active == true){
+						return next();
+					}else{
+						return res.send(setRes(resCode.Unauthorized, false, "Your account has been deactivated. Please contact administrator.",null))
+					}
 				}
 				else{
-	
-					var business = models.business
-					business.findOne({
-						where: {
-							email: decoded.user,
-							is_active: 1,
-							is_deleted: 0
-						}
-					}).then(business => {
-						if (business != '' && business != null){
-							return next()
-						}
-						else{
-							return res.send(setRes(resCode.Unauthorized, false, "Unauthorized Token",null))
-						}
-					})
-					
+					return res.send(setRes(resCode.Unauthorized, false, "Unauthorized Token",null))
 				}
 			})
 		  

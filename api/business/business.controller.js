@@ -326,56 +326,64 @@ exports.UpdateBusinessDetail = async (req, res) => {
 				} else {
 					businessModel.findOne({
 						where: { is_deleted: false, is_active: true, email: { [Op.eq]: data.email }, id: { [Op.ne]: data.id } }
-					}).then(async emailData => {
-						if (emailData == null) {
+					}).then(async nameData => {
+						if(nameData != null){
+							res.send(setRes(resCode.BadRequest, false, "This business name is already associated with another account.!", null))
+						}else{
 							businessModel.findOne({
-								where: { is_deleted: false, is_active: true, phone: { [Op.eq]: data.phone }, id: { [Op.ne]: data.id } }
-							}).then(async phoneData => {
-								if (phoneData == null) {
-									businessModel.update(data,
-										{
-											where: { id: data.id, is_deleted: false, is_active: true }
-										}).then(async updateData => {
-											if (data.banner != null) {
-												const params = { Bucket: awsConfig.Bucket, Key: businessDetail.banner }; awsConfig.deleteImageAWS(params)
-											}
-											if (updateData == 1) {
-												businessModel.findOne({
-													where: { id: data.id, is_deleted: false, is_active: true },
-													// attributes: ['id','auth_token','category_id','banner','person_name','business_name','email','phone','address','abn_no','account_name','account_number'],
-												}).then(async dataDetail => {
+								where: { is_deleted: false, is_active: true, email: { [Op.eq]: data.email }, id: { [Op.ne]: data.id } }
+							}).then(async emailData => {
+								if (emailData == null) {
+									businessModel.findOne({
+										where: { is_deleted: false, is_active: true, phone: { [Op.eq]: data.phone }, id: { [Op.ne]: data.id } }
+									}).then(async phoneData => {
+										if (phoneData == null) {
+											businessModel.update(data,
+												{
+													where: { id: data.id, is_deleted: false, is_active: true }
+												}).then(async updateData => {
 													if (data.banner != null) {
-														var updateData_image = await awsConfig.getSignUrl(data.banner).then(function (res) {
-															dataDetail.banner = res;
+														const params = { Bucket: awsConfig.Bucket, Key: businessDetail.banner }; awsConfig.deleteImageAWS(params)
+													}
+													if (updateData == 1) {
+														businessModel.findOne({
+															where: { id: data.id, is_deleted: false, is_active: true },
+															// attributes: ['id','auth_token','category_id','banner','person_name','business_name','email','phone','address','abn_no','account_name','account_number'],
+														}).then(async dataDetail => {
+															if (data.banner != null) {
+																var updateData_image = await awsConfig.getSignUrl(data.banner).then(function (res) {
+																	dataDetail.banner = res;
+																})
+															}else if(dataDetail.banner != null){
+																var updateData_image = await awsConfig.getSignUrl(dataDetail.banner).then(function (res) {
+																	dataDetail.banner = res;
+																})
+															}
+															else {
+																dataDetail.banner = awsConfig.default_image;
+															}
+															if (dataDetail.profile_picture != null) {
+																var profile_picture = await awsConfig.getSignUrl(dataDetail.profile_picture).then(function (res) {
+																	dataDetail.profile_picture = res
+																});
+															}
+															else {
+																dataDetail.profile_picture = commonConfig.default_user_image;
+															}
+															res.send(setRes(resCode.OK, true, 'Business profile update successfully', dataDetail))
 														})
-													}else if(dataDetail.banner != null){
-														var updateData_image = await awsConfig.getSignUrl(dataDetail.banner).then(function (res) {
-															dataDetail.banner = res;
-														})
+													} else {
+														res.send(setRes(resCode.BadRequest, false, "Fail to update business.", null))
 													}
-													 else {
-														dataDetail.banner = awsConfig.default_image;
-													}
-													if (dataDetail.profile_picture != null) {
-														var profile_picture = await awsConfig.getSignUrl(dataDetail.profile_picture).then(function (res) {
-															dataDetail.profile_picture = res
-														});
-													}
-													else {
-														dataDetail.profile_picture = commonConfig.default_user_image;
-													}
-													res.send(setRes(resCode.OK, true, 'Business profile update successfully', dataDetail))
 												})
-											} else {
-												res.send(setRes(resCode.BadRequest, false, "Fail to update business.", null))
-											}
-										})
+										} else {
+											res.send(setRes(resCode.BadRequest, false, "This phone number is already associated with another account.!", null))
+										}
+									})
 								} else {
-									res.send(setRes(resCode.BadRequest, false, "Business already registered on this phone number.!", null))
+									res.send(setRes(resCode.BadRequest, false, "This email is already associated with another account.!", null))
 								}
 							})
-						} else {
-							res.send(setRes(resCode.BadRequest, false, "Business already registered on this email.!", null))
 						}
 					})
 				}
@@ -1686,6 +1694,7 @@ exports.updateUserDetils = async (req, res) => {
 		var Op = models.Op;
 		var requiredFields = _.reject(['id'], (o) => { return _.has(data, o) })
 		var mailId = data.email;
+		var validation = true;
 		var emailFormat = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/;
 
 		if (requiredFields == '') {
@@ -1706,42 +1715,64 @@ exports.updateUserDetils = async (req, res) => {
 				if (_.isEmpty(businessDetail)) {
 					res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
 				} else {
-					businessModel.findOne({
-						where: { is_deleted: false, is_active: true, email: { [Op.eq]: data.email }, id: { [Op.ne]: data.id } }
-					}).then(async emailData => {
-						if (emailData == null) {
-							businessModel.update(data,
-								{
-									where: { id: data.id, is_deleted: false, is_active: true }
-								}).then(async updateData => {
-									if (updateData == 1) {
-										businessModel.findOne({
-											where: { id: data.id, is_deleted: false, is_active: true },
-											// attributes: ['id', 'person_name', 'profile_picture', 'phone', 'email', 'address', 'abn_no', 'business_name', 'password','auth_token']
-										}).then(async dataDetail => {
-											if (data.profile_picture != null) {
-												const params = { Bucket: awsConfig.Bucket, Key: businessDetail.profile_picture }; awsConfig.deleteImageAWS(params);
-												var updateData_image = await awsConfig.getSignUrl(data.profile_picture).then(function (res) {
-													dataDetail.profile_picture = res;
-												})
-											} else if (dataDetail.profile_picture != null) {
-												var old_image = await awsConfig.getSignUrl(dataDetail.profile_picture).then(function (res) {
-													dataDetail.profile_picture = res;
-												})
-											}
-											else {
-												dataDetail.profile_picture = commonConfig.default_user_image;
-											}
-											res.send(setRes(resCode.OK, true, 'Business profile update successfully', dataDetail))
-										})
-									} else {
-										res.send(setRes(resCode.BadRequest, false, "Fail to update business.", null))
-									}
-								})
-						} else {
-							res.send(setRes(resCode.BadRequest, false, "Business already registered on this email.!", null))
+
+					await businessModel.findOne({
+						where: { is_deleted: false, is_active: true, business_name: { [Op.eq]: data.business_name }, id: { [Op.ne]: data.id } }
+					}).then(async nameData => {
+						if (nameData != null) {
+							validation =false;
+							res.send(setRes(resCode.BadRequest, false, 'This business name is already associated with another account !', null))
 						}
 					})
+
+					await businessModel.findOne({
+						where: { is_deleted: false, is_active: true, email: { [Op.eq]: data.email }, id: { [Op.ne]: data.id } }
+					}).then(async emailData => {
+						if (emailData != null) {
+							validation =false;
+							res.send(setRes(resCode.BadRequest, false, 'This email is already associated with another account !', null))
+						}
+					})
+
+					await businessModel.findOne({
+						where: { is_deleted: false, is_active: true, phone: { [Op.eq]: data.phone }, id: { [Op.ne]: data.id } }
+					}).then(async phoneData => {
+						if(phoneData != null){
+							validation =false;
+							res.send(setRes(resCode.BadRequest, false, 'This phone number is already associated with another account !', null))
+						}
+					})
+					if (validation) {
+						await businessModel.update(data,
+							{
+								where: { id: data.id, is_deleted: false, is_active: true }
+							}).then(async updateData => {
+								if (updateData == 1) {
+									businessModel.findOne({
+										where: { id: data.id, is_deleted: false, is_active: true },
+										// attributes: ['id', 'person_name', 'profile_picture', 'phone', 'email', 'address', 'abn_no', 'business_name', 'password','auth_token']
+									}).then(async dataDetail => {
+										if (data.profile_picture != null) {
+											const params = { Bucket: awsConfig.Bucket, Key: businessDetail.profile_picture }; awsConfig.deleteImageAWS(params);
+											var updateData_image = await awsConfig.getSignUrl(data.profile_picture).then(function (res) {
+												dataDetail.profile_picture = res;
+											})
+										} else if (dataDetail.profile_picture != null) {
+											var old_image = await awsConfig.getSignUrl(dataDetail.profile_picture).then(function (res) {
+												dataDetail.profile_picture = res;
+											})
+										}
+										else {
+											dataDetail.profile_picture = commonConfig.default_user_image;
+										}
+										res.send(setRes(resCode.OK, true, 'Business profile update successfully', dataDetail))
+									})
+								} else {
+									res.send(setRes(resCode.BadRequest, false, "Fail to update business.", null))
+								}
+							})
+					}
+					
 				}
 			})
 		} else {

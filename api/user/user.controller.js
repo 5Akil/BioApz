@@ -169,64 +169,6 @@ exports.Login = async (req, res) => {
 		//user login
 		if (data.role == 2){
 
-			// userModel.findOne({
-			// 	where: {
-			// 		email:data.email,
-			// 		is_active:false,
-			// 		is_deleted:false
-			// 	}
-			// }).then(async userData => {
-			// 	if(userData){
-			// 		res.send(setRes(resCode.BadRequest, false ,'Please verify your account.',null))
-			// 	}else{
-			// 		if(user.is_deleted == true){
-			// 			res.send(setRes(resCode.BadRequest, false,'User not found.',null))
-			// 		}else{
-			// 			bcrypt.compare(data.password, user.password, async function (err, result) {
-			// 				if (result == true) {
-
-			// 					const token =  jwt.sign({id:user.id,user: user.email,role_id:user.role_id}, 'secret', {expiresIn: 480 * 480})
-			// 					delete user.dataValues.auth_token
-			// 					user.dataValues.auth_token = token
-			// 					// data.device_type = data.device_type.toLowerCase();
-
-			// 					userModel.update(
-			// 						{
-			// 							auth_token: token,
-			// 							// device_type: data.device_type,
-			// 							device_token: data.device_token,
-			// 							// device_id: data.device_id
-			// 						},
-			// 						{where: {id: user.id}
-			// 					})
-			// 					.then(async function (newUser) {
-			// 						if (newUser){
-			// 							// var messagedata = await notification.SendNotification(data)
-			// 							// console.log('*********************************')
-			// 							// console.log(messagedata)
-			// 							if(user.profile_picture != null){
-
-			// 								var profile_picture = await awsConfig.getSignUrl(user.profile_picture).then(function(res){
-			// 									user.profile_picture = res
-			// 								})
-			// 							}
-			// 							else{
-			// 								user.profile_picture = commonConfig.default_user_image;
-			// 							}
-			// 							res.send(setRes(resCode.OK, true, 'You are successfully logged in',user))
-			// 						}else{
-			// 							res.send(setRes(resCode.InternalServer, false, 'Token not updated',null))
-			// 						}
-			// 					})
-
-			// 				} else {
-			// 					res.send(setRes(resCode.BadRequest, false, "Invalid Email id or password",null))
-			// 				}
-			// 			});
-			// 		}
-			// 	}
-			// })
-
 			userModel.findOne({
 			where: {
 				email: data.email,
@@ -238,7 +180,7 @@ exports.Login = async (req, res) => {
 					res.send(setRes(resCode.ResourceNotFound, false ,'User not found.',null))
 				} else {
 					if (user.is_active == false){
-						res.send(setRes(resCode.BadRequest, false ,'Your account has been deactivated. Please contact administrator.',null))
+						res.send(setRes(resCode.Unauthorized, false ,'Your account has been deactivated. Please contact administrator.',null))
 					}
 					else{
 						bcrypt.compare(data.password, user.password, async function (err, result) {
@@ -247,7 +189,6 @@ exports.Login = async (req, res) => {
 								const token =  jwt.sign({id:user.id,user: user.email,role_id:user.role_id}, 'secret', {expiresIn: 480 * 480})
 								delete user.dataValues.auth_token
 								user.dataValues.auth_token = token
-								// data.device_type = data.device_type.toLowerCase();
 
 								userModel.update(
 									{
@@ -303,7 +244,7 @@ exports.Login = async (req, res) => {
 				res.send(setRes(resCode.ResourceNotFound, false ,'Business not found.',null))
 			} else {
 				if (business.is_active == 0){
-					res.send(setRes(resCode.BadRequest, false,'Your account has been deactivated. Please contact administrator.',null))
+					res.send(setRes(resCode.Unauthorized, false,'Your account has been deactivated. Please contact administrator.',null))
 				}
 				else{
 					bcrypt.compare(data.password, business.password, async function (err, result) {
@@ -565,7 +506,7 @@ exports.forgotPassword = async (req, res) => {
 				if (user != null) {
 
 					if (user.is_active == false) {
-						res.send(setRes(resCode.BadRequest, false, "Your account has been deactivated. Please contact administrator.", null))
+						res.send(setRes(resCode.Unauthorized, false, "Your account has been deactivated. Please contact administrator.", null))
 					} else {
 						const otp = Math.floor(Math.random() * 9000) + 1000;
 
@@ -652,7 +593,7 @@ exports.forgotPassword = async (req, res) => {
 
 				if (user != null) {
 					if (user.is_active == false) {
-						res.send(setRes(resCode.BadRequest, false, "Your account has been deactivated. Please contact administrator.", null))
+						res.send(setRes(resCode.Unauthorized, false, "Your account has been deactivated. Please contact administrator.", null))
 					} else {
 						const otp = Math.floor(Math.random() * 9000) + 1000;
 
