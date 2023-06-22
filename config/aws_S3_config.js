@@ -1,4 +1,5 @@
 var commonConfig = require('../config/common_config');
+var _ = require('underscore')
 
 const AWS = require('aws-sdk');
 
@@ -13,27 +14,31 @@ const Bucket = 'bioapz';
 
 function getSignUrl (key) {
   return new Promise((resolve, reject) => {
-    const params = {
-      Bucket: Bucket,
-      Key: key
-    };
-
-      s3.headObject(params, (err, metadata) => {
-
-        if ((err && err.code === 'NotFound') || (err =='Forbidden: null')) {
-          
-          resolve(commonConfig.default_image);
-        }  else {
-          const urlParams = {
-            Bucket: Bucket,
-            Key: key,
-            Expires: 3600
-          };
-          const signedUrl = s3.getSignedUrl('getObject', urlParams);
-          
-          resolve(signedUrl);
-        }
-      });
+    if(key != null && !_.isEmpty(key)){
+      const params = {
+        Bucket: Bucket,
+        Key: key
+      };
+  
+        s3.headObject(params, (err, metadata) => {
+  
+          if ((err && err.code === 'NotFound') || (err =='Forbidden: null')) {
+            
+            resolve(commonConfig.default_image);
+          }  else {
+            const urlParams = {
+              Bucket: Bucket,
+              Key: key,
+              Expires: 3600
+            };
+            const signedUrl = s3.getSignedUrl('getObject', urlParams);
+            console.log(signedUrl)
+            resolve(signedUrl);
+          }
+        });
+    }else{
+      resolve(commonConfig.default_image);
+    }
   });
   
 }
