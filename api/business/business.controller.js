@@ -325,7 +325,7 @@ exports.UpdateBusinessDetail = async (req, res) => {
 					res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
 				} else {
 					businessModel.findOne({
-						where: { is_deleted: false, email: { [Op.eq]: data.email }, id: { [Op.ne]: data.id } }
+						where: { is_deleted: false, business_name: { [Op.eq]: data.business_name }, id: { [Op.ne]: data.id } }
 					}).then(async nameData => {
 						if(nameData != null){
 							res.send(setRes(resCode.BadRequest, false, "This business name is already associated with another account.!", null))
