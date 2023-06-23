@@ -1327,7 +1327,7 @@ exports.GetAllBusiness = async (req, res) => {
 					response.previousPage = (previous_page == 0) ? null : previous_page ;
 					response.currentPage = parseInt(data.page);
 					response.total_records = totalRecords;
-					response.data = products;
+					response.data = businessData;
 					response.nextPage = next_page;
 					response.lastPage = last_page;
 				res.send(setRes(resCode.OK,true,'Get Business successfully',response))
