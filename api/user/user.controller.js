@@ -47,13 +47,13 @@ exports.Register = async (req, res) => {
 		  where: { email: data.email, is_deleted: false }
 	  }).then(async emailValidation => {
 		  if (emailValidation != null) {
-			  res.send(setRes(resCode.BadRequest, false, 'This email is already accociated with another account.', null));
+			  return res.send(setRes(resCode.BadRequest, false, 'This email is already accociated with another account.', null));
 		  } else {
 			  dbModel.findOne({
 				  where: { mobile: data.mobile, is_deleted: false }
 			  }).then(async phoneValidation => {
 				  if (phoneValidation != null) {
-					  res.send(setRes(resCode.BadRequest, false, 'This mobile number is already accociated with another account.', null));
+					return res.send(setRes(resCode.BadRequest, false, 'This mobile number is already accociated with another account.', null));
 				  } else {
 					  const token = jwt.sign({ user: data.email }, 'secret')
 					  data.auth_token = token
@@ -358,68 +358,109 @@ exports.UpdateProfile = async (req, res) => {
 	// console.log(req.file.originalname)
 	// return
 	var data = req.body
+	var validation = true;
 	req.file ? data.profile_picture = `${req.file.key}` : ''
 	var userModel = models.user
-	var requiredFields = _.reject(['id'], (o) => { return _.has(data, o)  })
+	var requiredFields = _.reject(['id'], (o) => { return _.has(data, o) })
 
-	if (requiredFields == ''){
+	if (requiredFields == '') {
+		var mobilenumber = /^[0-9]+$/;
+		var mailId = data.email;
+		var emailFormat = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/;
+		if((data.username).length > 100){
+			return res.send(setRes(resCode.BadRequest, false, 'Username must be less than 100 characters',null));
+		}
+		if (mailId.match(emailFormat) == null) {
+			return res.send(setRes(resCode.BadRequest, false, 'Please enter valid email format.', null));
+		}
+		if ((data.mobile.length > 15) || (data.mobile.length < 7) || !(mobilenumber.test(data.mobile))) {
+			return res.send(setRes(resCode.BadRequest, false, 'Please enter valid mobile number.', null));
+		}
 
-		if(data.profile_picture){
-		
-			userModel.findOne({where:{id:data.id,is_deleted:false}}).then(userData =>{
+		if (data.profile_picture != null) {
+
+			userModel.findOne({ where: { id: data.id, is_deleted: false } }).then(userData => {
 				const params = {
-							    Bucket: awsConfig.Bucket,
-							    Key: userData.profile_picture
-							};
+					Bucket: awsConfig.Bucket,
+					Key: userData.profile_picture
+				};
 				awsConfig.deleteImageAWS(params)
 			})
 		}
+
 		userModel.findOne({
-			where:{
-				id:data.id,
-				is_deleted:false,
-				is_active:true
+			where: {
+				id: data.id,
+				is_deleted: false,
+				is_active: true
 			}
 		}).then(async user => {
-			if(_.isEmpty(user)){
-				res.send(setRes(resCode.ResourceNotFound, false, "User not found.",null))
-			}else{
-				userModel.update(data, {
-					where: {
-						id: data.id
-					}
-				}).then(async user => {
-					if (user == 1){
-						userModel.findOne({
-							where:{
-								id:data.id,
-								is_deleted:false,
-								is_active:true
-							}
-						}).then(async userData => {
-							if(userData.profile_picture != null){
+			if (_.isEmpty(user)) {
+				res.send(setRes(resCode.ResourceNotFound, false, "User not found.", null))
+			} else {
+				const emailData = await userModel.findOne({
+					where: { is_deleted: false, email: { [Op.eq]: data.email }, id: { [Op.ne]: data.id } }
+				});
 
-								var banner = await awsConfig.getSignUrl(userData.profile_picture).then(function(res){
-									userData.profile_picture = res
-								})
-							}
-							else{
-								userData.profile_picture = commonConfig.default_user_image;
-							}
-							res.send(setRes(resCode.OK, true, "User Profile Updated Successfully.",userData))
-						})
-						
-					}
-					else{
-						res.send(setRes(resCode.BadRequest, false, "Fail to Update User Profile.",null))
-					}
-				}).catch(error => {
-					res.send(setRes(resCode.InternalServer, true, "Internal server error.",null))
-				})
+				if (emailData != null) {
+					validation = false;
+					return res.send(setRes(resCode.BadRequest, false, 'This email is already associated with another account !', null))
+				}
+
+				const phoneData = await userModel.findOne({
+					where: { is_deleted: false, phone: { [Op.eq]: data.phone }, id: { [Op.ne]: data.id } }
+				});
+
+				if (phoneData != null) {
+					validation = false;
+					return res.send(setRes(resCode.BadRequest, false, 'This phone number is already associated with another account !', null))
+				}
+				if (validation) {
+
+					userModel.update(data, {
+						where: {
+							id: data.id
+						}
+					}).then(async user => {
+						if (user == 1) {
+							userModel.findOne({
+								where: {
+									id: data.id,
+									is_deleted: false,
+									is_active: true
+								}
+							}).then(async userData => {
+								if (data.profile_picture != null) {
+									const params = { Bucket: awsConfig.Bucket, Key: businessDetail.profile_picture }; awsConfig.deleteImageAWS(params);
+									var updateData_image = await awsConfig.getSignUrl(data.profile_picture).then(function (res) {
+										userData.profile_picture = res;
+									})
+								} else if (userData.profile_picture != null) {
+									var old_image = await awsConfig.getSignUrl(userData.profile_picture).then(function (res) {
+										userData.profile_picture = res;
+									})
+								}
+								else {
+									userData.profile_picture = commonConfig.default_user_image;
+								}
+
+								res.send(setRes(resCode.OK, true, "User Profile Updated Successfully.", userData))
+							})
+
+						}
+						else {
+							res.send(setRes(resCode.BadRequest, false, "Fail to Update User Profile.", null))
+						}
+					}).catch(error => {
+						res.send(setRes(resCode.InternalServer, true, "Internal server error.", null))
+					})
+				} s
 			}
+
 		})
-	}else{
-		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
+
+	} else {
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
 	}
 }
 
@@ -1188,8 +1229,6 @@ exports.GetAllBusiness = async (req, res) => {
 			}, {
 				model: settingModel,
 			}],
-			offset:skip,
-			limit : limit,
 			order: [
 				['createdAt', 'DESC']
 			],
@@ -1208,14 +1247,19 @@ exports.GetAllBusiness = async (req, res) => {
 		if(data.search && data.search != null){
 			condition.where = {...condition.where,...{[Op.or]: [{business_name: {[Op.like]: "%" + data.search + "%",}}],}}
 		}
-		condition2 =  {
+
+		if(data.page_size != 0 && !_.isEmpty(data.page_size)){
+			condition.offset = skip,
+			condition.limit = limit
+		}
+
+		var condition2 = {
 			include: [{
 				model: businesscateogryModel,
 				attributes: ['name'] 
 			}, {
 				model: settingModel,
 			}],
-			
 			order: [
 				['createdAt', 'DESC']
 			],
@@ -1233,17 +1277,15 @@ exports.GetAllBusiness = async (req, res) => {
 		}
 		if(data.search && data.search != null){
 			condition2.where = {...condition2.where,...{[Op.or]: [{business_name: {[Op.like]: "%" + data.search + "%",}}],}}
-		};
+		}
 
 		var totalRecords = null
 
-		businessModel.findAll(condition2).then(async(businesses) => {
-			totalRecords = businesses.length
+		businessModel.findAll(condition2).then(async(wishlist) => {
+			totalRecords = wishlist.length
 		})
-		
 		businessModel.findAll(condition).then(async businessData => {
 			if(businessData.length > 0){
-
 				for(const data of businessData){
 
 					if (data.business_category != null) {
@@ -1280,12 +1322,12 @@ exports.GetAllBusiness = async (req, res) => {
 						next_page = pageNumber++;
 					}
 					var response = {};
-					response.totalPages = Math.ceil(businessData.length/limit);
+					response.per_page =  (data.page_size != 0) ? parseInt(data.page_size) : totalRecords;
+					response.totalPages = (data.page_size != 0) ? Math.ceil(totalRecords/limit) : 1;
+					response.previousPage = (previous_page == 0) ? null : previous_page ;
 					response.currentPage = parseInt(data.page);
-					response.per_page = parseInt(data.page_size);
 					response.total_records = totalRecords;
-					response.data = businessData;
-					response.previousPage = previous_page;
+					response.data = products;
 					response.nextPage = next_page;
 					response.lastPage = last_page;
 				res.send(setRes(resCode.OK,true,'Get Business successfully',response))

@@ -155,7 +155,7 @@ exports.GetAllProducts = async (req, res) => {
 			condition.offset = skip,
 			condition.limit = limit
 		}
-		console.log(condition);
+		
 		productModel.findAll(condition).then(async(products) => {
 			
 			if (products){
@@ -691,7 +691,7 @@ exports.GetProductById =  (req, res) => {
 					is_deleted: false
 				},}).then(async fav => {
 					if(fav.length > 0){
-						isFav = true;
+						isAddCart = true;
 					}
 				})
 
@@ -701,7 +701,7 @@ exports.GetProductById =  (req, res) => {
 						is_deleted: false
 					},}).then(async addcart => {
 						if(addcart.length > 0){
-							isAddCart = true;
+							isFav = true;
 						}
 					})
 
@@ -1542,7 +1542,10 @@ exports.simillarProducts = async(req,res) => {
 
 exports.deleteProduct = async(req,res) => {
 	var data = req.params
+	var validation = true;
 	var productModel = models.products
+	var shoppingCartModel = models.shopping_cart
+	var wishlistModel = models.wishlists
 	var requiredFields = _.reject(['id'], (o) => { return _.has(data, o)  })
 
 	if (requiredFields == ''){
@@ -1553,10 +1556,35 @@ exports.deleteProduct = async(req,res) => {
 			}
 			}).then(async product => {
 				if (product != null) {
-					await product.update({ 
+					
+					const cartProduct= await shoppingCartModel.findAll({
+						where: {
+							product_id: product.id,
+							is_deleted: false
+						},
+					})
+
+					if(cartProduct.length > 0){
+						validation = false;
+						return res.send(setRes(resCode.BadRequest, false,'You can not delete this product because this product is in cart',null))
+					}
+
+					const wishlistProduct = await wishlistModel.findAll({
+						where: {
+							product_id: product.id,
+							is_deleted: false
+						},
+					});
+
+					if(wishlistProduct.length > 0){
+						validation = false;
+						return res.send(setRes(resCode.BadRequest, false,'You can not delete this product because this product is in wishlist',null))
+					}
+
+					await product.update({
 						is_deleted: true,
 					}).then(async deleteData => {
-						if(deleteData){
+						if (deleteData) {
 							var product_images = deleteData.image
 							var image_array = [];
 							if (product_images != null) {
@@ -1569,13 +1597,13 @@ exports.deleteProduct = async(req,res) => {
 								}
 							}
 						}
-					res.send(setRes(resCode.OK, true, "Product deleted successfully", null))
+						return res.send(setRes(resCode.OK, true, "Product deleted successfully", null))
 					});
-				}else{
-					res.send(setRes(resCode.ResourceNotFound, false, 'Product not found.',null))
+				} else {
+					return res.send(setRes(resCode.ResourceNotFound, false, 'Product not found.', null))
 				}
 			})
 	}else{
-		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
+		return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 }

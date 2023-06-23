@@ -31,7 +31,6 @@ function verifyToken(req, res, next) {
 					is_deleted: 0
 				}
 			}).then(async authenticateUser => {
-				console.log(authenticateUser)
 				if (authenticateUser != '' && authenticateUser != null){
 					if(authenticateUser.is_active == true){
 						return next();

@@ -315,7 +315,7 @@ exports.UpdateBusinessDetail = async (req, res) => {
 		if (mailId.match(emailFormat) == null) {
 			res.send(setRes(resCode.BadRequest, false, 'Please enter valid email format.', null));
 		}
-		else if ((data.phone.length > 12) || (data.phone.length < 7) || !(mobilenumber.test(data.phone))) {
+		else if ((data.phone.length > 15) || (data.phone.length < 7) || !(mobilenumber.test(data.phone))) {
 			res.send(setRes(resCode.BadRequest, false, 'Please enter valid mobile number.', null));
 		} else {
 			businessModel.findOne({
@@ -1026,6 +1026,7 @@ exports.CreateBusiness = async (req, res) => {
 	var data = req.body
 	req.file ? data.banner = `${req.file.key}` : '';
 	// return false
+	var validation = true;
 	var businessModel = models.business
 	var inquiryModel = models.business_inquiry
 	var Op = models.Op
@@ -1046,64 +1047,71 @@ exports.CreateBusiness = async (req, res) => {
 			res.send(setRes(resCode.BadRequest, false, 'Please enter valid mobile number.', null));
 		}
 		else {
-			await businessModel.findOne({
-				where: {
-					is_deleted: false,
-					[Op.or]: [
-						{ email: data.email },
-						{ phone: data.phone },
-						{ business_name: data.business_name }
-					]
-				}
-			}).then(async (validation) => {
-				if (validation == null) {
-					data.email = (data.email).toLowerCase();
-					data.is_active = false;
-					await businessModel.create(data).then(async business => {
+			var nameData = await businessModel.findOne({
+				where: { is_deleted: false, business_name: { [Op.eq]: data.business_name } }
+			});
 
-						if (data.id) {
+			if (nameData != null) {
+				validation =false;
+				return res.send(setRes(resCode.BadRequest, false, 'This business name is already associated with another account !', null))
+			}
 
-							await inquiryModel.update({
-								is_deleted: true
-							}, {
-								where: {
-									id: data.id
-								}
-							}).then(inquiry => {
-								if (inquiry > 0) {
-									res.send(setRes(resCode.OK, true, "Business created successfully, please wait your account is under verification", business))
-								}
-								else {
-									res.send(setRes(resCode.BadRequest, false, "Fail to remove Inquity.", null))
-								}
-							})
+			var emailData = await businessModel.findOne({
+				where: { is_deleted: false, email: { [Op.eq]: data.email } }
+			});
 
+			if (emailData != null) {
+				validation =false;
+				return res.send(setRes(resCode.BadRequest, false, 'This email is already associated with another account !', null))
+			}
+
+			var phoneData = await businessModel.findOne({
+				where: { is_deleted: false, phone: { [Op.eq]: data.phone } }
+			});
+
+			if(phoneData != null){
+				validation =false;
+				return res.send(setRes(resCode.BadRequest, false, 'This phone number is already associated with another account !', null))
+			}
+			console.log(validation)
+			if (validation) {
+				data.email = (data.email).toLowerCase();
+				data.is_active = false;
+				await businessModel.create(data).then(async business => {
+
+					if (data.id) {
+
+						await inquiryModel.update({
+							is_deleted: true
+						}, {
+							where: {
+								id: data.id
+							}
+						}).then(inquiry => {
+							if (inquiry > 0) {
+								res.send(setRes(resCode.OK, true, "Business created successfully, please wait your account is under verification", business))
+							}
+							else {
+								res.send(setRes(resCode.BadRequest, false, "Fail to remove Inquity.", null))
+							}
+						})
+
+					}
+					else {
+						if (business.banner != null) {
+							var business_banner = await awsConfig.getSignUrl(business.banner).then(function (res) {
+								business.banner = res
+							});
 						}
 						else {
-								if (business.banner != null) {
-									var business_banner = await awsConfig.getSignUrl(business.banner).then(function (res) {
-										business.banner = res
-									});
-								}
-								else {
-									business.banner = commonConfig.default_image;
-								}
-							res.send(setRes(resCode.OK, true, "Business created successfully, please wait your account is under verification.", business))
+							business.banner = commonConfig.default_image;
 						}
-					})
-				} else if (validation.phone == data.phone) {
-					res.send(setRes(resCode.BadRequest, false, 'This mobile number is already accociated with another account.', null));
-				}
-				else if ((validation.email).toLowerCase() == (data.email).toLowerCase()) {
-					res.send(setRes(resCode.BadRequest, false, 'This email is already accociated with another account.', null));
-				}else if ((validation.business_name) == (data.business_name)) {
-					res.send(setRes(resCode.BadRequest, false, 'This business name is already accociated with another account.', null));
-				}else {
-					res.send(setRes(resCode.InternalServer, false, 'Internal server error.', null));
-				}
-			}).catch(error => {
-				res.send(setRes(resCode.BadRequest, false, error.message, null));
-			})
+						res.send(setRes(resCode.OK, true, "Business created successfully, please wait your account is under verification.", business))
+					}
+				}).catch(error => {
+					res.send(setRes(resCode.BadRequest, false, error.message, null));
+				})
+			}
 		}
 	}
 	else {
@@ -1671,6 +1679,14 @@ exports.getUserProfile = async (req, res) => {
 				else {
 					business.profile_picture = commonConfig.default_user_image;
 				}
+				if (business.banner != null) {
+					var business_profile = await awsConfig.getSignUrl(business.banner).then(function (res) {
+						business.banner = res
+					});
+				}
+				else {
+					business.banner = commonConfig.default_image;
+				}
 				res.send(setRes(resCode.OK, true, "Get business user profile successfully.", business))
 			}
 			else {
@@ -1700,13 +1716,13 @@ exports.updateUserDetils = async (req, res) => {
 		if (requiredFields == '') {
 			var mobilenumber = /^[0-9]+$/;
 			if (!_.isEmpty(data.phone)) {
-				if ((data.phone.length > 12) || (data.phone.length < 7) || !(mobilenumber.test(data.phone))) {
+				if ((data.phone.length > 15) || (data.phone.length < 7) || !(mobilenumber.test(data.phone))) {
 					return res.send(setRes(resCode.BadRequest, false, 'Please enter valid phone number.', null));
 				}
 			}
 			if (!_.isEmpty(data.email)) {
 				if (mailId.match(emailFormat) == null) {
-					res.send(setRes(resCode.BadRequest, false, 'Please enter valid email format.', null));
+					return res.send(setRes(resCode.BadRequest, false, 'Please enter valid email format.', null));
 				}
 			}
 			businessModel.findOne({
@@ -1721,7 +1737,7 @@ exports.updateUserDetils = async (req, res) => {
 					}).then(async nameData => {
 						if (nameData != null) {
 							validation =false;
-							res.send(setRes(resCode.BadRequest, false, 'This business name is already associated with another account !', null))
+							return res.send(setRes(resCode.BadRequest, false, 'This business name is already associated with another account !', null))
 						}
 					})
 
@@ -1730,7 +1746,7 @@ exports.updateUserDetils = async (req, res) => {
 					}).then(async emailData => {
 						if (emailData != null) {
 							validation =false;
-							res.send(setRes(resCode.BadRequest, false, 'This email is already associated with another account !', null))
+							return res.send(setRes(resCode.BadRequest, false, 'This email is already associated with another account !', null))
 						}
 					})
 
@@ -1739,7 +1755,7 @@ exports.updateUserDetils = async (req, res) => {
 					}).then(async phoneData => {
 						if(phoneData != null){
 							validation =false;
-							res.send(setRes(resCode.BadRequest, false, 'This phone number is already associated with another account !', null))
+							return res.send(setRes(resCode.BadRequest, false, 'This phone number is already associated with another account !', null))
 						}
 					})
 					if (validation) {
@@ -1765,7 +1781,20 @@ exports.updateUserDetils = async (req, res) => {
 										else {
 											dataDetail.profile_picture = commonConfig.default_user_image;
 										}
-										res.send(setRes(resCode.OK, true, 'Business profile update successfully', dataDetail))
+										if (data.banner != null) {
+											const params = { Bucket: awsConfig.Bucket, Key: businessDetail.banner }; awsConfig.deleteImageAWS(params);
+											var updateData_image = await awsConfig.getSignUrl(data.banner).then(function (res) {
+												dataDetail.banner = res;
+											})
+										} else if (dataDetail.banner != null) {
+											var old_image = await awsConfig.getSignUrl(dataDetail.banner).then(function (res) {
+												dataDetail.banner = res;
+											})
+										}
+										else {
+											dataDetail.banner = commonConfig.default_image;
+										}
+										res.send(setRes(resCode.OK, true, 'Business user profile updated successfully.', dataDetail))
 									})
 								} else {
 									res.send(setRes(resCode.BadRequest, false, "Fail to update business.", null))

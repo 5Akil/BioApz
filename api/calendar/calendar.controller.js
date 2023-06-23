@@ -321,7 +321,7 @@ exports.GetAllEvents = async (req, res) => {
 		// 	}
 			var condition = {
 				offset:skip,
-			limit:limit,
+				limit:limit,
 				subQuery:false,
 				order: [
 					['createdAt', 'DESC']
@@ -329,9 +329,6 @@ exports.GetAllEvents = async (req, res) => {
 			}
 			condition.where = {business_id: data.business_id,is_deleted: false,}
 			condition.attributes = { exclude: ['createdAt','updatedAt','is_deleted','repeat','repeat_every','repeat_on']}
-
-			var startDate = (moment(data.from_date).format('YYYY-MM-DD'))
-			var endDate = (moment(data.to_date).format('YYYY-MM-DD'))
 
 			if(!_.isEmpty(data.from_date) && !_.isEmpty(data.to_date)){
 					condition.where = {...condition.where,...{start_date: {[Op.between]: [startDate, endDate]}}}

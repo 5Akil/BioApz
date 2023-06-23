@@ -121,7 +121,7 @@ Business.associate = function(models) {
     Business.hasOne(models.settings, {foreignKey: 'business_id'})
     Business.hasOne(models.cms_pages, {foreignKey: 'business_id'})
     Business.hasOne(models.faqs, {foreignKey: 'business_id'})
-
+    Business.hasMany(models.shopping_cart, {foreignKey: 'business_id'})
   };
   return Business;
 };

@@ -21,59 +21,76 @@ exports.AddToCart = async(req,res) => {
 	var data = req.body
 	var shoppingCartModel = models.shopping_cart
 	var orderDetailsModel = models.order_details
+	var businessModel = models.business
 	var userModel = models.user
+	var Op = models.Op
 	var productModel = models.products
 
-	var requiredFields = _.reject(['user_id', 'product_id', 'qty','price'], (o) => { return _.has(data, o)  })
+	var requiredFields = _.reject(['business_id','user_id', 'product_id', 'qty','price'], (o) => { return _.has(data, o)  })
 
 	if (requiredFields == ''){
-		userModel.findOne({
-			where:{
-				id:data.user_id,
-				is_deleted:false,
-				is_active:true
-			}
-		}).then(async user => {
-			if(_.isEmpty(user)){
-				res.send(setRes(resCode.ResourceNotFound, false, "User not found.",null))
-			}else{
-				productModel.findOne({
+		businessModel.findOne({
+			where: { id: data.business_id, is_deleted: false, is_active: true }
+		}).then(async business => {
+			if (_.isEmpty(business)) {
+				res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
+			} else {
+				userModel.findOne({
 					where:{
-						id:data.product_id,
-						is_deleted:false
+						id:data.user_id,
+						is_deleted:false,
+						is_active:true
 					}
-				}).then(async product => {
-					if(_.isEmpty(product)){
-						res.send(setRes(resCode.ResourceNotFound, false, "Product not found.",null))
+				}).then(async user => {
+					if(_.isEmpty(user)){
+						res.send(setRes(resCode.ResourceNotFound, false, "User not found.",null))
 					}else{
-						orderDetailsModel.findOne({where: {product_id:data.product_id, is_deleted: false}}).then(OrderData => {
-							if(OrderData == null){
-				
-								shoppingCartModel.findOne({where: {user_id: data.user_id,product_id : data.product_id, is_deleted: false}}).then(product => {
-									if(product == null){
-				
-										shoppingCartModel.create(data).then(function (cartData) {
-											if (cartData) {
-												res.send(setRes(resCode.OK, true, 'Product added into cart successfully.',cartData));
-											} else {
-												res.send(setRes(resCode.BadRequest, false, 'Fail to add into cart',null));
+						productModel.findOne({
+							where:{
+								id:data.product_id,
+								is_deleted:false
+							}
+						}).then(async product => {
+							if(_.isEmpty(product)){
+								res.send(setRes(resCode.ResourceNotFound, false, "Product not found.",null))
+							}else{
+								await orderDetailsModel.findOne({where: {business_id : data.business_id,product_id:data.product_id, is_deleted: false}}).then(async OrderData => {
+									if(OrderData == null){
+										await shoppingCartModel.findAll({where:{business_id : data.business_id,user_id:data.user_id}}).then(async productData => {
+											if (productData != null) {
+												await shoppingCartModel.findOne({where: {business_id : data.business_id,user_id: data.user_id,product_id : data.product_id, is_deleted: false}}).then(async product => {
+													if(product == null){
+														await shoppingCartModel.create(data).then(async function (cartData) {
+															if (cartData) {
+																var updatedData = await shoppingCartModel.update({
+																	is_deleted:true
+																},{
+																	where:{business_id : {[Op.ne] :data.business_id},user_id : {[Op.eq] :data.user_id}}
+																});
+																console.log(updatedData)
+																return res.send(setRes(resCode.OK, true, 'Product added into cart successfully.', cartData));
+															} else {
+																return res.send(setRes(resCode.BadRequest, false, 'Fail to add into cart', null));
+															}
+														});
+													}else{
+						
+												res.send(setRes(resCode.BadRequest, false, 'Product already into a cart...',null));
+											}
+												})
+												
 											}
 										});
-										
 									}else{
-				
-										res.send(setRes(resCode.BadRequest, false, 'Product already into a cart...',null));
+										res.send(setRes(resCode.ResourceNotFound,false,'Product not available..',null))
 									}
 								})
-							}else{
-				
-								res.send(setRes(resCode.ResourceNotFound,false,'Product not available..',null))
 							}
 						})
 					}
 				})
-			}
-		})
+			}})
+		
 		
 	}else{
 		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
