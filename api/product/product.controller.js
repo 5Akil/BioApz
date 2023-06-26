@@ -763,56 +763,65 @@ exports.RemoveProductImage = async(req, res) => {
 
 		if (data.image_name) {
 
-			productModel.findOne({
+			await productModel.findOne({
 				where: {
 					id: data.id,
 					is_deleted: false
 				}
-			}).then(productData => {
-
-				// console.log(JSON.parse(JSON.stringify(comboOffer)))
-				var replaceImages = _.filter(productData.image, (img) => {
-
-						return img != data.image_name
-					})
+			}).then(async productData => {
+				if(productData){
+				var replaceImages = await _.filter(productData.image, (img) => {
+					var typeArr = data.image_name;
+					 if(!typeArr.includes(img)){
+						return img;
+					 }
+					 return ''
+				})
 				var new_images = replaceImages.join(';')
-				productModel.update({
-					image: new_images
-				},{
-					where : {
-						id: data.id
-					}
-				}).then(updatedProduct => {
-					
-					if (updatedProduct > 0) {
+				var productremoveimages = productData.image
+					for(const data of productremoveimages){
 						const params = {
-						    Bucket: awsConfig.Bucket,
-						    Key: data.image_name
+							Bucket: awsConfig.Bucket,
+							Key: data
 						};
 						awsConfig.deleteImageAWS(params)
-
-						productModel.findOne({
-							where: {
-								id: data.id
-							}
-						}).then(async product => {
-							var product_images = product.image
-							var image_array = [];
-							for(const data of product_images){
-								const signurl = await awsConfig.getSignUrl(data).then(function(res){
-
-			  						image_array.push(res);
-								});
-							}
-							product.dataValues.product_images = image_array
-							res.send(setRes(resCode.OK, true, "Image remove successfully",product))
-						})
 					}
+			
+			
+					await productModel.update({
+						image: new_images
+					},{
+						where : {
+							id: data.id
+						}
+					}).then(async updatedProduct => {
+						
+						if (updatedProduct > 0) {
+							productModel.findOne({
+								where: {
+									id: data.id
+								}
+							}).then(async product => {
+								var product_images = product.image
+								var image_array = [];
+								for(const data of product_images){
+									const signurl = await awsConfig.getSignUrl(data).then(function(res){
+										image_array.push(res);
+									});
+								}
+								product.dataValues.product_images = image_array
+								res.send(setRes(resCode.OK, true, "Image remove successfully",product))
+							})
+						}
 
-				}).catch(error => {
-					res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
-				})
-
+					}).catch(error => {
+						console.log(error)
+						res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
+					})
+				}else{
+				res.send(setRes(resCode.ResourceNotFound, false, "Product not found.",null))
+					
+				}				
 			}).catch(error => {
 				res.send(setRes(resCode.BadRequest, false, "Fail to remove image from product.",null))
 			})
