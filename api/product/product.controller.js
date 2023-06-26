@@ -778,7 +778,7 @@ exports.RemoveProductImage = async(req, res) => {
 					 return ''
 				})
 				var new_images = replaceImages.join(';')
-				var productremoveimages = productData.image
+				var productremoveimages = data.image_name;
 					for(const data of productremoveimages){
 						const params = {
 							Bucket: awsConfig.Bucket,
@@ -823,6 +823,7 @@ exports.RemoveProductImage = async(req, res) => {
 					
 				}				
 			}).catch(error => {
+				console.log(error)
 				res.send(setRes(resCode.BadRequest, false, "Fail to remove image from product.",null))
 			})
 
