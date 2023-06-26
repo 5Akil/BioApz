@@ -155,7 +155,7 @@ exports.CreateEvent = async (req, res) => {
 }
 
 // Remove Single image from event
-exports.removeImagesFromCombo = (req, res) => {
+exports.removeImagesFromCombo = async (req, res) => {
 
 	var data = req.body;
 	var comboModel = models.combo_calendar
@@ -164,37 +164,46 @@ exports.removeImagesFromCombo = (req, res) => {
 
 	if (requiredFields == '') {
 
-		if (data.image) {
+		if (data.image_name) {
 
-			comboModel.findOne({
+			await comboModel.findOne({
 				where: {
 					id: data.combo_id,
 					is_deleted: false
 				}
-			}).then(comboOffer => {
+			}).then(async comboOffer => {
 
 				if(comboOffer){
 					// console.log(JSON.parse(JSON.stringify(comboOffer)))
-					var replaceImages = _.filter(comboOffer.images, (img) => {
-						return img != data.image
+					var replaceImages = await _.filter(comboOffer.images, (img) => {
+						var typeArr = data.image_name;
+						 if(!typeArr.includes(img)){
+							return img;
+						 }
+						 return ''
 					})
-					var images = replaceImages.join(';');
-					comboModel.update({
-						images: images
+
+					var new_images = replaceImages.join(';')
+					var productremoveimages = data.image_name;
+					for(const data of productremoveimages){
+						const params = {
+							Bucket: awsConfig.Bucket,
+							Key: data
+						};
+						awsConfig.deleteImageAWS(params)
+					}
+
+					await comboModel.update({
+						images: new_images
 					}, {
 						where: {
 							id: data.combo_id
 						}
-					}).then(updatedOffer => {
+					}).then(async updatedOffer => {
 
 						if (updatedOffer > 0) {
-							const params = {
-								Bucket: awsConfig.Bucket,
-								Key: data.image
-							};
-							awsConfig.deleteImageAWS(params)
 
-							comboModel.findOne({
+							await comboModel.findOne({
 								where: {
 									id: data.combo_id
 								}
