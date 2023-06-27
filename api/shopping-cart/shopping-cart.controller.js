@@ -116,8 +116,6 @@ exports.CartList = async(req,res) => {
 		var limit = parseInt(data.page_size)
 
 		var condition = {
-			offset:skip,
-			limit:limit,
 			include: [
 				{
 					model: productModel,
@@ -135,6 +133,10 @@ exports.CartList = async(req,res) => {
 					]
 				}
 			],
+		}
+		if(data.page_size != 0 && !_.isEmpty(data.page_size)){
+			condition.offset = skip,
+			condition.limit = limit
 		}
 		condition.where = {
 			user_id: data.user_id,
@@ -178,7 +180,7 @@ exports.CartList = async(req,res) => {
 
 		var totalRecords = null
 
-		shoppingCartModel.findAll(condition).then(async(CartList) => {
+		shoppingCartModel.findAll(condition2).then(async(CartList) => {
 			totalRecords = CartList.length
 		})
 
@@ -259,16 +261,17 @@ exports.CartList = async(req,res) => {
 				var next_page = null;
 				if(last_page > data.page){
 					var pageNumber = data.page;
-					next_page = pageNumber++;
+					pageNumber++;
+					next_page = pageNumber;
 				}
 				
 				var response = {};
-				response.totalPages = Math.ceil(cartData.length/limit);
+				response.totalPages = (data.page_size != 0) ? Math.ceil(cartData.length/limit) : 1;
 				response.currentPage = parseInt(data.page);
-				response.per_page = parseInt(data.page_size);
+				response.per_page =  (data.page_size != 0) ? parseInt(data.page_size) : cartData.length;
 				response.total_records = totalRecords;
 				response.data = cartData;
-				response.previousPage = previous_page;
+				response.previousPage = (previous_page == 0) ? null : previous_page ;
 				response.nextPage = next_page;
 				response.lastPage = last_page;
 				
