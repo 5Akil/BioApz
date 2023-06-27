@@ -107,6 +107,54 @@ exports.GetAllProducts = async (req, res) => {
 		var skip = data.page_size * (data.page - 1)
 		var limit = parseInt(data.page_size)
 		
+		var condition2 = {
+			subQuery:false,
+			order: [
+				['createdAt', 'DESC'	],
+			],
+			include:[
+				{
+					model:productRattingModel,
+					attributes: []
+				},
+				{
+			        model: categoryModel,
+			        as: 'product_categorys',
+			        attributes:['name']
+			    },
+			    {
+			        model: categoryModel,
+			        as: 'sub_category',
+			        attributes:['name']
+			    }
+			],
+			attributes: { include : [
+				[Sequelize.fn('AVG', Sequelize.col('product_ratings.ratings')),'rating']
+			]},
+			group: ['products.id'],
+		}
+		condition2.where = {business_id:data.business_id,category_id:data.category_id,is_deleted:false,}
+		condition2.attributes = { exclude:['is_deleted','createdAt','updatedAt']}
+		if(!_.isEmpty(data.price)){
+			if(data.price == 1){
+				condition2.order = Sequelize.literal('price DESC')
+			}else{
+				condition2.order = Sequelize.literal('price ASC')
+			}
+		}
+
+		if(data.search && data.search != null && !_.isEmpty(data.search)){
+			condition2.where = {[Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],}
+		} 
+
+		if(data.sub_category_id) {
+			condition2.where = {business_id:data.business_id,category_id:data.category_id,sub_category_id:data.sub_category_id}
+		}
+
+		await productModel.findAll(condition2).then(async(CartList) => {
+			totalRecords = CartList.length
+		})
+
 		var condition = {
 			subQuery:false,
 			order: [
@@ -156,10 +204,9 @@ exports.GetAllProducts = async (req, res) => {
 			condition.limit = limit
 		}
 		
-		productModel.findAll(condition).then(async(products) => {
+		await productModel.findAll(condition).then(async(products) => {
 			
 			if (products){
-				totalRecords = products.length
 				for(const data of products){
 					
 				  	var product_images = data.image
@@ -201,13 +248,14 @@ exports.GetAllProducts = async (req, res) => {
 				var next_page = null;
 				if(last_page > data.page){
 					var pageNumber = data.page;
-					next_page = pageNumber++;
+					pageNumber++
+					next_page = pageNumber;
 				}
 
 				var response = {};
-				response.totalPages = (data.page_size != 0) ? Math.ceil(products.length/limit) : 1;
+				response.totalPages = (data.page_size != 0) ? Math.ceil(totalRecords/limit) : 1;
 				response.currentPage = parseInt(data.page);
-				response.per_page =  (data.page_size != 0) ? parseInt(data.page_size) : products.length;
+				response.per_page =  (data.page_size != 0) ? parseInt(data.page_size) : totalRecords;
 				response.total_records = totalRecords;
 				response.data = products;
 				response.previousPage = (previous_page == 0) ? null : previous_page ;
@@ -940,7 +988,8 @@ exports.CategoryList = async(req, res) => {
 				var next_page = null;
 				if(last_page > data.page){
 					var pageNumber = data.page;
-					next_page = pageNumber++;
+					pageNumber++;
+					next_page = pageNumber;
 				}
 
 				var response = {};
@@ -1246,7 +1295,8 @@ exports.ProductTypeList = async(req, res) => {
 				var next_page = null;
 				if(last_page > data.page){
 					var pageNumber = data.page;
-					next_page = pageNumber++;
+					pageNumber++;
+					next_page = pageNumber;
 				}
 				
 				var response = {};
@@ -1556,7 +1606,9 @@ exports.deleteProduct = async(req,res) => {
 	var productModel = models.products
 	var shoppingCartModel = models.shopping_cart
 	var wishlistModel = models.wishlists
+	var orderDetailsModel = models.order_details
 	var requiredFields = _.reject(['id'], (o) => { return _.has(data, o)  })
+	var Op = models.Op
 
 	if (requiredFields == ''){
 		productModel.findOne({
@@ -1577,6 +1629,21 @@ exports.deleteProduct = async(req,res) => {
 					if(cartProduct.length > 0){
 						validation = false;
 						return res.send(setRes(resCode.BadRequest, false,'You can not delete this product because this product is in cart',null))
+					}
+
+					const orders = await orderDetailsModel.findAll({
+						where: {
+							product_id: product.id,
+							is_deleted: false,
+							order_status:{
+								[Op.ne]:3,
+							}
+						},
+					})
+
+					if(orders.length > 0){
+						validation = false;
+						return res.send(setRes(resCode.BadRequest, false,'You can not delete this product because this product is in orders',null))
 					}
 
 					const wishlistProduct = await wishlistModel.findAll({
