@@ -241,9 +241,9 @@ exports.wishlistData = async (req, res) => {
 				}
 				
 				var response = {};
-				response.totalPages = (query.page_size != 0) ? Math.ceil(wishlistData.length/limit) : 1;
+				response.totalPages = (query.page_size != 0) ? Math.ceil(totalRecords) : 1;
 				response.currentPage = parseInt(query.page);
-				response.per_page =  (query.page_size != 0) ? parseInt(query.page_size) : wishlistData.length;
+				response.per_page =  (query.page_size != 0) ? parseInt(query.page_size) : totalRecords;
 				response.total_records = totalRecords;
 				response.query = wishlistData;
 				response.previousPage = (previous_page == 0) ? null : previous_page ;

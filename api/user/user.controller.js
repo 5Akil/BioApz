@@ -1319,7 +1319,8 @@ exports.GetAllBusiness = async (req, res) => {
 					var next_page = null;
 					if(last_page > data.page){
 						var pageNumber = data.page;
-						next_page = pageNumber++;
+						pageNumber++;
+						next_page = pageNumber;
 					}
 					var response = {};
 					response.per_page =  (data.page_size != 0) ? parseInt(data.page_size) : totalRecords;

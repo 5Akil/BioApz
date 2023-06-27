@@ -366,7 +366,8 @@ exports.GetAllEvents = async (req, res) => {
 				var next_page = null;
 				if(last_page > data.page){
 					var pageNumber = data.page;
-					next_page = pageNumber++;
+					pageNumber++;
+					next_page = pageNumber;
 				}
 				
 				var response = {};
