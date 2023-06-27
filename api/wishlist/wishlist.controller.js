@@ -13,6 +13,7 @@ var mailConfig = require('../../config/mail_config')
 var awsConfig = require('../../config/aws_S3_config')
 var util = require('util')
 var notification = require('../../push_notification');
+var commonConfig = require('../../config/common_config')
 
 exports.AddToWishList = async(req, res) =>{
 
@@ -72,7 +73,7 @@ exports.AddToWishList = async(req, res) =>{
 exports.wishlistData = async (req, res) => {
 
 	var data = req.params
-	var query = req.query
+	var query = req.body
 	var wishlistModel = models.wishlists
 	var productCategoryModel = models.product_categorys
 	var productModel = models.products
@@ -131,8 +132,6 @@ exports.wishlistData = async (req, res) => {
 		})
 
 		var condition = {
-			offset:skip,
-			limit:limit,
 			include: [
 				{
 					model: productModel,
@@ -154,12 +153,17 @@ exports.wishlistData = async (req, res) => {
 				}
 			],
 		}
+
+		if(data.page_size != 0 && !_.isEmpty(data.page_size)){
+			condition.offset = skip,
+			condition.limit = limit
+		}
 		condition.where = {
 			user_id: data.id,
 			is_deleted: false
 		}
 		condition.attributes = {exclude: ['createdAt','updatedAt','is_deleted']}
-		wishlistModel.findAll(condition).then(async wishlistData => {
+		await wishlistModel.findAll(condition).then(async wishlistData => {
 	
 			if(wishlistData != null && wishlistData != ""){
 	
@@ -232,16 +236,17 @@ exports.wishlistData = async (req, res) => {
 				var next_page = null;
 				if(last_page > query.page){
 					var pageNumber = query.page;
-					next_page = pageNumber++;
+					pageNumber++;
+					next_page = pageNumber;
 				}
 				
 				var response = {};
-				response.totalPages = Math.ceil(wishlistData.length/limit);
+				response.totalPages = (query.page_size != 0) ? Math.ceil(wishlistData.length/limit) : 1;
 				response.currentPage = parseInt(query.page);
-				response.per_page = parseInt(query.page_size);
+				response.per_page =  (query.page_size != 0) ? parseInt(query.page_size) : wishlistData.length;
 				response.total_records = totalRecords;
-				response.data = wishlistData;
-				response.previousPage = previous_page;
+				response.query = wishlistData;
+				response.previousPage = (previous_page == 0) ? null : previous_page ;
 				response.nextPage = next_page;
 				response.lastPage = last_page;
 
