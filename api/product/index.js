@@ -78,5 +78,7 @@ router.delete('/sub-category/delete/:id',verifyToken,controller.removeProductTyp
 router.post('/add-product-ratings',verifyToken,controller.AddProductRattings)
 router.post('/get-product-ratings',verifyToken,controller.GetProductRattings)
 
+router.post('/report-customer-rating',verifyToken,controller.reportCustomerReview)
+
 router.get('/get-similar-products/:id',verifyToken,controller.simillarProducts)
 module.exports = router;
