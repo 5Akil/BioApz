@@ -1494,7 +1494,7 @@ exports.GetProductRattings = async(req,res)=>{
 
 	if(requiredFields == ""){
 
-		productRattingModel.findAll({
+		const condition =  {
 			where:{
 				product_id : data.product_id,
 				is_deleted : false
@@ -1506,6 +1506,17 @@ exports.GetProductRattings = async(req,res)=>{
 				['createdAt', 'DESC']
 			],
 			attributes: { exclude: ['is_deleted', 'updatedAt'] }
+		}
+
+		const skip = data.page_size * (data.page - 1)
+		const limit = parseInt(data.page_size)
+
+		const recordCounts = await productRattingModel.findAndCountAll({...condition, offset: skip, limit})
+		const totalRecords =  recordCounts?.count;
+		productRattingModel.findAll({
+			offset:skip,
+			limit:limit,
+			...condition
 		}).then(async ratingData => {
 
 			for(const data of ratingData){
@@ -1524,12 +1535,65 @@ exports.GetProductRattings = async(req,res)=>{
 				delete data.dataValues.user
 				delete data.dataValues.description
 			}
-			res.send(setRes(resCode.OK,true,'Get ratings successfully',ratingData))
+			const previous_page = (data.page - 1);
+			const last_page = Math.ceil(totalRecords / data.page_size);
+			let next_page = null;
+			if(last_page > data.page){
+				var pageNumber = data.page;
+				next_page = +(pageNumber) + 1;
+			}
+
+			const response = {};
+			response.totalPages = Math.ceil(totalRecords/limit);
+			response.currentPage = parseInt(data.page);
+			response.per_page = parseInt(data.page_size);
+			response.total_records = totalRecords;
+			response.data = ratingData;
+			response.previousPage = previous_page;
+			response.nextPage = next_page;
+			response.lastPage = last_page;
+
+			res.send(setRes(resCode.OK,true,'Get ratings successfully',response))
 		}).catch(error => {
 			res.send(setRes(resCode.BadRequest, false,'Fail to get ratings',null))
 		})
 	}else{
 		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))	
+	}
+}
+
+exports.reportCustomerReview = (req, res) => {
+	const data = req.body
+	const userEmail = req.userEmail;
+	const businessModel = models.business;
+	const productRattingModel = models.product_ratings
+	const requiredFields = _.reject(['product_rating_id','description'], (o) => { return _.has(data, o) })
+	if (requiredFields == "") {
+		businessModel.findOne({ email : userEmail }).then(user => {
+			if (user) {
+					productRattingModel.findOne({ where: { id: data.product_rating_id, is_deleted: false }, attributes: {exclude: ['createdAt', 'updatedAt']} }).then(productRating => {
+						if (productRating) {
+							productRattingModel.update({is_review_report:true, report_description: data.description }, {
+								where: {
+									id: data.product_rating_id,
+								}
+							}).then(UpdateData =>{
+								productRattingModel.findOne({ where: { id: data.product_rating_id, is_deleted: false }, attributes: {exclude: ['createdAt', 'updatedAt']} }).then(updatedproductRating => {
+									res.send(setRes(resCode.OK, true, "Review reported successfully.",updatedproductRating))
+								})
+							}).catch(error => {
+								res.send(setRes(resCode.InternalServer, false, "Fail to report Customer review.",null))
+							})
+						} else {
+							res.send(setRes(resCode.InternalServer, false, "Product review not found.",null))
+						}
+					});
+			} else {
+				res.send(setRes(resCode.BadRequest, false, 'Business User not exists ',null));
+			}
+		});
+	} else {
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null));
 	}
 }
 

@@ -16,7 +16,14 @@ module.exports = (sequelize, DataTypes) => {
     is_deleted: {
       type: DataTypes.BOOLEAN,
       defaultValue: false
-    }
+    },
+
+    is_review_report: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
+    },
+
+    report_description: DataTypes.TEXT,
   }, {
     // timestamps: false
   });

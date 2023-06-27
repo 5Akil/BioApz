@@ -23,6 +23,7 @@ module.exports = (sequelize, DataTypes) => {
   });
   Orders.associate = function(models) {
     // associations can be defined here
+    Orders.hasMany(models.order_details, {foreignKey: 'order_id'})
     Orders.belongsTo(models.user, {foreignKey: 'user_id'})
     Orders.belongsTo(models.business, {foreignKey: 'business_id'})
     
