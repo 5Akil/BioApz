@@ -266,9 +266,9 @@ exports.CartList = async(req,res) => {
 				}
 				
 				var response = {};
-				response.totalPages = (data.page_size != 0 || totalPages != 0) ? Math.ceil(totalRecords/limit) : 1;
+				response.totalPages = (data.page_size == 0) ? 1 : Math.ceil(totalRecords/limit);
 				response.currentPage = parseInt(data.page);
-				response.per_page =  (data.page_size != 0) ? parseInt(data.page_size) : totalRecords;
+				response.per_page =  (data.page_size != 0) ? parseInt(data.page_size) : cartData.length;
 				response.total_records = totalRecords;
 				response.data = cartData;
 				response.previousPage = (previous_page == 0) ? null : previous_page ;

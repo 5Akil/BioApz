@@ -162,7 +162,15 @@ exports.wishlistData = async (req, res) => {
 			user_id: data.id,
 			is_deleted: false
 		}
+
+		if(query.page_size != 0 && !_.isEmpty(query.page_size)){
+			condition.offset = skip,
+			condition.limit = limit
+		}
+
 		condition.attributes = {exclude: ['createdAt','updatedAt','is_deleted']}
+
+		console.log(condition);
 		await wishlistModel.findAll(condition).then(async wishlistData => {
 	
 			if(wishlistData != null && wishlistData != ""){
@@ -241,9 +249,9 @@ exports.wishlistData = async (req, res) => {
 				}
 				
 				var response = {};
-				response.totalPages = (query.page_size != 0) ? Math.ceil(totalRecords) : 1;
+				response.totalPages = (query.page_size == 0) ? 1 : Math.ceil(totalRecords/limit);
 				response.currentPage = parseInt(query.page);
-				response.per_page =  (query.page_size != 0) ? parseInt(query.page_size) : totalRecords;
+				response.per_page =  (query.page_size != 0) ? parseInt(query.page_size) : wishlistData.length;
 				response.total_records = totalRecords;
 				response.query = wishlistData;
 				response.previousPage = (previous_page == 0) ? null : previous_page ;
