@@ -1737,8 +1737,15 @@ exports.deleteProduct = async(req,res) => {
 									awsConfig.deleteImageAWS(params)
 								}
 							}
+							await productModel.findOne({
+								where: {
+									id: data.id,
+								}
+								}).then(async delProduct => {
+									return res.send(setRes(resCode.OK, true, "Product deleted successfully", delProduct))
+								})
 						}
-						return res.send(setRes(resCode.OK, true, "Product deleted successfully", null))
+
 					});
 				} else {
 					return res.send(setRes(resCode.ResourceNotFound, false, 'Product not found.', null))
