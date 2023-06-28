@@ -35,6 +35,10 @@ var controller = require('./coupones.controller')
 router.post('/create', verifyToken, controller.create)
 router.delete('/delete/:id', verifyToken,controller.delete)
 router.post('/update',verifyToken,controller.update)
+router.post('/user/apply',verifyToken,controller.applyCoupon)
+router.post('/user/list',verifyToken,controller.getUserCouponList);
+router.post('/business/list',verifyToken,controller.getBusinessCouponList);
+router.delete('/user/remove/:id',verifyToken,controller.removeUserCoupon)
 // Coupones Section END
 
 module.exports = router;

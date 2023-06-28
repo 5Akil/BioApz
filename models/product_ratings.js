@@ -23,7 +23,10 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: false
     },
 
-    report_description: DataTypes.TEXT,
+    report_description: {
+      type: DataTypes.TEXT,
+      defaultValue: ''
+    },
   }, {
     // timestamps: false
   });
