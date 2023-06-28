@@ -1029,6 +1029,7 @@ exports.CreateBusiness = async (req, res) => {
 	var validation = true;
 	var businessModel = models.business
 	var inquiryModel = models.business_inquiry
+	var categoryModel = models.business_categorys
 	var Op = models.Op
 	var requiredFields = _.reject(['business_name', 'person_name', 'phone', 'category_id', 'email', 'password', 'abn_no', 'address', 'description', 'account_name', 'account_number', 'latitude', 'longitude'], (o) => { return _.has(data, o) })
 
@@ -1047,6 +1048,15 @@ exports.CreateBusiness = async (req, res) => {
 			res.send(setRes(resCode.BadRequest, false, 'Please enter valid mobile number.', null));
 		}
 		else {
+			var categoryVal = await categoryModel.findOne({
+				where: { is_deleted: false }
+			});
+
+			if (categoryVal != null) {
+				validation =false;
+				return res.send(setRes(resCode.BadRequest, false, 'Category Not found !', null))
+			}
+
 			var nameData = await businessModel.findOne({
 				where: { is_deleted: false, business_name: { [Op.eq]: data.business_name } }
 			});
