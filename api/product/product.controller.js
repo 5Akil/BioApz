@@ -182,7 +182,7 @@ exports.GetAllProducts = async (req, res) => {
 			group: ['products.id'],
 		}
 		condition.where = {business_id:data.business_id,category_id:data.category_id,is_deleted:false,}
-		condition.attributes = { exclude:['is_deleted','createdAt','updatedAt']}
+		condition.attributes = { exclude:['createdAt','updatedAt']}
 		if(!_.isEmpty(data.price)){
 			if(data.price == 1){
 				condition.order = Sequelize.literal('price DESC')
@@ -203,7 +203,7 @@ exports.GetAllProducts = async (req, res) => {
 			condition.offset = skip,
 			condition.limit = limit
 		}
-		
+		console.log(condition);
 		await productModel.findAll(condition).then(async(products) => {
 			
 			if (products){

@@ -30,16 +30,16 @@ exports.create = async(req,res) =>{
 		var categoryModel = models.product_categorys
 		var productModel = models.products
 
-		let arrayFields = ['business_id','title','coupon_type','order_value','validity_for','expire_at','description'];
+		let arrayFields = ['business_id','title','coupon_type','coupon_value','validity_for','expire_at','description'];
 		const result =  data.coupon_type == 0 ? (arrayFields.push('product_category_id','product_id')) : (arrayFields.push('value_type'));
-		var valueType = (!(_.isEmpty(data.value_type)) && (data.value_type == 0)) ? ((data.order_value >= Math.min(1,100)) && (data.order_value <= Math.max(1,100))) : null
+		var valueType = (!(_.isEmpty(data.value_type)) && (data.value_type == 0)) ? ((data.coupon_value >= Math.min(1,100)) && (data.coupon_value <= Math.max(1,100))) : null
 
 		var requiredFields = _.reject(arrayFields, (o) => { return _.has(data, o)  })
 		
 		if (requiredFields.length == 0) {
 			var currentDate = (moment().format('YYYY-MM-DD') == moment(data.expire_at).format('YYYY-MM-DD'))
 			var pastDate = moment(data.expire_at, 'YYYY-MM-DD').isBefore(moment());
-			if (!(Number.isInteger(Number(data.order_value)))) {
+			if (!(Number.isInteger(Number(data.coupon_value)))) {
 				return res.send(setRes(resCode.BadRequest, false, "Amount field invalid.!", null))
 			}
 			if (currentDate || pastDate) {
@@ -99,7 +99,7 @@ exports.create = async(req,res) =>{
 										// 	product_category_id:(!(_.isEmpty(data.product_category_id) && data.product_category_id == null)) && data.coupon_type == 0 ? data.product_category_id : null,
 										// 	product_id:(!(_.isEmpty(data.product_id) && data.product_id == null)) && (!_.isEmpty(data.product_category_id)) && data.coupon_type == 0  ? data.product_id : null,
 										// 	value_type:!(_.isEmpty(data.value_type) && data.value_type == null) && data.coupon_type == 1 && data.coupon_type != null ? data.value_type : null,
-										// 	order_value:(!(_.isEmpty(data.order_value) && data.order_value == null)) ? data.order_value : null,
+										// 	coupon_value:(!(_.isEmpty(data.coupon_value) && data.coupon_value == null)) ? data.coupon_value : null,
 										// 	validity_for:!(_.isEmpty(data.validity_for) && data.validity_for == null) ? data.validity_for : null,
 										// 	expire_at:!(_.isEmpty(data.expire_at) && data.expire_at == null) ? data.expire_at : null,
 										// 	description:!(_.isEmpty(data.description) && data.description == null) ? data.description : null
@@ -178,16 +178,16 @@ exports.update = async (req, res) => {
 		var couponeModel = models.coupones
 		var Op = models.Op;
 		var validation = true;
-		let arrayFields = ['id', 'title', 'coupon_type', 'order_value', 'validity_for', 'expire_at', 'description'];
+		let arrayFields = ['id', 'title', 'coupon_type', 'coupon_value', 'validity_for', 'expire_at', 'description'];
 		// const result = data.coupon_type == 0 ? (arrayFields.push('product_category_id', 'product_id')) : (arrayFields.push('value_type'));
-		var valueType = (!(_.isEmpty(data.value_type)) && (data.value_type == 0)) ? ((data.order_value >= Math.min(1, 100)) && (data.order_value <= Math.max(1, 100))) : null
+		var valueType = (!(_.isEmpty(data.value_type)) && (data.value_type == 0)) ? ((data.coupon_value >= Math.min(1, 100)) && (data.coupon_value <= Math.max(1, 100))) : null
 
 		var requiredFields = _.reject(arrayFields, (o) => { return _.has(data, o) })
 
 		if (requiredFields.length == 0) {
 			var currentDate = (moment().format('YYYY-MM-DD') == moment(data.expire_at).format('YYYY-MM-DD'))
 			var pastDate = moment(data.expire_at, 'YYYY-MM-DD').isBefore(moment());
-			if (!(Number.isInteger(Number(data.order_value)))) {
+			if (!(Number.isInteger(Number(data.coupon_value)))) {
 				validation = false;
 				return res.send(setRes(resCode.BadRequest, false, "Amount field invalid.!", null))
 			}
@@ -217,7 +217,7 @@ exports.update = async (req, res) => {
 								// 	product_category_id: (!(_.isEmpty(data.product_category_id) && data.product_category_id == null)) && data.coupon_type == 0 ? data.product_category_id : null,
 								// 	product_id: (!(_.isEmpty(data.product_id) && data.product_id == null)) && (!_.isEmpty(data.product_category_id)) && data.coupon_type == 0 ? data.product_id : null,
 								// 	value_type: !(_.isEmpty(data.value_type) && data.value_type == null) && data.coupon_type == 1 && data.coupon_type != null ? data.value_type : null,
-								// 	order_value: (!(_.isEmpty(data.order_value) && data.order_value == null)) ? data.order_value : null,
+								// 	coupon_value: (!(_.isEmpty(data.coupon_value) && data.coupon_value == null)) ? data.coupon_value : null,
 								// 	validity_for: !(_.isEmpty(data.validity_for) && data.validity_for == null) ? data.validity_for : null,
 								// 	expire_at: !(_.isEmpty(data.expire_at) && data.expire_at == null) ? data.expire_at : null,
 								// 	description: !(_.isEmpty(data.description) && data.description == null) ? data.description : null

@@ -23,7 +23,7 @@ module.exports = (sequelize, DataTypes) => {
     value_type: {
       type: DataTypes.BOOLEAN,
     },
-    order_value: DataTypes.DECIMAL,
+    coupon_value: DataTypes.DECIMAL,
     expire_at: DataTypes.DATE,
     description: DataTypes.STRING,
     validity_for: DataTypes.INTEGER,
