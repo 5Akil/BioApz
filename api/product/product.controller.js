@@ -133,8 +133,8 @@ exports.GetAllProducts = async (req, res) => {
 			]},
 			group: ['products.id'],
 		}
-		condition2.where = {business_id:data.business_id,category_id:data.category_id,is_deleted:false,}
-		condition2.attributes = { exclude:['is_deleted','createdAt','updatedAt']}
+		condition2.where = {...condition2.where,...{business_id:data.business_id,category_id:data.category_id,is_deleted:false,}}
+		condition2.attributes = { exclude:['createdAt','updatedAt']}
 		if(!_.isEmpty(data.price)){
 			if(data.price == 1){
 				condition2.order = Sequelize.literal('price DESC')
@@ -144,11 +144,11 @@ exports.GetAllProducts = async (req, res) => {
 		}
 
 		if(data.search && data.search != null && !_.isEmpty(data.search)){
-			condition2.where = {[Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],}
+			condition2.where = {...condition2.where,...{[Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],}}
 		} 
 
 		if(data.sub_category_id) {
-			condition2.where = {business_id:data.business_id,category_id:data.category_id,sub_category_id:data.sub_category_id}
+			condition2.where = {...condition2.where,...{business_id:data.business_id,category_id:data.category_id,sub_category_id:data.sub_category_id}}
 		}
 
 		await productModel.findAll(condition2).then(async(CartList) => {
@@ -181,7 +181,7 @@ exports.GetAllProducts = async (req, res) => {
 			]},
 			group: ['products.id'],
 		}
-		condition.where = {business_id:data.business_id,category_id:data.category_id,is_deleted:false,}
+		condition.where = {...condition.where,...{business_id:data.business_id,category_id:data.category_id,is_deleted:false,}}
 		condition.attributes = { exclude:['createdAt','updatedAt']}
 		if(!_.isEmpty(data.price)){
 			if(data.price == 1){
@@ -192,11 +192,11 @@ exports.GetAllProducts = async (req, res) => {
 		}
 
 		if(data.search && data.search != null && !_.isEmpty(data.search)){
-			condition.where = {[Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],}
+			condition.where = {...condition.where,...{[Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],}}
 		} 
 
 		if(data.sub_category_id) {
-			condition.where = {business_id:data.business_id,category_id:data.category_id,sub_category_id:data.sub_category_id}
+			condition.where = {...condition.where,...{business_id:data.business_id,category_id:data.category_id,sub_category_id:data.sub_category_id}}
 		}
 
 		if(data.page_size != 0 && !_.isEmpty(data.page_size)){
@@ -204,6 +204,7 @@ exports.GetAllProducts = async (req, res) => {
 			condition.limit = limit
 		}
 		console.log(condition);
+	
 		await productModel.findAll(condition).then(async(products) => {
 			
 			if (products){
@@ -888,6 +889,7 @@ exports.CreateCategory = async (req, res) => {
 	req.file ? data.image = `${req.file.key}`: '';
 	var productCategoryModel = models.product_categorys
 	var businessModel = models.business
+	var validation = true;
 
 	var requiredFields = _.reject(['business_id','name','image','parent_id'], (o) => { return _.has(data, o)  })
 
@@ -902,22 +904,48 @@ exports.CreateCategory = async (req, res) => {
 			if(_.isEmpty(business)){
 				res.send(setRes(resCode.ResourceNotFound, false, "Business not found.",null))
 			}else{
-				productCategoryModel.create(data).then(async categoryData => {
-
-					if(categoryData){
-						if(data.image != null){
-		
-							var image = await awsConfig.getSignUrl(data.image).then(function(res){
-								data.image = res
-							})
-						}else{
-							data.image = commonConfig.default_image
-						}
-						res.send(setRes(resCode.OK,true,"Category added successfully",data))
-					}else{
-						res.send(setRes(resCode.InternalServer,false,"Internal server error",null))
+				if(data.parent_id == 0 && !_.isEmpty(data.parent_id)){
+					const existCategory = await productCategoryModel.findOne({
+						where:{is_deleted:false,business_id:data.business_id,parent_id:{
+							[models.Op.eq]:0
+						}}
+					});
+					if(existCategory){
+						validation = false;
+						return res.send(setRes(resCode.BadRequest, false, 'This product category name is already exists with this business!',null))
 					}
-				})
+				}
+				
+				if(data.parent_id != 0 && !_.isEmpty(data.parent_id)){
+					const existSubCategory = await productCategoryModel.findOne({
+						where:{is_deleted:false,business_id:data.business_id,parent_id:{
+							[models.Op.ne]:0
+						}}
+					});
+					if(existSubCategory){
+						validation = false;
+						return res.send(setRes(resCode.BadRequest, false, 'This product type name is already exists with this category!',null))
+					}
+				}
+
+				if(validation){
+					await productCategoryModel.create(data).then(async categoryData => {
+
+						if(categoryData){
+							if(data.image != null){
+			
+								var image = await awsConfig.getSignUrl(data.image).then(function(res){
+									data.image = res
+								})
+							}else{
+								data.image = commonConfig.default_image
+							}
+							res.send(setRes(resCode.OK,true,"Category added successfully",data))
+						}else{
+							res.send(setRes(resCode.InternalServer,false,"Internal server error",null))
+						}
+					})
+				}
 			}})
 		
 	}else {
@@ -1052,11 +1080,49 @@ exports.UpdateCategory = async(req, res) => {
 
 	if(data.id){
 
-		productCategoryModel.findOne({
+		if(data.parent_id == 0 && !_.isEmpty(data.parent_id)){
+			const existCategory = await productCategoryModel.findOne({
+				where:{
+					is_deleted:false,
+					business_id:data.business_id,
+					parent_id:{
+						[models.Op.eq]:0
+					},
+					id:{
+						[models.Op.ne]:data.id
+					}
+				}
+			});
+			if(existCategory){
+				validation = false;
+				return res.send(setRes(resCode.BadRequest, false, 'This product category name is already exists with this business!',null))
+			}
+		}
+		
+		if(data.parent_id != 0 && !_.isEmpty(data.parent_id)){
+			const existSubCategory = await productCategoryModel.findOne({
+				where:{
+					is_deleted:false,
+					business_id:data.business_id,
+					parent_id:{
+						[models.Op.ne]:0
+					},
+					id:{
+						[models.Op.ne]:data.id
+					}
+				}
+			});
+			if(existSubCategory){
+				validation = false;
+				return res.send(setRes(resCode.BadRequest, false, 'This product type name is already exists with this category!',null))
+			}
+		}
+
+		await productCategoryModel.findOne({
 			where:{
 				id:data.id,is_deleted:false,is_enable:true
 			}
-		}).then(categoryData => {
+		}).then(async categoryData => {
 			if(categoryData != null){
 
 				if(data.image){
@@ -1067,15 +1133,15 @@ exports.UpdateCategory = async(req, res) => {
 								};
 					awsConfig.deleteImageAWS(params)
 				}
-				productCategoryModel.update(data,{
+				await productCategoryModel.update(data,{
 					where: {
 						id: data.id,
 						is_deleted: false,
 						is_enable: true
 					}
-				}).then(updateData => {
+				}).then(async updateData => {
 					if(updateData == 1){
-						productCategoryModel.findOne({
+						await productCategoryModel.findOne({
 							where:{id: data.id,
 							is_deleted: false,
 							is_enable: true
