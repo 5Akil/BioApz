@@ -277,6 +277,15 @@ exports.Login = async (req, res) => {
 									}else{
 										business.banner = commonConfig.default_image;
 									}
+									if(business.profile_picture != null){
+
+										var profile_picture = await awsConfig.getSignUrl(user.profile_picture).then(function(res){
+											business.profile_picture = res
+										})
+									}
+									else{
+										business.profile_picture = commonConfig.default_user_image;
+									}
 									// if(business.template != null){
 
 									// 	if(business.template.template_url != null){

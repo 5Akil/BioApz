@@ -949,33 +949,33 @@ exports.CategoryList = async(req, res) => {
 		order: [
 			['createdAt', 'DESC']
 		]}
+		if(data.page_size != 0 && !_.isEmpty(data.page_size)){
+			condition.offset = skip,
+			condition.limit = limit
+		}
+
+		var condition2 = {where:{
+			business_id:data.business_id,
+			is_deleted: false,
+			is_enable: true,
+			parent_id:0
+		},
+		order: [
+			['createdAt', 'DESC']
+		]}
 
 		var totalRecords = null
 
-		productCategoryModel.findAll(condition).then(async(categoriesList) => {
-			totalRecords = categoriesList.length
+		productCategoryModel.findAll(condition2).then(async(CartList) => {
+			totalRecords = CartList.length
 		})
-		productCategoryModel.findAll({
-			where:{
-				business_id:data.business_id,
-				is_deleted: false,
-				is_enable: true,
-				parent_id:0
-			},
-			offset:skip,
-			limit:limit,
-			order: [
-				['createdAt', 'DESC']
-			]
-		}).then(async categoryData => {
-			if (categoryData != '' && categoryData != null ){
+		productCategoryModel.findAll(condition).then(async categoryData => {
+			if (categoryData){
 				// Update Sign URL
 				for(const data of categoryData){
 
 					if(data.image != null){
-
 					  	const signurl = await awsConfig.getSignUrl(data.image).then(function(res){
-
 					  		data.image = res;		  
 					  	});
 					  }else{
@@ -991,20 +991,18 @@ exports.CategoryList = async(req, res) => {
 					pageNumber++;
 					next_page = pageNumber;
 				}
-
+				
 				var response = {};
-				response.totalPages = Math.ceil(categoryData.length/limit);
+				response.totalPages = (data.page_size != 0) ? Math.ceil(totalRecords/limit) : 1;
 				response.currentPage = parseInt(data.page);
-				response.per_page = parseInt(data.page_size);
+				response.per_page =  (data.page_size != 0) ? parseInt(data.page_size) : totalRecords;
 				response.total_records = totalRecords;
 				response.data = categoryData;
-				response.previousPage = previous_page;
+				response.previousPage = (previous_page == 0) ? null : previous_page ;
 				response.nextPage = next_page;
 				response.lastPage = last_page;
 
 				res.send(setRes(resCode.OK, true, "Get category detail successfully.",response))
-			}else{
-				res.send(setRes(resCode.ResourceNotFound, false, "Category not found.",null))
 			}
 				
 		}).catch(error => {
@@ -1229,8 +1227,6 @@ exports.ProductTypeList = async(req, res) => {
 		var limit = parseInt(data.page_size)
 
 		var condition = {
-			offset:skip,
-			limit:limit,
 			subQuery:false,
 			order: [
 				['createdAt', 'DESC']
@@ -1247,6 +1243,10 @@ exports.ProductTypeList = async(req, res) => {
 		}
 		if(data.search && data.search != null){
 			condition.where = {[Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],}
+		}
+		if(data.page_size != 0 && !_.isEmpty(data.page_size)){
+			condition.offset = skip,
+			condition.limit = limit
 		}
 
 		var condition2 = {
