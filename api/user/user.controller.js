@@ -279,7 +279,7 @@ exports.Login = async (req, res) => {
 									}
 									if(business.profile_picture != null){
 
-										var profile_picture = await awsConfig.getSignUrl(user.profile_picture).then(function(res){
+										var profile_picture = await awsConfig.getSignUrl(business.profile_picture).then(function(res){
 											business.profile_picture = res
 										})
 									}
