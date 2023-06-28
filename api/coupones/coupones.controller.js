@@ -248,4 +248,319 @@ exports.update = async (req, res) => {
 		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
 	}
 }
+
+exports.applyCoupon = async (req, res) => {
+	try {
+		const data = req.body;
+		const productModel = models.products;
+		const userModel = models.user;
+		const couponeModel = models.coupones
+		const userCouponModel = models.user_coupons;
+
+		const userEmail = req.userEmail;
+		const arrayFields = ['coupon_code', 'coupon_id', 'product_id'];
+		const requiredFields = _.reject(arrayFields, (o) => { return _.has(data, o) })
+
+		if (requiredFields.length == 0) {
+			// check user is active and not deleted
+			const userDetails = await userModel.findOne({
+				where: {
+					email: userEmail
+				}
+			})
+			if (!userDetails || _.isEmpty(userDetails) || _.isUndefined(userDetails)) {
+				return res.send(setRes(resCode.ResourceNotFound, false, 'User not found', null))
+			}
+			// get product details
+			const productDetails = await productModel.findOne({
+				where: {
+					id: data.product_id,
+					is_deleted: false
+				}
+			})
+			if (!productDetails || _.isEmpty(productDetails) || _.isUndefined(productDetails)){
+				return res.send(setRes(resCode.ResourceNotFound, false, 'Product not found', null))
+			}
+
+			// get coupon details if active and exists
+			const couponDetails = await couponeModel.findOne({
+				where: {
+					id: data.coupon_id,
+					isDeleted: false,
+					status: 1
+				}
+			})
+
+			if (!couponDetails || _.isEmpty(couponDetails) || _.isUndefined(couponDetails)){
+				return res.send(setRes(resCode.ResourceNotFound, false, 'Coupone not found', null))
+			}
+
+
+			// check if user has already applied coupon
+			const appliedCoupon = await userCouponModel.findOne({
+				where: {
+					user_id: userDetails.id,
+					coupon_id: couponDetails.id,
+					product_id: productDetails.id,
+					is_deleted: false
+				}
+			})
+			if (appliedCoupon && !_.isEmpty(appliedCoupon)) {
+				return res.send(setRes(resCode.ResourceNotFound, false, 'Coupone is already applied!', null))
+			}
+
+			// If coupon is Free product
+			if (couponDetails.coupon_type === false) {
+				// check free product coupon is applied for product
+				if (couponDetails.product_id && couponDetails?.product_id?.split(',')?.includes(`${productDetails.id}`)) {
+					// apply coupon for user
+					const userCouponDetail = await userCouponModel.create({
+						coupon_id: data.coupon_id,
+						user_id: userDetails.id,
+						product_id: productDetails.id,
+						order_id: productDetails.id
+					});
+					if (userCouponDetail) {
+						const discountObj = {
+							discountValue: productDetails.price,
+							user_coupon_id: userCouponDetail.id
+						}
+						res.send(setRes(resCode.OK, true, 'Coupon applied successfully!', discountObj))
+					} else {
+						res.send(setRes(resCode.BadRequest, false, 'Failed to apply coupon', null))
+					}
+
+				} else {
+					res.send(setRes(resCode.BadRequest, false, 'Coupon is not applicable for this product', null))
+				}
+			} 
+			// If coupon is Discount coupon
+			else {
+				
+					// apply coupon for user
+					const userCouponDetail = await userCouponModel.create({
+						coupon_id: data.coupon_id,
+						user_id: userDetails.id,
+						product_id: productDetails.id,
+						order_id: productDetails.id
+					});
+
+					if(userCouponDetail) {
+						const discountObj = {
+							discountValue: 0,
+							user_coupon_id: userCouponDetail.id
+						}
+						if (couponDetails.value_type === true) {
+							// flat amount discount
+							if (couponDetails.coupon_value > productDetails.price) {
+								discountObj.discountValue = productDetails.price;
+							} else {
+								discountObj.discountValue = Number(couponDetails.coupon_value);
+							}
+						} else {
+							// percentage discount calculation
+							const discount = Math.ceil((productDetails.price * couponDetails.coupon_value)/100)
+							discountObj.discountValue = discount;
+						}
+						res.send(setRes(resCode.OK, true, 'Coupon applied successfully!', discountObj))
+					}else {
+						res.send(setRes(resCode.BadRequest, false, 'Failed to apply coupon', null))
+					}
+			}
+		} else {
+			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
+		}
+	} catch (error) {
+		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
+	}
+}
+
+exports.getUserCouponList =  async (req, res) => {
+	try {
+		const data = req.body;
+		const arrayFields = ['page', 'business_id', 'page_size'];
+		const requiredFields = _.reject(arrayFields, (o) => { return _.has(data, o); })
+		const couponeModel = models.coupones;
+
+		const skip = data.page_size * (data.page - 1)
+		const limit = parseInt(data.page_size)
+		if (requiredFields.length == 0) {
+			if(data.page === '' || parseInt(data.page) < 0 || parseInt(data.page) === 0) {
+				return 	res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1",null))
+			}
+			if (data.page_size === ''){
+				return res.send(setRes(resCode.BadRequest, false, "invalid page size",null))
+			}
+			if (data.business_id === ''){
+				return res.send(setRes(resCode.BadRequest, false, "invalid business_id",null))
+			}
+
+			const getCouponList = await couponeModel.findAndCountAll({
+				offset: skip,
+				limit: limit,
+				attributes: { exclude: ['status', 'isDeleted', 'createdAt', 'updatedAt', 'deleted_at' ] },
+				where: {
+					business_id: data.business_id,
+					isDeleted: false,
+					status: 1,
+				}
+			});
+
+			const getCouponListData = getCouponList?.rows;
+			const totalRecords = getCouponList?.count;
+			const previous_page = (data.page - 1);
+			const last_page = Math.ceil(totalRecords / data.page_size);
+			let next_page = null;
+			if(last_page > data.page){
+				let pageNumber = data.page;
+				next_page = parseInt(pageNumber) + 1;
+			}
+
+			const response = {};
+			response.totalPages = Math.ceil(totalRecords/limit);
+			response.currentPage = parseInt(data.page);
+			response.per_page = parseInt(data.page_size);
+			response.total_records = totalRecords;
+			response.data = getCouponListData;
+			response.previousPage = previous_page;
+			response.nextPage = next_page;
+			response.lastPage = last_page;
+
+			res.send(setRes(resCode.OK,true,'Get Coupons successfully',response))
+
+		} else {
+			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
+		}
+	} catch (error) {
+		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
+	}
+}
+
+
+exports.getBusinessCouponList =  async (req, res) => {
+	try {
+		const data = req.body;
+		const arrayFields = ['page', 'page_size'];
+		const requiredFields = _.reject(arrayFields, (o) => { return _.has(data, o); })
+		const couponeModel = models.coupones;
+		const businessModel = models.business
+		const userEmail = req.userEmail;
+
+		const skip = data.page_size * (data.page - 1)
+		const limit = parseInt(data.page_size)
+		if (requiredFields.length == 0) {
+			if(data.page === '' || parseInt(data.page) < 0 || parseInt(data.page) === 0) {
+				return 	res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1",null))
+			}
+			if (data.page_size === ''){
+				return res.send(setRes(resCode.BadRequest, false, "invalid page size",null))
+			}
+			if (data.business_id === ''){
+				return res.send(setRes(resCode.BadRequest, false, "invalid business id",null))
+			}
+
+			const businessDetail = await businessModel.findOne({
+				where: { email: userEmail, is_deleted: false, is_active: true }
+			});
+			if (businessDetail) {
+				const getCouponList = await couponeModel.findAndCountAll({
+					offset: skip,
+					limit: limit,
+					attributes: { exclude: ['status', 'isDeleted', 'createdAt', 'updatedAt', 'deleted_at' ] },
+					where: {
+						business_id: businessDetail.id,
+						isDeleted: false,
+						status: 1,
+					}
+				});
+	
+				const getCouponListData = getCouponList?.rows;
+				const totalRecords = getCouponList?.count;
+				const previous_page = (data.page - 1);
+				const last_page = Math.ceil(totalRecords / data.page_size);
+				let next_page = null;
+				if(last_page > data.page){
+					let pageNumber = data.page;
+					next_page = +(pageNumber) + 1;
+				}
+	
+				const response = {};
+				response.totalPages = Math.ceil(totalRecords/limit);
+				response.currentPage = parseInt(data.page);
+				response.per_page = parseInt(data.page_size);
+				response.total_records = totalRecords;
+				response.data = getCouponListData;
+				response.previousPage = previous_page;
+				response.nextPage = next_page;
+				response.lastPage = last_page;
+	
+				res.send(setRes(resCode.OK,true,'Get Coupons successfully',response))
+			} else {
+				return res.send(setRes(resCode.ResourceNotFound, false, "Business user not found",null))
+			}
+
+		} else {
+			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
+		}
+	} catch (error) {
+		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
+	}
+}
+
+
+exports.removeUserCoupon = async (req, res) => {
+	try {
+		const data = req.params
+		const userModel = models.user;
+		const userCouponModel = models.user_coupons;
+		const userEmail = req.userEmail;
+
+		const requiredFields = _.reject(['id'], (o) => { return _.has(data, o)  })
+		if(requiredFields == ""){
+			const userDetails = await userModel.findOne({
+				where: {
+					email: userEmail,
+					is_deleted:  false,
+					is_active: true
+				}
+			});
+			if (userDetails) {
+				const userCouponDetails = await userCouponModel.findOne(
+					{where: {id: data.id,is_deleted: false,deleted_at:null}
+				});
+				if (userCouponDetails) {
+					const markDelete = await userCouponModel.update({
+						is_deleted: true,
+					},
+					{
+						where: {
+							id: data.id
+						}
+					})
+					if(markDelete){
+						const deleted = await userCouponModel.destroy({
+							where: {
+								id: data.id
+							}
+						});
+						const removedCouponDetails = await userCouponModel.findOne(
+							{where: {id: data.id}
+						});
+						res.send(setRes(resCode.OK, true, "Coupones removed successfully", removedCouponDetails))
+					} else {
+						res.send(setRes(resCode.BadRequest, false, "Coupon not found", null))	
+					}
+				} else {
+					res.send(setRes(resCode.ResourceNotFound, false, "Coupon not found", null))
+				}
+			} else {
+				res.send(setRes(resCode.ResourceNotFound, false, "User not found", null))
+			}
+		}else{
+			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
+		}
+	} catch (error) {
+		res.send(setRes(resCode.InternalServer, false, "Something went wrong!", null))
+	}
+}
 // Update Reward coupones START
