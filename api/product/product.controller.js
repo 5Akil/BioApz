@@ -904,6 +904,18 @@ exports.CreateCategory = async (req, res) => {
 			if(_.isEmpty(business)){
 				res.send(setRes(resCode.ResourceNotFound, false, "Business not found.",null))
 			}else{
+				if((data.parent_id != 0 && !_.isEmpty(data.parent_id))){
+					const parentCategory = await productCategoryModel.findOne({
+						where:{
+							id:data.parent_id,is_deleted:false,
+						}
+					});
+					if(!parentCategory){
+						validation = false;
+						return res.send(setRes(resCode.BadRequest, false, 'Product parent category not found!',null))
+					}
+				}
+
 				if(data.parent_id == 0 && !_.isEmpty(data.parent_id)){
 					const existCategory = await productCategoryModel.findOne({
 						where:{is_deleted:false,business_id:data.business_id,parent_id:{
@@ -1085,6 +1097,18 @@ exports.UpdateCategory = async(req, res) => {
 	var productCategoryModel = models.product_categorys
 
 	if(data.id){
+
+		if((data.parent_id != 0 && !_.isEmpty(data.parent_id))){
+			const parentCategory = await productCategoryModel.findOne({
+				where:{
+					id:data.parent_id,is_deleted:false,
+				}
+			});
+			if(!parentCategory){
+				validation = false;
+				return res.send(setRes(resCode.BadRequest, false, 'Product parent category not found!',null))
+			}
+		}
 
 		if(data.parent_id == 0 && !_.isEmpty(data.parent_id)){
 			const existCategory = await productCategoryModel.findOne({
