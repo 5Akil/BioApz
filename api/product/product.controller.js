@@ -399,6 +399,14 @@ exports.createProduct = async(req,res) => {
 		var Op = models.Op
 		var requiredFields = _.reject(['business_id','category_id','name','price','description'], (o) => { return _.has(data, o)  })
 		if (requiredFields == "") {
+			if(data.name && !_.isEmpty == data.name){
+				var name = data.name;
+				var validname = /^[A-Z+_*a-z+_*0-9 ]+$/;
+				if (name.match(validname) == null) {
+						return res.send(setRes(resCode.BadRequest, false, 'Please enter valid product name.', null));
+				}
+			}
+
 			if (data.category_id) {
 				categoryModel.findOne({
 					where: {
@@ -543,10 +551,26 @@ exports.UpdateProductDetail = async (req, res) => {
 	
 	var productModel = models.products
 
-	const row = await productModel.findByPk(data.id);
-	const image = row.image;
+	var options = {
+		where:{
+			is_deleted:false,
+		}
+	}
+
+	const row = await productModel.findByPk(data.id,options);
+	if(row == null){
+		return res.send(setRes(resCode.ResourceNotFound, false, 'Product not found', null));
+	}
+	const image = !_.isEmpty(row.image) && row.image != null ? row.image : 0;
 	
 	if (data.id){
+		if(data.name){
+			var name = data.name;
+			var validname = /^[A-Z+_*a-z+_*0-9 ]+$/;
+			if (name.match(validname) == null) {
+				return res.send(setRes(resCode.BadRequest, false, 'Please enter valid product name.', null));
+			}
+		}
 		if(req.files){
 
 				const filesData = req.files;
@@ -600,15 +624,15 @@ exports.UpdateProductDetail = async (req, res) => {
 				}
 			}
 		
-		productModel.update(data,{
+		await productModel.update(data,{
 			where: {
 				id: data.id,
 				is_deleted: false
 			}
-		}).then(UpdatedProduct => {
+		}).then(async UpdatedProduct => {
 			if (UpdatedProduct == 1){
 
-				productModel.findOne({
+				await productModel.findOne({
 					where: {
 						id: data.id,
 						is_deleted: false
@@ -631,15 +655,16 @@ exports.UpdateProductDetail = async (req, res) => {
 						UpdatedProduct.dataValues.product_images = image_array
 						res.send(setRes(resCode.OK, true, "Product Or Service updated successfully.",UpdatedProduct))
 					}
-					else{
-						res.send(setRes(resCode.BadRequest, false, "Fail to update product or service.",null))		
-					}
+				}).catch(error => {
+					console.log(error)
+					res.send(setRes(resCode.BadRequest, false, "Fail to updated product or service.",null))
+				}).catch(UpdateProductError => {
+					console.log(UpdateProductError)
+					res.send(setRes(resCode.BadRequest, false, "Fail to updated product or service.",null))
 				})
 			}
-			else{
-				res.send(setRes(resCode.BadRequest, false, "Fail to update product or service.",null))
-			}
 		}).catch(UpdateProductError => {
+			console.log(UpdateProductError)
 			res.send(setRes(resCode.BadRequest, false, "Fail to updated product or service.",null))
 		})
 	}
@@ -894,6 +919,16 @@ exports.CreateCategory = async (req, res) => {
 	var requiredFields = _.reject(['business_id','name','image','parent_id'], (o) => { return _.has(data, o)  })
 
 		if(requiredFields == ""){
+		var name = data.name;
+		var validname = /^[A-Z+_*a-z+_*0-9 ]+$/;
+		if (name.match(validname) == null) {
+			if(data.parent_id == 0){
+				return res.send(setRes(resCode.BadRequest, false, 'Please enter valid product category name.', null));
+			}else{
+				return res.send(setRes(resCode.BadRequest, false, 'Please enter valid product type name.', null));
+			}
+		}
+
 		businessModel.findOne({
 			where:{
 				id:data.business_id,
@@ -1101,7 +1136,17 @@ exports.UpdateCategory = async(req, res) => {
 	var productCategoryModel = models.product_categorys
 	var requiredFields = _.reject(['id','business_id'], (o) => { return _.has(data, o)  })
 	if(requiredFields == ""){
-
+		if(! _.isEmpty){
+			var name = data.name;
+			var validname = /^[A-Z+_*a-z+_*0-9 ]+$/;
+			if (name.match(validname) == null) {
+				if(data.parent_id == 0){
+					return res.send(setRes(resCode.BadRequest, false, 'Please enter valid product category name.', null));
+				}else{
+					return res.send(setRes(resCode.BadRequest, false, 'Please enter valid product type name.', null));
+				}
+			}
+		}
 		if((data.parent_id != 0 && !_.isEmpty(data.parent_id))){
 			const parentCategory = await productCategoryModel.findOne({
 				where:{
