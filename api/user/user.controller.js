@@ -1204,7 +1204,7 @@ function FeedbackMail(user, data){
 
 exports.GetAllBusiness = async (req, res) => {
 
-	var data = req.query;
+	var data = req.body;
 	var businessModel = models.business
 	var Op = models.Op;
 	var businesscateogryModel = models.business_categorys

@@ -766,22 +766,23 @@ exports.GetProductById =  (req, res) => {
 			var isFav = false;
 			var isAddCart = false;
 
-			await shoppingCartModel.findAll({
+			await shoppingCartModel.findOne({
 				where: {
 					product_id: product.id,
+					business_id:product.business_id,
 					is_deleted: false
-				},}).then(async fav => {
-					if(fav.length > 0){
+				},}).then(async cart => {
+					if(cart){
 						isAddCart = true;
 					}
 				})
 
-				await wishlistModel.findAll({
+				await wishlistModel.findOne({
 					where: {
 						product_id: product.id,
 						is_deleted: false
-					},}).then(async addcart => {
-						if(addcart.length > 0){
+					},}).then(async fav => {
+						if(fav){
 							isFav = true;
 						}
 					})
