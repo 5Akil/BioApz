@@ -425,6 +425,13 @@ exports.createProduct = async(req,res) => {
 				})
 			}
 
+			if(data.price && !_.isEmpty(data.price)){
+				if(data.price <= 0 ){
+					validation = false;
+						return res.send(setRes(resCode.BadRequest, false, "Please enter price value more than 0.", null))
+				}
+			}
+
 			if (data.sub_category_id) {
 				categoryModel.findOne({
 					where: {
@@ -1244,9 +1251,9 @@ exports.UpdateCategory = async(req, res) => {
 								categoryDetail.image = awsConfig.default_image;
 							}
 							if(categoryDetail.parent_id == 0){
-								return res.send(setRes(resCode.OK,true,"Product category added successfully",data))
+								return res.send(setRes(resCode.OK,true,"Product category updated successfully",data))
 							}else{
-								return res.send(setRes(resCode.OK,true,"Product type added successfully",data))
+								return res.send(setRes(resCode.OK,true,"Product type updated successfully",data))
 							}
 						})
 					}else{
