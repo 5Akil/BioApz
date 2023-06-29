@@ -370,19 +370,20 @@ exports.UpdateProfile = async (req, res) => {
 	var validation = true;
 	req.file ? data.profile_picture = `${req.file.key}` : ''
 	var userModel = models.user
+	var Op = models.Op
 	var requiredFields = _.reject(['id'], (o) => { return _.has(data, o) })
 
 	if (requiredFields == '') {
 		var mobilenumber = /^[0-9]+$/;
 		var mailId = data.email;
 		var emailFormat = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/;
-		if((data.username).length > 100){
+		if(!_.isEmpty(data.username) && (data.username).length > 100){
 			return res.send(setRes(resCode.BadRequest, false, 'Username must be less than 100 characters',null));
 		}
-		if (mailId.match(emailFormat) == null) {
+		if (!_.isEmpty(mailId) && mailId.match(emailFormat) == null) {
 			return res.send(setRes(resCode.BadRequest, false, 'Please enter valid email format.', null));
 		}
-		if ((data.mobile.length > 15) || (data.mobile.length < 7) || !(mobilenumber.test(data.mobile))) {
+		if (!_.isEmpty(data.mobile) && ((data.mobile.length > 15) || (data.mobile.length < 7) || !(mobilenumber.test(data.mobile)))) {
 			return res.send(setRes(resCode.BadRequest, false, 'Please enter valid mobile number.', null));
 		}
 
@@ -417,12 +418,12 @@ exports.UpdateProfile = async (req, res) => {
 				}
 
 				const phoneData = await userModel.findOne({
-					where: { is_deleted: false, phone: { [Op.eq]: data.phone }, id: { [Op.ne]: data.id } }
+					where: { is_deleted: false, mobile: { [Op.eq]: data.mobile }, id: { [Op.ne]: data.id } }
 				});
 
 				if (phoneData != null) {
 					validation = false;
-					return res.send(setRes(resCode.BadRequest, false, 'This phone number is already associated with another account !', null))
+					return res.send(setRes(resCode.BadRequest, false, 'This mobile number is already associated with another account !', null))
 				}
 				if (validation) {
 
@@ -463,7 +464,7 @@ exports.UpdateProfile = async (req, res) => {
 					}).catch(error => {
 						res.send(setRes(resCode.InternalServer, true, "Internal server error.", null))
 					})
-				} s
+				}
 			}
 
 		})
