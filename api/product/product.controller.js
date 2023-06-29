@@ -1592,15 +1592,55 @@ exports.GetProductRattings = async(req,res)=>{
 	var data = req.body
 	var productRattingModel = models.product_ratings
 	var userModel = models.user
+	const businessModel = models.business;
+	const userEmail = req.userEmail;
+	const Op = models.Op
 	var requiredFields = _.reject(['product_id','page','page_size'], (o) => { return _.has(data, o) })
+	let userDetail, userRole;
+
+	userDetail = await userModel.findOne({
+		where: {
+			email:  userEmail
+		}
+	});
+	if (userDetail) {
+		userRole = userDetail?.role_id
+	} else {
+		userDetail = await businessModel.findOne({
+			where: {
+				email:  userEmail
+			}
+		});
+		if (userDetail) {
+			userRole = userDetail?.role_id
+		}
+	}
+
+	const reportedReviewCond = userRole && userRole === 2 ? {
+		user_id : userDetail.id,
+	} : {};
+
+	const whereCond = {
+		[Op.or] : [
+			{
+				product_id : data.product_id,
+				is_deleted : false,
+				is_review_report: true,
+				...reportedReviewCond
+			},
+			{
+				product_id : data.product_id,
+				is_deleted : false,
+				is_review_report: false,
+				user_id : { [Op.not]: userDetail.id },
+			}
+		]
+	}
 
 	if(requiredFields == ""){
 
 		const condition =  {
-			where:{
-				product_id : data.product_id,
-				is_deleted : false
-			},
+			where: whereCond,
 			include:{
 				model:userModel
 			},
@@ -1613,7 +1653,7 @@ exports.GetProductRattings = async(req,res)=>{
 		const skip = data.page_size * (data.page - 1)
 		const limit = parseInt(data.page_size)
 
-		const recordCounts = await productRattingModel.findAndCountAll({...condition, offset: skip, limit})
+		const recordCounts = await productRattingModel.findAndCountAll({...condition, offset: skip, limit});
 		const totalRecords =  recordCounts?.count;
 		productRattingModel.findAll({
 			offset:skip,
