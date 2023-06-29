@@ -25,6 +25,10 @@ module.exports = (sequelize, DataTypes) => {
     // associations can be defined here
     ProductCategorys.hasMany(models.products, {foreignKey: 'category_id'})
     ProductCategorys.belongsTo(models.business, {foreignKey: 'business_id'})
+    ProductCategorys.belongsTo(ProductCategorys, {
+      foreignKey: "parent_id",
+      targetKey: "id"
+    });
   };
   return ProductCategorys;
 };

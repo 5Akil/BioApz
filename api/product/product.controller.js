@@ -958,7 +958,11 @@ exports.CreateCategory = async (req, res) => {
 							}else{
 								data.image = commonConfig.default_image
 							}
-							res.send(setRes(resCode.OK,true,"Category added successfully",data))
+							if(categoryData.parent_id == 0){
+								return res.send(setRes(resCode.OK,true,"Product category added successfully",data))
+							}else{
+								return res.send(setRes(resCode.OK,true,"Product type added successfully",data))
+							}
 						}else{
 							res.send(setRes(resCode.InternalServer,false,"Internal server error",null))
 						}
@@ -1095,13 +1099,16 @@ exports.UpdateCategory = async(req, res) => {
 	var data = req.body
 	req.file ? data.image = `${req.file.key}`: '';
 	var productCategoryModel = models.product_categorys
-
-	if(data.id){
+	var requiredFields = _.reject(['id','business_id'], (o) => { return _.has(data, o)  })
+	if(requiredFields == ""){
 
 		if((data.parent_id != 0 && !_.isEmpty(data.parent_id))){
 			const parentCategory = await productCategoryModel.findOne({
 				where:{
-					id:data.parent_id,is_deleted:false,
+					id:{
+						[models.Op.eq]:data.parent_id,
+						[models.Op.ne]:data.id,
+					},is_deleted:false,
 				}
 			});
 			if(!parentCategory){
@@ -1191,7 +1198,11 @@ exports.UpdateCategory = async(req, res) => {
 							}else{
 								categoryDetail.image = awsConfig.default_image;
 							}
-							res.send(setRes(resCode.OK,true,'Category update successfully',categoryDetail))
+							if(categoryDetail.parent_id == 0){
+								return res.send(setRes(resCode.OK,true,"Product category added successfully",data))
+							}else{
+								return res.send(setRes(resCode.OK,true,"Product type added successfully",data))
+							}
 						})
 					}else{
 						res.send(setRes(resCode.BadRequest, false, "Fail to update category or service.",null))
@@ -1202,7 +1213,7 @@ exports.UpdateCategory = async(req, res) => {
 			}
 		})
 	}else{
-		res.send(setRes(resCode.BadRequest, false, 'id are required',null))
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 	}
 }
 
@@ -1333,7 +1344,10 @@ exports.ProductTypeList = async(req, res) => {
 			order: [
 				['createdAt', 'DESC']
 			],
-			
+			include:{
+				model: categoryModel,
+          		attributes: ['id', 'name'],
+			}
 		};
 		condition.where = {business_id:data.business_id,parent_id:{
 				[Op.ne]: 0	
@@ -1376,7 +1390,6 @@ exports.ProductTypeList = async(req, res) => {
 			totalRecords = CartList.length
 		})
 
-
 		categoryModel.findAll(condition).then(async subCategoryData => {
 			if (subCategoryData != '' && subCategoryData != null ){
 			// Update Sign URL
@@ -1391,6 +1404,13 @@ exports.ProductTypeList = async(req, res) => {
 				  	data.image = commonConfig.default_image;
 				  }
 
+				  if(data.product_category != null){
+					data.dataValues.category_name = data.product_category.name;
+					delete data.dataValues.product_category;
+				  }else{
+					data.dataValues.category_name = null;
+				  }
+
 			}
 				const previous_page = (data.page - 1);
 				const last_page = Math.ceil(totalRecords / data.page_size);
@@ -1400,7 +1420,6 @@ exports.ProductTypeList = async(req, res) => {
 					pageNumber++;
 					next_page = pageNumber;
 				}
-				
 				var response = {};
 				response.totalPages = Math.ceil(subCategoryData.length/limit);
 				response.currentPage = parseInt(data.page);
@@ -1415,6 +1434,7 @@ exports.ProductTypeList = async(req, res) => {
 				res.send(setRes(resCode.ResourceNotFound, true, "Product type not found.",null))
 			}
 		}).catch(error => {
+			console.log (error)
 			res.send(setRes(resCode.InternalServer,false, "Internal server error.",null))
 		})
 	}else{
@@ -1495,9 +1515,9 @@ exports.removeProductType = async(req, res) => {
 									if(subCategoryData != null){
 
 										subCategoryData.update({is_deleted:true})
-										res.send(setRes(resCode.OK,true,"Product sub category deleted successfully",null))
+										res.send(setRes(resCode.OK,true,"Product type deleted successfully",null))
 									}else{
-										res.send(setRes(resCode.ResourceNotFound,false,"Product sub category not found",null))
+										res.send(setRes(resCode.ResourceNotFound,false,"Product type not found",null))
 									}
 								})
 							}
