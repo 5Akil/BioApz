@@ -387,17 +387,6 @@ exports.UpdateProfile = async (req, res) => {
 			return res.send(setRes(resCode.BadRequest, false, 'Please enter valid mobile number.', null));
 		}
 
-		if (data.profile_picture != null) {
-
-			userModel.findOne({ where: { id: data.id, is_deleted: false } }).then(userData => {
-				const params = {
-					Bucket: awsConfig.Bucket,
-					Key: userData.profile_picture
-				};
-				awsConfig.deleteImageAWS(params)
-			})
-		}
-
 		userModel.findOne({
 			where: {
 				id: data.id,
@@ -441,7 +430,7 @@ exports.UpdateProfile = async (req, res) => {
 								}
 							}).then(async userData => {
 								if (data.profile_picture != null) {
-									const params = { Bucket: awsConfig.Bucket, Key: businessDetail.profile_picture }; awsConfig.deleteImageAWS(params);
+									const params = { Bucket: awsConfig.Bucket, Key: userData.profile_picture }; awsConfig.deleteImageAWS(params);
 									var updateData_image = await awsConfig.getSignUrl(data.profile_picture).then(function (res) {
 										userData.profile_picture = res;
 									})
@@ -1215,7 +1204,7 @@ function FeedbackMail(user, data){
 
 exports.GetAllBusiness = async (req, res) => {
 
-	var data = req.query;
+	var data = req.body;
 	var businessModel = models.business
 	var Op = models.Op;
 	var businesscateogryModel = models.business_categorys

@@ -64,7 +64,7 @@ router.post('/get-profile', verifyToken, controller.GetProfileDetail)
 router.post('/update-profile', verifyToken, awsupload.single('profile_picture'), controller.UpdateProfile)
 router.post('/change-password', verifyToken, controller.ChangePassword)
 router.post('/feedback', verifyToken, controller.SendFeedback)
-router.get('/all-business',verifyToken,controller.GetAllBusiness)
+router.post('/all-business',verifyToken,controller.GetAllBusiness)
 router.post('/logout', verifyToken ,controller.Logout)
 
 
