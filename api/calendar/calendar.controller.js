@@ -168,6 +168,7 @@ exports.CreateEvent = async (req, res) => {
 		const events = await comboModel.findAll(conditionExistingEvent);
 
 		if (events && events?.length > 0) {
+			validation =  false;
 			res.send(setRes(resCode.BadRequest, false, "Event exists in between same time slot.", null))
 		}
 				
@@ -706,6 +707,7 @@ exports.UpdateEvent = async (req, res) => {
 				const events = await comboModel.findAll(conditionExistingEvent);
 
 				if (events && events?.length > 0) {
+					validation = false;
 					return res.send(setRes(resCode.BadRequest, false, "Event exists in between same time slot.", events))
 				}
 
