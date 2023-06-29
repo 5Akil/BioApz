@@ -72,6 +72,105 @@ exports.CreateEvent = async (req, res) => {
 			}
 
 		}
+
+		const conditionExistingEvent = {};
+		conditionExistingEvent.where = {business_id: data.business_id,is_deleted: false,}
+		conditionExistingEvent.attributes = { exclude: ['createdAt','updatedAt','is_deleted','repeat','repeat_every','repeat_on']}
+
+		if(!_.isEmpty(data.start_date) && !_.isEmpty(data.end_date)){
+			conditionExistingEvent.where = {
+				...conditionExistingEvent.where,
+				// Conditions on start date time and end date time to find slot is available or not
+				...{
+					[Op.or] : [
+						{
+							[Op.and] : [
+								{
+									[Op.or] : [
+										{
+											start_date: {
+												[Op.lt] : sDate_value[0]
+											},
+										},
+										{
+											start_date: {
+												[Op.lte] : sDate_value[0]
+											},
+											start_time: {
+												[Op.lte] : sDate_value[1]
+											},
+										}
+									]
+								},
+								{
+									[Op.or] : [
+										{
+											end_date: {
+												[Op.gt] : sDate_value[0]
+											}
+										},
+										{
+											end_date: {
+												[Op.gte] : sDate_value[0]
+											},
+											end_time: {
+												[Op.gte] : sDate_value[1]
+											},
+										}
+									]
+								}
+							]
+						},
+						{
+							[Op.and] : [
+								{
+									[Op.or] : [
+										{
+											start_date: {
+												[Op.lt] : eDate_value[0]
+											},
+										},
+										{
+											start_date: {
+												[Op.lte] : eDate_value[0]
+											},
+											start_time: {
+												[Op.lte] : eDate_value[1]
+											},
+										}
+									]
+								},
+								{
+									[Op.or] : [
+										{
+											end_date: {
+												[Op.gt] : eDate_value[0]
+											},
+										},
+										{
+											end_date: {
+												[Op.gte] : eDate_value[0]
+											},
+											end_time: {
+												[Op.gte] : eDate_value[1]
+											},
+										}
+									]
+								}
+							]
+						}
+					],					
+				}
+			}
+		}
+
+		// Check if Event already exists for business in provided time span
+		const events = await comboModel.findAll(conditionExistingEvent);
+
+		if (events && events?.length > 0) {
+			res.send(setRes(resCode.BadRequest, false, "Event exists in between same time slot.", null))
+		}
+				
 		if (validation) {
 			businessModel.findOne({
 				where: {id: data.business_id,is_deleted: false,is_active:true}
@@ -463,21 +562,33 @@ exports.UpdateEvent = async (req, res) => {
 
 	var data = req.body
 	var comboModel = models.combo_calendar
+	const businessModel = models.business
 	var requiredFields = _.reject(['id','title', 'description', 'end_date', 'start_date', 'location'], (o) => { return _.has(data, o) })
 
 	// data.repeat_every == 1 ? (data.repeat_on ? '' : requiredFields.push('repeat_on')) : '';
 	// _.contains([1, 2], parseInt(data.repeat_every)) ? data.repeat = true : '';
 	var row = await comboModel.findByPk(data.id);
+	const Op = models.Op
 	// Start date save different columns logic
 	var startDate = moment(data.start_date).format('YYYY-MM-DD HH:mm:ss');
 	var sDate_value = startDate.split(" ");
 
 	// End date time save different columns logic
+	
+	const userEmail = req.userEmail;
+	const businessUser = await businessModel.findOne({ where: { email: userEmail } });
+	if (!businessUser) {
+		return res.send(setRes(resCode.ResourceNotFound, false, "Business user not found.", null))
+	}
 	var endDate = moment(data.end_date).format('YYYY-MM-DD HH:mm:ss');
 	var eDate_value = endDate.split(" ");
 	if (data.id != null) {
-		if(requiredFields == ''){
-			var image = row.images;
+		if(requiredFields.length == 0){
+			const isEventExists = await comboModel.findOne({ where: { id: data.id, business_id: businessUser.id,is_deleted: false } })
+			if (!isEventExists) {
+				return res.send(setRes(resCode.ResourceNotFound, false, "Event not found.", null))
+			}
+			var image = row?.images || [];
 			if (req.files) {
 				const filesData = req.files;
 				const total_image = image.length + filesData.length;
@@ -498,6 +609,104 @@ exports.UpdateEvent = async (req, res) => {
 						validation = false;
 						res.send(setRes(resCode.BadRequest, false, 'You can upload only jpg, jpeg, png, gif files', null))
 					}
+				}
+
+				const conditionExistingEvent = {};
+				conditionExistingEvent.where = { id: { [Op.not]: data.id }, business_id: businessUser.id, is_deleted: false,}
+				conditionExistingEvent.attributes = { exclude: ['createdAt','updatedAt','is_deleted','repeat','repeat_every','repeat_on']}
+
+				if(!_.isEmpty(data.start_date) && !_.isEmpty(data.end_date)){
+					conditionExistingEvent.where = {
+						...conditionExistingEvent.where,
+						// Conditions on start date time and end date time to find slot is available or not
+						...{
+							[Op.or] : [
+								{
+									[Op.and] : [
+										{
+											[Op.or] : [
+												{
+													start_date: {
+														[Op.lt] : sDate_value[0]
+													},
+												},
+												{
+													start_date: {
+														[Op.lte] : sDate_value[0]
+													},
+													start_time: {
+														[Op.lte] : sDate_value[1]
+													},
+												}
+											]
+										},
+										{
+											[Op.or] : [
+												{
+													end_date: {
+														[Op.gt] : sDate_value[0]
+													}
+												},
+												{
+													end_date: {
+														[Op.gte] : sDate_value[0]
+													},
+													end_time: {
+														[Op.gte] : sDate_value[1]
+													},
+												}
+											]
+										}
+									]
+								},
+								{
+									[Op.and] : [
+										{
+											[Op.or] : [
+												{
+													start_date: {
+														[Op.lt] : eDate_value[0]
+													},
+												},
+												{
+													start_date: {
+														[Op.lte] : eDate_value[0]
+													},
+													start_time: {
+														[Op.lte] : eDate_value[1]
+													},
+												}
+											]
+										},
+										{
+											[Op.or] : [
+												{
+													end_date: {
+														[Op.gt] : eDate_value[0]
+													},
+												},
+												{
+													end_date: {
+														[Op.gte] : eDate_value[0]
+													},
+													end_time: {
+														[Op.gte] : eDate_value[1]
+													},
+												}
+											]
+										}
+									]
+								}
+							],					
+						}
+					}
+				}
+
+				// Check if Event already exists for business in provided time span
+				const events = await comboModel.findAll(conditionExistingEvent);
+
+				if (events && events?.length > 0) {
+					return res.send(setRes(resCode.BadRequest, false, "Event exists in between same time slot.", events))
 				}
 
 				if (validation) {
