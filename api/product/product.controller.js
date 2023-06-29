@@ -908,7 +908,10 @@ exports.CreateCategory = async (req, res) => {
 					const existCategory = await productCategoryModel.findOne({
 						where:{is_deleted:false,business_id:data.business_id,parent_id:{
 							[models.Op.eq]:0
-						}}
+						},
+						name: {
+							[models.Op.eq]: data.name}
+						}
 					});
 					if(existCategory){
 						validation = false;
@@ -920,7 +923,10 @@ exports.CreateCategory = async (req, res) => {
 					const existSubCategory = await productCategoryModel.findOne({
 						where:{is_deleted:false,business_id:data.business_id,parent_id:{
 							[models.Op.ne]:0
-						}}
+						},
+						name: {
+							[models.Op.eq]: data.name}
+						}
 					});
 					if(existSubCategory){
 						validation = false;
@@ -1090,6 +1096,9 @@ exports.UpdateCategory = async(req, res) => {
 					},
 					id:{
 						[models.Op.ne]:data.id
+					},
+					name: {
+						[models.Op.eq]: data.name,
 					}
 				}
 			});
@@ -1109,6 +1118,9 @@ exports.UpdateCategory = async(req, res) => {
 					},
 					id:{
 						[models.Op.ne]:data.id
+					},
+					name: {
+						[models.Op.eq]: data.name,
 					}
 				}
 			});
