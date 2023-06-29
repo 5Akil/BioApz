@@ -338,6 +338,10 @@ exports.UpdateBusinessDetail = async (req, res) => {
 										where: { is_deleted: false, phone: { [Op.eq]: data.phone }, id: { [Op.ne]: data.id } }
 									}).then(async phoneData => {
 										if (phoneData == null) {
+											if (data.email) {
+												const token =  jwt.sign({id:businessDetail.id,user: data.email,role_id:businessDetail.role_id}, 'secret', {expiresIn: 480 * 480})
+												data.auth_token = token; 
+											}
 											businessModel.update(data,
 												{
 													where: { id: data.id, is_deleted: false, is_active: true }
@@ -1769,6 +1773,10 @@ exports.updateUserDetils = async (req, res) => {
 						}
 					})
 					if (validation) {
+						if (data.email) {
+							const token =  jwt.sign({id:businessDetail.id,user: data.email,role_id:businessDetail.role_id}, 'secret', {expiresIn: 480 * 480})
+							data.auth_token = token; 
+						}
 						await businessModel.update(data,
 							{
 								where: { id: data.id, is_deleted: false, is_active: true }
