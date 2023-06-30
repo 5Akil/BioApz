@@ -397,6 +397,9 @@ exports.UpdateProfile = async (req, res) => {
 			if (_.isEmpty(user)) {
 				res.send(setRes(resCode.ResourceNotFound, false, "User not found.", null))
 			} else {
+				if(data.profile_picture != null){
+					const params = { Bucket: awsConfig.Bucket, Key: user.profile_picture }; awsConfig.deleteImageAWS(params);
+				}
 				const emailData = await userModel.findOne({
 					where: { is_deleted: false, email: { [Op.eq]: data.email }, id: { [Op.ne]: data.id } }
 				});
@@ -420,6 +423,8 @@ exports.UpdateProfile = async (req, res) => {
 						data.auth_token = token;
 					}
 
+					
+
 					userModel.update(data, {
 						where: {
 							id: data.id
@@ -434,7 +439,6 @@ exports.UpdateProfile = async (req, res) => {
 								}
 							}).then(async userData => {
 								if (data.profile_picture != null) {
-									const params = { Bucket: awsConfig.Bucket, Key: userData.profile_picture }; awsConfig.deleteImageAWS(params);
 									var updateData_image = await awsConfig.getSignUrl(data.profile_picture).then(function (res) {
 										userData.profile_picture = res;
 									})
