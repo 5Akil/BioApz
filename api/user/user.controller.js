@@ -370,20 +370,20 @@ exports.UpdateProfile = async (req, res) => {
 	var validation = true;
 	req.file ? data.profile_picture = `${req.file.key}` : ''
 	var userModel = models.user
-	var Op = models.Op
+	const Op = models.Op;
 	var requiredFields = _.reject(['id'], (o) => { return _.has(data, o) })
 
 	if (requiredFields == '') {
 		var mobilenumber = /^[0-9]+$/;
 		var mailId = data.email;
 		var emailFormat = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/;
-		if(!_.isEmpty(data.username) && (data.username).length > 100){
+		if(!data?.username || (data?.username)?.length > 100){
 			return res.send(setRes(resCode.BadRequest, false, 'Username must be less than 100 characters',null));
 		}
-		if (!_.isEmpty(mailId) && mailId.match(emailFormat) == null) {
+		if (!mailId || mailId?.match(emailFormat) == null) {
 			return res.send(setRes(resCode.BadRequest, false, 'Please enter valid email format.', null));
 		}
-		if (!_.isEmpty(data.mobile) && ((data.mobile.length > 15) || (data.mobile.length < 7) || !(mobilenumber.test(data.mobile)))) {
+		if (!data?.mobile || (data.mobile.length > 15) || (data.mobile.length < 7) || !(mobilenumber.test(data.mobile))) {
 			return res.send(setRes(resCode.BadRequest, false, 'Please enter valid mobile number.', null));
 		}
 
@@ -415,6 +415,10 @@ exports.UpdateProfile = async (req, res) => {
 					return res.send(setRes(resCode.BadRequest, false, 'This mobile number is already associated with another account !', null))
 				}
 				if (validation) {
+					if (data.email) {
+						const token =  jwt.sign({id:user.id,user: data.email,role_id:user.role_id}, 'secret', {expiresIn: 480 * 480})
+						data.auth_token = token;
+					}
 
 					userModel.update(data, {
 						where: {
