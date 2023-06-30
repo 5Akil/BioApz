@@ -1053,7 +1053,7 @@ exports.CreateBusiness = async (req, res) => {
 		}
 		else {
 			var categoryVal = await categoryModel.findOne({
-				where: { is_deleted: false }
+				where: { id:data.category_id,is_deleted: false }
 			});
 
 			if (categoryVal != null) {
@@ -1739,7 +1739,7 @@ exports.updateUserDetils = async (req, res) => {
 					return res.send(setRes(resCode.BadRequest, false, 'Please enter valid email format.', null));
 				}
 			}
-			businessModel.findOne({
+			await businessModel.findOne({
 				where: { id: data.id, is_deleted: false, is_active: true }
 			}).then(async businessDetail => {
 				if (_.isEmpty(businessDetail)) {
@@ -1782,7 +1782,7 @@ exports.updateUserDetils = async (req, res) => {
 								where: { id: data.id, is_deleted: false, is_active: true }
 							}).then(async updateData => {
 								if (updateData == 1) {
-									businessModel.findOne({
+									await businessModel.findOne({
 										where: { id: data.id, is_deleted: false, is_active: true },
 										// attributes: ['id', 'person_name', 'profile_picture', 'phone', 'email', 'address', 'abn_no', 'business_name', 'password','auth_token']
 									}).then(async dataDetail => {
@@ -1812,10 +1812,10 @@ exports.updateUserDetils = async (req, res) => {
 										else {
 											dataDetail.banner = commonConfig.default_image;
 										}
-										res.send(setRes(resCode.OK, true, 'Business user profile updated successfully.', dataDetail))
+										return res.send(setRes(resCode.OK, true, 'Business user profile updated successfully.', dataDetail))
 									})
 								} else {
-									res.send(setRes(resCode.BadRequest, false, "Fail to update business.", null))
+									return res.send(setRes(resCode.BadRequest, false, "Fail to update business.", null))
 								}
 							})
 					}

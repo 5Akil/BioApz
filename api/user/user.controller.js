@@ -1284,10 +1284,11 @@ exports.GetAllBusiness = async (req, res) => {
 
 		var totalRecords = null
 
-		businessModel.findAll(condition2).then(async(wishlist) => {
+		await businessModel.findAll(condition2).then(async(wishlist) => {
 			totalRecords = wishlist.length
 		})
-		businessModel.findAll(condition).then(async businessData => {
+		
+		await businessModel.findAll(condition).then(async businessData => {
 			if(businessData.length > 0){
 				for(const data of businessData){
 

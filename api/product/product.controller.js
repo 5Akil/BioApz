@@ -396,6 +396,7 @@ exports.createProduct = async(req,res) => {
 		var validation = true;
 		var businessModel = models.business
 		var categoryModel = models.product_categorys
+		var productModel = models.products
 		var Op = models.Op
 		var requiredFields = _.reject(['business_id','category_id','name','price','description'], (o) => { return _.has(data, o)  })
 		if (requiredFields == "") {
@@ -407,8 +408,22 @@ exports.createProduct = async(req,res) => {
 				}
 			}
 
+			if(data.name && !_.isEmpty(data.name)){
+				const existCategory = await productModel.findOne({
+					where:{is_deleted:false,business_id:data.business_id,
+					name: {
+						[Op.eq]: data.name}
+					}
+				});
+				if(existCategory){
+					validation = false;
+					return res.send(setRes(resCode.BadRequest, false, 'This product name is already exists with this category!',null))
+				}
+			}
+
+
 			if (data.category_id) {
-				categoryModel.findOne({
+				await categoryModel.findOne({
 					where: {
 						id: data.category_id,
 						is_enable: true,
@@ -433,7 +448,7 @@ exports.createProduct = async(req,res) => {
 			}
 
 			if (data.sub_category_id) {
-				categoryModel.findOne({
+				await categoryModel.findOne({
 					where: {
 						id: data.sub_category_id,
 						is_enable: true,
@@ -473,9 +488,9 @@ exports.createProduct = async(req,res) => {
 
 			}
 
-			var productModel = models.products
+			
 			if (validation) {
-				businessModel.findOne({
+				await businessModel.findOne({
 					where: {
 						id: data.business_id,
 						is_deleted: false,
@@ -483,9 +498,9 @@ exports.createProduct = async(req,res) => {
 					}
 				}).then(async business => {
 					if (_.isEmpty(business)) {
-						res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
+						return res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
 					} else {
-						productModel.create(data).then(async function (product) {
+						await productModel.create(data).then(async function (product) {
 							const lastInsertId = product.id;
 							if (lastInsertId) {
 								var files = [];
@@ -529,7 +544,7 @@ exports.createProduct = async(req,res) => {
 											}
 											getData.dataValues.product_images = image_array
 
-											res.send(setRes(resCode.OK, true, "Product created successfully", getData))
+											res.send(setRes(resCode.OK, true, "Product added successfully", getData))
 										})
 									} else {
 										res.send(setRes(resCode.BadRequest, false, "Image not update", getData))
@@ -548,6 +563,7 @@ exports.createProduct = async(req,res) => {
 			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
 		}
 	}catch(error){
+		console.log(error)
 		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
 	}
 
@@ -576,6 +592,22 @@ exports.UpdateProductDetail = async (req, res) => {
 			var validname = /^[A-Z+_*a-z+_*0-9 ]+$/;
 			if (name.match(validname) == null) {
 				return res.send(setRes(resCode.BadRequest, false, 'Please enter valid product name.', null));
+			}
+		}
+		if(data.name && !_.isEmpty(data.name)){
+			const existCategory = await productModel.findOne({
+				where:{is_deleted:false,
+				name: {
+					[models.Op.eq]: data.name
+				},
+				id:{
+					[models.Op.ne]: data.id
+				}
+			}
+			});
+			if(existCategory){
+				validation = false;
+				return res.send(setRes(resCode.BadRequest, false, 'This product name is already exists with this category!',null))
 			}
 		}
 		if(req.files){
@@ -660,7 +692,7 @@ exports.UpdateProductDetail = async (req, res) => {
 							image_array.push(commonConfig.default_image)
 						}
 						UpdatedProduct.dataValues.product_images = image_array
-						res.send(setRes(resCode.OK, true, "Product Or Service updated successfully.",UpdatedProduct))
+						res.send(setRes(resCode.OK, true, "Product updated successfully.",UpdatedProduct))
 					}
 				}).catch(error => {
 					console.log(error)
