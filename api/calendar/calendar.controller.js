@@ -585,7 +585,7 @@ exports.UpdateEvent = async (req, res) => {
 	var eDate_value = endDate.split(" ");
 	if (data.id != null) {
 		if(requiredFields.length == 0){
-			const isEventExists = await comboModel.findOne({ where: { id: data.id, business_id: businessUser.id,is_deleted: false } })
+			const isEventExists = await comboModel.findOne({ where: { id: data.id, is_deleted: false } })
 			if (!isEventExists) {
 				return res.send(setRes(resCode.ResourceNotFound, false, "Event not found.", null))
 			}
