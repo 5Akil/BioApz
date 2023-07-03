@@ -22,8 +22,15 @@ exports.AddCms = async (req, res) => {
 
 	var data = req.body
 	var cmsModel = models.cms_pages
+	const businessModel = models.business;
 
 	var requiredFields = _.reject(['business_id','page_key', 'page_label', 'page_value'], (o) => { return _.has(data, o)  })
+
+	const possiblePageKey = ['about','store_info','terms_of_service'];
+
+	if (!data?.page_key || !possiblePageKey.includes(data?.page_key)) {
+		return res.send(setRes(res.BadRequest, false, `Possible value for page_key is one of from ${possiblePageKey.join(',')}`,null));
+	}
 
 	if(requiredFields == ""){
 		businessModel.findOne({
@@ -67,6 +74,11 @@ exports.GetPageDetails = async (req , res) => {
 	var cmsModel = models.cms_pages
 	var requiredFields = _.reject(['business_id','page_key'], (o) => { return _.has(data, o)  })
 
+	const possiblePageKey = ['about','store_info','terms_of_service'];
+
+	if (data?.page_key && page_keys.map((k)=> !possiblePageKey.includes(k)).filter((t)=> t === true ).length > 0 ) {
+		return res.send(setRes(res.BadRequest, false, `Possible value for page_key are ${possiblePageKey.join(',')} `,null));
+	}
 	if(requiredFields == ""){
 
 		cmsModel.findAll({
@@ -106,6 +118,12 @@ exports.UpdatePageData = async (req, res) => {
 	var cmsModel = models.cms_pages
 
 	var requiredFields = _.reject(['id','page_key'], (o) => { return _.has(data, o)  })
+	
+	const possiblePageKey = ['about','store_info','terms_of_service'];
+
+	if (!data?.page_key || !possiblePageKey.includes(data?.page_key)) {
+		return res.send(setRes(res.BadRequest, false, `Possible value for page_key is one of from ${possiblePageKey.join(',')}`,null));
+	}
 
 	if(requiredFields == "") {
 
