@@ -52,6 +52,8 @@ var awsupload = multer({
 var controller = require('./user.controller')
 
 const {verifyToken} = require('../../config/token');
+const {authorize} = require('../../helpers/authorize');
+
 
 router.post('/register', awsupload.single('profile_picture'),controller.Register)
 router.post('/login', controller.Login)
@@ -64,7 +66,7 @@ router.post('/get-profile', verifyToken, controller.GetProfileDetail)
 router.post('/update-profile', verifyToken, awsupload.single('profile_picture'), controller.UpdateProfile)
 router.post('/change-password', verifyToken, controller.ChangePassword)
 router.post('/feedback', verifyToken, controller.SendFeedback)
-router.post('/all-business',verifyToken,controller.GetAllBusiness)
+router.post('/all-business',verifyToken,authorize([3]),controller.GetAllBusiness)
 router.post('/logout', verifyToken ,controller.Logout)
 
 

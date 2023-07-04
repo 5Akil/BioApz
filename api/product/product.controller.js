@@ -608,6 +608,13 @@ exports.UpdateProductDetail = async (req, res) => {
 				return res.send(setRes(resCode.BadRequest, false, 'This product name is already exists with this category!',null))
 			}
 		}
+
+		if(data.price && !_.isEmpty(data.price)){
+			if(data.price <= 0 ){
+				validation = false;
+					return res.send(setRes(resCode.BadRequest, false, "Please enter price value more than 0.", null))
+			}
+		}
 		if(req.files){
 
 				const filesData = req.files;
@@ -1064,7 +1071,7 @@ exports.CategoryList = async(req, res) => {
 			parent_id:0
 		},
 		order: [
-			['createdAt', 'DESC']
+			['name', 'ASC']
 		]}
 		if(data.page_size != 0 && !_.isEmpty(data.page_size)){
 			condition.offset = skip,
@@ -1420,7 +1427,7 @@ exports.ProductTypeList = async(req, res) => {
 		var condition = {
 			subQuery:false,
 			order: [
-				['createdAt', 'DESC']
+				['name', 'ASC']
 			],
 			include:{
 				model: categoryModel,
