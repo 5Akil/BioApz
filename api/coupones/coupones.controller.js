@@ -123,7 +123,6 @@ exports.create = async(req,res) =>{
 			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
 		}
 	}catch(error){
-		console.log(error)
 		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
 	}
 }

@@ -274,7 +274,6 @@ exports.removeImagesFromCombo = async (req, res) => {
 			}).then(async comboOffer => {
 
 				if(comboOffer){
-					// console.log(JSON.parse(JSON.stringify(comboOffer)))
 					var replaceImages = await _.filter(comboOffer.images, (img) => {
 						var typeArr = data.image_name;
 						 if(!typeArr.includes(img)){
@@ -321,8 +320,6 @@ exports.removeImagesFromCombo = async (req, res) => {
 						}
 
 					}).catch(error => {
-						console.log('=======replace combo images error=========')
-						console.log(error.message)
 						res.send(setRes(resCode.InternalServer, null, false, "Internal server error."))
 					})
 				}else{
@@ -330,8 +327,6 @@ exports.removeImagesFromCombo = async (req, res) => {
 				}
 
 			}).catch(error => {
-				console.log('===========remove images from combo offer========')
-				console.log(error.message)
 				res.send(setRes(resCode.InternalServer, null, false, "Fail to remove image from combo offer."))
 			})
 
@@ -481,7 +476,6 @@ exports.GetAllEvents = async (req, res) => {
 				response.lastPage = last_page;
 				res.send(setRes(resCode.OK, true, "Available events list.", response))
 		}).catch(error => {
-			console.log(error);
 			res.send(setRes(resCode.InternalServer, false, 'Internal server error.', null))
 		})
 	} else {
@@ -576,16 +570,16 @@ exports.UpdateEvent = async (req, res) => {
 
 	// End date time save different columns logic
 	
-	const userEmail = req.userEmail;
-	const businessUser = await businessModel.findOne({ where: { email: userEmail } });
-	if (!businessUser) {
-		return res.send(setRes(resCode.ResourceNotFound, false, "Business user not found.", null))
-	}
+	// const userEmail = req.userEmail;
+	// const businessUser = await businessModel.findOne({ where: { email: userEmail } });
+	// if (!businessUser) {
+	// 	return res.send(setRes(resCode.ResourceNotFound, false, "Business user not found.", null))
+	// }
 	var endDate = moment(data.end_date).format('YYYY-MM-DD HH:mm:ss');
 	var eDate_value = endDate.split(" ");
 	if (data.id != null) {
 		if(requiredFields.length == 0){
-			const isEventExists = await comboModel.findOne({ where: { id: data.id, business_id: businessUser.id,is_deleted: false } })
+			const isEventExists = await comboModel.findOne({ where: { id: data.id,is_deleted: false } })
 			if (!isEventExists) {
 				return res.send(setRes(resCode.ResourceNotFound, false, "Event not found.", null))
 			}
@@ -613,7 +607,7 @@ exports.UpdateEvent = async (req, res) => {
 				}
 
 				const conditionExistingEvent = {};
-				conditionExistingEvent.where = { id: { [Op.not]: data.id }, business_id: businessUser.id, is_deleted: false,}
+				conditionExistingEvent.where = { id: { [Op.not]: data.id }, is_deleted: false,}
 				conditionExistingEvent.attributes = { exclude: ['createdAt','updatedAt','is_deleted','repeat','repeat_every','repeat_on']}
 
 				if(!_.isEmpty(data.start_date) && !_.isEmpty(data.end_date)){
@@ -794,7 +788,6 @@ exports.UpdateEvent = async (req, res) => {
 									})
 								})
 							}).catch(error => {
-								console.log(error.message)
 								res.send(setRes(resCode.InternalServer, false, "Fail to update event.", null))
 							})
 

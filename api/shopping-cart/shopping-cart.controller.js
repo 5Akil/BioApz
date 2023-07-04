@@ -67,7 +67,6 @@ exports.AddToCart = async(req,res) => {
 																},{
 																	where:{business_id : {[Op.ne] :data.business_id},user_id : {[Op.eq] :data.user_id}}
 																});
-																console.log(updatedData)
 																return res.send(setRes(resCode.OK, true, 'Product added into cart successfully.', cartData));
 															} else {
 																return res.send(setRes(resCode.BadRequest, false, 'Fail to add into cart', null));
@@ -238,8 +237,6 @@ exports.CartList = async(req,res) => {
 						delete dataVal.dataValues.category_id
 						delete dataVal.dataValues.product
 					}
-
-					// console.log(data)
 					if(dataVal.product_category != null){
 
 						dataVal.dataValues.category_name = dataVal.product_category.name
@@ -280,7 +277,6 @@ exports.CartList = async(req,res) => {
 				res.send(setRes(resCode.OK, true, "Your cart is empty.",null))
 			}
 		}).catch(error => {
-			console.log(error)
 			res.send(setRes(resCode.InternalServer,false,"Internal server error",null))
 		})
 	}else{

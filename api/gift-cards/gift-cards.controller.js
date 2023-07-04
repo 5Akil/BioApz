@@ -370,9 +370,6 @@ exports.commonRewardsList =async(req,res) => {
 			const arrays = [giftcardRewards, cashbackData,discountData,couponeData,loyaltyPointData];
 			const mergedArray = mergeRandomArrayObjects(arrays);
 			let result =  mergedArray.slice(skip, skip+limit);
-			// for(let data of result){
-			// 	console.log(data.type)
-			// }
 			if(!(_.isEmpty(request_type))){
 				result = _.filter(result, {type: request_type})
 			}
@@ -385,7 +382,6 @@ exports.commonRewardsList =async(req,res) => {
 			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 		}
 	}catch(error){
-		console.log(error)
 		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
 	}
 }
@@ -504,7 +500,6 @@ exports.commonRewardsView =async(req,res) => {
 		}
 		
 	}catch(error){
-		console.log(error)
 		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
 	}
 }
