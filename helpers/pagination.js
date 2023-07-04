@@ -1,4 +1,4 @@
-class PaginationHelper {
+class pagination {
     constructor(data, totalCount, currentPage, itemsPerPage) {
       this.data = data;
       this.totalCount = totalCount;
@@ -46,4 +46,4 @@ class PaginationHelper {
     }
   }
   
-  module.exports = PaginationHelper;
+  module.exports = pagination;

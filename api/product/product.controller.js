@@ -19,6 +19,7 @@ const fs = require('fs');
 var multer = require('multer');
 const multerS3 = require('multer-s3');
 const { condition } = require('sequelize')
+const pagination = require('../../helpers/pagination');
 
 exports.createInquiry = async (req, res) => {
 	
@@ -100,59 +101,8 @@ exports.GetAllProducts = async (req, res) => {
 			res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1",null))
 		}
 
-		var totalRecords = null
-
 		var skip = data.page_size * (data.page - 1)
 		var limit = parseInt(data.page_size)
-		
-		var condition2 = {
-			subQuery:false,
-			order: [
-				['createdAt', 'DESC'	],
-			],
-			include:[
-				{
-					model:productRattingModel,
-					attributes: []
-				},
-				{
-			        model: categoryModel,
-			        as: 'product_categorys',
-			        attributes:['name']
-			    },
-			    {
-			        model: categoryModel,
-			        as: 'sub_category',
-			        attributes:['name']
-			    }
-			],
-			attributes: { include : [
-				[Sequelize.fn('AVG', Sequelize.col('product_ratings.ratings')),'rating']
-			]},
-			group: ['products.id'],
-		}
-		condition2.where = {...condition2.where,...{business_id:data.business_id,category_id:data.category_id,is_deleted:false,}}
-		condition2.attributes = { exclude:['createdAt','updatedAt']}
-		if(!_.isEmpty(data.price)){
-			if(data.price == 1){
-				condition2.order = Sequelize.literal('price DESC')
-			}else{
-				condition2.order = Sequelize.literal('price ASC')
-			}
-		}
-
-		if(data.search && data.search != null && !_.isEmpty(data.search)){
-			condition2.where = {...condition2.where,...{[Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],}}
-		} 
-
-		if(data.sub_category_id) {
-			condition2.where = {...condition2.where,...{business_id:data.business_id,category_id:data.category_id,sub_category_id:data.sub_category_id}}
-		}
-
-		await productModel.findAll(condition2).then(async(CartList) => {
-			totalRecords = CartList.length
-		})
-
 		var condition = {
 			subQuery:false,
 			order: [
@@ -201,6 +151,9 @@ exports.GetAllProducts = async (req, res) => {
 			condition.offset = skip,
 			condition.limit = limit
 		}
+
+		const recordCount = await productModel.findAndCountAll(condition);
+        const totalRecords = recordCount?.count;	
 	
 		await productModel.findAll(condition).then(async(products) => {
 			
@@ -241,26 +194,8 @@ exports.GetAllProducts = async (req, res) => {
 					}
 
 				}
-				const previous_page = (data.page - 1);
-				const last_page = Math.ceil(totalRecords / data.page_size);
-				var next_page = null;
-				if(last_page > data.page){
-					var pageNumber = data.page;
-					pageNumber++
-					next_page = pageNumber;
-				}
-
-				var response = {};
-				response.totalPages = (data.page_size != 0) ? Math.ceil(totalRecords/limit) : 1;
-				response.currentPage = parseInt(data.page);
-				response.per_page =  (data.page_size != 0) ? parseInt(data.page_size) : totalRecords;
-				response.total_records = totalRecords;
-				response.data = products;
-				response.previousPage = (previous_page == 0) ? null : previous_page ;
-				response.nextPage = next_page;
-				response.lastPage = last_page;
-
-				res.send(setRes(resCode.OK, true, "Get product list successfully",response))
+				const response = new pagination(products, parseInt(totalRecords), parseInt(data.page), parseInt(data.page_size));
+				res.send(setRes(resCode.OK, true, "Get product list successfully",(response.getPaginationInfo())))
 				
 			}
 		})
@@ -1079,21 +1014,9 @@ exports.CategoryList = async(req, res) => {
 			condition.limit = limit
 		}
 
-		var condition2 = {where:{
-			business_id:data.business_id,
-			is_deleted: false,
-			is_enable: true,
-			parent_id:0
-		},
-		order: [
-			['createdAt', 'DESC']
-		]}
+		const recordCount = await productCategoryModel.findAndCountAll(condition);
+		const totalRecords = recordCount?.count;
 
-		var totalRecords = null
-
-		productCategoryModel.findAll(condition2).then(async(CartList) => {
-			totalRecords = CartList.length
-		})
 		productCategoryModel.findAll(condition).then(async categoryData => {
 			if (categoryData){
 				// Update Sign URL
@@ -1107,27 +1030,8 @@ exports.CategoryList = async(req, res) => {
 					  	data.image = commonConfig.default_image;
 					  }
 				}
-
-				const previous_page = (data.page - 1);
-				const last_page = Math.ceil(totalRecords / data.page_size);
-				var next_page = null;
-				if(last_page > data.page){
-					var pageNumber = data.page;
-					pageNumber++;
-					next_page = pageNumber;
-				}
-				
-				var response = {};
-				response.totalPages = (data.page_size != 0) ? Math.ceil(totalRecords/limit) : 1;
-				response.currentPage = parseInt(data.page);
-				response.per_page =  (data.page_size != 0) ? parseInt(data.page_size) : totalRecords;
-				response.total_records = totalRecords;
-				response.data = categoryData;
-				response.previousPage = (previous_page == 0) ? null : previous_page ;
-				response.nextPage = next_page;
-				response.lastPage = last_page;
-
-				res.send(setRes(resCode.OK, true, "Get category detail successfully.",response))
+				const response = new pagination(categoryData, totalRecords, parseInt(data.page), parseInt(data.page_size));
+				res.send(setRes(resCode.OK, true, "Get category detail successfully.",(response.getPaginationInfo())))
 			}
 				
 		}).catch(error => {
@@ -1451,31 +1355,6 @@ exports.ProductTypeList = async(req, res) => {
 			condition.limit = limit
 		}
 
-		var condition2 = {
-			subQuery:false,
-			order: [
-				['createdAt', 'DESC']
-			],
-			
-		};
-		condition2.where = {business_id:data.business_id,parent_id:{
-				[Op.ne]: 0	
-			},is_deleted:false}
-			condition2.attributes =  { exclude: ['is_deleted', 'is_enable','createdAt','updatedAt'] }
-
-		if(data.category_id) {
-			condition2.where = {business_id:data.business_id,parent_id:data.category_id,is_deleted:false}
-		}
-		if(data.search && data.search != null){
-			condition2.where = {[Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],}
-		}
-
-		var totalRecords = null
-
-		categoryModel.findAll(condition2).then(async(CartList) => {
-			totalRecords = CartList.length
-		})
-
 		categoryModel.findAll(condition).then(async subCategoryData => {
 			if (subCategoryData != '' && subCategoryData != null ){
 			// Update Sign URL
@@ -1498,24 +1377,10 @@ exports.ProductTypeList = async(req, res) => {
 				  }
 
 			}
-				const previous_page = (data.page - 1);
-				const last_page = Math.ceil(totalRecords / data.page_size);
-				var next_page = null;
-				if(last_page > data.page){
-					var pageNumber = data.page;
-					pageNumber++;
-					next_page = pageNumber;
-				}
-				var response = {};
-				response.totalPages = Math.ceil(subCategoryData.length/limit);
-				response.currentPage = parseInt(data.page);
-				response.per_page = parseInt(data.page_size);
-				response.total_records = totalRecords;
-				response.data = subCategoryData;
-				response.previousPage = previous_page;
-				response.nextPage = next_page;
-				response.lastPage = last_page;
-				res.send(setRes(resCode.OK, true, "Get product type  details successfully.",response))
+				const recordCount = await categoryModel.findAndCountAll(condition);
+				const totalRecords = recordCount?.count;
+				const response = new pagination(subCategoryData, parseInt(totalRecords), parseInt(data.page), parseInt(data.page_size));
+				res.send(setRes(resCode.OK, true, "Get product type  details successfully.",(response.getPaginationInfo())))
 			}else{
 				res.send(setRes(resCode.ResourceNotFound, true, "Product type not found.",null))
 			}

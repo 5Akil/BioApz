@@ -1430,6 +1430,7 @@ exports.homeList = async (req, res) => {
 		var Op = models.Op;
 		const promises = [];
 		var eventArray = [];
+		var currentDate = (moment().format('YYYY-MM-DD'));
 
 		promises.push(
 			giftCardModel.findAll({

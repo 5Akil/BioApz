@@ -15,6 +15,7 @@ var util = require('util')
 var notification = require('../../push_notification');
 var commonConfig = require('../../config/common_config')
 const { model } = require('mongoose')
+const pagination = require('../../helpers/pagination');
 
 exports.AddToWishList = async(req, res) =>{
 
@@ -107,41 +108,7 @@ exports.wishlistData = async (req, res) => {
 		if(query.search && query.search != null && !_.isEmpty(query.search)){
 			conditonFilter = {...conditonFilter, ...{[Op.or]: [{name: {[Op.like]: "%" + query.search + "%",}}],}}
 		} 
-
-		var condition2 = {
-			include: [
-				{
-					model: productModel,
-					where: conditonFilter,
-					// where:{[Op.or]: [{name: {[Op.like]: "%" + query.search + "%",}}],},
-					include:[
-						{
-							model: productCategoryModel,
-							as: 'product_categorys',
-							attributes:['name'],
-							
-						},
-						{
-							model: productCategoryModel,
-							as: 'sub_category',
-							attributes:['name']
-						}
-					]
-				}
-			],
-		}
-		condition2.where = {
-			user_id: data.id,
-			is_deleted: false
-		}
-		condition2.attributes = {exclude: ['createdAt','updatedAt','is_deleted']}
-
-		var totalRecords = null
-
-		wishlistModel.findAll(condition2).then(async(wishlist) => {
-			totalRecords = wishlist.length
-		})
-
+		
 		var condition = {
 			include: [
 				{
@@ -180,6 +147,8 @@ exports.wishlistData = async (req, res) => {
 		}
 
 		condition.attributes = {exclude: ['createdAt','updatedAt','is_deleted']}
+		const recordCount = await wishlistModel.findAndCountAll(condition);
+		const totalRecords = recordCount?.count;
 		if(validation){
 			await wishlistModel.findAll(condition).then(async wishlistData => {
 	
@@ -248,27 +217,8 @@ exports.wishlistData = async (req, res) => {
 						delete data.dataValues.category_id
 						delete data.dataValues.product
 					}
-	
-					const previous_page = (query.page - 1);
-					const last_page = Math.ceil(totalRecords / query.page_size);
-					var next_page = null;
-					if(last_page > query.page){
-						var pageNumber = query.page;
-						pageNumber++;
-						next_page = pageNumber;
-					}
-					
-					var response = {};
-					response.totalPages = (query.page_size == 0) ? 1 : Math.ceil(totalRecords/limit);
-					response.currentPage = parseInt(query.page);
-					response.per_page =  (query.page_size != 0) ? parseInt(query.page_size) : wishlistData.length;
-					response.total_records = totalRecords;
-					response.data = wishlistData;
-					response.previousPage = (previous_page == 0) ? null : previous_page ;
-					response.nextPage = next_page;
-					response.lastPage = last_page;
-	
-					res.send(setRes(resCode.OK, true, 'Your wishlist details.',response));
+					const response = new pagination(wishlistData, parseInt(totalRecords), parseInt(query.page), parseInt(query.page_size));
+					res.send(setRes(resCode.OK, true, 'Your wishlist details.',(response.getPaginationInfo())));
 				}else{
 					res.send(setRes(resCode.ResourceNotFound, false, "Your wishlist is empty.",[]))
 				}

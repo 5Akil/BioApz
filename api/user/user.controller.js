@@ -1200,8 +1200,7 @@ exports.GetAllBusiness = async (req, res) => {
 			condition.limit = limit
 		}
 
-		var totalRecords = null
-		totalRecords = await businessModel.count(condition);
+		var totalRecords = await businessModel.count(condition);
 		
 		await businessModel.findAll(condition).then(async businessData => {
 			if(businessData.length > 0){

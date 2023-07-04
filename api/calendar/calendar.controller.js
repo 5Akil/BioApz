@@ -345,28 +345,35 @@ exports.DeleteEvent = async (req, res) => {
 	var comboModel = models.combo_calendar
 	var businessModel = models.business
 	var eventUserModel = models.user_events
+	var currentDate = (moment().subtract(7, "days").format('YYYY-MM-DD'));
+	console.log(currentDate)
 
 	if (data.id) {
-		comboModel.findOne({
+		await comboModel.findOne({
 			where: {
 				id: data.id,
 				is_deleted: false
 			}
-		}).then(eventData => {
-			eventUserModel.findAll({
-				where: { event_id: data.id, is_deleted: false, is_available: true }
-			}).then(async eventUsers => {
-				if(eventUsers.length == 0){
-					if (eventData) {
-						eventData.update({ is_deleted: true,status:4 })
-						res.send(setRes(resCode.OK, true, "Event deleted successfully", null))
-					} else {
-						res.send(setRes(resCode.ResourceNotFound, false, "Event not found", null))
+		}).then(async eventData => {
+			const eventDate = moment(eventData.start_date).format('YYYY-MM-DD');
+			if(currentDate == eventDate){
+				res.send(setRes(resCode.BadRequest, false, "can't delete event because.", null))
+			}else{
+				await eventUserModel.findAll({
+					where: { event_id: data.id, is_deleted: false, is_available: true }
+				}).then(async eventUsers => {
+					if(eventUsers.length == 0){
+						if (eventData) {
+							await eventData.update({ is_deleted: true,status:4 })
+							res.send(setRes(resCode.OK, true, "Event deleted successfully", null))
+						} else {
+							res.send(setRes(resCode.ResourceNotFound, false, "Event not found", null))
+						}
+					}else{
+						res.send(setRes(resCode.BadRequest, false, "can't delete event because some users registered or active.", null))
 					}
-				}else{
-					res.send(setRes(resCode.BadRequest, false, "can't delete event because some users registered or active.", null))
-				}
-			})
+				})
+			}
 			
 		}).catch(error => {
 			res.send(setRes(resCode.BadRequest, false, "Internal server error.", null))
