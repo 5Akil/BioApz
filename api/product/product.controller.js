@@ -556,6 +556,7 @@ exports.createProduct = async(req,res) => {
 			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
 		}
 	}catch(error){
+		console.log(error)
 		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
 	}
 
@@ -1543,74 +1544,78 @@ exports.removeProductType = async(req, res) => {
 			is_deleted:false
 		}
 	}).then(productData => {
-		
-		var product_ids = [];
-		for(const data of productData){
-			product_ids.push(data.id)
-		}
-		cartModel.findAll({
-			where:{
-				product_id:{
-					[Op.in]:product_ids
-				},
-				is_deleted:false
+
+		if(productData.length > 0){
+			res.send(setRes(resCode.BadRequest,false,"You Can not delete this Product Type because it contains Existing Products!",null))
+		}else{
+			var product_ids = [];
+			for(const data of productData){
+				product_ids.push(data.id)
 			}
-		}).then(cartData => {
-			if(cartData.length > 0){
-				res.send(setRes(resCode.BadRequest,false,"You can not delete this category because some product of this sub-category are into some user carts",null))
-			}else{
-				
-				wishlistModel.findAll({
+				cartModel.findAll({
 					where:{
 						product_id:{
 							[Op.in]:product_ids
 						},
 						is_deleted:false
 					}
-				}).then(wishlistData => {
-
-					if(wishlistData.length > 0){
-						res.send(setRes(resCode.BadRequest,false,"You can not delete this category because some product of this sub-category are into some user wishlist",null))
+				}).then(cartData => {
+					if(cartData.length > 0){
+						res.send(setRes(resCode.BadRequest,false,"You can not delete this category because some product of this sub-category are into some user carts",null))
 					}else{
-
-						orderDetailsModel.findAll({
+						
+						wishlistModel.findAll({
 							where:{
 								product_id:{
 									[Op.in]:product_ids
 								},
-								is_deleted:false,
-								order_status:1
+								is_deleted:false
 							}
-						}).then(orderData => {
+						}).then(wishlistData => {
 
-							if(orderData.length > 0){
-								res.send(setRes(resCode.BadRequest,false,"You can not delete this category because some ongoing order of this sub-category product",null))
+							if(wishlistData.length > 0){
+								res.send(setRes(resCode.BadRequest,false,"You can not delete this category because some product of this sub-category are into some user wishlist",null))
 							}else{
-								productCategoryModel.findOne({
+
+								orderDetailsModel.findAll({
 									where:{
-										id:data.id,
+										product_id:{
+											[Op.in]:product_ids
+										},
 										is_deleted:false,
-										is_enable:true,
-										parent_id: {
-											[Op.ne]:0,
-										}
+										order_status:1
 									}
-								}).then(subCategoryData => {
+								}).then(orderData => {
 
-									if(subCategoryData != null){
-
-										subCategoryData.update({is_deleted:true})
-										res.send(setRes(resCode.OK,true,"Product type deleted successfully",null))
+									if(orderData.length > 0){
+										res.send(setRes(resCode.BadRequest,false,"You can not delete this category because some ongoing order of this sub-category product",null))
 									}else{
-										res.send(setRes(resCode.ResourceNotFound,false,"Product type not found",null))
+										productCategoryModel.findOne({
+											where:{
+												id:data.id,
+												is_deleted:false,
+												is_enable:true,
+												parent_id: {
+													[Op.ne]:0,
+												}
+											}
+										}).then(subCategoryData => {
+
+											if(subCategoryData != null){
+
+												subCategoryData.update({is_deleted:true,is_enable:false})
+												res.send(setRes(resCode.OK,true,"Product type deleted successfully",null))
+											}else{
+												res.send(setRes(resCode.ResourceNotFound,false,"Product type not found",null))
+											}
+										})
 									}
 								})
 							}
 						})
 					}
-				})
+				})	
 			}
-		})			
 	}).catch(error => {
 		res.send(setRes(resCode.BadRequest, false, "Internal server error.",null))
 	})
