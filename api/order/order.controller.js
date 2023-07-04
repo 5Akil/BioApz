@@ -14,6 +14,7 @@ var awsConfig = require('../../config/aws_S3_config')
 var util = require('util')
 var notification = require('../../push_notification');
 const Sequelize = require('sequelize');
+var commonConfig = require('../../config/common_config')
 
 exports.OrderHistory = async(req,res) => {
 

@@ -1035,14 +1035,16 @@ exports.CreateBusiness = async (req, res) => {
 			res.send(setRes(resCode.BadRequest, false, 'Please enter valid mobile number.', null));
 		}
 		else {
-			// var categoryVal = await categoryModel.findOne({
-			// 	where: { id:data.category_id,is_deleted: false }
-			// });
-
-			// if (categoryVal != null) {
-			// 	validation =false;
-			// 	return res.send(setRes(resCode.BadRequest, false, 'Category Not found !', null))
-			// }
+			if(data.category_id){
+				var categoryVal = await categoryModel.findOne({
+					where: { id:data.category_id,status:false,is_deleted: false }
+				});
+	
+				if (categoryVal != null) {
+					validation =false;
+					return res.send(setRes(resCode.BadRequest, false, 'Selected category is no longer available! ,Please select a different category!', null))
+				}
+			}
 
 			var nameData = await businessModel.findOne({
 				where: { is_deleted: false, business_name: { [Op.eq]: data.business_name } }
