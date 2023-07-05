@@ -7,6 +7,9 @@ module.exports = (sequelize, DataTypes) => {
       primaryKey: true,
       autoIncrement: true,
     },
+    country_id: {
+      type: DataTypes.INTEGER,
+    },
     role_id: {
       type: DataTypes.INTEGER,
       defaultValue: 3 //user - 2, admin - 1, 3 - bussness
@@ -122,6 +125,7 @@ Business.associate = function(models) {
     Business.hasOne(models.cms_pages, {foreignKey: 'business_id'})
     Business.hasOne(models.faqs, {foreignKey: 'business_id'})
     Business.hasMany(models.shopping_cart, {foreignKey: 'business_id'})
+    Business.belongsTo(models.countries, {foreignKey: 'country_id'});
   };
   return Business;
 };

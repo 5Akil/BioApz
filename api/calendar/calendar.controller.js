@@ -502,7 +502,7 @@ exports.ViewEvent = async (req, res) => {
 	var comboModel = models.combo_calendar
 	var userEventsModel = models.user_events
 	var usersModel = models.user
-
+	console.log(val)
 	comboModel.findOne({
 		where: {
 			id: data.id,
@@ -533,14 +533,13 @@ exports.ViewEvent = async (req, res) => {
 				},
 				include: [
 					{
-						model: usersModel,
-						as: 'users'
+						model: usersModel
 					},
 				],
 			}).then(async eventUsers => {
 				await _.each(eventUsers, function (itm) {
 					// var profile_image = awsConfig.getSignUrl(itm.users.dataValues.profile_picture)
-					this.push(_.pick(itm.users.dataValues, ["id","username","profile_picture"])) 
+					this.push(_.pick(itm.user.dataValues, ["id","username","profile_picture"])) 
 					}, event_users);
 					for (const data of event_users) {
 						if(data.profile_picture != null){

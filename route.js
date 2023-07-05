@@ -24,4 +24,7 @@ module.exports = function (app) {
 
   // User APP Routes 
   app.use('/api/user', require('./api/user'))
+
+  // User APP Routes 
+  app.use('/api/countries', require('./api/country'))
 }

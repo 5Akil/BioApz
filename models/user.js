@@ -7,6 +7,9 @@ module.exports = (sequelize, DataTypes) => {
       primaryKey: true,
       autoIncrement: true,
     },
+    country_id: {
+      type: DataTypes.INTEGER,
+    },
     role_id: {
       type: DataTypes.INTEGER,
       defaultValue: 2 //user - 2, admin - 1, 3 - bussness
@@ -68,7 +71,8 @@ module.exports = (sequelize, DataTypes) => {
 
   User.associate = function(models) {
     // associations can be defined here
-    User.hasMany(models.user_events, {foreignKey: 'user_id'}) 
+    User.hasMany(models.user_events, {foreignKey: 'user_id'});
+    User.belongsTo(models.countries, {foreignKey: 'country_id'});
   };
   return User;
 };
