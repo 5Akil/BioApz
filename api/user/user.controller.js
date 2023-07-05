@@ -156,6 +156,7 @@ exports.Login = async (req, res) => {
 	var data = req.body;
 	var userModel = models.user
 	var businessModel = models.business;
+	var countryModel = models.countries
 	var templateModel = models.templates
 	var categoryModel = models.business_categorys
 
@@ -171,7 +172,11 @@ exports.Login = async (req, res) => {
 				email: data.email,
 				// is_active: 1,
 				is_deleted: false
-			}
+			},
+			include:[{
+				model:models.countries,
+				attributes:['id','country_code','phone_code','currency','currency_symbol']
+			}]
 			}).then(function (user) {
 				if (!user) {
 					res.send(setRes(resCode.ResourceNotFound, false ,'User not found.',null))
@@ -231,8 +236,14 @@ exports.Login = async (req, res) => {
 					is_deleted: false
 				},
 				include: [
-					// templateModel, 
-					categoryModel]
+					{
+						model: categoryModel,
+					},
+					{
+						model: countryModel,
+						attributes:['id','country_code','phone_code','currency','currency_symbol']
+					}
+				]
 		}).then(function (business) {
 			if (!business) {
 				res.send(setRes(resCode.ResourceNotFound, false ,'Business not found.',null))
@@ -310,6 +321,7 @@ exports.Login = async (req, res) => {
 				}
 			}
 		}).catch(error => {
+			console.log(error)
 			res.send(setRes(resCode.InternalServer, false, "Internal Server Error",null))
 		});
 		}
