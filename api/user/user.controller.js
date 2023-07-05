@@ -2017,7 +2017,7 @@ exports.businessBIO = async (req, res) => {
 // Business event list
 exports.businessEventList = async (req, res) => {
 	try {
-		var data = req.query;
+		var data = req.body;
 		var combocalenderModel = models.combo_calendar;
 		var currentDate = moment().format("YYYY-MM-DD");
 		var Op = models.Op;
@@ -2029,9 +2029,10 @@ exports.businessEventList = async (req, res) => {
 				return res.send(
 					setRes(
 						resCode.BadRequest,
-						null,
 						false,
-						"invalid page number, should start with 1"
+
+						"invalid page number, should start with 1",
+						null,
 					)
 				);
 			}
@@ -2039,8 +2040,6 @@ exports.businessEventList = async (req, res) => {
 			let skip = data.page_size * (data.page - 1);
 			let limit = parseInt(data.page_size);
 			var condition = {
-				offset:skip, 
-				limit:limit,
 				attributes: ['id','business_id','images','title','description','start_date','end_date','start_time','end_time']
 			}	
 			condition.where = {is_deleted: false,end_date: {[Op.gt]: currentDate}}
@@ -2049,6 +2048,10 @@ exports.businessEventList = async (req, res) => {
 			} 
 			if(data.business_id){
 				condition.where = {...condition.where,...{business_id:data.business_id}}
+			}
+			if(data.page_size != 0 && !_.isEmpty(data.page_size)){
+				condition.offset = skip,
+				condition.limit = limit
 			}
 			combocalenderModel.findAll(condition).then(async event => {
 				if(event.length > 0){
@@ -2067,17 +2070,20 @@ exports.businessEventList = async (req, res) => {
 						}
 						data.dataValues.event_images = image_array
 					}
+					const recordCount = await combocalenderModel.findAndCountAll(condition);
+					const totalRecords = recordCount?.count;
+					const response = new pagination(event, parseInt(totalRecords), parseInt(data.page), parseInt(data.page_size));
 					res.send(
 						setRes(
 						  resCode.OK,
 						  true,
 						  "Business Event List successfully",
-						  event
+						  (response.getPaginationInfo())
 						)
 					  );
 				}else {
 					res.send(
-					  setRes(resCode.ResourceNotFound, false, "Event not found", null)
+					  setRes(resCode.ResourceNotFound, false, "Event not found", [])
 					);
 				  }
 			})
@@ -2167,7 +2173,7 @@ exports.eventUserRegister = async (req, res) => {
 
 // User Event Listing API
 exports.userEventList = async (req, res) => {
-	var data = req.query;
+	var data = req.body;
 	var combocalenderModel = models.combo_calendar;
 	var userEventModel = models.user_events
 	var currentDate = moment().format("YYYY-MM-DD");
@@ -2183,14 +2189,18 @@ exports.userEventList = async (req, res) => {
 		let limit = parseInt(data.page_size);
 
 		var condition = {
-			offset:skip, 
-			limit:limit,
 			attributes: ['id','business_id','images','title','description','start_date','end_date','start_time','end_time'],
 			include: [
 				{
 				  model: userEventModel,
 				  attributes: ["id","user_id"],
-				  where:{user_id:data.user_id}
+				  where:{user_id:data.user_id},
+				  include: [
+					{
+						model: models.user,
+						attributes:['id','username','email','mobile','profile_picture']
+					}
+				  ]
 				},
 			],
 		}	
@@ -2220,6 +2230,12 @@ exports.userEventList = async (req, res) => {
 				}
 			}
 		}
+
+		if(data.page_size != 0 && !_.isEmpty(data.page_size)){
+			condition.offset = skip,
+			condition.limit = limit
+		}
+
 		combocalenderModel.findAll(condition).then(async event => {
 			if(event.length > 0){
 				const dataArray = [];	
@@ -2237,17 +2253,20 @@ exports.userEventList = async (req, res) => {
 					}
 					data.dataValues.event_images = image_array
 				}
+				const recordCount = await combocalenderModel.findAndCountAll(condition);
+				const totalRecords = recordCount?.count;
+				const response = new pagination(event, parseInt(totalRecords), parseInt(data.page), parseInt(data.page_size));
 				res.send(
 					setRes(
 					  resCode.OK,
 					  true,
-					  "Business Event List successfully",
-					  event
+					  "User business event list successfully",
+					  (response.getPaginationInfo())
 					)
 				  );
 			}else {
 				res.send(
-				  setRes(resCode.ResourceNotFound, false, "Event not found", null)
+				  setRes(resCode.ResourceNotFound, false, "Event not found", [])
 				);
 			  }
 		})

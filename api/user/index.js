@@ -7,6 +7,7 @@ const uuidv1 = require('uuid/v1');
 const moment = require('moment')
 const awsConfig = require('../../config/aws_S3_config')
 var commonConfig = require('../../config/common_config')
+const {authorize} = require('../../helpers/authorize');
 
 var storage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -52,8 +53,6 @@ var awsupload = multer({
 var controller = require('./user.controller')
 
 const {verifyToken} = require('../../config/token');
-const {authorize} = require('../../helpers/authorize');
-
 
 router.post('/register', awsupload.single('profile_picture'),controller.Register)
 router.post('/login', controller.Login)
@@ -66,7 +65,7 @@ router.post('/get-profile', verifyToken, controller.GetProfileDetail)
 router.post('/update-profile', verifyToken, awsupload.single('profile_picture'), controller.UpdateProfile)
 router.post('/change-password', verifyToken, controller.ChangePassword)
 router.post('/feedback', verifyToken, controller.SendFeedback)
-router.post('/all-business',verifyToken,authorize([3]),controller.GetAllBusiness)
+router.post('/all-business',verifyToken,authorize([2]),controller.GetAllBusiness)
 router.post('/logout', verifyToken ,controller.Logout)
 
 
@@ -80,9 +79,9 @@ router.get('/loyalty/view/:id', verifyToken, controller.loyaltyView)
 router.get('/business/bio', verifyToken, controller.businessBIO)
 
 // Event routes
-router.get('/business/event/list', verifyToken, controller.businessEventList)
-router.get('/event/list', verifyToken, controller.userEventList)
-router.post('/event/register', verifyToken, controller.eventUserRegister)
-router.post('/event/leave/:id', verifyToken, controller.eventUserLeave)
+router.post('/business/event/list', verifyToken,authorize([2]), controller.businessEventList)
+router.post('/event/list', verifyToken,authorize([2]), controller.userEventList)
+router.post('/event/register', verifyToken,authorize([2]), controller.eventUserRegister)
+router.post('/event/leave/:id', verifyToken,authorize([2]), controller.eventUserLeave)
 
 module.exports = router;

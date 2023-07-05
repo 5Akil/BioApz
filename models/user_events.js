@@ -30,7 +30,7 @@ module.exports = (sequelize, DataTypes) => {
     // associations can be defined here
     UserEvents.belongsTo(models.business, { foreignKey: 'business_id' })
     UserEvents.belongsTo(models.combo_calendar, {foreignKey: 'event_id'})
-    UserEvents.belongsTo(models.user, {as: 'users', foreignKey: 'user_id' })
+    UserEvents.belongsTo(models.user, {foreignKey: 'user_id' })
   };
   return UserEvents;
 };
