@@ -23,12 +23,12 @@ function authorize(roles = []) {
                     }
                     return res.send(setRes(resCode.Unauthorized, false, "Invalid Token Access denied/Unauthorized.", null))
                 } catch (err) {
-                    return response(
-                        res,
-                        err, {},
+                    return res.send(setRes(
+                        resCode.Unauthorized,
+                        false,
                         'Invalid Token Access denied/Unauthorized',
                         httpStatus.FORBIDDEN
-                    );
+                    ));
                 }
             }
             return res.send(setRes(resCode.ResourceNotFound, false, "No token provided.", null))
