@@ -2146,6 +2146,16 @@ exports.businessEventList = async (req, res) => {
 					)
 				);
 			}
+			if (data.page_size == '' || data.page_size <= 0) {
+				return res.send(
+					setRes(
+						resCode.BadRequest,
+						null,
+						false,
+						"invalid page size, should be greater than 0"
+					)
+				);
+			}
 
 			let skip = data.page_size * (data.page - 1);
 			let limit = parseInt(data.page_size);
@@ -2154,7 +2164,7 @@ exports.businessEventList = async (req, res) => {
 				limit:limit,
 				attributes: ['id','business_id','images','title','description','start_date','end_date','start_time','end_time']
 			}	
-			condition.where = {is_deleted: false,end_date: {[Op.lt]: currentDate},[Op.or]: [{title: {[Op.like]: "%" + data.search + "%",}}]}
+			condition.where = {is_deleted: false,[Op.or]: [{title: {[Op.like]: "%" + data.search + "%",}}]}
 			if(data.business_id){
 				condition.where = {...condition.where,...{business_id:data.business_id}}
 			}
@@ -2388,7 +2398,7 @@ exports.eventUserLeave = async (req, res) => {
 					where: {id: param.id,is_deleted: false,is_available:true}
 				}).then(async event_user => {
 					if(_.isEmpty(event_user)){
-						return res.send(setRes(resCode.ResourceNotFound, false, "User Event not not found.", null))
+						return res.send(setRes(resCode.ResourceNotFound, false, "User Event not found.", null))
 					}
 				})
 

@@ -25,7 +25,38 @@ exports.StoreFaq = async(req, res) => {
 
 	var requiredFields = _.reject(['business_id', 'title', 'description'], (o) => { return _.has(data, o)  })
 
+	
+	const businessModel = models.business;
+	const userModel = models.user;
+	const userEmail = req.userEmail;
+	
 	if(requiredFields == ""){
+		let userDetails;
+		userDetails = await businessModel.findOne({
+			where: {
+				email: userEmail,
+				is_deleted: false,
+				is_active:true
+			}
+		})
+	
+		if (!userDetails || _.isEmpty(userDetails)) {
+			userDetails = await userModel.findOne({
+				where: {
+					email: userEmail,
+					is_deleted: false,
+					is_active:true
+				}
+			})
+		}
+		// Restrict Business user to update faq of other business
+		const userRole = userDetails?.role_id || 0;
+		if (userRole && userRole === 3) {
+			if (userDetails?.id != data?.business_id) {
+				return res.send(setRes(resCode.BadRequest,false,"Invalid auth token to add faq for Business.",null))
+			}
+		}
+
 		businessModel.findOne({
 			where: {id: data.business_id,is_deleted: false,is_active:true}
 		}).then(async business => {
@@ -112,6 +143,30 @@ exports.UpdateFaq = async (req, res ) => {
 	var faqModel = models.faqs
 
 	var requiredFields = _.reject(['id'], (o) => { return _.has(data, o)  })
+	const businessModel = models.business;
+	const userEmail = req.userEmail;
+
+	const businessUserDetails = await businessModel.findOne({
+		where: {
+			email: userEmail,
+			is_deleted: false,
+			is_active:true
+		}
+	})
+
+	// Check for faq created by this business user or not
+	if (businessUserDetails) {
+		const faqExists = await faqModel.findOne({
+			where:{
+				business_id : businessUserDetails.id,
+				id:data.id,
+				is_deleted:false
+			}
+		})
+		if (!faqExists) {
+			return res.send(setRes(resCode.BadRequest,false,"Invalid auth token to add faq for Business.",null))
+		}
+	}
 
 	if(requiredFields == ""){
 
@@ -159,6 +214,31 @@ exports.RemoveFaq = async (req, res ) => {
 
 	var data = req.params
 	var faqModel = models.faqs
+
+	const businessModel = models.business;
+	const userEmail = req.userEmail;
+
+	const businessUserDetails = await businessModel.findOne({
+		where: {
+			email: userEmail,
+			is_deleted: false,
+			is_active:true
+		}
+	})
+
+	// Check for faq created by this business user or not
+	if (businessUserDetails) {
+		const faqExists = await faqModel.findOne({
+			where:{
+				business_id : businessUserDetails.id,
+				id:data.id,
+				is_deleted:false
+			}
+		})
+		if (!faqExists) {
+			return res.send(setRes(resCode.BadRequest,false,"Invalid auth token to delete faq for Business.",null))
+		}
+	}
 
 	faqModel.findOne({
 		where:{
