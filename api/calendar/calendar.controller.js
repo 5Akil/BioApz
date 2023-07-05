@@ -356,7 +356,7 @@ exports.DeleteEvent = async (req, res) => {
 		}).then(async eventData => {
 			const eventDate = moment(eventData.start_date).format('YYYY-MM-DD');
 			if(currentDate == eventDate){
-				res.send(setRes(resCode.BadRequest, false, "can't delete event because.", null))
+				res.send(setRes(resCode.BadRequest, false, "You can not delete this event in last 7 days of event start date", null))
 			}else{
 				await eventUserModel.findAll({
 					where: { event_id: data.id, is_deleted: false, is_available: true }
@@ -565,7 +565,7 @@ exports.UpdateEvent = async (req, res) => {
 	var comboModel = models.combo_calendar
 	const businessModel = models.business
 	var requiredFields = _.reject(['id','title', 'description', 'end_date', 'start_date', 'location'], (o) => { return _.has(data, o) })
-
+	var currentDate = (moment().subtract(7, "days").format('YYYY-MM-DD'));
 	// data.repeat_every == 1 ? (data.repeat_on ? '' : requiredFields.push('repeat_on')) : '';
 	// _.contains([1, 2], parseInt(data.repeat_every)) ? data.repeat = true : '';
 	var row = await comboModel.findByPk(data.id);
@@ -573,6 +573,7 @@ exports.UpdateEvent = async (req, res) => {
 	// Start date save different columns logic
 	var startDate = moment(data.start_date).format('YYYY-MM-DD HH:mm:ss');
 	var sDate_value = startDate.split(" ");
+	var validation = true
 
 	// End date time save different columns logic
 	
@@ -589,11 +590,15 @@ exports.UpdateEvent = async (req, res) => {
 			if (!isEventExists) {
 				return res.send(setRes(resCode.ResourceNotFound, false, "Event not found.", null))
 			}
+			const eventDate = moment(isEventExists.start_date).format('YYYY-MM-DD');
+			if(currentDate == eventDate){
+				validation = false;
+				return res.send(setRes(resCode.BadRequest, false, "You can not edit this event in last 7 days of event start date", null))
+			}
 			var image = row?.images || [];
 			if (req.files) {
 				const filesData = req.files;
 				const total_image = image.length + filesData.length;
-				var validation = true
 
 				if (total_image > 5) {
 					validation = false
