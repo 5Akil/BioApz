@@ -50,6 +50,12 @@ exports.CreateEvent = async (req, res) => {
 		var endDate = moment(data.end_date).format('YYYY-MM-DD HH:mm:ss');
 		var eDate_value = endDate.split(" ");
 
+		const isStartDatePastDate =moment(startDate).isBefore(moment());
+		const isEndDatePastDate = moment(endDate).isBefore(moment());
+		if (isStartDatePastDate || isEndDatePastDate) {
+			return res.send(setRes(resCode.BadRequest, false, "Event start date and end date can not be past date.", null))
+		}
+
 		if (filesData.length == 0) {
 			res.send(setRes(resCode.BadRequest, false, 'At least one image is required for product', null))
 			validation = false;
@@ -589,6 +595,13 @@ exports.UpdateEvent = async (req, res) => {
 			if (!isEventExists) {
 				return res.send(setRes(resCode.ResourceNotFound, false, "Event not found.", null))
 			}
+
+
+			const isStartDatePastDate =moment(startDate).isBefore(moment());
+			const isEndDatePastDate = moment(endDate).isBefore(moment());
+			if (isStartDatePastDate || isEndDatePastDate) {
+				return res.send(setRes(resCode.BadRequest, false, "Event start date and end date can not be past date.", null))
+			}
 			var image = row?.images || [];
 			if (req.files) {
 				const filesData = req.files;
@@ -708,7 +721,7 @@ exports.UpdateEvent = async (req, res) => {
 
 				if (events && events?.length > 0) {
 					validation = false;
-					return res.send(setRes(resCode.BadRequest, false, "Event exists in between same time slot.", events))
+					return res.send(setRes(resCode.BadRequest, false, "Event exists in between same time slot.", null))
 				}
 
 				if (validation) {
