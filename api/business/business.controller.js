@@ -99,7 +99,6 @@ exports.createInquiry = async (req, res) => {
 
 exports.GetRecommendedBusiness = async (req, res) => {
 
-	// console.log(req.body)
 	var data = req.body;
 	var business = models.business;
 	var category = models.business_categorys;
@@ -537,7 +536,6 @@ exports.UploadCompanyImages = async (req, res) => {
 		})
 
 	} else {
-		console.log("in");
 		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
 	}
 }
@@ -638,7 +636,6 @@ exports.UpdateOffer = (req, res) => {
 						is_deleted: false
 					}
 				}).then(updatedOffer => {
-					console.log(updatedOffer)
 					if (updatedOffer > 0) {
 
 						offerModel.findOne({
@@ -652,8 +649,6 @@ exports.UpdateOffer = (req, res) => {
 							})
 							res.send(setRes(resCode.OK, true, "Offer updated successfully.", offer))
 						}).catch(error => {
-							console.log('===========update offer========')
-							console.log(error.message)
 							res.send(setRes(resCode.BadRequest, false, "Fail to update offer.", null))
 						})
 
@@ -735,13 +730,8 @@ exports.UpdateOfferDetail = async (req, res) => {
 				},
 				group: ['user_id']
 			}).then(product_inquiries => {
-				console.log(product_inquiries)
 				product_inquiries = JSON.parse(JSON.stringify(product_inquiries))
-				// console.log(product_inquiries)
 				async.forEach(product_inquiries, function (singleInquery, cbSingleInquery) {
-					// console.log('=======================')
-					// console.log(singleInquery)
-
 					userModel.findOne({
 						where: {
 							id: singleInquery.user_id,
@@ -761,10 +751,6 @@ exports.UpdateOfferDetail = async (req, res) => {
 					})
 				})
 			})
-			// console.log('++++++++++++++++++++++++');
-			// console.log(NotificationData)
-
-
 			// send notification code over
 			var offer_image = await awsConfig.getSignUrl(offer.image).then(function (res) {
 				offer.image = res
@@ -952,13 +938,10 @@ exports.GetOffers = (req, res) => {
 				res.send(setRes(resCode.OK, true, "Available Offers.", (data.limit ? arrRes : resObj)))
 			})
 				.catch(error => {
-					console.log('============get offer error==========')
-					console.log(error.message)
 					res.send(setRes(resCode.InternalServer, false, "Internal server error", null))
 				})
 
 		}).catch(error => {
-			console.log(error.message + ' ...business.controller');
 			res.send(setRes(resCode.InternalServer, false, 'Internal server error.', null))
 		})
 
@@ -1052,14 +1035,16 @@ exports.CreateBusiness = async (req, res) => {
 			res.send(setRes(resCode.BadRequest, false, 'Please enter valid mobile number.', null));
 		}
 		else {
-			// var categoryVal = await categoryModel.findOne({
-			// 	where: { id:data.category_id,is_deleted: false }
-			// });
-
-			// if (categoryVal != null) {
-			// 	validation =false;
-			// 	return res.send(setRes(resCode.BadRequest, false, 'Category Not found !', null))
-			// }
+			if(data.category_id){
+				var categoryVal = await categoryModel.findOne({
+					where: { id:data.category_id,status:false,is_deleted: false }
+				});
+	
+				if (categoryVal != null) {
+					validation =false;
+					return res.send(setRes(resCode.BadRequest, false, 'Selected category is no longer available! ,Please select a different category!', null))
+				}
+			}
 
 			var nameData = await businessModel.findOne({
 				where: { is_deleted: false, business_name: { [Op.eq]: data.business_name } }
@@ -1087,7 +1072,6 @@ exports.CreateBusiness = async (req, res) => {
 				validation =false;
 				return res.send(setRes(resCode.BadRequest, false, 'This phone number is already associated with another account !', null))
 			}
-			console.log(validation)
 			if (validation) {
 				data.email = (data.email).toLowerCase();
 				data.is_active = false;
@@ -1131,29 +1115,6 @@ exports.CreateBusiness = async (req, res) => {
 	else {
 		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
 	}
-
-
-	//   data = {
-	// 	template_id: data.template_id,
-	// 	business_name: data.business_name,
-	// 	email: data.email,
-	// 	password: data.password,
-	// 	description: data.description,
-	// 	person_name: data.person_name,
-	// 	phone: data.phone,
-	// 	category_id: data.category_id,
-	// 	approve_by: data.approve_by,
-	// 	abn_no: data.abn_no,
-	// 	color_code: data.color_code,
-	// 	sections: data.sections
-	// // }
-	// console.log(Joi.object())
-	// var schema = Joi.object().keys({
-	// 		mobile: Joi.string().regex(/^\d{3}-\d{3}-\d{4}$/).required(),
-	// });
-	// console.log(schema)
-
-
 }
 
 exports.ChatInitialize = async (req, res) => {
@@ -1199,7 +1160,6 @@ exports.ChatInitialize = async (req, res) => {
 					fireBusinessData = JSON.parse(JSON.stringify(fireBusinessData))
 
 					if (fireBusinessData != null) {
-						console.log(fireBusinessData)
 						var nextKey = parseInt(_.last(_.keys(fireBusinessData))) + 1
 
 						//add user id in business array
@@ -1257,8 +1217,6 @@ exports.ChatInitialize = async (req, res) => {
 						})
 					}
 					else {
-						console.log(fireBusinessData)
-
 						var setCustomer_ids = db.ref(`businesses/${proInquery.business_id}`)
 
 						//create new business & add user id (for first time only)
@@ -1378,8 +1336,6 @@ function UpdateProInquiry(inquiryId) {
 }
 
 exports.RestaurantsBooking = (req, res) => {
-
-	console.log(req.body)
 	var data = req.body
 	var ProductInqModel = models.product_inquiry;
 	var businessModel = models.business;
@@ -1439,8 +1395,6 @@ exports.RestaurantsBooking = (req, res) => {
 									date: booking.date,
 									time: booking.time
 								}
-								// console.log('++++++++++++++++++++++++');
-								// console.log(NotificationData)
 								notification.SendNotification(NotificationData)
 							}
 						})
@@ -1476,6 +1430,7 @@ exports.homeList = async (req, res) => {
 		var Op = models.Op;
 		const promises = [];
 		var eventArray = [];
+		var currentDate = (moment().format('YYYY-MM-DD'));
 
 		promises.push(
 			giftCardModel.findAll({
@@ -1632,7 +1587,6 @@ exports.homeList = async (req, res) => {
 
 		res.send(setRes(resCode.OK, true, "Get home page details successfully.",resData))
 	} catch (error) {
-		console.log(error)
 		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
 	}
 }
@@ -1710,7 +1664,6 @@ exports.getUserProfile = async (req, res) => {
 			res.send(setRes(resCode.BadRequest, false, "Fail to get business profile.", null))
 		})
 	} catch (error) {
-		console.log(error)
 		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
 	}
 
@@ -1826,7 +1779,6 @@ exports.updateUserDetils = async (req, res) => {
 			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
 		}
 	} catch (error) {
-		console.log(error)
 		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
 	}
 }

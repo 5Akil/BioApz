@@ -280,7 +280,6 @@ exports.removeImagesFromCombo = async (req, res) => {
 			}).then(async comboOffer => {
 
 				if(comboOffer){
-					// console.log(JSON.parse(JSON.stringify(comboOffer)))
 					var replaceImages = await _.filter(comboOffer.images, (img) => {
 						var typeArr = data.image_name;
 						 if(!typeArr.includes(img)){
@@ -327,8 +326,6 @@ exports.removeImagesFromCombo = async (req, res) => {
 						}
 
 					}).catch(error => {
-						console.log('=======replace combo images error=========')
-						console.log(error.message)
 						res.send(setRes(resCode.InternalServer, null, false, "Internal server error."))
 					})
 				}else{
@@ -336,8 +333,6 @@ exports.removeImagesFromCombo = async (req, res) => {
 				}
 
 			}).catch(error => {
-				console.log('===========remove images from combo offer========')
-				console.log(error.message)
 				res.send(setRes(resCode.InternalServer, null, false, "Fail to remove image from combo offer."))
 			})
 
@@ -356,28 +351,34 @@ exports.DeleteEvent = async (req, res) => {
 	var comboModel = models.combo_calendar
 	var businessModel = models.business
 	var eventUserModel = models.user_events
+	var currentDate = (moment().subtract(7, "days").format('YYYY-MM-DD'));
 
 	if (data.id) {
-		comboModel.findOne({
+		await comboModel.findOne({
 			where: {
 				id: data.id,
 				is_deleted: false
 			}
-		}).then(eventData => {
-			eventUserModel.findAll({
-				where: { event_id: data.id, is_deleted: false, is_available: true }
-			}).then(async eventUsers => {
-				if(eventUsers.length == 0){
-					if (eventData) {
-						eventData.update({ is_deleted: true,status:4 })
-						res.send(setRes(resCode.OK, true, "Event deleted successfully", null))
-					} else {
-						res.send(setRes(resCode.ResourceNotFound, false, "Event not found", null))
+		}).then(async eventData => {
+			const eventDate = moment(eventData.start_date).format('YYYY-MM-DD');
+			if(currentDate == eventDate){
+				res.send(setRes(resCode.BadRequest, false, "You can not delete this event in last 7 days of event start date", null))
+			}else{
+				await eventUserModel.findAll({
+					where: { event_id: data.id, is_deleted: false, is_available: true }
+				}).then(async eventUsers => {
+					if(eventUsers.length == 0){
+						if (eventData) {
+							await eventData.update({ is_deleted: true,status:4 })
+							res.send(setRes(resCode.OK, true, "Event deleted successfully", null))
+						} else {
+							res.send(setRes(resCode.ResourceNotFound, false, "Event not found", null))
+						}
+					}else{
+						res.send(setRes(resCode.BadRequest, false, "can't delete event because some users registered or active.", null))
 					}
-				}else{
-					res.send(setRes(resCode.BadRequest, false, "can't delete event because some users registered or active.", null))
-				}
-			})
+				})
+			}
 			
 		}).catch(error => {
 			res.send(setRes(resCode.BadRequest, false, "Internal server error.", null))
@@ -487,7 +488,6 @@ exports.GetAllEvents = async (req, res) => {
 				response.lastPage = last_page;
 				res.send(setRes(resCode.OK, true, "Available events list.", response))
 		}).catch(error => {
-			console.log(error);
 			res.send(setRes(resCode.InternalServer, false, 'Internal server error.', null))
 		})
 	} else {
@@ -571,7 +571,7 @@ exports.UpdateEvent = async (req, res) => {
 	var comboModel = models.combo_calendar
 	const businessModel = models.business
 	var requiredFields = _.reject(['id','title', 'description', 'end_date', 'start_date', 'location'], (o) => { return _.has(data, o) })
-
+	var currentDate = (moment().subtract(7, "days").format('YYYY-MM-DD'));
 	// data.repeat_every == 1 ? (data.repeat_on ? '' : requiredFields.push('repeat_on')) : '';
 	// _.contains([1, 2], parseInt(data.repeat_every)) ? data.repeat = true : '';
 	var row = await comboModel.findByPk(data.id);
@@ -579,21 +579,27 @@ exports.UpdateEvent = async (req, res) => {
 	// Start date save different columns logic
 	var startDate = moment(data.start_date).format('YYYY-MM-DD HH:mm:ss');
 	var sDate_value = startDate.split(" ");
+	var validation = true
 
 	// End date time save different columns logic
 	
-	const userEmail = req.userEmail;
-	const businessUser = await businessModel.findOne({ where: { email: userEmail } });
-	if (!businessUser) {
-		return res.send(setRes(resCode.ResourceNotFound, false, "Business user not found.", null))
-	}
+	// const userEmail = req.userEmail;
+	// const businessUser = await businessModel.findOne({ where: { email: userEmail } });
+	// if (!businessUser) {
+	// 	return res.send(setRes(resCode.ResourceNotFound, false, "Business user not found.", null))
+	// }
 	var endDate = moment(data.end_date).format('YYYY-MM-DD HH:mm:ss');
 	var eDate_value = endDate.split(" ");
 	if (data.id != null) {
 		if(requiredFields.length == 0){
-			const isEventExists = await comboModel.findOne({ where: { id: data.id, is_deleted: false } })
+			const isEventExists = await comboModel.findOne({ where: { id: data.id,is_deleted: false } })
 			if (!isEventExists) {
 				return res.send(setRes(resCode.ResourceNotFound, false, "Event not found.", null))
+			}
+			const eventDate = moment(isEventExists.start_date).format('YYYY-MM-DD');
+			if(currentDate == eventDate){
+				validation = false;
+				return res.send(setRes(resCode.BadRequest, false, "You can not edit this event in last 7 days of event start date", null))
 			}
 
 
@@ -606,7 +612,6 @@ exports.UpdateEvent = async (req, res) => {
 			if (req.files) {
 				const filesData = req.files;
 				const total_image = image.length + filesData.length;
-				var validation = true
 
 				if (total_image > 5) {
 					validation = false
@@ -626,7 +631,7 @@ exports.UpdateEvent = async (req, res) => {
 				}
 
 				const conditionExistingEvent = {};
-				conditionExistingEvent.where = { id: { [Op.not]: data.id }, business_id: businessUser.id, is_deleted: false,}
+				conditionExistingEvent.where = { id: { [Op.not]: data.id }, is_deleted: false,}
 				conditionExistingEvent.attributes = { exclude: ['createdAt','updatedAt','is_deleted','repeat','repeat_every','repeat_on']}
 
 				if(!_.isEmpty(data.start_date) && !_.isEmpty(data.end_date)){
@@ -807,7 +812,6 @@ exports.UpdateEvent = async (req, res) => {
 									})
 								})
 							}).catch(error => {
-								console.log(error.message)
 								res.send(setRes(resCode.InternalServer, false, "Fail to update event.", null))
 							})
 

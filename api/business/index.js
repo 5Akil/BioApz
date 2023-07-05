@@ -141,7 +141,8 @@ var awsuploadprofile = multer({
 
 var controller = require('./business.controller')
 
-const {verifyToken,authorize} = require('../../config/token');
+const {verifyToken} = require('../../config/token');
+const {authorize} = require('../../helpers/authorize');
 
 const uploadImage = multer({ dest: 'business_gallery/' });
 

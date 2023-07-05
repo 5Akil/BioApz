@@ -15,6 +15,7 @@ var util = require('util')
 var notification = require('../../push_notification');
 var commonConfig = require('../../config/common_config')
 const { condition } = require('sequelize')
+const pagination = require('../../helpers/pagination');
 
 exports.AddToCart = async(req,res) => {
 	
@@ -67,7 +68,6 @@ exports.AddToCart = async(req,res) => {
 																},{
 																	where:{business_id : {[Op.ne] :data.business_id},user_id : {[Op.eq] :data.user_id}}
 																});
-																console.log(updatedData)
 																return res.send(setRes(resCode.OK, true, 'Product added into cart successfully.', cartData));
 															} else {
 																return res.send(setRes(resCode.BadRequest, false, 'Fail to add into cart', null));
@@ -148,42 +148,8 @@ exports.CartList = async(req,res) => {
 			condition.where = {[Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],}
 		} 
 
-
-		var condition2 = {
-			include: [
-				{
-					model: productModel,
-					include:[
-						{
-							model: productCategoryModel,
-							as: 'product_categorys',
-							attributes:['name']
-						},
-						{
-							model: productCategoryModel,
-							as: 'sub_category',
-							attributes:['name']
-						}
-					]
-				}
-			],
-		}
-		condition2.where = {
-			user_id: data.user_id,
-			is_deleted: false
-		}
-		condition2.attributes = {exclude: ['createdAt','updatedAt','is_deleted']}
-
-		if(data.search && data.search != null && !_.isEmpty(data.search)){
-			condition2.where = {[Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],}
-		}
-
-		var totalRecords = null
-
-		shoppingCartModel.findAll(condition2).then(async(CartList) => {
-			totalRecords = CartList.length
-		})
-
+		const recordCount = await shoppingCartModel.findAndCountAll(condition);
+		const totalRecords = recordCount?.count;
 
 		shoppingCartModel.findAll(condition).then(async cartData => {
 
@@ -238,8 +204,6 @@ exports.CartList = async(req,res) => {
 						delete dataVal.dataValues.category_id
 						delete dataVal.dataValues.product
 					}
-
-					// console.log(data)
 					if(dataVal.product_category != null){
 
 						dataVal.dataValues.category_name = dataVal.product_category.name
@@ -256,31 +220,12 @@ exports.CartList = async(req,res) => {
 					// }
 				}
 
-				const previous_page = (data.page - 1);
-				const last_page = Math.ceil(totalRecords / data.page_size);
-				var next_page = null;
-				if(last_page > data.page){
-					var pageNumber = data.page;
-					pageNumber++;
-					next_page = pageNumber;
-				}
-				
-				var response = {};
-				response.totalPages = (data.page_size == 0) ? 1 : Math.ceil(totalRecords/limit);
-				response.currentPage = parseInt(data.page);
-				response.per_page =  (data.page_size != 0) ? parseInt(data.page_size) : cartData.length;
-				response.total_records = totalRecords;
-				response.data = cartData;
-				response.previousPage = (previous_page == 0) ? null : previous_page ;
-				response.nextPage = next_page;
-				response.lastPage = last_page;
-				
-				res.send(setRes(resCode.OK, true, 'Your cart details.',response));
+				const response = new pagination(cartData, totalRecords, parseInt(data.page), parseInt(data.page_size));
+				res.send(setRes(resCode.OK, true, 'Your cart details.',(response.getPaginationInfo())));
 			}else{
 				res.send(setRes(resCode.OK, true, "Your cart is empty.",null))
 			}
 		}).catch(error => {
-			console.log(error)
 			res.send(setRes(resCode.InternalServer,false,"Internal server error",null))
 		})
 	}else{

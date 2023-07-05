@@ -128,7 +128,6 @@ exports.UpdatePromo = (req, res) => {
 						is_deleted: false
 					}
 				}).then(updatedPromo => {
-					console.log(updatedPromo)
 					if (updatedPromo > 0){
 						
 						promosModel.findOne({
@@ -278,7 +277,6 @@ exports.GetPromos = (req, res) => {
 			})
 
 		}).catch(error => {
-			console.log(error.message + ' ...promos.controller');
 			res.send(setRes(resCode.InternalServer, false, 'Internal server error.',null))
 		})
 

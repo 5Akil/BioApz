@@ -19,6 +19,7 @@ const { verifyToken } = require('../../config/token')
 const Sequelize = require('sequelize');
 const { model } = require('mongoose')
 const { error } = require('console')
+const pagination = require('../../helpers/pagination');
 
 exports.Register = async (req, res) => {
 
@@ -84,7 +85,6 @@ exports.Register = async (req, res) => {
 								  text,
 								  subject
 							  ) {
-								  //   console.log(html)
 								  //   return
 								  transporter.sendMail(
 									  {
@@ -97,11 +97,8 @@ exports.Register = async (req, res) => {
 									  },
 									  function (err, result) {
 										  if (err) {
-											  console.log("--------------------------err------------")
-											  console.log(err)
+							  				res.send(setRes(resCode.BadRequest, false, 'Something went wrong.', null));
 										  } else {
-											  console.log("--------------------------send res------------")
-											  console.log(result)
 											  res.send(setRes(resCode.OK, true, `Email has been sent to ${(users.email).toLowerCase()}, with account activation instuction.. `, true));
 										  }
 									  }
@@ -201,9 +198,6 @@ exports.Login = async (req, res) => {
 								})
 								.then(async function (newUser) {
 									if (newUser){
-										// var messagedata = await notification.SendNotification(data)
-										// console.log('*********************************')
-										// console.log(messagedata)
 										if(user.profile_picture != null){
 
 											var profile_picture = await awsConfig.getSignUrl(user.profile_picture).then(function(res){
@@ -340,7 +334,6 @@ exports.GetProfileDetail = async (req, res) => {
 				is_deleted:false
 			}
 		}).then(async user => {
-			console.log(user)
 			if (user != null){
 				if(user.profile_picture != null){
 
@@ -364,8 +357,6 @@ exports.GetProfileDetail = async (req, res) => {
 }
 
 exports.UpdateProfile = async (req, res) => {
-	// console.log(req.file.originalname)
-	// return
 	var data = req.body
 	var validation = true;
 	req.file ? data.profile_picture = `${req.file.key}` : ''
@@ -581,7 +572,6 @@ exports.forgotPassword = async (req, res) => {
 									username: user.username,
 									expire_at: expire_at
 								}
-								console.log(context)
 								templates.render(path.join(__dirname, '../../', 'template', 'email-otp.html'), context, function (
 									err,
 									html,
@@ -597,11 +587,8 @@ exports.forgotPassword = async (req, res) => {
 										},
 										function (err, result) {
 											if (err) {
-												console.log("--------------------------err------------")
-												console.log(err)
+												res.send(setRes(resCode.BadRequsest, false, 'Something went wrong.', null));
 											} else {
-												console.log("--------------------------send res------------")
-												console.log(result)
 												res.send(setRes(resCode.OK, true, `Email has been sent to ${users.email}, with account activation instuction.. `, null));
 											}
 										}
@@ -649,7 +636,6 @@ exports.forgotPassword = async (req, res) => {
 						var futureDate = new Date(currentDate.getTime() + commonConfig.email_otp_expired);
 						// var new_date = futureDate.toLocaleString('en-US', { timeZone: 'UTC' });
 						var expire_at = moment.utc(futureDate).format('YYYY-MM-DD HH:mm:ss');
-						console.log(expire_at);
 						emailOtpVerifieModel.create({ user_id: user.id, email: data.email, otp: otp, role_id: data.role, expire_at: expire_at }).then(function (OtpData) {
 
 							if (OtpData) {
@@ -684,11 +670,7 @@ exports.forgotPassword = async (req, res) => {
 										},
 										function (err, result) {
 											if (err) {
-												console.log("--------------------------err------------")
-												console.log(err)
 											} else {
-												console.log("--------------------------send res------------")
-												console.log(result)
 												res.send(setRes(resCode.OK, true, `Email has been sent to ${users.email}, with account activation instuction.. `, null));
 											}
 										}
@@ -823,39 +805,25 @@ function sendForgotPasswordMail(user, key){
 			  function (callback) {
 				crypto.randomBytes(20, function (err, buf) {
 				  var token = buf.toString('hex')
-				  console.log("=========fun1=======")
-				  console.log(token)
 				  callback(err, token)
 				})
 			  },
 			  function (token, callback) {
 				// user.resetPasswordToken = token
 				// user.resetPasswordExpires = Date.now() + 3600000 // 1 hour
-				console.log("===============fun2======")
-				console.log(token)
-	
 				userModel.update({reset_pass_token: token, reset_pass_expire: Date.now() + 3600000},{where: {id: user.id}})
 				.then(function (newUser) {
 					
 					if (newUser == 0){
-						console.log("======newUser0====")	
-						console.log(newUser)
 						callback({err: "User not Updated"}, token)
 					}else{
-						console.log("======newUser1====")	
-						console.log(newUser)
 						callback(null, token)	
 					}
 				}).catch(function (updateUserError) {
-					console.log("=========catch=======")
-					console.log(updateUserError)
 					callback(updateUserError)
 				});
 			  },
 			  function (token, callback) {
-				// send mail
-				console.log("===============fun3======")
-				console.log(token.toString())
 	
 				// return
 				var transporter = nodemailer.createTransport({
@@ -865,10 +833,7 @@ function sendForgotPasswordMail(user, key){
 				  auth: mailConfig.auth,
 				  tls: mailConfig.tls
 				})
-	
-				// console.log("===========transporter=========")
-				// console.log(transporter)
-	
+
 				var templates = new EmailTemplates()
 				var context = {
 				  resetUrl: commonConfig.app_url+'/api/user/resetPassword/' + token,
@@ -882,7 +847,6 @@ function sendForgotPasswordMail(user, key){
 				  text,
 				  subject
 				) {
-				//   console.log(html)
 				  transporter.sendMail(
 					{
 					  from: 'b.a.s.e. <do-not-reply@mail.com>',
@@ -894,12 +858,8 @@ function sendForgotPasswordMail(user, key){
 					},
 					function (err, result) {
 					  if (err) {
-						  console.log("--------------------------err------------")
-						  console.log(err)
 						callback(err)
 					  } else {
-						console.log("--------------------------send res------------")
-						console.log(result)
 						callback(result)
 					  }
 					}
@@ -908,8 +868,6 @@ function sendForgotPasswordMail(user, key){
 			  }
 			],
 			function (result) {
-				console.log("================result==================")
-				console.log(result)
 			  if (!result) {
 				resolve('')
 			  } else {
@@ -926,8 +884,6 @@ exports.GetResetPasswordForm = async (req, res) => {
 	var userModel = models.user
 	var businessModel = models.business
 	var Op = models.Op
-  console.log(token)
-  console.log(req.body)
 
   userModel.findOne({
 	  where: {
@@ -966,8 +922,6 @@ exports.UpdatePassword = function (req, res) {
 	var userModel = models.user
 	var businessModel = models.business
 	var Op = models.Op
-  console.log(token)
-  console.log(req.body)
 
   userModel.findOne({
 	  where: {
@@ -976,8 +930,6 @@ exports.UpdatePassword = function (req, res) {
 		is_deleted: 0 
 	  }
   }).then(async user => {
-
-		console.log(user)
 		if (user != null){
 			var password = await bcrypt.hash(req.body.new_password, 10)
 			.then(hash => {
@@ -1057,7 +1009,7 @@ exports.SendFeedback = async (req, res) => {
 	var feedbackModel = models.feedback
 	var userModel = models.user
 	var businessModel = models.business
-	console.log(data)
+
 
 	var requiredFields = _.reject(['caption', 'message'], (o) => { return _.has(data, o)  })
 
@@ -1074,8 +1026,6 @@ exports.SendFeedback = async (req, res) => {
 				if (user != null){
 	
 					var feedbackRes = await FeedbackMail(user, data)
-					console.log('===========DATA=========')
-					console.log(feedbackRes)
 
 					if (feedbackRes == ''){
 						res.send(setRes(resCode.BadRequest, false, "Fail to send feedback email.",null))
@@ -1147,10 +1097,7 @@ function FeedbackMail(user, data){
 				  auth: mailConfig.auth,
 				  tls: mailConfig.tls
 				})
-	
-				// console.log("===========transporter=========")
-				// console.log(transporter)
-	
+
 				var templates = new EmailTemplates()
 				var context = {
 				  username: user.username || user.business_name,
@@ -1164,7 +1111,6 @@ function FeedbackMail(user, data){
 				  text,
 				  subject
 				) {
-				//   console.log(html)
 				  transporter.sendMail(
 					{
 					  from: 'b.a.s.e. <do-not-reply@mail.com>',
@@ -1174,12 +1120,8 @@ function FeedbackMail(user, data){
 					},
 					function (err, result) {
 					  if (err) {
-						  console.log("--------------------------err------------")
-						  console.log(err)
 						callback(err)
 					  } else {
-						console.log("--------------------------send res------------")
-						console.log(result)
 						callback(result)
 					  }
 					}
@@ -1188,8 +1130,6 @@ function FeedbackMail(user, data){
 			  }
 			],
 			function (result) {
-				console.log("================result==================")
-				console.log(result)
 			  if (!result) {
 				resolve('')
 				// res.send(setRes(resCode.BadRequest, null, true, "Fail to send feedback email."))
@@ -1260,37 +1200,7 @@ exports.GetAllBusiness = async (req, res) => {
 			condition.limit = limit
 		}
 
-		var condition2 = {
-			include: [{
-				model: businesscateogryModel,
-				attributes: ['name'] 
-			}, {
-				model: settingModel,
-			}],
-			order: [
-				['createdAt', 'DESC']
-			],
-			attributes: { exclude: ['is_deleted', 'is_enable','auth_token','device_type',
-				'role_id','sections','template_id','color_code','approve_by',
-				'booking_facility','abn_no','password','account_name','person_name',
-				'reset_pass_token','reset_pass_expire','device_token','business_category','account_number',
-				'latitude','longitude','email','device_id','phone'] }
-		}
-
-		if(data.category_id){
-			condition2.where = {...condition2.where,...{category_id:data.category_id,is_deleted:false,is_active:true}}
-		}else{
-			condition2.where = {...condition2.where,...{is_deleted:false,is_active:true}}
-		}
-		if(data.search && data.search != null){
-			condition2.where = {...condition2.where,...{[Op.or]: [{business_name: {[Op.like]: "%" + data.search + "%",}}],}}
-		}
-
-		var totalRecords = null
-
-		await businessModel.findAll(condition2).then(async(wishlist) => {
-			totalRecords = wishlist.length
-		})
+		var totalRecords = await businessModel.count(condition);
 		
 		await businessModel.findAll(condition).then(async businessData => {
 			if(businessData.length > 0){
@@ -1322,29 +1232,12 @@ exports.GetAllBusiness = async (req, res) => {
 						data.dataValues.available = "";
 					}
 				}
-					const previous_page = (data.page - 1);
-					const last_page = Math.ceil(totalRecords / data.page_size);
-					var next_page = null;
-					if(last_page > data.page){
-						var pageNumber = data.page;
-						pageNumber++;
-						next_page = pageNumber;
-					}
-					var response = {};
-					response.per_page =  (data.page_size != 0) ? parseInt(data.page_size) : totalRecords;
-					response.totalPages = (data.page_size != 0) ? Math.ceil(totalRecords/limit) : 1;
-					response.previousPage = (previous_page == 0) ? null : previous_page ;
-					response.currentPage = parseInt(data.page);
-					response.total_records = totalRecords;
-					response.data = businessData;
-					response.nextPage = next_page;
-					response.lastPage = last_page;
-				res.send(setRes(resCode.OK,true,'Get Business successfully',response))
+				const response = new pagination(businessData, totalRecords, parseInt(data.page), parseInt(data.page_size));
+				res.send(setRes(resCode.OK,true,'Get Business successfully',(response.getPaginationInfo())))
 			}else{
 				res.send(setRes(resCode.ResourceNotFound,false,'Business not found',null))
 			}
 		}).catch(error => {
-			console.log(error)
 			res.send(setRes(resCode.BadRequest,false,"Fail to get business",null))
 		})
 	}else{
@@ -1587,7 +1480,6 @@ exports.homeList = async (req, res) => {
 		const rewardsAndLoyaltyArray = [giftcardRewards, cashbackData,discountData,couponeData,loyaltyData];
 		const mergedArray = mergeRandomArrayObjects(rewardsAndLoyaltyArray);
 		let result =  mergedArray.slice(0, 5);
-		// console.log(result)
 
 		eventArray.push(
 			combocalenderModel.findAll({
@@ -1631,7 +1523,6 @@ exports.homeList = async (req, res) => {
 
 		res.send(setRes(resCode.OK, true, "Get home page details successfully.",resData))
 	} catch(error){
-		console.log(error)
 		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
 	}
 }
@@ -1977,7 +1868,6 @@ exports.loyaltyList = async (req, res) => {
       );
     }
   } catch (error) {
-    console.log(error);
     res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null));
   }
 };
@@ -2031,7 +1921,6 @@ exports.loyaltyView = async (req, res) => {
 			}
 		  });
 	} catch (error) {
-	  console.log(error);
 	  res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null));
 	}
   };
@@ -2128,7 +2017,7 @@ exports.businessBIO = async (req, res) => {
 // Business event list
 exports.businessEventList = async (req, res) => {
 	try {
-		var data = req.query;
+		var data = req.body;
 		var combocalenderModel = models.combo_calendar;
 		var currentDate = moment().format("YYYY-MM-DD");
 		var Op = models.Op;
@@ -2140,9 +2029,10 @@ exports.businessEventList = async (req, res) => {
 				return res.send(
 					setRes(
 						resCode.BadRequest,
-						null,
 						false,
-						"invalid page number, should start with 1"
+
+						"invalid page number, should start with 1",
+						null,
 					)
 				);
 			}
@@ -2160,13 +2050,15 @@ exports.businessEventList = async (req, res) => {
 			let skip = data.page_size * (data.page - 1);
 			let limit = parseInt(data.page_size);
 			var condition = {
-				offset:skip, 
-				limit:limit,
 				attributes: ['id','business_id','images','title','description','start_date','end_date','start_time','end_time']
-			}	
+			}
 			condition.where = {is_deleted: false,[Op.or]: [{title: {[Op.like]: "%" + data.search + "%",}}]}
 			if(data.business_id){
 				condition.where = {...condition.where,...{business_id:data.business_id}}
+			}
+			if(data.page_size != 0 && !_.isEmpty(data.page_size)){
+				condition.offset = skip,
+				condition.limit = limit
 			}
 			combocalenderModel.findAll(condition).then(async event => {
 				if(event.length > 0){
@@ -2185,17 +2077,20 @@ exports.businessEventList = async (req, res) => {
 						}
 						data.dataValues.event_images = image_array
 					}
+					const recordCount = await combocalenderModel.findAndCountAll(condition);
+					const totalRecords = recordCount?.count;
+					const response = new pagination(event, parseInt(totalRecords), parseInt(data.page), parseInt(data.page_size));
 					res.send(
 						setRes(
 						  resCode.OK,
 						  true,
 						  "Business Event List successfully",
-						  event
+						  (response.getPaginationInfo())
 						)
 					  );
 				}else {
 					res.send(
-					  setRes(resCode.ResourceNotFound, false, "Event not found", null)
+					  setRes(resCode.ResourceNotFound, false, "Event not found", [])
 					);
 				  }
 			})
@@ -2210,7 +2105,6 @@ exports.businessEventList = async (req, res) => {
 			);
 		}
 	} catch (error) {
-		console.log(error);
 		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null));
 	}
 }
@@ -2267,14 +2161,12 @@ exports.eventUserRegister = async (req, res) => {
 					}
 				})
 			}
-			console.log(validation);
 			if(validation){
 				await eventUserModel.create(data).then(event_user => {
 					if(event_user){
 						res.send(setRes(resCode.OK,true,"You are successfully register in this event.",event_user))
 					}
 				}).catch(error => {
-					console.log(error)
 					res.send(setRes(resCode.BadRequest, false, "Fail to register in this event!", null))
 				})
 			}
@@ -2282,14 +2174,13 @@ exports.eventUserRegister = async (req, res) => {
 			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
 		}
 	} catch (error) {
-		console.log(error)
 		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
 	}
 } 
 
 // User Event Listing API
 exports.userEventList = async (req, res) => {
-	var data = req.query;
+	var data = req.body;
 	var combocalenderModel = models.combo_calendar;
 	var userEventModel = models.user_events
 	var currentDate = moment().format("YYYY-MM-DD");
@@ -2305,14 +2196,18 @@ exports.userEventList = async (req, res) => {
 		let limit = parseInt(data.page_size);
 
 		var condition = {
-			offset:skip, 
-			limit:limit,
 			attributes: ['id','business_id','images','title','description','start_date','end_date','start_time','end_time'],
 			include: [
 				{
 				  model: userEventModel,
 				  attributes: ["id","user_id"],
-				  where:{user_id:data.user_id}
+				  where:{user_id:data.user_id},
+				  include: [
+					{
+						model: models.user,
+						attributes:['id','username','email','mobile','profile_picture']
+					}
+				  ]
 				},
 			],
 		}	
@@ -2342,6 +2237,12 @@ exports.userEventList = async (req, res) => {
 				}
 			}
 		}
+
+		if(data.page_size != 0 && !_.isEmpty(data.page_size)){
+			condition.offset = skip,
+			condition.limit = limit
+		}
+
 		combocalenderModel.findAll(condition).then(async event => {
 			if(event.length > 0){
 				const dataArray = [];	
@@ -2359,22 +2260,25 @@ exports.userEventList = async (req, res) => {
 					}
 					data.dataValues.event_images = image_array
 				}
+				const recordCount = await combocalenderModel.findAndCountAll(condition);
+				const totalRecords = recordCount?.count;
+				const response = new pagination(event, parseInt(totalRecords), parseInt(data.page), parseInt(data.page_size));
 				res.send(
 					setRes(
 					  resCode.OK,
 					  true,
-					  "Business Event List successfully",
-					  event
+					  "User business event list successfully",
+					  (response.getPaginationInfo())
 					)
 				  );
 			}else {
 				res.send(
-				  setRes(resCode.ResourceNotFound, false, "Event not found", null)
+				  setRes(resCode.ResourceNotFound, false, "Event not found", [])
 				);
 			  }
 		})
 	}else {
-		res.send(setRes(resCode.BadRequsest,false,requiredFields.toString() + " are required",null));
+		res.send(setRes(resCode.BadRequest,false,requiredFields.toString() + " are required",null));
 	}
 }
 
@@ -2468,7 +2372,6 @@ exports.eventUserLeave = async (req, res) => {
 			res.send(setRes(resCode.BadRequest, false, ('Id are required'), null))
 		}
 	} catch (error) {
-		console.log(error)
 		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
 	}
 }

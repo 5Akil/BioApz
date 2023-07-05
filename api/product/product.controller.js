@@ -19,6 +19,7 @@ const fs = require('fs');
 var multer = require('multer');
 const multerS3 = require('multer-s3');
 const { condition } = require('sequelize')
+const pagination = require('../../helpers/pagination');
 
 exports.createInquiry = async (req, res) => {
 	
@@ -57,8 +58,6 @@ exports.createInquiry = async (req, res) => {
 									date: data.date,
 									time: data.time
 								}
-								// console.log('++++++++++++++++++++++++');
-								// console.log(NotificationData)
 								notification.SendNotification(NotificationData)
 							}
 						})
@@ -102,59 +101,8 @@ exports.GetAllProducts = async (req, res) => {
 			res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1",null))
 		}
 
-		var totalRecords = null
-
 		var skip = data.page_size * (data.page - 1)
 		var limit = parseInt(data.page_size)
-		
-		var condition2 = {
-			subQuery:false,
-			order: [
-				['createdAt', 'DESC'	],
-			],
-			include:[
-				{
-					model:productRattingModel,
-					attributes: []
-				},
-				{
-			        model: categoryModel,
-			        as: 'product_categorys',
-			        attributes:['name']
-			    },
-			    {
-			        model: categoryModel,
-			        as: 'sub_category',
-			        attributes:['name']
-			    }
-			],
-			attributes: { include : [
-				[Sequelize.fn('AVG', Sequelize.col('product_ratings.ratings')),'rating']
-			]},
-			group: ['products.id'],
-		}
-		condition2.where = {...condition2.where,...{business_id:data.business_id,category_id:data.category_id,is_deleted:false,}}
-		condition2.attributes = { exclude:['createdAt','updatedAt']}
-		if(!_.isEmpty(data.price)){
-			if(data.price == 1){
-				condition2.order = Sequelize.literal('price DESC')
-			}else{
-				condition2.order = Sequelize.literal('price ASC')
-			}
-		}
-
-		if(data.search && data.search != null && !_.isEmpty(data.search)){
-			condition2.where = {...condition2.where,...{[Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],}}
-		} 
-
-		if(data.sub_category_id) {
-			condition2.where = {...condition2.where,...{business_id:data.business_id,category_id:data.category_id,sub_category_id:data.sub_category_id}}
-		}
-
-		await productModel.findAll(condition2).then(async(CartList) => {
-			totalRecords = CartList.length
-		})
-
 		var condition = {
 			subQuery:false,
 			order: [
@@ -203,7 +151,9 @@ exports.GetAllProducts = async (req, res) => {
 			condition.offset = skip,
 			condition.limit = limit
 		}
-		console.log(condition);
+
+		const recordCount = await productModel.findAndCountAll(condition);
+        const totalRecords = recordCount?.count;	
 	
 		await productModel.findAll(condition).then(async(products) => {
 			
@@ -244,31 +194,12 @@ exports.GetAllProducts = async (req, res) => {
 					}
 
 				}
-				const previous_page = (data.page - 1);
-				const last_page = Math.ceil(totalRecords / data.page_size);
-				var next_page = null;
-				if(last_page > data.page){
-					var pageNumber = data.page;
-					pageNumber++
-					next_page = pageNumber;
-				}
-
-				var response = {};
-				response.totalPages = (data.page_size != 0) ? Math.ceil(totalRecords/limit) : 1;
-				response.currentPage = parseInt(data.page);
-				response.per_page =  (data.page_size != 0) ? parseInt(data.page_size) : totalRecords;
-				response.total_records = totalRecords;
-				response.data = products;
-				response.previousPage = (previous_page == 0) ? null : previous_page ;
-				response.nextPage = next_page;
-				response.lastPage = last_page;
-
-				res.send(setRes(resCode.OK, true, "Get product list successfully",response))
+				const response = new pagination(products, parseInt(totalRecords), parseInt(data.page), parseInt(data.page_size));
+				res.send(setRes(resCode.OK, true, "Get product list successfully",(response.getPaginationInfo())))
 				
 			}
 		})
 		.catch((error) => {
-			console.log(error)
 			res.send(setRes(resCode.InternalServer,false, error,null))
 			
 		})
@@ -281,8 +212,6 @@ exports.GetAllProducts = async (req, res) => {
 
 
 exports.GetBookingInquiry = async (req, res) => {
-
-	//   console.log(req.body)
 	var data = req.body
 	var businessModel = models.business;
 	var calenderModel  = models.product_inquiry;
@@ -299,8 +228,6 @@ exports.GetBookingInquiry = async (req, res) => {
 				is_deleted: 0
 			}
 		}).then((business) => {
-
-			// console.log(business)
 			if (business != ''){
 				calenderModel.findAll({
 					where:{
@@ -315,7 +242,6 @@ exports.GetBookingInquiry = async (req, res) => {
 						['time', 'DESC'],
 					],
 				}).then((bookings) => {
-					// console.log(bookings)
 					if (bookings != ''){
 						res.send(setRes(resCode.OK,true, "Available booking for your business.",bookings))
 						
@@ -398,23 +324,26 @@ exports.createProduct = async(req,res) => {
 		var categoryModel = models.product_categorys
 		var productModel = models.products
 		var Op = models.Op
-		var requiredFields = _.reject(['business_id','category_id','name','price','description'], (o) => { return _.has(data, o)  })
+		var requiredFields = _.reject(['business_id','category_id','sub_category_id','name','price','description'], (o) => { return _.has(data, o)  })
 		if (requiredFields == "") {
 			if(data.name && !_.isEmpty == data.name){
 				var name = data.name;
-				var validname = /^[A-Z+_*a-z+_*0-9 ]+$/;
+				var validname = /^[A-Z+_a-z+_0-9 ]+$/;
 				if (name.match(validname) == null) {
 						return res.send(setRes(resCode.BadRequest, false, 'Please enter valid product name.', null));
 				}
 			}
 
 			if(data.name && !_.isEmpty(data.name)){
-				const existCategory = await productModel.findOne({
-					where:{is_deleted:false,business_id:data.business_id,
+				const condition = {};
+				condition.where= {is_deleted:false,business_id:data.business_id,category_id:data.category_id,
 					name: {
 						[Op.eq]: data.name}
+					};
+					if(data.sub_category_id){
+						condition.where = {...condition.where,...{sub_category_id:data.sub_category_id}}
 					}
-				});
+				const existCategory = await productModel.findOne(condition);
 				if(existCategory){
 					validation = false;
 					return res.send(setRes(resCode.BadRequest, false, 'This product name is already exists with this category!',null))
@@ -460,7 +389,7 @@ exports.createProduct = async(req,res) => {
 				}).then(async productSubCategory => {
 					if (productSubCategory == null) {
 						validation = false;
-						return res.send(setRes(resCode.ResourceNotFound, false, "Product sub category not found.", null))
+						return res.send(setRes(resCode.ResourceNotFound, false, "Product type not found.", null))
 					}
 				})
 			}
@@ -553,7 +482,6 @@ exports.createProduct = async(req,res) => {
 							}
 
 						}).catch(error => {
-							console.log(error)
 							res.send(setRes(resCode.BadRequest, false, "Fail to add product or service.", null))
 						})
 					}
@@ -563,7 +491,6 @@ exports.createProduct = async(req,res) => {
 			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
 		}
 	}catch(error){
-		console.log(error)
 		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
 	}
 
@@ -589,14 +516,14 @@ exports.UpdateProductDetail = async (req, res) => {
 	if (data.id){
 		if(data.name){
 			var name = data.name;
-			var validname = /^[A-Z+_*a-z+_*0-9 ]+$/;
+			var validname = /^[A-Z+_a-z+_0-9 ]+$/;
 			if (name.match(validname) == null) {
 				return res.send(setRes(resCode.BadRequest, false, 'Please enter valid product name.', null));
 			}
 		}
 		if(data.name && !_.isEmpty(data.name)){
-			const existCategory = await productModel.findOne({
-				where:{is_deleted:false,
+			var condition = {};
+			condition.where = {is_deleted:false,
 				name: {
 					[models.Op.eq]: data.name
 				},
@@ -604,10 +531,23 @@ exports.UpdateProductDetail = async (req, res) => {
 					[models.Op.ne]: data.id
 				}
 			}
-			});
+			if(data.category_id){
+				condition.where = {...condition.where,...{category_id:data.category_id}}
+			}
+			if(data.sub_category_id){
+				condition.where = {...condition.where,...{sub_category_id:data.sub_category_id}}
+			}
+			const existCategory = await productModel.findOne(condition);
 			if(existCategory){
 				validation = false;
 				return res.send(setRes(resCode.BadRequest, false, 'This product name is already exists with this category!',null))
+			}
+		}
+
+		if(data.price && !_.isEmpty(data.price)){
+			if(data.price <= 0 ){
+				validation = false;
+					return res.send(setRes(resCode.BadRequest, false, "Please enter price value more than 0.", null))
 			}
 		}
 		if(req.files){
@@ -695,15 +635,12 @@ exports.UpdateProductDetail = async (req, res) => {
 						res.send(setRes(resCode.OK, true, "Product updated successfully.",UpdatedProduct))
 					}
 				}).catch(error => {
-					console.log(error)
 					res.send(setRes(resCode.BadRequest, false, "Fail to updated product or service.",null))
 				}).catch(UpdateProductError => {
-					console.log(UpdateProductError)
 					res.send(setRes(resCode.BadRequest, false, "Fail to updated product or service.",null))
 				})
 			}
 		}).catch(UpdateProductError => {
-			console.log(UpdateProductError)
 			res.send(setRes(resCode.BadRequest, false, "Fail to updated product or service.",null))
 		})
 	}
@@ -860,7 +797,6 @@ exports.GetProductById =  (req, res) => {
 
 		}
 	}).catch(GetProductError => {
-		console.log(GetProductError)
 		res.send(setRes(resCode.InternalServer,false, "Internal server error.",null))
 		
 	})
@@ -929,7 +865,6 @@ exports.RemoveProductImage = async(req, res) => {
 						}
 
 					}).catch(error => {
-						console.log(error)
 						res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
 					})
 				}else{
@@ -937,7 +872,6 @@ exports.RemoveProductImage = async(req, res) => {
 					
 				}				
 			}).catch(error => {
-				console.log(error)
 				res.send(setRes(resCode.BadRequest, false, "Fail to remove image from product.",null))
 			})
 
@@ -960,7 +894,7 @@ exports.CreateCategory = async (req, res) => {
 
 		if(requiredFields == ""){
 		var name = data.name;
-		var validname = /^[A-Z+_*a-z+_*0-9 ]+$/;
+		var validname = /^[A-Z+_a-z+_0-9 ]+$/;
 		if (name.match(validname) == null) {
 			if(data.parent_id == 0){
 				return res.send(setRes(resCode.BadRequest, false, 'Please enter valid product category name.', null));
@@ -1008,7 +942,7 @@ exports.CreateCategory = async (req, res) => {
 				
 				if(data.parent_id != 0 && !_.isEmpty(data.parent_id)){
 					const existSubCategory = await productCategoryModel.findOne({
-						where:{is_deleted:false,business_id:data.business_id,parent_id:{
+						where:{is_deleted:false,parent_id:data.parent_id,business_id:data.business_id,parent_id:{
 							[models.Op.ne]:0
 						},
 						name: {
@@ -1072,28 +1006,16 @@ exports.CategoryList = async(req, res) => {
 			parent_id:0
 		},
 		order: [
-			['createdAt', 'DESC']
+			['name', 'ASC']
 		]}
 		if(data.page_size != 0 && !_.isEmpty(data.page_size)){
 			condition.offset = skip,
 			condition.limit = limit
 		}
 
-		var condition2 = {where:{
-			business_id:data.business_id,
-			is_deleted: false,
-			is_enable: true,
-			parent_id:0
-		},
-		order: [
-			['createdAt', 'DESC']
-		]}
+		const recordCount = await productCategoryModel.findAndCountAll(condition);
+		const totalRecords = recordCount?.count;
 
-		var totalRecords = null
-
-		productCategoryModel.findAll(condition2).then(async(CartList) => {
-			totalRecords = CartList.length
-		})
 		productCategoryModel.findAll(condition).then(async categoryData => {
 			if (categoryData){
 				// Update Sign URL
@@ -1107,27 +1029,8 @@ exports.CategoryList = async(req, res) => {
 					  	data.image = commonConfig.default_image;
 					  }
 				}
-
-				const previous_page = (data.page - 1);
-				const last_page = Math.ceil(totalRecords / data.page_size);
-				var next_page = null;
-				if(last_page > data.page){
-					var pageNumber = data.page;
-					pageNumber++;
-					next_page = pageNumber;
-				}
-				
-				var response = {};
-				response.totalPages = (data.page_size != 0) ? Math.ceil(totalRecords/limit) : 1;
-				response.currentPage = parseInt(data.page);
-				response.per_page =  (data.page_size != 0) ? parseInt(data.page_size) : totalRecords;
-				response.total_records = totalRecords;
-				response.data = categoryData;
-				response.previousPage = (previous_page == 0) ? null : previous_page ;
-				response.nextPage = next_page;
-				response.lastPage = last_page;
-
-				res.send(setRes(resCode.OK, true, "Get category detail successfully.",response))
+				const response = new pagination(categoryData, totalRecords, parseInt(data.page), parseInt(data.page_size));
+				res.send(setRes(resCode.OK, true, "Get category detail successfully.",(response.getPaginationInfo())))
 			}
 				
 		}).catch(error => {
@@ -1178,7 +1081,7 @@ exports.UpdateCategory = async(req, res) => {
 	if(requiredFields == ""){
 		if(! _.isEmpty){
 			var name = data.name;
-			var validname = /^[A-Z+_*a-z+_*0-9 ]+$/;
+			var validname = /^[A-Z+_a-z+_0-9 ]+$/;
 			if (name.match(validname) == null) {
 				if(data.parent_id == 0){
 					return res.send(setRes(resCode.BadRequest, false, 'Please enter valid product category name.', null));
@@ -1232,6 +1135,7 @@ exports.UpdateCategory = async(req, res) => {
 					parent_id:{
 						[models.Op.ne]:0
 					},
+					parent_id:data.parent_id,
 					id:{
 						[models.Op.ne]:data.id
 					},
@@ -1427,7 +1331,7 @@ exports.ProductTypeList = async(req, res) => {
 		var condition = {
 			subQuery:false,
 			order: [
-				['createdAt', 'DESC']
+				['name', 'ASC']
 			],
 			include:{
 				model: categoryModel,
@@ -1449,31 +1353,6 @@ exports.ProductTypeList = async(req, res) => {
 			condition.offset = skip,
 			condition.limit = limit
 		}
-
-		var condition2 = {
-			subQuery:false,
-			order: [
-				['createdAt', 'DESC']
-			],
-			
-		};
-		condition2.where = {business_id:data.business_id,parent_id:{
-				[Op.ne]: 0	
-			},is_deleted:false}
-			condition2.attributes =  { exclude: ['is_deleted', 'is_enable','createdAt','updatedAt'] }
-
-		if(data.category_id) {
-			condition2.where = {business_id:data.business_id,parent_id:data.category_id,is_deleted:false}
-		}
-		if(data.search && data.search != null){
-			condition2.where = {[Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],}
-		}
-
-		var totalRecords = null
-
-		categoryModel.findAll(condition2).then(async(CartList) => {
-			totalRecords = CartList.length
-		})
 
 		categoryModel.findAll(condition).then(async subCategoryData => {
 			if (subCategoryData != '' && subCategoryData != null ){
@@ -1497,29 +1376,14 @@ exports.ProductTypeList = async(req, res) => {
 				  }
 
 			}
-				const previous_page = (data.page - 1);
-				const last_page = Math.ceil(totalRecords / data.page_size);
-				var next_page = null;
-				if(last_page > data.page){
-					var pageNumber = data.page;
-					pageNumber++;
-					next_page = pageNumber;
-				}
-				var response = {};
-				response.totalPages = Math.ceil(subCategoryData.length/limit);
-				response.currentPage = parseInt(data.page);
-				response.per_page = parseInt(data.page_size);
-				response.total_records = totalRecords;
-				response.data = subCategoryData;
-				response.previousPage = previous_page;
-				response.nextPage = next_page;
-				response.lastPage = last_page;
-				res.send(setRes(resCode.OK, true, "Get product type  details successfully.",response))
+				const recordCount = await categoryModel.findAndCountAll(condition);
+				const totalRecords = recordCount?.count;
+				const response = new pagination(subCategoryData, parseInt(totalRecords), parseInt(data.page), parseInt(data.page_size));
+				res.send(setRes(resCode.OK, true, "Get product type  details successfully.",(response.getPaginationInfo())))
 			}else{
 				res.send(setRes(resCode.ResourceNotFound, true, "Product type not found.",null))
 			}
 		}).catch(error => {
-			console.log (error)
 			res.send(setRes(resCode.InternalServer,false, "Internal server error.",null))
 		})
 	}else{
@@ -1543,74 +1407,78 @@ exports.removeProductType = async(req, res) => {
 			is_deleted:false
 		}
 	}).then(productData => {
-		
-		var product_ids = [];
-		for(const data of productData){
-			product_ids.push(data.id)
-		}
-		cartModel.findAll({
-			where:{
-				product_id:{
-					[Op.in]:product_ids
-				},
-				is_deleted:false
+
+		if(productData.length > 0){
+			res.send(setRes(resCode.BadRequest,false,"You Can not delete this Product Type because it contains Existing Products!",null))
+		}else{
+			var product_ids = [];
+			for(const data of productData){
+				product_ids.push(data.id)
 			}
-		}).then(cartData => {
-			if(cartData.length > 0){
-				res.send(setRes(resCode.BadRequest,false,"You can not delete this category because some product of this sub-category are into some user carts",null))
-			}else{
-				
-				wishlistModel.findAll({
+				cartModel.findAll({
 					where:{
 						product_id:{
 							[Op.in]:product_ids
 						},
 						is_deleted:false
 					}
-				}).then(wishlistData => {
-
-					if(wishlistData.length > 0){
-						res.send(setRes(resCode.BadRequest,false,"You can not delete this category because some product of this sub-category are into some user wishlist",null))
+				}).then(cartData => {
+					if(cartData.length > 0){
+						res.send(setRes(resCode.BadRequest,false,"You can not delete this category because some product of this sub-category are into some user carts",null))
 					}else{
-
-						orderDetailsModel.findAll({
+						
+						wishlistModel.findAll({
 							where:{
 								product_id:{
 									[Op.in]:product_ids
 								},
-								is_deleted:false,
-								order_status:1
+								is_deleted:false
 							}
-						}).then(orderData => {
+						}).then(wishlistData => {
 
-							if(orderData.length > 0){
-								res.send(setRes(resCode.BadRequest,false,"You can not delete this category because some ongoing order of this sub-category product",null))
+							if(wishlistData.length > 0){
+								res.send(setRes(resCode.BadRequest,false,"You can not delete this category because some product of this sub-category are into some user wishlist",null))
 							}else{
-								productCategoryModel.findOne({
+
+								orderDetailsModel.findAll({
 									where:{
-										id:data.id,
+										product_id:{
+											[Op.in]:product_ids
+										},
 										is_deleted:false,
-										is_enable:true,
-										parent_id: {
-											[Op.ne]:0,
-										}
+										order_status:1
 									}
-								}).then(subCategoryData => {
+								}).then(orderData => {
 
-									if(subCategoryData != null){
-
-										subCategoryData.update({is_deleted:true})
-										res.send(setRes(resCode.OK,true,"Product type deleted successfully",null))
+									if(orderData.length > 0){
+										res.send(setRes(resCode.BadRequest,false,"You can not delete this category because some ongoing order of this sub-category product",null))
 									}else{
-										res.send(setRes(resCode.ResourceNotFound,false,"Product type not found",null))
+										productCategoryModel.findOne({
+											where:{
+												id:data.id,
+												is_deleted:false,
+												is_enable:true,
+												parent_id: {
+													[Op.ne]:0,
+												}
+											}
+										}).then(subCategoryData => {
+
+											if(subCategoryData != null){
+
+												subCategoryData.update({is_deleted:true,is_enable:false})
+												res.send(setRes(resCode.OK,true,"Product type deleted successfully",null))
+											}else{
+												res.send(setRes(resCode.ResourceNotFound,false,"Product type not found",null))
+											}
+										})
 									}
 								})
 							}
 						})
 					}
-				})
+				})	
 			}
-		})			
 	}).catch(error => {
 		res.send(setRes(resCode.BadRequest, false, "Internal server error.",null))
 	})
@@ -1893,7 +1761,6 @@ exports.simillarProducts = async(req,res) => {
 							data.dataValues.product_image = _.first(image_array);
 							delete data.dataValues.image;
 						}
-						// console.log(responseData)
 						return res.send(setRes(resCode.OK, true,'Get simillar products details.',responseData))
 					}else{
 						res.send(setRes(resCode.ResourceNotFound, true, "Get simillar products details not found.",[]))
@@ -1901,7 +1768,6 @@ exports.simillarProducts = async(req,res) => {
 				})
 			}
 		}).catch(error => {
-			console.log(error)
 			res.send(setRes(resCode.BadRequest, false,'Fail to get simillar products.',null))
 		})
 
