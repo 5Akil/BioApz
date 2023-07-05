@@ -35,6 +35,7 @@ exports.giftCardCreate = async(req,res) => {
 		var requiredFields = _.reject(arrayFields, (o) => { return _.has(data, o)  })
 
 		if(requiredFields.length == 0){
+			const giftCardName = data?.name?.trim() || data.name;
 			var currentDate = (moment().format('YYYY-MM-DD') == moment(data.expire_at).format('YYYY-MM-DD'))
 			var pastDate = moment(data.expire_at,'YYYY-MM-DD').isBefore(moment());
 			if(result != '' && !((data.cashback_percentage >= Math.min(1,100)) && (data.cashback_percentage <= Math.max(1,100)))){
@@ -60,7 +61,7 @@ exports.giftCardCreate = async(req,res) => {
 									isDeleted: false,
 									status:true,
 									name: {
-										[Op.eq]: data.name
+										[Op.eq]: giftCardName
 									}
 								}
 							}).then(async giftCard => {
@@ -169,6 +170,7 @@ exports.giftCardUpdate = async (req, res) => {
 		var requiredFields = _.reject(arrayFields, (o) => { return _.has(data, o) })
 
 		if (requiredFields.length == 0) {
+			const giftCardName = data?.name?.trim() || data.name;
 			var currentDate = (moment().format('YYYY-MM-DD') == moment(data.expire_at).format('YYYY-MM-DD'))
 			var pastDate = moment(data.expire_at, 'YYYY-MM-DD').isBefore(moment());
 			if ((result != '' && !(data.cashback_percentage >= Math.min(1, 100)) && (data.cashback_percentage <= Math.max(1, 100)))) {
@@ -183,7 +185,7 @@ exports.giftCardUpdate = async (req, res) => {
 						res.send(setRes(resCode.ResourceNotFound, false, "Gift Card not found.", null))
 					} else {
 						giftCardModel.findOne({
-							where: { isDeleted: false, status: true, name: { [Op.eq]: data.name }, id: { [Op.ne]: data.id } }
+							where: { isDeleted: false, status: true, name: { [Op.eq]: giftCardName }, id: { [Op.ne]: data.id } }
 						}).then(async giftCardData => {
 							if (giftCardData == null) {
 								giftCardModel.update(data,

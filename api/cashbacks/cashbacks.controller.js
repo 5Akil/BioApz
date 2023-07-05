@@ -35,6 +35,7 @@ exports.cashbackCreate = async (req, res) => {
 		var requiredFields = _.reject(['business_id', 'title', 'cashback_on', 'cashback_type', 'cashback_value', 'product_category_id', 'product_id', 'validity_for'], (o) => { return _.has(data, o) })
 		const result = !_.isEmpty(data.cashback_type) && data.cashback_type == 0 ? (!((data.cashback_value >= Math.min(1, 100)) && (data.cashback_value <= Math.max(1, 100))) ? true : false) : '';
 		if (requiredFields == "") {
+			const cashbackTitle = data?.title?.trim() || data?.title;
 			if (result) {
 				return res.send(setRes(resCode.BadRequest, false, "Please select valid cashback value in percentage(between 1 to 100)!", null))
 			}
@@ -68,7 +69,7 @@ exports.cashbackCreate = async (req, res) => {
 									} else {
 										await cashbackModel.findOne({
 											where: {
-												isDeleted: false, status: true, title: { [Op.eq]: data.title }
+												isDeleted: false, status: true, title: { [Op.eq]: cashbackTitle }
 											}
 										}).then(async cashbackData => {
 											if (cashbackData) {
@@ -159,6 +160,7 @@ exports.cashbackUpdate = async (req, res) => {
 		var currentDate = (moment().format('YYYY-MM-DD') == moment(data.validity_for).format('YYYY-MM-DD'))
 		var pastDate = moment(data.validity_for, 'YYYY-MM-DD').isBefore(moment());
 		if (requiredFields == "") {
+			const cashbackTitle = data?.title?.trim() || data?.title;
 			cashbackModel
 				.findOne({
 					where: {
@@ -211,7 +213,7 @@ exports.cashbackUpdate = async (req, res) => {
 									isDeleted: false,
 									status: true,
 									deleted_at: null,
-									title: { [Op.eq]: data.title },
+									title: { [Op.eq]: cashbackTitle },
 									id: { [Op.ne]: data.id },
 								},
 							})
