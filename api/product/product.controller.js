@@ -491,7 +491,6 @@ exports.createProduct = async(req,res) => {
 			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
 		}
 	}catch(error){
-		console.log(error)
 		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
 	}
 
@@ -1385,7 +1384,6 @@ exports.ProductTypeList = async(req, res) => {
 				res.send(setRes(resCode.ResourceNotFound, true, "Product type not found.",null))
 			}
 		}).catch(error => {
-			console.log (error)
 			res.send(setRes(resCode.InternalServer,false, "Internal server error.",null))
 		})
 	}else{

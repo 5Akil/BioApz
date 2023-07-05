@@ -346,7 +346,6 @@ exports.DeleteEvent = async (req, res) => {
 	var businessModel = models.business
 	var eventUserModel = models.user_events
 	var currentDate = (moment().subtract(7, "days").format('YYYY-MM-DD'));
-	console.log(currentDate)
 
 	if (data.id) {
 		await comboModel.findOne({

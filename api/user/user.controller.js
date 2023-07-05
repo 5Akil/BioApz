@@ -2050,7 +2050,6 @@ exports.businessEventList = async (req, res) => {
 			if(data.business_id){
 				condition.where = {...condition.where,...{business_id:data.business_id}}
 			}
-			console.log(condition);
 			combocalenderModel.findAll(condition).then(async event => {
 				if(event.length > 0){
 					const dataArray = [];	
