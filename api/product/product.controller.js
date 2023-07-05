@@ -152,50 +152,49 @@ exports.GetAllProducts = async (req, res) => {
 		}
 		const recordCount = await productModel.findAndCountAll(condition);
         const totalRecords = recordCount?.count;
-		console.log(typeof totalRecords);
 		await productModel.findAll(condition).then(async(products) => {
 			
-			// if (products){
-			// 	for(const data of products){
+			if (products){
+				for(const data of products){
 					
-			// 	  	var product_images = data.image
+				  	var product_images = data.image
 
-			// 		var image_array = [];
+					var image_array = [];
 						
-			// 				if(product_images != null){
+							if(product_images != null){
 
-			// 					for(const data of product_images){
-			// 						const signurl = await awsConfig.getSignUrl(data).then(function(res){
+								for(const data of product_images){
+									const signurl = await awsConfig.getSignUrl(data).then(function(res){
 
-			// 	  						image_array.push(res);
-			// 						});
+				  						image_array.push(res);
+									});
 									
-			// 					}
-			// 				}else{
-			// 					image_array.push(commonConfig.default_image)
-			// 				}
+								}
+							}else{
+								image_array.push(commonConfig.default_image)
+							}
 						
-			// 		data.dataValues.product_images = image_array
-			// 		if(data.product_categorys != null){
+					data.dataValues.product_images = image_array
+					if(data.product_categorys != null){
 
-			// 			data.dataValues.category_name = data.product_categorys.name
-			// 			delete data.dataValues.product_categorys
-			// 		}else{
-			// 			data.dataValues.category_name = ""
-			// 		}
-			// 		if(data.sub_category != null){
+						data.dataValues.category_name = data.product_categorys.name
+						delete data.dataValues.product_categorys
+					}else{
+						data.dataValues.category_name = ""
+					}
+					if(data.sub_category != null){
 
-			// 			data.dataValues.product_type = data.sub_category.name
-			// 			delete data.dataValues.sub_category
-			// 		}else{
-			// 			data.dataValues.product_type = "";
-			// 		}
+						data.dataValues.product_type = data.sub_category.name
+						delete data.dataValues.sub_category
+					}else{
+						data.dataValues.product_type = "";
+					}
 
-			// 	}
-			// 	const response = new pagination(products, parseInt(totalRecords.length), parseInt(data.page), parseInt(data.page_size));
-			// 	res.send(setRes(resCode.OK, true, "Get product list successfully",(response.getPaginationInfo())))
+				}
+				const response = new pagination(products, parseInt(totalRecords.length), parseInt(data.page), parseInt(data.page_size));
+				res.send(setRes(resCode.OK, true, "Get product list successfully",(response.getPaginationInfo())))
 				
-			// }
+			}
 		})
 		.catch((error) => {
 			res.send(setRes(resCode.InternalServer,false, error,null))
