@@ -126,7 +126,6 @@ exports.GetAllProducts = async (req, res) => {
 			attributes: { include : [
 				[Sequelize.fn('AVG', Sequelize.col('product_ratings.ratings')),'rating']
 			]},
-			group: ['products.id'],
 		}
 		condition.where = {...condition.where,...{business_id:data.business_id,category_id:data.category_id,is_deleted:false,}}
 		condition.attributes = { exclude:['createdAt','updatedAt']}
@@ -191,7 +190,7 @@ exports.GetAllProducts = async (req, res) => {
 					}
 
 				}
-				const response = new pagination(products, parseInt(totalRecords.length), parseInt(data.page), parseInt(data.page_size));
+				const response = new pagination(products, parseInt(totalRecords), parseInt(data.page), parseInt(data.page_size));
 				res.send(setRes(resCode.OK, true, "Get product list successfully",(response.getPaginationInfo())))
 				
 			}
