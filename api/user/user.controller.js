@@ -356,7 +356,6 @@ exports.Login = async (req, res) => {
                     }
                 }
             }).catch(error => {
-                console.log(error)
                 res.send(setRes(resCode.InternalServer, false, "Internal Server Error", null))
             });
         } else {
@@ -629,7 +628,6 @@ exports.forgotPassword = async (req, res) => {
                                             html: html
                                         },
                                         function(err, result) {
-											console.log(err)
                                             if (err) {
                                                 return res.send(setRes(resCode.BadRequsest, false, 'Something went wrong.', null));
                                             } else {
@@ -2193,6 +2191,15 @@ exports.eventUserRegister = async (req, res) => {
 					}
 				})
 			}
+
+			const isUserExist = await eventUserModel.findOne({
+				where:{user_id:data.user_id,event_id:data.event_id, business_id:data.business_id,is_deleted:false,is_available:true}
+			})
+
+			if(isUserExist){
+				validation = false;
+				return res.send(setRes(resCode.BadRequest, false, "User already registred in this business event.", null))
+			}
 			if(validation){
 				await eventUserModel.create(data).then(event_user => {
 					if(event_user){
@@ -2322,32 +2329,35 @@ exports.eventUserLeave = async (req, res) => {
 		var comboModel = models.combo_calendar
 		var userModel = models.user
 		var eventUserModel = models.user_events
+		var validation = true;
 		const Op = models.Op;
 		var currentDate = (moment().format('YYYY-MM-DD'))
-		var requiredFields = _.reject(["business_id", "event_id", "user_id"], (o) => {
+		var requiredFields = _.reject(["id","business_id", "event_id", "user_id"], (o) => {
 			return _.has(data, o);
 		});
 		if(data){
 			if (requiredFields == "") {
-				eventUserModel.findOne({
+				await eventUserModel.findOne({
 					where: {id: data.id,is_deleted: false,is_available:true}
 				}).then(async event_user => {
 					if(_.isEmpty(event_user)){
+						validation = false
 						return res.send(setRes(resCode.ResourceNotFound, false, "User Event not found.", null))
 					}
 				})
 
-				if(data.business_id){
-					businessModel.findOne({
+				if(data.business_id && validation == true){
+					await businessModel.findOne({
 						where: {id: data.business_id,is_deleted: false,is_active:true}
 					}).then(async business => {
 						if(_.isEmpty(business)){
+							validation = false
 							return res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
 						}
 					})
 				}
-	
-				if(data.event_id){
+				
+				if(data.event_id && validation == true){
 					var condition = {}		
 					if(!_.isEmpty(data.business_id)){
 						condition.where = {business_id:data.business_id}
@@ -2355,54 +2365,60 @@ exports.eventUserLeave = async (req, res) => {
 					condition.where = {...condition.where,...{id: data.event_id,is_deleted: false,end_date: {
 						[Op.gt]: currentDate
 					},}}
-					comboModel.findOne(condition).then(async event => {
+					await comboModel.findOne(condition).then(async event => {
 						if(_.isEmpty(event)){
+							validation = false
 							return res.send(setRes(resCode.ResourceNotFound, false, "Event not found.", null))
 						}
 					})
 				}
+			
 	
-				if(data.user_id){
-					userModel.findOne({
+				if(data.user_id && validation == true){
+					await userModel.findOne({
 						where: {id:data.user_id,is_deleted: false,is_active:true}
 					}).then(async user => {
 						if(_.isEmpty(user)){
+							validation = false
 							return res.send(setRes(resCode.ResourceNotFound, false, "User not found.", null))
 						}
 					})
 				}
-
-				eventUserModel.findOne({
+				
+				const eventUserData = await eventUserModel.findOne({
 					where: {id: data.id,business_id:data.business_id,event_id:data.event_id,user_id:data.user_id,is_deleted: false,is_available:true},
-				}).then(async event_user => {
-					if(_.isEmpty(event_user)){
-						return res.send(setRes(resCode.ResourceNotFound, false, "User not found in any event.", null))
-					}else{
-						eventUserModel.update(
-							{is_deleted:true,
-							is_available:false}
-							,{
-							where: {id: data.id,business_id:data.business_id,event_id:data.event_id,user_id:data.user_id,is_deleted: false,is_available:true}
-						}).then(async data =>{
-							if(data){
-								eventUserModel.findOne({
-									where: {id: data.id},
-								}).then(async user_data => {
-									res.send(setRes(resCode.OK, false, 'Leave successfully from event', user_data))
-								})
-							}
-						}).catch(error => {
-							res.send(setRes(resCode.BadRequest, false, 'Fail to leave from event.', null))
-						})
-					}
-				})
+				});
+				if(_.isEmpty(eventUserData) && validation == true){
+					validation = false;
+					return res.send(setRes(resCode.ResourceNotFound, false, "User not found in any event.", null))
+				}
+				
+				if(validation){
+					await eventUserModel.update(
+						{is_deleted:true,
+						is_available:false}
+						,{
+						where: {id: data.id,business_id:data.business_id,event_id:data.event_id,user_id:data.user_id,is_deleted: false,is_available:true}
+					}).then(async dataVal =>{
+						if(dataVal){
+							await eventUserModel.findOne({
+								where: {id: data.id},
+							}).then(async user_data => {
+								return res.send(setRes(resCode.OK, false, 'Leave successfully from event', user_data))
+							})
+						}
+					}).catch(error => {
+						return res.send(setRes(resCode.BadRequest, false, 'Fail to leave from event.', null))
+					})
+				}
+				
 			} else {
-				res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
+				return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
 			}
 		}else{
-			res.send(setRes(resCode.BadRequest, false, ('Id are required'), null))
+			return res.send(setRes(resCode.BadRequest, false, ('Id are required'), null))
 		}
 	} catch (error) {
-		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
+		return res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
 	}
 }
