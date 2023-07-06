@@ -27,4 +27,6 @@ module.exports = function (app) {
 
   // User APP Routes 
   app.use('/api/countries', require('./api/country'))
+
+  app.use('/api/device_token', require('./api/device-token'))
 }
