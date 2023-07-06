@@ -126,6 +126,7 @@ Business.associate = function(models) {
     Business.hasOne(models.faqs, {foreignKey: 'business_id'})
     Business.hasMany(models.shopping_cart, {foreignKey: 'business_id'})
     Business.belongsTo(models.countries, {foreignKey: 'country_id'});
+    Business.hasMany(models.device_tokens, {foreignKey: 'business_id'});
   };
   return Business;
 };

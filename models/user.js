@@ -73,6 +73,7 @@ module.exports = (sequelize, DataTypes) => {
     // associations can be defined here
     User.hasMany(models.user_events, {foreignKey: 'user_id'});
     User.belongsTo(models.countries, {foreignKey: 'country_id'});
+    User.hasMany(models.device_tokens, {foreignKey: 'user_id'});
   };
   return User;
 };
