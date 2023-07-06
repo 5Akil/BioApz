@@ -361,10 +361,8 @@ exports.BusinessOrderDetail = async (req,res) => {
 				data.dataValues.user_email = data.user.email
 				data.dataValues.user_mobile = data.user.mobile
 				data.dataValues.user_address = data.user.address
-				console.log('data.user.dataValues.profile_picture', data.user.dataValues.profile_picture);
 				const userImg = await awsConfig.getSignUrl(data.user.dataValues.profile_picture);
 				data.dataValues.user_image = userImg;
-				console.log('userImg', userImg);
 				delete data.dataValues.user
 				data.product.dataValues.category_name = data?.product?.product_categorys?.name
 				data.product.dataValues.product_type = data?.product?.sub_category?.name
@@ -385,7 +383,6 @@ exports.BusinessOrderDetail = async (req,res) => {
 			  const product = order.product;
 			  products.push(product);
 			});
-			console.log(orderDetails[0].dataValues.user_image);
 			const datas = {
 				"user_id": orderDetails[0].user_id,
 				"user_name" : orderDetails[0].user.username,
