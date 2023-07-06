@@ -94,11 +94,19 @@ exports.GetAllProducts = async (req, res) => {
 	var Op = models.Op
 	var categoryModel = models.product_categorys
 	var data = req.body
-	var requiredFields = _.reject(['page','page_size','business_id','category_id'], (o) => { return _.has(data, o)  })
+	var requiredFields = _.reject(['page','page_size','business_id'], (o) => { return _.has(data, o)  })
 
 	if (requiredFields == ''){
-		if(data.page < 0 || data.page === 0) {
-			res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1",null))
+		if(data.page && +(data.page) <= 0 ) {
+			return res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1",null))
+		}
+
+		if(data.page_size && +(data.page_size) <= 0 ) {
+			return res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1",null))
+		}
+
+		if (data.category_id && +(data.category_id) < 1 ) {
+			return res.send(setRes(resCode.BadRequest, false, "Invalid Category id",null))
 		}
 
 		var skip = data.page_size * (data.page - 1)
@@ -127,7 +135,9 @@ exports.GetAllProducts = async (req, res) => {
 				[Sequelize.fn('AVG', Sequelize.col('product_ratings.ratings')),'rating']
 			]},
 		}
-		condition.where = {...condition.where,...{business_id:data.business_id,category_id:data.category_id,is_deleted:false,}}
+		const categoryCond = (data.category_id && +(data.category_id) > 0) ? {category_id:data.category_id} : {}
+		console.log(categoryCond);
+		condition.where = {...categoryCond, ...{business_id:data.business_id,is_deleted:false,}}
 		condition.attributes = { exclude:['createdAt','updatedAt']}
 		if(!_.isEmpty(data.price)){
 			if(data.price == 1){
