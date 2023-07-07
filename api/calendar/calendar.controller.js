@@ -352,7 +352,6 @@ exports.DeleteEvent = async (req, res) => {
 	var comboModel = models.combo_calendar
 	var businessModel = models.business
 	var eventUserModel = models.user_events
-	var beforeSevenDay = (moment().subtract(7, "days").format('YYYY-MM-DD'));
 
 	if (data.id) {
 		await comboModel.findOne({
@@ -361,8 +360,8 @@ exports.DeleteEvent = async (req, res) => {
 				is_deleted: false
 			}
 		}).then(async eventData => {
-			const eventDate = moment(eventData.start_date).format('YYYY-MM-DD');
-			if(beforeSevenDay <= eventDate){
+			const beforeSevenDay =(moment(isEventExists.start_date).subtract(7, "days")).isBefore(moment());
+			if(beforeSevenDay){
 				res.send(setRes(resCode.BadRequest, false, "You can not delete this event in last 7 days of event start date or current date.", null))
 			}else{
 				await eventUserModel.findAll({
@@ -535,7 +534,6 @@ exports.UpdateEvent = async (req, res) => {
 	const businessModel = models.business
 	var requiredFields = _.reject(['id','title', 'description', 'end_date', 'start_date', 'location'], (o) => { return _.has(data, o) })
 	var currentDate = (moment().format('YYYY-MM-DD'));
-	var beforeSevenDay = (moment().subtract(7, "days").format('YYYY-MM-DD'));
 	// data.repeat_every == 1 ? (data.repeat_on ? '' : requiredFields.push('repeat_on')) : '';
 	// _.contains([1, 2], parseInt(data.repeat_every)) ? data.repeat = true : '';
 	var row = await comboModel.findByPk(data.id);
@@ -561,9 +559,9 @@ exports.UpdateEvent = async (req, res) => {
 				return res.send(setRes(resCode.ResourceNotFound, false, "Event not found.", null))
 			}
 			const isStartDatePastDate =moment(startDate).isBefore(moment());
+			const beforeSevenDay =(moment(isEventExists.start_date).subtract(7, "days")).isBefore(moment());
 			const isEndDatePastDate = moment(endDate).isBefore(moment());
-			const eventDate = moment(isEventExists.start_date).format('YYYY-MM-DD');
-			if(beforeSevenDay <= eventDate || currentDate == eventDate){
+			if(beforeSevenDay){
 				validation = false;
 				return res.send(setRes(resCode.BadRequest, false, "You can not edit this event in last 7 days of event start date or current date", null))
 			}
