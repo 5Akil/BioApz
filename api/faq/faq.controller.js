@@ -17,6 +17,7 @@ const MomentRange = require('moment-range');
 const Moment = MomentRange.extendMoment(moment);
 var fs = require('fs');
 var awsConfig = require('../../config/aws_S3_config');
+const pagination = require('../../helpers/pagination');
 
 exports.StoreFaq = async(req, res) => {
 
@@ -89,7 +90,13 @@ exports.GetFaqList = async(req, res ) => {
 		}
 		var skip = data.page_size * (data.page - 1)
 		var limit = parseInt(data.page_size)
-
+		const faqRecords  = await faqModel.findAndCountAll({
+			where:{
+				business_id:data.business_id,
+				is_deleted:false
+			}
+		});
+		const totalRecords = faqRecords?.count;
 		faqModel.findAll({
 			where:{
 				business_id:data.business_id,
@@ -102,8 +109,8 @@ exports.GetFaqList = async(req, res ) => {
 			]
 		}).then(faqData => {
 			if(faqData.length > 0){
-
-				res.send(setRes(resCode.OK,true,"FAQ get successfully.",faqData))
+				const response = new pagination(faqData, totalRecords, parseInt(data.page), parseInt(data.page_size));
+				res.send(setRes(resCode.OK,true,"FAQ get successfully.",(response.getPaginationInfo())))
 			}else{
 				res.send(setRes(resCode.ResourceNotFound,false,"FAQ not found.",null))
 			}

@@ -1802,13 +1802,12 @@ exports.loyaltyList = async (req, res) => {
 
       loyaltyPointModel
         .findAll({
+		  offset:skip,
+		  limit:limit,
           where: {
             isDeleted: false,
-			offset:skip,
-			limit:limit,
             status: true,
             business_id: data.business_id,
-            deleted_at: null,
 			validity: { 
 				[Op.gt]: currentDate
 			},
@@ -1826,6 +1825,26 @@ exports.loyaltyList = async (req, res) => {
         })
         .then(async (loyaltyData) => {
           if (loyaltyData.length > 0) {
+			const loyaltyRecordCounts = await loyaltyPointModel.findAndCountAll({where: {
+				isDeleted: false,
+				status: true,
+				business_id: data.business_id,
+				validity: { 
+					[Op.gt]: currentDate
+				},
+			  },
+			  include: [
+				{
+				  model: businessModel,
+				  attributes: ["id", "business_name"],
+				},
+				{
+				  model: productModel,
+				  attributes: ["id", "name"],
+				},
+			  ]
+			})
+			const totalRecords = loyaltyRecordCounts?.count;
             for (const data of loyaltyData) {
 
               // Get businesss name
@@ -1843,12 +1862,13 @@ exports.loyaltyList = async (req, res) => {
                 data.dataValues.product_name = "";
               }
             }
+			const response = new pagination(loyaltyData, totalRecords, parseInt(data.page), parseInt(data.page_size));
             res.send(
               setRes(
                 resCode.OK,
                 true,
                 "Get loyalty list successfully",
-                loyaltyData
+                (response.getPaginationInfo())
               )
             );
           } else {

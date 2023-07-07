@@ -18,6 +18,7 @@ const MomentRange = require('moment-range');
 const Moment = MomentRange.extendMoment(moment);
 var fs = require('fs');
 var awsConfig = require('../../config/aws_S3_config');
+const pagination = require('../../helpers/pagination');
 
 exports.createInquiry = async (req, res) => {
 	var data = req.body
@@ -117,7 +118,7 @@ exports.GetRecommendedBusiness = async (req, res) => {
 	if (requiredFields == '') {
 
 		if (data.page < 0 || data.page === 0) {
-			res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1", null))
+			return res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1", null))
 		}
 		var skip = data.page_size * (data.page - 1)
 		var limit = parseInt(data.page_size)
@@ -132,13 +133,10 @@ exports.GetRecommendedBusiness = async (req, res) => {
 					[Sequelize.fn('AVG', Sequelize.col('ratings.rating')), 'rating']
 				]
 			},
-			// where: Sequelize.where(Sequelize.literal(query), '<=',50),
 			include: [
 				{
 					model: rating,
 					attributes: []
-					// attributes : [[Sequelize.fn('AVG', Sequelize.col('rating')),'ratings']]
-					// [models.sequelize.fn('count', '*'), 'count'] ]
 				},
 				{
 					model: category,
@@ -169,14 +167,9 @@ exports.GetRecommendedBusiness = async (req, res) => {
 				} else {
 					Obj.banner = commonConfig.default_user_image;
 				}
-				// var template_url = await awsConfig.getSignUrl(Obj.template.image).then(function(res){
-				// 	Obj.template.template_url = res
-				// });
 				return Obj;
-				// return Obj.template.template_url = Obj.template.template_url.concat(`?bid=${Obj.id}&uid=${data.user_id}&ccd=${Obj.color_code}`)
 			})
 
-			// business.banner = awsConfig.getSignUrl(business.banner)
 			res.send(setRes(resCode.OK, true, "Available businesses near you.", business))
 		})
 			.catch((err) => {
@@ -233,13 +226,6 @@ exports.GetBusinessDetail = async (req, res) => {
 				else {
 					business.banner = commonConfig.default_user_image;
 				}
-
-				// var business_template_template_url = await awsConfig.getSignUrl(business.template.image).then(function(res){
-				// 	business.template.template_url = res
-				// })
-				// var business_template_image = await awsConfig.getSignUrl(business.template.image).then(function(res){
-				// 	business.template.image = res
-				// })
 				res.send(setRes(resCode.OK, true, "Get business detail successfully.", business))
 			} else {
 				res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
@@ -550,7 +536,7 @@ exports.GetAllOffers = async (req, res) => {
 
 	if (requiredFields == '') {
 		if (data.page < 0 || data.page === 0) {
-			res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1"), null)
+			return res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1", null))
 		}
 		var skip = data.page_size * (data.page - 1)
 		var limit = parseInt(data.page_size)
@@ -569,8 +555,10 @@ exports.GetAllOffers = async (req, res) => {
 				['createdAt', 'DESC']
 			]
 		}
-		data.business_id ? condition.where = { business_id: data.business_id, is_deleted: false } : condition.where = { is_deleted: false },
+		condition.where = data.business_id ? { business_id: data.business_id, is_deleted: false } : { is_deleted: false };
 
+		const offerRecords = await offerModel.findAndCountAll(condition);
+		const totalRecords = offerRecords?.count;
 			offerModel.findAll(condition).then(async (offers) => {
 				if (offers.length > 0) {
 					for (offer of offers) {
@@ -585,7 +573,8 @@ exports.GetAllOffers = async (req, res) => {
 							offer.business.banner = commonConfig.default_user_image;
 						}
 					}
-					res.send(setRes(resCode.OK, true, "Get offers list successfully", offers))
+					const response = new pagination(offers, totalRecords, parseInt(data.page), parseInt(data.page_size));
+					res.send(setRes(resCode.OK, true, "Get offers list successfully", (response.getPaginationInfo())))
 				} else {
 					res.send(setRes(resCode.ResourceNotFound, false, "Offer not found", null))
 				}
