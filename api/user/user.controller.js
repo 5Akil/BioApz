@@ -210,19 +210,6 @@ exports.Login = async (req, res) => {
                                     })
                                     .then(async function(newUser) {
                                         if (newUser) {
-											const device = models.device_tokens
-											const deviceData = {
-												user_id: user.id,
-												device_id: data.device_id,
-												device_type: (data.device_type == 1) ? 'ios' : 'android',
-												device_token: data.device_token,
-												api_version: (data.api_version == 1) ? 'production' : 'testing',
-												os_version: (data.os_version == undefined || _.isEmpty(data.os_version)) ? null : data.os_version,
-												app_version: (data.app_version == undefined || _.isEmpty(data.app_version)) ? null : data.app_version,
-												device_name: (data.device_name == undefined || _.isEmpty(data.device_name)) ? null : data.device_name,
-												model_name: (data.model_name == undefined || _.isEmpty(data.model_name)) ? null : data.model_name,
-											}
-											const storedevicetToken = device.create(deviceData)
                                             if (user.profile_picture != null) {
                                                 var profile_picture = await awsConfig.getSignUrl(user.profile_picture).then(function(res) {
                                                     user.profile_picture = res
@@ -293,19 +280,6 @@ exports.Login = async (req, res) => {
                                     })
                                     .then(async function(newBusiness) {
                                         if (newBusiness) {
-											const device = models.device_tokens
-											const deviceData = {
-												business_id: business.id,
-												device_id: data.device_id,
-												device_type: (data.device_type == 1) ? 'ios' : 'android',
-												device_token: data.device_token,
-												api_version: (data.api_version == 1) ? 'production' : 'testing',
-												os_version: (data.os_version == undefined || _.isEmpty(data.os_version)) ? null : data.os_version,
-												app_version: (data.app_version == undefined || _.isEmpty(data.app_version)) ? null : data.app_version,
-												device_name: (data.device_name == undefined || _.isEmpty(data.device_name)) ? null : data.device_name,
-												model_name: (data.model_name == undefined || _.isEmpty(data.model_name)) ? null : data.model_name,
-											}
-											const storedevicetToken = device.create(deviceData)
                                             if (business.profile_picture == null) {
                                                 business.profile_picture = commonConfig.default_user_image;
                                             }
@@ -1314,7 +1288,12 @@ exports.Logout = async (req, res) => {
 						}else{
 							condition.where = {business_id:user.id}
 						}
-						condition.where = {...condition.where,...{device_id:data.device_id,device_type:data.device_type,status:1}}
+						if(data.device_type == 1 && data.device_type != 2){
+							condition.where = {...condition.where,...{device_type:'ios'}}
+						}else{
+							condition.where = {...condition.where,...{device_type:'android'}}
+						}
+						condition.where = {...condition.where,...{device_id:data.device_id,status:1}}
 						const loginUserDevices = await deviceModel.findOne(condition);
 						if(loginUserDevices){
 							await deviceModel.findOne(condition).then(async Data => {
@@ -1325,7 +1304,7 @@ exports.Logout = async (req, res) => {
 							});
 							res.send(setRes(resCode.OK,true,'Logout successfully',null))
 						}else{
-							res.send(setRes(resCode.BadRequest, false, "Oops not you have not login in any devices.",null))
+							res.send(setRes(resCode.BadRequest, false, "Oops not you have not logged in this devices.",null))
 						}
 					}else{
 						res.send(setRes(resCode.BadRequest, false, "Can't logged out.",null))
@@ -2062,19 +2041,8 @@ exports.businessEventList = async (req, res) => {
 					setRes(
 						resCode.BadRequest,
 						false,
-
 						"invalid page number, should start with 1",
 						null,
-					)
-				);
-			}
-			if (data.page_size == '' || data.page_size <= 0) {
-				return res.send(
-					setRes(
-						resCode.BadRequest,
-						null,
-						false,
-						"invalid page size, should be greater than 0"
 					)
 				);
 			}
@@ -2082,7 +2050,12 @@ exports.businessEventList = async (req, res) => {
 			let skip = data.page_size * (data.page - 1);
 			let limit = parseInt(data.page_size);
 			var condition = {}
-			condition.where = {is_deleted: false,[Op.or]: [{title: {[Op.like]: "%" + data.search + "%",}}]}
+			condition.where = {is_deleted: false,end_date: {
+				[Op.gt]: currentDate
+			},}
+			if(data.search){
+				condition.where = {...condition.where,...{[Op.or]: [{title: {[Op.like]: "%" + data.search + "%",}}]}}
+			}
 			if(data.business_id){
 				condition.where = {...condition.where,...{business_id:data.business_id}}
 			}
@@ -2091,7 +2064,6 @@ exports.businessEventList = async (req, res) => {
 				condition.limit = limit
 			}
 			combocalenderModel.findAll(condition).then(async event => {
-				if(event.length > 0){
 					const dataArray = [];	
 					for (const data of event) {
 						var event_images = data.images
@@ -2118,11 +2090,6 @@ exports.businessEventList = async (req, res) => {
 						  (response.getPaginationInfo())
 						)
 					  );
-				}else {
-					res.send(
-					  setRes(resCode.ResourceNotFound, false, "Event not found", [])
-					);
-				  }
 			})
 		} else {
 			res.send(
@@ -2235,7 +2202,7 @@ exports.userEventList = async (req, res) => {
 		let limit = parseInt(data.page_size);
 
 		var condition = {
-			attributes: ['id','business_id','images','title','description','start_date','end_date','start_time','end_time'],
+			attributes: ['id','business_id','images','title','description','start_date','end_date','start_time','end_time','status'],
 			include: [
 				{
 				  model: userEventModel,
