@@ -18,6 +18,7 @@ const Moment = MomentRange.extendMoment(moment);
 var fs = require('fs');
 var awsConfig = require('../../config/aws_S3_config');
 const { log } = require('console')
+const pagination = require('../../helpers/pagination');
 
 // Create Event
 exports.CreateEvent = async (req, res) => {
