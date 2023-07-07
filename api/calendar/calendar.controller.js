@@ -395,8 +395,8 @@ exports.GetAllEvents = async (req, res) => {
 	var data = req.body
 	var comboModel = models.combo_calendar
 	var Op = models.Op
-	var startDate = moment(data.start_date).format('YYYY-MM-DD');
-	var endDate = moment(data.end_date).format('YYYY-MM-DD');
+	var startDate = moment(data.from_date).format('YYYY-MM-DD');
+	var endDate = moment(data.to_date).format('YYYY-MM-DD');
 
 	var requiredFields = _.reject(['page','page_size','business_id'], (o) => { return _.has(data, o) })
 	if (requiredFields == '') {
