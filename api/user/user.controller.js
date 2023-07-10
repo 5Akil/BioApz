@@ -161,7 +161,7 @@ exports.Login = async (req, res) => {
     var templateModel = models.templates
     var categoryModel = models.business_categorys
 
-    var requiredFields = _.reject(['email', 'password', 'role', 'device_id', 'device_type', 'device_token'], (o) => {
+    var requiredFields = _.reject(['email', 'password', 'role'], (o) => {
         return _.has(data, o)
     })
 

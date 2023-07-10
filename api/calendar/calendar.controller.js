@@ -361,7 +361,7 @@ exports.DeleteEvent = async (req, res) => {
 				is_deleted: false
 			}
 		}).then(async eventData => {
-			const beforeSevenDay =(moment(isEventExists.start_date).subtract(7, "days")).isBefore(moment());
+			const beforeSevenDay =(moment(eventData.start_date).subtract(7, "days")).isBefore(moment());
 			if(beforeSevenDay){
 				res.send(setRes(resCode.BadRequest, false, "You can not delete this event in last 7 days of event start date or current date.", null))
 			}else{
@@ -382,6 +382,7 @@ exports.DeleteEvent = async (req, res) => {
 			}
 			
 		}).catch(error => {
+			console.log(error)
 			res.send(setRes(resCode.BadRequest, false, "Internal server error.", null))
 		})
 	} else {
