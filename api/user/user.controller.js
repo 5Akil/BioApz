@@ -2207,7 +2207,7 @@ exports.userEventList = async (req, res) => {
 				{
 				  model: userEventModel,
 				  attributes: ["id","user_id"],
-				  where:{user_id:data.user_id},
+				  where:{user_id:data.user_id,is_deleted:false},
 				  include: [
 					{
 						model: models.user,
