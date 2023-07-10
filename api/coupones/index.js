@@ -37,7 +37,7 @@ router.post('/create', verifyToken, controller.create)
 router.delete('/delete/:id', verifyToken,controller.delete)
 router.post('/update',verifyToken,controller.update)
 router.post('/user/apply',verifyToken, authorize([2]),controller.applyCoupon)
-router.post('/user/list',verifyToken,controller.getUserCouponList);
+router.post('/user/list',verifyToken,authorize([2]),controller.getUserCouponList);
 router.post('/business/list',verifyToken,controller.getBusinessCouponList);
 router.delete('/user/remove/:id',verifyToken,controller.removeUserCoupon)
 // Coupones Section END

@@ -324,7 +324,10 @@ exports.applyCoupon = async (req, res) => {
 					if (userCouponDetail) {
 						const discountObj = {
 							discountValue: productDetails.price,
-							user_coupon_id: userCouponDetail.id
+							user_coupon_id: userCouponDetail.id,
+							coupon_id: couponDetails.id,
+							coupon_code: couponDetails.coupon_code,
+							value_type: couponDetails.value_type,
 						}
 						res.send(setRes(resCode.OK, true, 'Coupon applied successfully!', discountObj))
 					} else {
@@ -379,9 +382,11 @@ exports.applyCoupon = async (req, res) => {
 exports.getUserCouponList =  async (req, res) => {
 	try {
 		const data = req.body;
+		const authUser = req.user;
 		const arrayFields = ['page', 'business_id', 'page_size'];
 		const requiredFields = _.reject(arrayFields, (o) => { return _.has(data, o); })
 		const couponeModel = models.coupones;
+		const userCouponModel = models.user_coupons;
 
 		const skip = data.page_size * (data.page - 1)
 		const limit = parseInt(data.page_size)
@@ -407,7 +412,18 @@ exports.getUserCouponList =  async (req, res) => {
 				}
 			});
 
+			
+
 			const getCouponListData = getCouponList?.rows;
+			for(const val of getCouponListData){
+				var is_applied = false;
+				const appliedCoupon = await userCouponModel.findOne({
+					where:{is_deleted:false,user_id:authUser.id,coupon_id:val.id}
+				})
+				if(!_.isEmpty(appliedCoupon)){is_applied = true;}
+				val.dataValues.is_applied = is_applied;
+			}
+			
 			const totalRecords = getCouponList?.count;
 			const previous_page = (data.page - 1);
 			const last_page = Math.ceil(totalRecords / data.page_size);
