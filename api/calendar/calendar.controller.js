@@ -180,78 +180,78 @@ exports.CreateEvent = async (req, res) => {
 			res.send(setRes(resCode.BadRequest, false, "Event exists in between same time slot.", null))
 		}
 				
-		// if (validation) {
-		// 	businessModel.findOne({
-		// 		where: {id: data.business_id,is_deleted: false,is_active:true}
-		// 	}).then(async business => {
-		// 		if(business){
-		// 			var comboOffer = await createComboOffer(data)
+		if (validation) {
+			businessModel.findOne({
+				where: {id: data.business_id,is_deleted: false,is_active:true}
+			}).then(async business => {
+				if(business){
+					var comboOffer = await createComboOffer(data)
 
-		// 			if (comboOffer != '') {
-		// 				const lastInsertId = comboOffer.id;
-		// 				if (lastInsertId) {
+					if (comboOffer != '') {
+						const lastInsertId = comboOffer.id;
+						if (lastInsertId) {
 
-		// 					var files = [];
-		// 					for (const file of filesData) {
+							var files = [];
+							for (const file of filesData) {
 
-		// 						const fileContent = await fs.promises.readFile(file.path);
-		// 						const fileExt = `${file.originalname}`.split('.').pop()
-		// 						const randomString = Math.floor(Math.random() * 1000000);
-		// 						const fileName = `${Date.now()}_${randomString}.${fileExt}`;
-		// 						const params = {
-		// 							Bucket: awsConfig.Bucket,
-		// 							Key: `combos/${lastInsertId}/${fileName}`,
-		// 							Body: fileContent,
-		// 						};
+								const fileContent = await fs.promises.readFile(file.path);
+								const fileExt = `${file.originalname}`.split('.').pop()
+								const randomString = Math.floor(Math.random() * 1000000);
+								const fileName = `${Date.now()}_${randomString}.${fileExt}`;
+								const params = {
+									Bucket: awsConfig.Bucket,
+									Key: `combos/${lastInsertId}/${fileName}`,
+									Body: fileContent,
+								};
 
-		// 						const result = await awsConfig.s3.upload(params).promise();
-		// 						if (result) {
-		// 							files.push(`combos/${lastInsertId}/${fileName}`)
-		// 							fs.unlinkSync(file.path)
-		// 						}
-		// 					}
-		// 					var images = files.join(';');
+								const result = await awsConfig.s3.upload(params).promise();
+								if (result) {
+									files.push(`combos/${lastInsertId}/${fileName}`)
+									fs.unlinkSync(file.path)
+								}
+							}
+							var images = files.join(';');
 
-		// 					comboModel.update({
-		// 						images: images,
-		// 						start_date: sDate_value[0],
-		// 						start_time: sDate_value[1],
-		// 						end_date: eDate_value[0],
-		// 						end_time: eDate_value[1]
-		// 					}, {
-		// 						where: {
-		// 							id: lastInsertId,
+							comboModel.update({
+								images: images,
+								start_date: sDate_value[0],
+								start_time: sDate_value[1],
+								end_date: eDate_value[0],
+								end_time: eDate_value[1]
+							}, {
+								where: {
+									id: lastInsertId,
 
-		// 						}
-		// 					}).then(async comboData => {
-		// 						if (comboData) {
-		// 							comboModel.findOne({ where: { id: lastInsertId } }).then(async getData => {
-		// 								var combo_images = getData.images
-		// 								var image_array = [];
-		// 								for (const data of combo_images) {
-		// 									const signurl = await awsConfig.getSignUrl(data).then(function (res) {
-		// 										image_array.push(res);
-		// 									});
-		// 								}
-		// 								getData.dataValues.combo_images = image_array
+								}
+							}).then(async comboData => {
+								if (comboData) {
+									comboModel.findOne({ where: { id: lastInsertId } }).then(async getData => {
+										var combo_images = getData.images
+										var image_array = [];
+										for (const data of combo_images) {
+											const signurl = await awsConfig.getSignUrl(data).then(function (res) {
+												image_array.push(res);
+											});
+										}
+										getData.dataValues.combo_images = image_array
 
-		// 								res.send(setRes(resCode.OK, true, "Event created successfully", getData))
-		// 							})
-		// 						} else {
-		// 							res.send(setRes(resCode.BadRequest, false, null, "Image not update"))
-		// 						}
-		// 					})
-		// 				}
+										res.send(setRes(resCode.OK, true, "Event created successfully", getData))
+									})
+								} else {
+									res.send(setRes(resCode.BadRequest, false, null, "Image not update"))
+								}
+							})
+						}
 
-		// 			}
-		// 			else {
-		// 				res.send(setRes(resCode.BadRequest, false, "Fail to create event.", null))
-		// 			}
-		// 		}else{
-		// 			res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
-		// 		}
-		// 	})
-		// }
+					}
+					else {
+						res.send(setRes(resCode.BadRequest, false, "Fail to create event.", null))
+					}
+				}else{
+					res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
+				}
+			})
+		}
 
 	} else {
 		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
