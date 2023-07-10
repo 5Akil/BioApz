@@ -258,7 +258,7 @@ exports.applyCoupon = async (req, res) => {
 		const couponeModel = models.coupones
 		const userCouponModel = models.user_coupons;
 
-		const userEmail = req.userEmail;
+		const userAuth = req.user;
 		const arrayFields = ['coupon_code', 'coupon_id', 'product_id'];
 		const requiredFields = _.reject(arrayFields, (o) => { return _.has(data, o) })
 
@@ -266,7 +266,9 @@ exports.applyCoupon = async (req, res) => {
 			// check user is active and not deleted
 			const userDetails = await userModel.findOne({
 				where: {
-					email: userEmail
+					email: userAuth.user,
+					id:userAuth.id,
+					is_deleted:false
 				}
 			})
 			if (!userDetails || _.isEmpty(userDetails) || _.isUndefined(userDetails)) {
@@ -309,7 +311,7 @@ exports.applyCoupon = async (req, res) => {
 			if (appliedCoupon && !_.isEmpty(appliedCoupon)) {
 				return res.send(setRes(resCode.ResourceNotFound, false, 'Coupone is already applied!', null))
 			}
-
+			
 			// If coupon is Free product
 			if (couponDetails.coupon_type === false) {
 				// check free product coupon is applied for product
