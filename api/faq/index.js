@@ -1,19 +1,14 @@
 var express = require('express')
-
-var router = express.Router()
-const uuidv1 = require('uuid/v1');
-const moment = require('moment')
-var awsConfig = require('../../config/aws_S3_config');
-
-var controller = require('./faq.controller')
-
+var router = express.Router();
+var controller = require('./faq.controller');
 const {verifyToken} = require('../../config/token');
+const {authorize} = require('../../helpers/authorize');
 
 
-router.post('/storeFaq', verifyToken, controller.StoreFaq)
-router.post('/faqList', verifyToken, controller.GetFaqList)
-router.get('/getFaqById/:id', verifyToken, controller.GetFaqById)
-router.post('/updateFaq', verifyToken, controller.UpdateFaq)
-router.delete('/removeFaq/:id', verifyToken, controller.RemoveFaq)
+router.post('/create', verifyToken, authorize([3]), controller.StoreFaq)
+router.post('/list', verifyToken, authorize([2,3]), controller.GetFaqList)
+router.get('/view/:id', verifyToken, authorize([2,3]), controller.GetFaqById)
+router.post('/update', verifyToken, authorize([3]), controller.UpdateFaq)
+router.delete('/delete/:id', verifyToken, authorize([3]), controller.RemoveFaq)
 
 module.exports = router;

@@ -255,7 +255,7 @@ exports.BusinessOrderHistory = async(req,res) => {
 						delete data.dataValues.business
 					}
 					const response = new pagination(OrderData, parseInt(totalRecords), parseInt(data.page), parseInt(data.page_size));
-					res.send(setRes(resCode.OK,null,'Order history get successfully',(response.getPaginationInfo())))
+					res.send(setRes(resCode.OK,true,'Order history get successfully',(response.getPaginationInfo())))
 				}else{
 					res.send(setRes(resCode.ResourceNotFound,false,'Order history not found',null))
 				}
