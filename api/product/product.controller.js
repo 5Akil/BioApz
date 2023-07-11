@@ -691,112 +691,106 @@ exports.UpdateProductDetail = async (req, res) => {
 // 		}
 // }
 
-exports.GetProductById =  (req, res) => {
-
+exports.GetProductById = (req, res) => {
 	var data = req.params
 	var productModel = models.products
 	var productRattingModel = models.product_ratings
 	var categoryModel = models.product_categorys
 	var shoppingCartModel = models.shopping_cart
 	var wishlistModel = models.wishlists
-
-	 productModel.findOne({
+	var couponModel = models.coupones
+	var Op = models.Op;
+	productModel.findOne({
 		where: {
 			id: data.id,
 			is_deleted: false
 		},
-		include:[
-			{
-				model:productRattingModel,
-				attributes: []
-			},
-			{
-		        model: categoryModel,
-		        as: 'product_categorys',
-		        attributes:['name']
-		    },
-		    {
-		        model: categoryModel,
-		        as: 'sub_category',
-		        attributes:['name']
-		    }
-
-		],
-		attributes: { include : [
-			[Sequelize.fn('AVG', Sequelize.col('product_ratings.ratings')),'rating']
-		]},
+		include: [{
+			model: productRattingModel,
+			attributes: []
+		}, {
+			model: categoryModel,
+			as: 'product_categorys',
+			attributes: ['name']
+		}, {
+			model: categoryModel,
+			as: 'sub_category',
+			attributes: ['name']
+		}],
+		attributes: {
+			include: [
+				[Sequelize.fn('AVG', Sequelize.col('product_ratings.ratings')), 'rating']
+			]
+		},
 	}).then(async product => {
-		if (product && product.id != null){
-			
+		if (product && product.id != null) {
 			var isFav = false;
 			var isAddCart = false;
-
 			await shoppingCartModel.findOne({
 				where: {
 					product_id: product.id,
-					business_id:product.business_id,
+					business_id: product.business_id,
 					is_deleted: false
-				},}).then(async cart => {
-					if(cart){
-						isAddCart = true;
-					}
-				})
+				},
+			}).then(async cart => {
+				if (cart) {
+					isAddCart = true;
+				}
+			})
+			await wishlistModel.findOne({
+				where: {
+					product_id: product.id,
+					is_deleted: false
+				},
+			}).then(async fav => {
+				if (fav) {
+					isFav = true;
+				}
+			})
 
-				await wishlistModel.findOne({
-					where: {
-						product_id: product.id,
-						is_deleted: false
-					},}).then(async fav => {
-						if(fav){
-							isFav = true;
-						}
-					})
-
+			const couponData = await couponModel.findOne({where:{isDeleted:false,status:true}});
+			var is_coupon_available = false;
+			if (couponData) {
+				const hobbiesString = couponData.product_id; // Retrieve the hobbies column value from the data object
+				const hobbiesArray = hobbiesString.split(',')?.includes(`${product.id}`);
+				if(hobbiesArray){
+					is_coupon_available = true;
+				}
+			} 
 			var product_images = product.image
 			var image_array = [];
-			if(product_images != null){
-
-				for(const data of product_images){
-					const signurl = await awsConfig.getSignUrl(data).then(function(res){
+			if (product_images != null) {
+				for (const data of product_images) {
+					const signurl = await awsConfig.getSignUrl(data).then(function(res) {
 						image_array.push(res);
 					});
 				}
-			}else{
+			} else {
 				image_array.push(commonConfig.default_image)
 			}
-			
 			product.dataValues.product_images = image_array
-			if(product.product_categorys != null){
+			if (product.product_categorys != null) {
 				product.dataValues.category_name = product.product_categorys.name
-
 				delete product.dataValues.product_categorys
-			}else{
+			} else {
 				product.dataValues.category_name = ""
 			}
-			if(product.sub_category != null){
-
+			if (product.sub_category != null) {
 				product.dataValues.product_type = product.sub_category.name
 				delete product.dataValues.sub_category
-			}else{
+			} else {
 				product.dataValues.product_type = "";
 			}
-
-				product.dataValues.is_fav = isFav;
-				product.dataValues.is_added_cart = isAddCart;
-
-			res.send(setRes(resCode.OK, true, "Get product detail successfully.",product))
-			
-		}
-		else{
-			res.send(setRes(resCode.ResourceNotFound,false, "Product not found.",null))
-			// res.send(setRes(resCode.ResourceNotFound, null, true, "Resource not found."))
-
+			product.dataValues.is_fav = isFav;
+			product.dataValues.is_added_cart = isAddCart;
+			product.dataValues.is_coupon_available = is_coupon_available;
+			res.send(setRes(resCode.OK, true, "Get product detail successfully.", product))
+		} else {
+			res.send(setRes(resCode.ResourceNotFound, false, "Product not found.", null))
 		}
 	}).catch(GetProductError => {
-		res.send(setRes(resCode.InternalServer,false, "Internal server error.",null))
-		
+		res.send(setRes(resCode.InternalServer, false, "Internal server error.", null))
 	})
-
 }
 
 exports.RemoveProductImage = async(req, res) => {
