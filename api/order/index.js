@@ -6,8 +6,8 @@ var controller = require('./order.controller')
 
 const {verifyToken} = require('../../config/token');
 
-router.post('/user-order-history', verifyToken, controller.OrderHistory)
-router.get('/order-details/:id', verifyToken, controller.OrderDetail)
-router.post('/business-order-history', verifyToken, controller.BusinessOrderHistory)
-router.get('/business-order-details/:id', verifyToken, controller.BusinessOrderDetail)
+router.post('/user/order_history', verifyToken, controller.OrderHistory)
+router.get('/user/order_details/:id', verifyToken, controller.OrderDetail)
+router.post('/business/order_history', verifyToken, controller.BusinessOrderHistory)
+router.get('/business/order_details/:id', verifyToken, controller.BusinessOrderDetail)
 module.exports = router;

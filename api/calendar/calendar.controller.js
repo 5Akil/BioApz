@@ -382,7 +382,6 @@ exports.DeleteEvent = async (req, res) => {
 			}
 			
 		}).catch(error => {
-			console.log(error)
 			res.send(setRes(resCode.BadRequest, false, "Internal server error.", null))
 		})
 	} else {

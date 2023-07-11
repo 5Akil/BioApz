@@ -1560,6 +1560,7 @@ exports.GetProductRattings = async(req,res)=>{
 
 	var data = req.body
 	var productRattingModel = models.product_ratings
+	var productModel = models.products
 	var userModel = models.user
 	const businessModel = models.business;
 	const userEmail = req.userEmail;
@@ -1622,13 +1623,24 @@ exports.GetProductRattings = async(req,res)=>{
 		const skip = data.page_size * (data.page - 1)
 		const limit = parseInt(data.page_size)
 
-		const recordCounts = await productRattingModel.findAndCountAll({...condition, offset: skip, limit});
+		if(data.page_size != 0 && !_.isEmpty(data.page_size)){
+			condition.offset = skip,
+			condition.limit = limit
+		}
+
+		const productDetails = await productModel.findOne({where:{id:data.product_id,is_deleted:false}});
+		if(!(_.isUndefined(productDetails.image[0]) && _.isEmpty(productDetails.image[0]))){
+			productDetails.product_image = await awsConfig.getSignUrl(productDetails.image[0]).then(function(res){
+				productDetails.dataValues.product_image = res;
+			})
+		}else{
+			productDetails.dataValues.product_image = awsConfig.default_image;
+		}
+		delete productDetails.dataValues.image
+
+		const recordCounts = await productRattingModel.findAndCountAll(condition);
 		const totalRecords =  recordCounts?.count;
-		productRattingModel.findAll({
-			offset:skip,
-			limit:limit,
-			...condition
-		}).then(async ratingData => {
+		await productRattingModel.findAll(condition).then(async ratingData => {
 
 			for(const data of ratingData){
 
@@ -1646,26 +1658,13 @@ exports.GetProductRattings = async(req,res)=>{
 				delete data.dataValues.user
 				delete data.dataValues.description
 			}
-			const previous_page = (data.page - 1);
-			const last_page = Math.ceil(totalRecords / data.page_size);
-			let next_page = null;
-			if(last_page > data.page){
-				var pageNumber = data.page;
-				next_page = +(pageNumber) + 1;
-			}
-
+			const paginatedresponse = new pagination(ratingData, parseInt(totalRecords), parseInt(data.page), parseInt(data.page_size));
 			const response = {};
-			response.totalPages = Math.ceil(totalRecords/limit);
-			response.currentPage = parseInt(data.page);
-			response.per_page = parseInt(data.page_size);
-			response.total_records = totalRecords;
-			response.data = ratingData;
-			response.previousPage = previous_page;
-			response.nextPage = next_page;
-			response.lastPage = last_page;
-
+			response.product_details = productDetails;
+			response.review_rating_listing = (paginatedresponse.getPaginationInfo());
 			res.send(setRes(resCode.OK,true,'Get ratings successfully',response))
 		}).catch(error => {
+			console.log(error)
 			res.send(setRes(resCode.BadRequest, false,'Fail to get ratings',null))
 		})
 	}else{

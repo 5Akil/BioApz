@@ -14,7 +14,8 @@ var awsConfig = require('../../config/aws_S3_config')
 var util = require('util')
 var notification = require('../../push_notification');
 const Sequelize = require('sequelize');
-var commonConfig = require('../../config/common_config')
+var commonConfig = require('../../config/common_config');
+var pagination = require('../../helpers/pagination');
 
 exports.OrderHistory = async(req,res) => {
 
@@ -78,44 +79,26 @@ exports.OrderHistory = async(req,res) => {
 			const recordCount = await orderModel.findAndCountAll(condition);
 			const totalRecords = recordCount?.count;
 
-			orderModel.findAll(condition).then(async OrderData => {
-				if(OrderData.length > 0){
-					for(const data of OrderData){
-						
-						data.dataValues.business_name = data.business.business_name
-	
-						if(data.business.banner != null){
-	
-							const signurl = await awsConfig.getSignUrl(data.business.banner).then(function(res){
-								data.dataValues.banner = res
-							})
-						}else{
-							data.dataValues.banner = commonConfig.default_image;
-						}
-						delete data.dataValues.business;
-					}
+			await orderModel.findAll(condition).then(async OrderData => {
+				for(const data of OrderData){
+					
+					data.dataValues.business_name = data.business.business_name
 
-					const previous_page = (data.page - 1);
-					const last_page = Math.ceil(totalRecords / data.page_size);
-					let next_page = null;
-					if(last_page > data.page){
-						var pageNumber = data.page;
-						next_page = +(pageNumber) + 1;
-					}
+					if(data.business.banner != null){
 
-					const response = {};
-					response.totalPages = Math.ceil(totalRecords/limit);
-					response.currentPage = parseInt(data.page);
-					response.per_page = parseInt(data.page_size);
-					response.total_records = totalRecords;
-					response.data = OrderData;
-					response.previousPage = previous_page;
-					response.nextPage = next_page;
-					response.lastPage = last_page;
-					res.send(setRes(resCode.OK,true,'Order history get successfully',response))
-				}else{
-					res.send(setRes(resCode.ResourceNotFound,false,'Order history not found',null))
+						const signurl = await awsConfig.getSignUrl(data.business.banner).then(function(res){
+							data.dataValues.image = res
+						})
+					}else{
+						data.dataValues.image = commonConfig.default_image;
+					}
+					delete data.dataValues.business;
+					data.dataValues.invoice_date = data.createdAt
+					data.dataValues.invoice_no = data.order_no
 				}
+				const response = new pagination(OrderData, parseInt(totalRecords), parseInt(data.page), parseInt(data.page_size));
+				res.send(setRes(resCode.OK,true,'Order history get successfully',(response.getPaginationInfo())))
+
 			})
 		} else {
 			res.send(setRes(resCode.ResourceNotFound,false,'Authorized User not found',null))
@@ -229,9 +212,6 @@ exports.BusinessOrderHistory = async(req,res) => {
 			var limit = parseInt(data.page_size)
 			
 			var condition = {
-				offset:skip,
-				limit : limit,
-				
 				include: [
 					{
 						model: userModel,
@@ -253,36 +233,29 @@ exports.BusinessOrderHistory = async(req,res) => {
 			if(data.order_type == 0){
 				condition.where = {order_status:{ [Op.in]: [2,3] },business_id:business.id,is_deleted: false}
 			}
+
+			if(data.page_size != 0 && !_.isEmpty(data.page_size)){
+				condition.offset = skip,
+				condition.limit = limit
+			}
 			
 			const recordCount = await orderModel.findAndCountAll(condition);
 			const totalRecords = recordCount?.count;
 
-			orderModel.findAll(condition).then(async OrderData => {
+			await orderModel.findAll(condition).then(async OrderData => {
 				if(OrderData.length > 0){
 					for(const data of OrderData){
 						data.dataValues.user_name = data.user.username
 						data.dataValues.business_name = data.business.business_name
+						data.dataValues.invoice_date = data.createdAt
+						data.dataValues.invoice_no = data.order_no
 						delete data.dataValues.user
+						delete data.dataValues.createdAt
+						delete data.dataValues.order_no
 						delete data.dataValues.business
 					}
-					const previous_page = (data.page - 1);
-					const last_page = Math.ceil(totalRecords / data.page_size);
-					let next_page = null;
-					if(last_page > data.page){
-						var pageNumber = data.page;
-						next_page = +(pageNumber) + 1;
-					}
-
-					const response = {};
-					response.totalPages = Math.ceil(totalRecords/limit);
-					response.currentPage = parseInt(data.page);
-					response.per_page = parseInt(data.page_size);
-					response.total_records = totalRecords;
-					response.data = OrderData;
-					response.previousPage = previous_page;
-					response.nextPage = next_page;
-					response.lastPage = last_page;
-					res.send(setRes(resCode.OK,null,'Order history get successfully',response))
+					const response = new pagination(OrderData, parseInt(totalRecords), parseInt(data.page), parseInt(data.page_size));
+					res.send(setRes(resCode.OK,null,'Order history get successfully',(response.getPaginationInfo())))
 				}else{
 					res.send(setRes(resCode.ResourceNotFound,false,'Order history not found',null))
 				}
@@ -298,7 +271,7 @@ exports.BusinessOrderHistory = async(req,res) => {
 
 exports.BusinessOrderDetail = async (req,res) => {
 
-	var data = req.params
+	var param = req.params
 	var orderDetailsModel = models.order_details
 	var productModel = models.products
 	var categoryModel = models.product_categorys
@@ -309,9 +282,9 @@ exports.BusinessOrderDetail = async (req,res) => {
 
 	const business = await businessModel.findOne({ where: { email : userEmail, is_deleted: false } });
 	if (business) {
-		orderDetailsModel.findAll({
+		await orderDetailsModel.findAll({
 			where: {
-			order_id: data.id
+			order_id: param.id
 		  },
 		  include: [
 			{
@@ -334,12 +307,14 @@ exports.BusinessOrderDetail = async (req,res) => {
 				model: userModel,
 				attributes: ['username','email','address','mobile'] 
 			},
-	
+			{
+				model: models.orders,
+			},
 		  ],
 		  attributes: { exclude: ['is_deleted', 'updatedAt','price','business_id','product_id'] }
 		}).then(async orderDetails => {
 			var product_details = {};
-			for(data of orderDetails){
+			for(let data of orderDetails){
 				data.dataValues.user_name = data.user.username
 				data.dataValues.user_email = data.user.email
 				data.dataValues.user_mobile = data.user.mobile
@@ -360,11 +335,11 @@ exports.BusinessOrderDetail = async (req,res) => {
 			}
 			const products = [];
 	
-			orderDetails.forEach((order) => {
+			await orderDetails.forEach(async (order) => {
 			  const product = order.product;
 			  products.push(product);
 			});
-			
+
 			const datas = {
 				"user_id": orderDetails[0].user_id,
 				"user_name" : orderDetails[0].user.username,
@@ -372,12 +347,15 @@ exports.BusinessOrderDetail = async (req,res) => {
 				"user_email" : orderDetails[0].user.email,
 				"user_address" : orderDetails[0].user.address,
 				"order_id": orderDetails[0].order_id,
+				"invoice_no": orderDetails[0].order?.order_no,
+				"invoice_date": orderDetails[0].order?.createdAt,
+				"amount": orderDetails[0].order?.amount,
 				"createdAt": orderDetails[0].createdAt,
 				"product" : products
 			}
 			orderDetails = datas
 			res.send(setRes(resCode.OK,true,'Get order details successfully',orderDetails))
-		}).catch(error => {	
+		}).catch(error => {
 			res.send(setRes(resCode.InternalServer,false,'Internal server error.',null))
 		})
 	} else {
