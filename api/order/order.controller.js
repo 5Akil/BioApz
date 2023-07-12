@@ -164,6 +164,8 @@ exports.OrderDetail = async (req,res) => {
 					const signurl = await awsConfig.getSignUrl(data.product.image[0]).then(function(res){
 						data.dataValues.product_image = res
 					})
+				}else{
+					data.dataValues.product_image = commonConfig.default_image
 				}
 				delete data?.product?.dataValues?.product_categorys
 				delete data?.product?.dataValues?.sub_category
@@ -215,7 +217,7 @@ exports.BusinessOrderHistory = async(req,res) => {
 				include: [
 					{
 						model: userModel,
-						attributes: ['username'] 
+						attributes: ['username','profile_picture'] 
 					},
 					{
 						model:businessModel,
@@ -249,6 +251,13 @@ exports.BusinessOrderHistory = async(req,res) => {
 						data.dataValues.business_name = data.business.business_name
 						data.dataValues.invoice_date = data.createdAt
 						data.dataValues.invoice_no = data.order_no
+						if (data?.user?.profile_picture){
+							await awsConfig.getSignUrl(data.user.profile_picture).then(async function(res){
+								data.dataValues.image = res
+							})
+						}else{
+							data.dataValues.image = commonConfig.default_user_image
+						}
 						delete data.dataValues.user
 						delete data.dataValues.createdAt
 						delete data.dataValues.order_no
