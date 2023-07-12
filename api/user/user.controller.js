@@ -362,6 +362,7 @@ exports.GetProfileDetail = async (req, res) => {
 				}else{
 					user.profile_picture = commonConfig.default_user_image;
 				}
+				user.dataValues.cashback_earned = 0;
 				res.send(setRes(resCode.OK, true, "Get user profile successfully.",user))
 			}
 			else{
@@ -1944,8 +1945,7 @@ exports.businessBIO = async (req, res) => {
   var businessCategory = models.business_categorys
   var cmsModels = models.cms_pages
   var settingModel = models.settings
-  var faqModel = models.faqs
-  businessModel
+  await businessModel
     .findOne({
       where: { id: data.business_id, is_active: true, is_deleted: false },
 	  attributes: ['id', 'business_name','description'], 
@@ -1953,21 +1953,11 @@ exports.businessBIO = async (req, res) => {
 		{
 			model: businessCategory,
 			attributes: ['id','name'],
-			// where: {is_deleted:false}
 		},
 		{
 			model: settingModel,
 			attributes:['id','setting_value']
 		},
-		{
-			model: cmsModels,
-			attributes:['id','page_value','page_label'],
-			// where: {page_key:'terms_of_service'},			
-		},
-		{
-			model: faqModel,
-			attributes: ['id','title','description']
-		}
 	  ],
     })
     .then(async (bio) => {
@@ -1980,13 +1970,6 @@ exports.businessBIO = async (req, res) => {
 				bio.dataValues.business_category_name = "";
 			}
 
-			// FAQ Details
-			if (bio.faq != null) {
-				bio.dataValues.faq = bio.faq.description;
-			} else {
-				bio.dataValues.faq = "";
-			}
-
 			//  Opening Time
 			if (bio.setting != null) {
 				var date =  bio.setting.setting_value
@@ -1994,19 +1977,19 @@ exports.businessBIO = async (req, res) => {
 				var from = moment(arr1[0], "HH:mm").format("hh:mm A");
 				var to = moment(arr1[1], "HH:mm").format("hh:mm A");
 				bio.dataValues.available = `${from} - ${to}`;
-				delete bio.dataValues.setting;
 			} else {
-				bio.dataValues.available = "";
+				bio.dataValues.available = null;
 			}
 
+			const TAndC = await cmsModels.findOne({where:{business_id:data.business_id,is_deleted:false,is_enable:true,page_key:'terms_of_service'}});
+
 			// Terms And Conditions GET
-			if (bio.cms_page != null) {
-				bio.dataValues.terms_and_condition = bio.cms_page.page_value;
-				delete bio.dataValues.cms_page;
+			if (TAndC != null && !_.isEmpty(TAndC)) {
+				bio.dataValues.terms_and_condition = TAndC.page_value;
 			} else {
-				bio.dataValues.terms_and_condition = "";
+				bio.dataValues.terms_and_condition = null;
 			}
-			
+			delete bio.dataValues.setting;
 			res.send(
 				setRes(
 					resCode.OK,
