@@ -42,6 +42,8 @@ exports.create = async(req,res) =>{
 		var requiredFields = _.reject(['business_id','title','discount_type','discount_value','product_category_id','product_id','validity_for'], (o) => { return _.has(data, o)  })
 		const result =  data.discount_type == 0 ? (!((data.discount_value >= Math.min(1,100)) && (data.discount_value <= Math.max(1,100))) ? true : false) : '';
 		if(requiredFields == ""){
+			const discountTitle = data?.title?.trim() || data.title;
+
 			if(result){
 				res.send(setRes(resCode.BadRequest,false, "Please select valid discount value in percentage(between 1 to 100)!",null))
 			}else{
@@ -67,7 +69,7 @@ exports.create = async(req,res) =>{
 											res.send(setRes(resCode.ResourceNotFound, false, "Product not found.",null))
 										}else{
 											await discountModel.findOne({
-													where: {isDeleted: false,status:true,title: {[Op.eq]: data.title}
+													where: {isDeleted: false,status:true,title: {[Op.eq]: discountTitle}
 												}
 											}).then(async cashbackData => {
 												if(cashbackData){
@@ -164,6 +166,7 @@ exports.update =async(req,res) => {
 		var requiredFields = _.reject(['id','title','discount_type','discount_value','product_category_id','product_id','validity_for'], (o) => { return _.has(data, o)  })
 		const result =  data.discount_type == 0 ? (!((data.discount_value >= Math.min(1,100)) && (data.discount_value <= Math.max(1,100))) ? true : false) : '';
 		if(requiredFields == ""){
+			const discountTitle = data?.title?.trim() || data.title;
 			if(result){
 				validation = false;
 				res.send(setRes(resCode.BadRequest,false, "Please select valid cashback value in percentage(between 1 to 100)!",null))
@@ -176,7 +179,7 @@ exports.update =async(req,res) => {
 						res.send(setRes(resCode.ResourceNotFound, false, "Discount not found.",null))
 					}else{
 						await discountModel.findOne({
-							where:{isDeleted:false,status:true,deleted_at:null,title:{[Op.eq]: data.title},id:{[Op.ne]: data.id}}
+							where:{isDeleted:false,status:true,deleted_at:null,title:{[Op.eq]: discountTitle},id:{[Op.ne]: data.id}}
 						}).then(async discountData => {
 							if(discountData == null){
 								await categoryModel.findOne({

@@ -38,6 +38,7 @@ exports.create = async(req,res) =>{
 		var requiredFields = _.reject(arrayFields, (o) => { return _.has(data, o)  })
 		
 		if (requiredFields.length == 0) {
+			const couponTitle = data?.title?.trim() || data.title;
 			var currentDate = (moment().format('YYYY-MM-DD') == moment(data.expire_at).format('YYYY-MM-DD'))
 			var pastDate = moment(data.expire_at, 'YYYY-MM-DD').isBefore(moment());
 			if (!(Number.isInteger(Number(data.coupon_value)))) {
@@ -87,7 +88,7 @@ exports.create = async(req,res) =>{
 							res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
 						} else {
 							await couponeModel.findOne({
-								where: { isDeleted: false, status: true, title: { [Op.eq]: data.title } }
+								where: { isDeleted: false, status: true, title: { [Op.eq]: couponTitle } }
 							}).then(async couponSame => {
 								if (couponSame) {
 									res.send(setRes(resCode.BadRequest, false, "Coupon title already taken.!", null))
@@ -185,6 +186,7 @@ exports.update = async (req, res) => {
 		var requiredFields = _.reject(arrayFields, (o) => { return _.has(data, o) })
 
 		if (requiredFields.length == 0) {
+			const couponTitle = data?.title?.trim() || data.title;
 			var currentDate = (moment().format('YYYY-MM-DD') == moment(data.expire_at).format('YYYY-MM-DD'))
 			var pastDate = moment(data.expire_at, 'YYYY-MM-DD').isBefore(moment());
 			if (!(Number.isInteger(Number(data.coupon_value)))) {
@@ -207,7 +209,7 @@ exports.update = async (req, res) => {
 						res.send(setRes(resCode.ResourceNotFound, false, "Coupon not found.", null))
 					} else {
 						await couponeModel.findOne({
-							where: { isDeleted: false, status: true, deleted_at: null, title: { [Op.eq]: data.title }, id: { [Op.ne]: data.id } }
+							where: { isDeleted: false, status: true, deleted_at: null, title: { [Op.eq]: couponTitle }, id: { [Op.ne]: data.id } }
 						}).then(async nameData => {
 							if (nameData == null) {
 								couponeModel.update(data,

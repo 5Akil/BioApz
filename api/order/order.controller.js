@@ -81,7 +81,7 @@ exports.OrderHistory = async(req,res) => {
 
 			await orderModel.findAll(condition).then(async OrderData => {
 				for(const data of OrderData){
-					
+
 					data.dataValues.business_name = data.business.business_name
 
 					if(data.business.banner != null){
@@ -136,15 +136,16 @@ exports.OrderDetail = async (req,res) => {
 			{
 			  model: productModel,
 			  required:true,
-			  attributes: ['image','name','price','category_id','sub_category_id'],
+			  attributes: ['id','image','name','price','category_id','sub_category_id'],
 			  include:  [{
 				model: categoryModel,
 				as: 'product_categorys',
+				attributes: ['name','id']
 			  },
 			  {
 				model: categoryModel,
 				as: 'sub_category',
-				attributes:{ include: ['name','is_deleted']}
+				attributes: ['name','id']
 			  }
 			  ]
 			}
@@ -154,23 +155,23 @@ exports.OrderDetail = async (req,res) => {
 			const orderdata = {
 				amount: orderDetails[0]?.order?.amount || '',				
 			}
-			for (data of orderDetails) {
+			for (let data of orderDetails) {
 				data.dataValues.category_name = data?.product?.product_categorys?.name
 				data.dataValues.product_type = data?.product?.sub_category?.name
 				data.dataValues.product_name = data?.product?.name
 				data.dataValues.product_price = data?.product?.price
-				data.dataValues.product_image = ''
-				if (data?.dataValues?.product_image){
+				data.product.dataValues.product_image = ''
+				if (data?.product?.image){
 					const signurl = await awsConfig.getSignUrl(data.product.image[0]).then(function(res){
-						data.dataValues.product_image = res
+						data.product.dataValues.product_image = res
 					})
 				}else{
 					data.dataValues.product_image = commonConfig.default_image
 				}
-				delete data?.product?.dataValues?.product_categorys
-				delete data?.product?.dataValues?.sub_category
-				delete data?.dataValues?.product
-				delete data?.dataValues?.order
+				// delete data?.product?.dataValues?.product_categorys
+				// delete data?.product?.dataValues?.sub_category
+				// delete data?.dataValues?.product
+				// delete data?.dataValues?.order
 				
 			}
 			const products = [];
@@ -200,11 +201,15 @@ exports.BusinessOrderHistory = async(req,res) => {
 	var orderModel = models.orders
 	var userModel = models.user
 	var businessModel = models.business
+	const orderDetailsModel = models.order_details;
+	const productModel = models.products;
 	var Op = models.Op
 	const userEmail = req.userEmail;
 
 	var requiredFields = _.reject(['page','page_size','order_type'], (o) => { return _.has(data, o)  })
 	if(requiredFields == ""){
+		const searchText = data?.search ? data?.search.trim() : '';
+		const searchCond = searchText !== '' ? { name: { [Op.like] : `%${searchText}%` } } : {}
 		const business = await  businessModel.findOne({ where: { email : userEmail, is_deleted: false } });
 		if (business) {
 			if(parseInt(data.page) < 0 || parseInt(data.page) === 0) {
@@ -222,8 +227,20 @@ exports.BusinessOrderHistory = async(req,res) => {
 					{
 						model:businessModel,
 						attributes : ['business_name']
+					},
+					{
+						model: orderDetailsModel,
+						required: true,
+						attributes : ['price', 'qty'],
+						include: [{
+							model: productModel,
+							required: true,
+							attributes : ['id', 'name', 'price', 'description'],
+							where: {
+								...searchCond
+							}
+						}]
 					}
-	
 				],
 				subQuery:false,
 				order: [
@@ -240,7 +257,7 @@ exports.BusinessOrderHistory = async(req,res) => {
 				condition.offset = skip,
 				condition.limit = limit
 			}
-			
+
 			const recordCount = await orderModel.findAndCountAll(condition);
 			const totalRecords = recordCount?.count;
 
@@ -298,7 +315,7 @@ exports.BusinessOrderDetail = async (req,res) => {
 		  include: [
 			{
 			  model: productModel,
-			  attributes: ['image','name','price','category_id','sub_category_id'],
+			  attributes: ['id','image','name','price','category_id','sub_category_id'],
 			  include:  [{
 				model: categoryModel,
 				as: 'product_categorys',
@@ -314,13 +331,13 @@ exports.BusinessOrderDetail = async (req,res) => {
 			},
 			{
 				model: userModel,
-				attributes: ['username','email','address','mobile'] 
+				attributes: ['username','email','address','mobile','profile_picture']
 			},
 			{
 				model: models.orders,
 			},
 		  ],
-		  attributes: { exclude: ['is_deleted', 'updatedAt','price','business_id','product_id'] }
+		  attributes: { exclude: ['is_deleted', 'updatedAt','business_id','product_id'] }
 		}).then(async orderDetails => {
 			var product_details = {};
 			for(let data of orderDetails){
@@ -328,6 +345,8 @@ exports.BusinessOrderDetail = async (req,res) => {
 				data.dataValues.user_email = data.user.email
 				data.dataValues.user_mobile = data.user.mobile
 				data.dataValues.user_address = data.user.address
+				const userImg = await awsConfig.getSignUrl(data.user.dataValues.profile_picture);
+				data.dataValues.user_image = userImg;
 				delete data.dataValues.user
 				data.product.dataValues.category_name = data?.product?.product_categorys?.name
 				data.product.dataValues.product_type = data?.product?.sub_category?.name
@@ -355,6 +374,7 @@ exports.BusinessOrderDetail = async (req,res) => {
 				"user_mobile" : orderDetails[0].user.mobile,
 				"user_email" : orderDetails[0].user.email,
 				"user_address" : orderDetails[0].user.address,
+				"user_image" : orderDetails[0].dataValues.user_image,
 				"order_id": orderDetails[0].order_id,
 				"invoice_no": orderDetails[0].order?.order_no,
 				"invoice_date": orderDetails[0].order?.createdAt,
