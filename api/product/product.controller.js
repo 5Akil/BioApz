@@ -395,7 +395,7 @@ exports.createProduct = async(req,res) => {
 				}).then(async productSubCategory => {
 					if (productSubCategory == null) {
 						validation = false;
-						return res.send(setRes(resCode.ResourceNotFound, false, "Product type not found.", null))
+						return res.send(setRes(resCode.ResourceNotFound, false, "Product sub category not found.", null))
 					}
 				})
 			}
@@ -899,7 +899,7 @@ exports.CreateCategory = async (req, res) => {
 			if(data.parent_id == 0){
 				return res.send(setRes(resCode.BadRequest, false, 'Please enter valid product category name.', null));
 			}else{
-				return res.send(setRes(resCode.BadRequest, false, 'Please enter valid product type name.', null));
+				return res.send(setRes(resCode.BadRequest, false, 'Please enter valid Product sub category name.', null));
 			}
 		}
 
@@ -951,7 +951,7 @@ exports.CreateCategory = async (req, res) => {
 					});
 					if(existSubCategory){
 						validation = false;
-						return res.send(setRes(resCode.BadRequest, false, 'This product type name is already exists with this category!',null))
+						return res.send(setRes(resCode.BadRequest, false, 'This Product sub category name is already exists with this category!',null))
 					}
 				}
 
@@ -970,7 +970,7 @@ exports.CreateCategory = async (req, res) => {
 							if(categoryData.parent_id == 0){
 								return res.send(setRes(resCode.OK,true,"Product category added successfully",data))
 							}else{
-								return res.send(setRes(resCode.OK,true,"Product type added successfully",data))
+								return res.send(setRes(resCode.OK,true,"Product sub category added successfully",data))
 							}
 						}else{
 							res.send(setRes(resCode.InternalServer,false,"Internal server error",null))
@@ -1086,7 +1086,7 @@ exports.UpdateCategory = async(req, res) => {
 				if(data.parent_id == 0){
 					return res.send(setRes(resCode.BadRequest, false, 'Please enter valid product category name.', null));
 				}else{
-					return res.send(setRes(resCode.BadRequest, false, 'Please enter valid product type name.', null));
+					return res.send(setRes(resCode.BadRequest, false, 'Please enter valid Product sub category name.', null));
 				}
 			}
 		}
@@ -1146,7 +1146,7 @@ exports.UpdateCategory = async(req, res) => {
 			});
 			if(existSubCategory){
 				validation = false;
-				return res.send(setRes(resCode.BadRequest, false, 'This product type name is already exists with this category!',null))
+				return res.send(setRes(resCode.BadRequest, false, 'This Product sub category name is already exists with this category!',null))
 			}
 		}
 
@@ -1190,7 +1190,7 @@ exports.UpdateCategory = async(req, res) => {
 							if(categoryDetail.parent_id == 0){
 								return res.send(setRes(resCode.OK,true,"Product category updated successfully",data))
 							}else{
-								return res.send(setRes(resCode.OK,true,"Product type updated successfully",data))
+								return res.send(setRes(resCode.OK,true,"Product sub category updated successfully",data))
 							}
 						})
 					}else{
@@ -1379,9 +1379,9 @@ exports.ProductTypeList = async(req, res) => {
 				const recordCount = await categoryModel.findAndCountAll(condition);
 				const totalRecords = recordCount?.count;
 				const response = new pagination(subCategoryData, parseInt(totalRecords), parseInt(data.page), parseInt(data.page_size));
-				res.send(setRes(resCode.OK, true, "Get product type  details successfully.",(response.getPaginationInfo())))
+				res.send(setRes(resCode.OK, true, "Get Product sub category  details successfully.",(response.getPaginationInfo())))
 			}else{
-				res.send(setRes(resCode.ResourceNotFound, true, "Product type not found.",null))
+				res.send(setRes(resCode.ResourceNotFound, true, "Product sub category not found.",null))
 			}
 		}).catch(error => {
 			res.send(setRes(resCode.InternalServer,false, "Internal server error.",null))
@@ -1409,7 +1409,7 @@ exports.removeProductType = async(req, res) => {
 	}).then(productData => {
 
 		if(productData.length > 0){
-			res.send(setRes(resCode.BadRequest,false,"You Can not delete this Product Type because it contains Existing Products!",null))
+			res.send(setRes(resCode.BadRequest,false,"You Can not delete this Product sub category because it contains Existing Products!",null))
 		}else{
 			var product_ids = [];
 			for(const data of productData){
@@ -1467,9 +1467,9 @@ exports.removeProductType = async(req, res) => {
 											if(subCategoryData != null){
 
 												subCategoryData.update({is_deleted:true,is_enable:false})
-												res.send(setRes(resCode.OK,true,"Product type deleted successfully",null))
+												res.send(setRes(resCode.OK,true,"Product sub category deleted successfully",null))
 											}else{
-												res.send(setRes(resCode.ResourceNotFound,false,"Product type not found",null))
+												res.send(setRes(resCode.ResourceNotFound,false,"Product sub category not found",null))
 											}
 										})
 									}

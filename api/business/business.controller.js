@@ -305,7 +305,7 @@ exports.UpdateBusinessDetail = async (req, res) => {
 	var businessModel = models.business
 	var categoryModel = models.business_categorys
 	var Op = models.Op;
-	var requiredFields = _.reject(['id','business_name', 'person_name', 'abn_no', 'email', 'phone', 'description'], (o) => { return _.has(data, o) })
+	var requiredFields = _.reject(['id','country_id','business_name', 'person_name', 'abn_no', 'email', 'phone', 'description'], (o) => { return _.has(data, o) })
 	var mailId = data.email;
 	var emailFormat = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/;
 
@@ -334,7 +334,7 @@ exports.UpdateBusinessDetail = async (req, res) => {
 							}).then(async emailData => {
 								if (emailData == null) {
 									businessModel.findOne({
-										where: { is_deleted: false, phone: { [Op.eq]: data.phone }, id: { [Op.ne]: data.id } }
+										where: { is_deleted: false,country_id:data.country_id, phone: { [Op.eq]: data.phone }, id: { [Op.ne]: data.id } }
 									}).then(async phoneData => {
 										if (phoneData == null) {
 											if (data.email) {
@@ -1018,7 +1018,7 @@ exports.CreateBusiness = async (req, res) => {
 	var inquiryModel = models.business_inquiry
 	var categoryModel = models.business_categorys
 	var Op = models.Op
-	var requiredFields = _.reject(['business_name', 'person_name', 'phone', 'category_id', 'email', 'password', 'abn_no', 'address', 'description', 'account_name', 'account_number', 'latitude', 'longitude'], (o) => { return _.has(data, o) })
+	var requiredFields = _.reject(['business_name', 'person_name', 'phone', 'category_id', 'email', 'password', 'abn_no', 'address', 'description', 'account_name', 'account_number', 'latitude', 'longitude','country_id'], (o) => { return _.has(data, o) })
 
 
 	var mailId = data.email;
@@ -1065,7 +1065,7 @@ exports.CreateBusiness = async (req, res) => {
 			}
 
 			var phoneData = await businessModel.findOne({
-				where: { is_deleted: false, phone: { [Op.eq]: data.phone } }
+				where: { is_deleted: false, country_id:data.country_id, phone: { [Op.eq]: data.phone } }
 			});
 
 			if(phoneData != null){
@@ -1455,6 +1455,7 @@ exports.homeList = async (req, res) => {
 							result.expire_status = 0;
 						}
 						result.type = "gift_cards";
+						result.rewards_type = 0;
 						dataArray.push(result);
 					}
 					return dataArray;
@@ -1474,6 +1475,7 @@ exports.homeList = async (req, res) => {
 							result.expire_status = 0;
 						}
 						result.type = "cashbacks";
+						result.rewards_type = 1;
 						dataArray.push(result);
 					}
 					return dataArray;
@@ -1493,6 +1495,7 @@ exports.homeList = async (req, res) => {
 							result.expire_status = 0;
 						}
 						result.type = "discounts";
+						result.rewards_type = 2;
 						dataArray.push(result);
 					}
 					return dataArray;
@@ -1512,6 +1515,7 @@ exports.homeList = async (req, res) => {
 							result.expire_status = 0;
 						}
 						result.type = "coupones";
+						result.rewards_type = 3;
 						dataArray.push(result);
 					}
 					return dataArray;
@@ -1532,6 +1536,7 @@ exports.homeList = async (req, res) => {
 							result.expire_status = 0;
 						}
 						result.type = "loyalty_points";
+						result.rewards_type = 4;
 						dataArray.push(result);
 					}
 					return dataArray;

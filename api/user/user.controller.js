@@ -28,7 +28,7 @@ exports.Register = async (req, res) => {
   var dbModel = models.user;
   var Op = models.Op
 
-  var requiredFields = _.reject(['username', 'email', 'password', 'address', 'mobile','confirm_password','latitude', 'longitude'], (o) => { return _.has(data, o)  })
+  var requiredFields = _.reject(['username','country_id', 'email', 'password', 'address', 'mobile','confirm_password','latitude', 'longitude'], (o) => { return _.has(data, o)  })
 
   if (requiredFields == ''){
 	var mobilenumber = /^[0-9]+$/;
@@ -51,7 +51,7 @@ exports.Register = async (req, res) => {
 			  return res.send(setRes(resCode.BadRequest, false, 'This email is already accociated with another account.', null));
 		  } else {
 			  dbModel.findOne({
-				  where: { mobile: data.mobile, is_deleted: false }
+				  where: { mobile: data.mobile,country_id:data.country_id, is_deleted: false }
 			  }).then(async phoneValidation => {
 				  if (phoneValidation != null) {
 					return res.send(setRes(resCode.BadRequest, false, 'This mobile number is already accociated with another account.', null));
@@ -421,7 +421,7 @@ exports.UpdateProfile = async (req, res) => {
 				}
 
 				const phoneData = await userModel.findOne({
-					where: { is_deleted: false, mobile: { [Op.eq]: data.mobile }, id: { [Op.ne]: data.id } }
+					where: { is_deleted: false,country_id:data.country_id , mobile: { [Op.eq]: data.mobile }, id: { [Op.ne]: data.id } }
 				});
 
 				if (phoneData != null) {
