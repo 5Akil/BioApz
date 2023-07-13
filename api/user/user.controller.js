@@ -758,6 +758,7 @@ exports.OtpVerify = async (req, res) => {
 						}else{
 							var response = await sendForgotPasswordMail(user)
 							if (response != null && !_.isUndefined(response)){
+								otpUser.destroy();
 								return res.send(setRes(resCode.OK, true, 'An e-mail has been sent to given email address with further instructions.',null));
 							}
 							else{
@@ -768,7 +769,9 @@ exports.OtpVerify = async (req, res) => {
 					return res.send(setRes(resCode.BadRequest, false, 'Invalid role.',null))
 				}
 		   }
-	   }
+	   }else{ 
+		return res.send(setRes(resCode.BadRequest,false,"Please enter valid OTP.",null))
+	  }
    	});
   }else{
   	return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
