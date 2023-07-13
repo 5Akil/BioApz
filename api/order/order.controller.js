@@ -222,25 +222,15 @@ exports.BusinessOrderHistory = async(req,res) => {
 				include: [
 					{
 						model: userModel,
-						attributes: ['username','profile_picture'] 
+						attributes: ['username','profile_picture'],
+						where: {
+							...searchCond
+						}
 					},
 					{
 						model:businessModel,
 						attributes : ['business_name']
 					},
-					{
-						model: orderDetailsModel,
-						required: true,
-						attributes : ['price', 'qty'],
-						include: [{
-							model: productModel,
-							required: true,
-							attributes : ['id', 'name', 'price', 'description'],
-							where: {
-								...searchCond
-							}
-						}]
-					}
 				],
 				subQuery:false,
 				order: [
