@@ -732,164 +732,115 @@ exports.forgotPassword = async (req, res) => {
 
 exports.OtpVerify = async (req, res) => {
 
-	var data = req.body
-	var userModel = models.user
-  var businessModel = models.business
+  var data = req.body
   var emailOtpVerifieModel = models.email_otp_verifies
 
   var requiredFields = _.reject(['role','otp'], (o) => { return _.has(data, o)  })
 
   if(requiredFields == ""){
-
-  	await emailOtpVerifieModel.findOne({where:{otp:data.otp,role_id:data.role}}).then(async (otpUser) => {
-
-  		if(otpUser != null){
-  			
-				var now_date_time = new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '');
-				var expire_time = moment(otpUser.expire_at).format('YYYY-MM-DD HH:mm:ss');
-				if(now_date_time > expire_time){
-					// otpUser.destroy();
-					return res.send(setRes(resCode.BadRequest,false,"This otp is expired!",null));
-				}else{
-					
-					if (data.role == 2){
-
-						await userModel.findOne({where: {email: otpUser.email, is_deleted: false}}).then(async (user) => {
-							if (user == null){
+	await emailOtpVerifieModel.findOne({where:{otp:data.otp,role_id:data.role}}).then(async (otpUser) => {
+		if(otpUser != null){
+			 var now_date_time = new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '');
+		   var expire_time = moment(otpUser.expire_at).format('YYYY-MM-DD HH:mm:ss');
+		   if(now_date_time > expire_time){
+			   // otpUser.destroy();
+			   return res.send(setRes(resCode.BadRequest,false,"This otp is expired!",null));
+		   }else{
+				if(data.role == 2 && data.role != 3){
+						var roleModel = (data.role == 2 && data.role != 3) ? models.user : models.business;
+						var user = await roleModel.findOne({where: {email: otpUser.email, is_deleted: false}});
+						if (user == null){
+							if(data.role == 2 && data.role != 3){
 								return res.send(setRes(resCode.ResourceNotFound, false, 'User not found.',null));
-							}
-							else{
-								var response = await sendForgotPasswordMail(user, 2)
-								if (response != ''){
-									return res.send(setRes(resCode.OK, true, 'An e-mail has been sent to given email address with further instructions.',null))
-								}
-								else{
-									return res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
-								}
-							}
-						  })
-						otpUser.destroy();
-					}
-					else if (data.role == 3){
-
-						// check email is exist or not
-						await businessModel.findOne({where: {email: otpUser.email, is_deleted: false}}).then(async (business) => {
-							if (business == null){
+							}else{
 								return res.send(setRes(resCode.ResourceNotFound, false, 'Business not found.',null));
 							}
-							else{
-								var response = await sendForgotPasswordMail(business, 3)
-								if (response != ''){
-									return res.send(
-										setRes(resCode.OK, true, 'An e-mail has been sent to given email address with further instructions.',null)
-									  )
-								}
-								else{
-									return res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
-								}
+						}else{
+							var response = await sendForgotPasswordMail(user)
+							if (response != null && !_.isUndefined(response)){
+								return res.send(setRes(resCode.OK, true, 'An e-mail has been sent to given email address with further instructions.',null));
 							}
-						  })
-
-						otpUser.destroy();
-					}
-					else{
-						return res.send(setRes(resCode.BadRequest, false, 'Invalid role.',null))
-					}
+							else{
+								return res.send(setRes(resCode.InternalServer, false, "Mail can't sent.",null))
+							}
+						}
+				}else{
+					return res.send(setRes(resCode.BadRequest, false, 'Invalid role.',null))
 				}
-  			
-  		}else{ 
-			return res.send(setRes(resCode.BadRequest,false,"Please enter valid OTP.",null))
-  		}
-  	});
+		   }
+	   }
+   	});
   }else{
   	return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
   }
 }
-function sendForgotPasswordMail(user, key){
 
-	if (key == 2){
-		var userModel = models.user
-	}
-	else if (key == 3){
-		var userModel = models.business
-	}
-	
-
-	return new Promise((resolve, reject) => {
-
-		async.waterfall(
-			[
-				function (callback) {
-				crypto.randomBytes(20, function (err, buf) {
-				  var token = buf.toString('hex')
-				  callback(err, token)
-				})
-			  },
-			  async function (token, callback) {
-				// user.resetPasswordToken = token
-				// user.resetPasswordExpires = Date.now() + 3600000 // 1 hour
-				await userModel.update({reset_pass_token: token, reset_pass_expire: Date.now() + 3600000},{where: {id: user.id}})
-				.then(async function (newUser) {
-					
-					if (newUser == 0){
-						callback({err: "User not Updated"}, token)
-					}else{
-						callback(null, token)	
-					}
-				}).catch(function (updateUserError) {
-					callback(updateUserError)
-				});
-			  },
-			  function (token, callback) {
-				// return
-				var transporter = nodemailer.createTransport({
-				  host: mailConfig.host,
-				  port: mailConfig.port,
-				  secure: mailConfig.secure,
-				  auth: mailConfig.auth,
-				  tls: mailConfig.tls
-				})
-
-				var templates = new EmailTemplates()
-				var context = {
-				  resetUrl: commonConfig.app_url+'/api/user/resetPassword/' + token,
-				  username: user.username
-				}
-	
-				templates.render(path.join(__dirname, '../../', 'template', 'forgot-password.html'), context, function (
-				  err,
-				  html,
-				  text,
-				  subject
-				) {
-				  transporter.sendMail(
-					{
-					  from: 'b.a.s.e. <do-not-reply@mail.com>',
-					to : user.email,
-					  subject: 'Reset Password',
-					  html: html
-					},
-					function (err, result) {
-					  if (err) {
-						callback(err)
-					  } else {
-						callback(result)
-					  }
-					}
-				  )
-				})
-			  }
-			],
-			function (result) {
-			  if (!result) {
-				resolve('')
+async function sendForgotPasswordMail(user){
+	try{
+		const token = await new Promise((resolve, reject) => {
+			crypto.randomBytes(20, (err, buf) => {
+			  if (err) {
+				reject(err);
 			  } else {
-				resolve(result)
+				resolve(buf.toString('hex'));
 			  }
-			}
-		  )
+			});
+		});
 
-	})
+		const newUser = user.update({  
+			reset_pass_token: token,
+			reset_pass_expire: Date.now() + 3600000
+		}, {
+			where: { id: user.id }
+		});
+
+		if (newUser === 0) {
+			throw new Error('Token not updated');
+		}
+
+		const transporter = nodemailer.createTransport({
+			host: mailConfig.host,
+			port: mailConfig.port,
+			secure: mailConfig.secure,
+			auth: mailConfig.auth,
+			tls: mailConfig.tls
+		});
+
+		const templates = new EmailTemplates();
+		const context = {
+		  resetUrl: commonConfig.app_url + '/api/user/resetPassword/' + token,
+		  username: user.username
+		};
+
+		const result = await new Promise((resolve, reject) => {
+			templates.render(path.join(__dirname, '../../', 'template', 'forgot-password.html'), context, function (
+				err,
+				html,
+				text,
+				subject
+			  ) {
+				transporter.sendMail(
+				  {
+					from: 'b.a.s.e. <do-not-reply@mail.com>',
+					  to : user.email,
+					subject: 'Reset Password',
+					html: html
+				  },
+				  function (err, result) {
+					if (err) {
+						reject(err);
+					} else {
+						resolve(result);
+					}
+				  }
+				)
+			  });
+		})
+		
+		return result;
+	}catch(error){
+		res.send(setRes(resCode.BadRequest, false, "Something went wrong.",null))
+	}
 }
 
 exports.GetResetPasswordForm = async (req, res) => {
@@ -1009,9 +960,6 @@ exports.UpdatePassword = function (req, res) {
 				res.send(setRes(resCode.BadRequest,false, GetBusinessError.message,true))			
 			})
 		}
-	
-	//   res.sendFile(path.join(__dirname, '../../template', 'reset-password.html'))
-	// res.send(setRes(resCode.OK, user, false, ""))
   }).catch((GetUserError) => {
 	res.send(setRes(resCode.BadRequest, false,"Internal server error." ,null))
   })
