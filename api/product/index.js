@@ -52,6 +52,7 @@ var categoryawsupload = multer({
 var controller = require('./product.controller')
 const uploadImage = multer({ dest: 'products/' });
 const {verifyToken} = require('../../config/token');
+const {authorize} = require('../../helpers/authorize');
 
 router.post('/inquiry', verifyToken, controller.createInquiry)
 router.post('/getAll', verifyToken, controller.GetAllProducts)
@@ -76,7 +77,7 @@ router.post('/productTypeList',verifyToken,controller.ProductTypeList)
 router.delete('/sub-category/delete/:id',verifyToken,controller.removeProductType)
 
 router.post('/add-product-ratings',verifyToken,controller.AddProductRattings)
-router.post('/get_product_ratings',verifyToken,controller.GetProductRattings)
+router.post('/get_product_ratings',verifyToken, authorize([2,3]),controller.GetProductRattings)
 
 router.post('/report_customer_rating',verifyToken,controller.reportCustomerReview)
 

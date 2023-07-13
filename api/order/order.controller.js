@@ -209,7 +209,7 @@ exports.BusinessOrderHistory = async(req,res) => {
 	var requiredFields = _.reject(['page','page_size','order_type'], (o) => { return _.has(data, o)  })
 	if(requiredFields == ""){
 		const searchText = data?.search ? data?.search.trim() : '';
-		const searchCond = searchText !== '' ? { name: { [Op.like] : `%${searchText}%` } } : {}
+		const searchCond = searchText !== '' ? { username: { [Op.like] : `%${searchText}%` } } : {}
 		const business = await  businessModel.findOne({ where: { email : userEmail, is_deleted: false } });
 		if (business) {
 			if(parseInt(data.page) < 0 || parseInt(data.page) === 0) {
@@ -222,25 +222,15 @@ exports.BusinessOrderHistory = async(req,res) => {
 				include: [
 					{
 						model: userModel,
-						attributes: ['username','profile_picture'] 
+						attributes: ['username','profile_picture'],
+						where: {
+							...searchCond
+						}
 					},
 					{
 						model:businessModel,
 						attributes : ['business_name']
 					},
-					{
-						model: orderDetailsModel,
-						required: true,
-						attributes : ['price', 'qty'],
-						include: [{
-							model: productModel,
-							required: true,
-							attributes : ['id', 'name', 'price', 'description'],
-							where: {
-								...searchCond
-							}
-						}]
-					}
 				],
 				subQuery:false,
 				order: [

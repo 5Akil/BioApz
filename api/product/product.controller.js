@@ -351,7 +351,7 @@ exports.createProduct = async(req,res) => {
 				const existCategory = await productModel.findOne(condition);
 				if(existCategory){
 					validation = false;
-					return res.send(setRes(resCode.BadRequest, false, 'This product name is already exists with this category!',null))
+					return res.send(setRes(resCode.BadRequest, false, 'This product name already exists with this product category or sub-category!',null))
 				}
 			}
 
@@ -545,7 +545,7 @@ exports.UpdateProductDetail = async (req, res) => {
 			const existCategory = await productModel.findOne(condition);
 			if(existCategory){
 				validation = false;
-				return res.send(setRes(resCode.BadRequest, false, 'This product name is already exists with this category!',null))
+				return res.send(setRes(resCode.BadRequest, false, 'This product name already exists with this product category or sub-category!',null))
 			}
 		}
 
@@ -1570,10 +1570,11 @@ exports.GetProductRattings = async(req,res)=>{
 	const Op = models.Op
 	var requiredFields = _.reject(['product_id','page','page_size'], (o) => { return _.has(data, o) })
 	let userDetail, userRole;
-
+	var authUser = req.user
+	
 	userDetail = await userModel.findOne({
 		where: {
-			email:  userEmail
+			email:  authUser.user
 		}
 	});
 	if (userDetail) {
@@ -1581,16 +1582,16 @@ exports.GetProductRattings = async(req,res)=>{
 	} else {
 		userDetail = await businessModel.findOne({
 			where: {
-				email:  userEmail
+				email:  authUser.user
 			}
 		});
 		if (userDetail) {
-			userRole = userDetail?.role_id
+			userRole = authUser.role_id
 		}
 	}
-
+	
 	const reportedReviewCond = userRole && userRole === 2 ? {
-		user_id : userDetail.id,
+		user_id : authUser.id,
 	} : {};
 
 	const whereCond = {
@@ -1632,44 +1633,48 @@ exports.GetProductRattings = async(req,res)=>{
 		}
 
 		const productDetails = await productModel.findOne({where:{id:data.product_id,is_deleted:false}});
-		if(!(_.isUndefined(productDetails.image[0]) && _.isEmpty(productDetails.image[0]))){
-			productDetails.product_image = await awsConfig.getSignUrl(productDetails.image[0]).then(function(res){
-				productDetails.dataValues.product_image = res;
+		if(productDetails){
+			if(!(_.isUndefined(productDetails.image[0]) && _.isEmpty(productDetails.image[0]))){
+				productDetails.product_image = await awsConfig.getSignUrl(productDetails.image[0]).then(function(res){
+					productDetails.dataValues.product_image = res;
+				})
+			}else{
+				productDetails.dataValues.product_image = awsConfig.default_image;
+			}
+			delete productDetails.dataValues.image
+	
+			const recordCounts = await productRattingModel.findAndCountAll(condition);
+			const totalRecords =  recordCounts?.count;
+	
+			await productRattingModel.findAll(condition).then(async ratingData => {
+	
+				for(const data of ratingData){
+					data.dataValues.user_name = data.user.username
+					if(data.user.profile_picture != null){
+						const signurl = await awsConfig.getSignUrl(data.user.profile_picture).then(function(res){
+							data.dataValues.profile_picture = res
+						})
+					}else{
+						data.dataValues.profile_picture = commonConfig.default_user_image;
+					}
+					data.dataValues.ratings = data.ratings
+					data.dataValues.review = data.description
+	
+					delete data.dataValues.user
+					delete data.dataValues.description
+				}
+				const paginatedresponse = new pagination(ratingData, parseInt(totalRecords), parseInt(data.page), parseInt(data.page_size));
+				const response = {};
+				response.product_details = productDetails;
+				response.review_rating_listing = (paginatedresponse.getPaginationInfo());
+				res.send(setRes(resCode.OK,true,'Get ratings successfully',response))
+			}).catch(error => {
+				res.send(setRes(resCode.BadRequest, false,'Fail to get ratings',null))
 			})
 		}else{
-			productDetails.dataValues.product_image = awsConfig.default_image;
+			res.send(setRes(resCode.ResourceNotFound, false,'Product not found',null))
 		}
-		delete productDetails.dataValues.image
 
-		const recordCounts = await productRattingModel.findAndCountAll(condition);
-		const totalRecords =  recordCounts?.count;
-		await productRattingModel.findAll(condition).then(async ratingData => {
-
-			for(const data of ratingData){
-
-				data.dataValues.user_name = data.user.username
-				if(data.user.profile_picture != null){
-					const signurl = await awsConfig.getSignUrl(data.user.profile_picture).then(function(res){
-						data.dataValues.profile_picture = res
-					})
-				}else{
-					data.dataValues.profile_picture = commonConfig.default_user_image;
-				}
-				data.dataValues.ratings = data.ratings
-				data.dataValues.review = data.description
-
-				delete data.dataValues.user
-				delete data.dataValues.description
-			}
-			const paginatedresponse = new pagination(ratingData, parseInt(totalRecords), parseInt(data.page), parseInt(data.page_size));
-			const response = {};
-			response.product_details = productDetails;
-			response.review_rating_listing = (paginatedresponse.getPaginationInfo());
-			res.send(setRes(resCode.OK,true,'Get ratings successfully',response))
-		}).catch(error => {
-			console.log(error)
-			res.send(setRes(resCode.BadRequest, false,'Fail to get ratings',null))
-		})
 	}else{
 		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))	
 	}
