@@ -112,9 +112,8 @@ exports.GetAllProducts = async (req, res) => {
 		var skip = data.page_size * (data.page - 1)
 		var limit = parseInt(data.page_size)
 		var condition = {
-			subQuery:false,
 			order: [
-				['createdAt', 'DESC'	],
+				['name', 'ASC'],
 			],
 			include:[
 				{
@@ -159,10 +158,8 @@ exports.GetAllProducts = async (req, res) => {
 			condition.offset = skip,
 			condition.limit = limit
 		}
-
 		const recordCount = await productModel.findAndCountAll(condition);
-        const totalRecords = recordCount?.count;	
-		condition.group = ['products.id'];
+        const totalRecords = recordCount?.count;
 		await productModel.findAll(condition).then(async(products) => {
 			
 			if (products){
@@ -397,7 +394,7 @@ exports.createProduct = async(req,res) => {
 				}).then(async productSubCategory => {
 					if (productSubCategory == null) {
 						validation = false;
-						return res.send(setRes(resCode.ResourceNotFound, false, "Product type not found.", null))
+						return res.send(setRes(resCode.ResourceNotFound, false, "Product sub category not found.", null))
 					}
 				})
 			}
@@ -703,112 +700,106 @@ exports.UpdateProductDetail = async (req, res) => {
 // 		}
 // }
 
-exports.GetProductById =  (req, res) => {
-
+exports.GetProductById = (req, res) => {
 	var data = req.params
 	var productModel = models.products
 	var productRattingModel = models.product_ratings
 	var categoryModel = models.product_categorys
 	var shoppingCartModel = models.shopping_cart
 	var wishlistModel = models.wishlists
-
-	 productModel.findOne({
+	var couponModel = models.coupones
+	var Op = models.Op;
+	productModel.findOne({
 		where: {
 			id: data.id,
 			is_deleted: false
 		},
-		include:[
-			{
-				model:productRattingModel,
-				attributes: []
-			},
-			{
-		        model: categoryModel,
-		        as: 'product_categorys',
-		        attributes:['name']
-		    },
-		    {
-		        model: categoryModel,
-		        as: 'sub_category',
-		        attributes:['name']
-		    }
-
-		],
-		attributes: { include : [
-			[Sequelize.fn('AVG', Sequelize.col('product_ratings.ratings')),'rating']
-		]},
+		include: [{
+			model: productRattingModel,
+			attributes: []
+		}, {
+			model: categoryModel,
+			as: 'product_categorys',
+			attributes: ['name']
+		}, {
+			model: categoryModel,
+			as: 'sub_category',
+			attributes: ['name']
+		}],
+		attributes: {
+			include: [
+				[Sequelize.fn('AVG', Sequelize.col('product_ratings.ratings')), 'rating']
+			]
+		},
 	}).then(async product => {
-		if (product && product.id != null){
-			
+		if (product && product.id != null) {
 			var isFav = false;
 			var isAddCart = false;
-
 			await shoppingCartModel.findOne({
 				where: {
 					product_id: product.id,
-					business_id:product.business_id,
+					business_id: product.business_id,
 					is_deleted: false
-				},}).then(async cart => {
-					if(cart){
-						isAddCart = true;
-					}
-				})
+				},
+			}).then(async cart => {
+				if (cart) {
+					isAddCart = true;
+				}
+			})
+			await wishlistModel.findOne({
+				where: {
+					product_id: product.id,
+					is_deleted: false
+				},
+			}).then(async fav => {
+				if (fav) {
+					isFav = true;
+				}
+			})
 
-				await wishlistModel.findOne({
-					where: {
-						product_id: product.id,
-						is_deleted: false
-					},}).then(async fav => {
-						if(fav){
-							isFav = true;
-						}
-					})
-
+			const couponData = await couponModel.findOne({where:{isDeleted:false,status:true}});
+			var is_coupon_available = false;
+			if (couponData) {
+				const hobbiesString = couponData.product_id; // Retrieve the hobbies column value from the data object
+				const hobbiesArray = hobbiesString.split(',')?.includes(`${product.id}`);
+				if(hobbiesArray){
+					is_coupon_available = true;
+				}
+			} 
 			var product_images = product.image
 			var image_array = [];
-			if(product_images != null){
-
-				for(const data of product_images){
-					const signurl = await awsConfig.getSignUrl(data).then(function(res){
+			if (product_images != null) {
+				for (const data of product_images) {
+					const signurl = await awsConfig.getSignUrl(data).then(function(res) {
 						image_array.push(res);
 					});
 				}
-			}else{
+			} else {
 				image_array.push(commonConfig.default_image)
 			}
-			
 			product.dataValues.product_images = image_array
-			if(product.product_categorys != null){
+			if (product.product_categorys != null) {
 				product.dataValues.category_name = product.product_categorys.name
-
 				delete product.dataValues.product_categorys
-			}else{
+			} else {
 				product.dataValues.category_name = ""
 			}
-			if(product.sub_category != null){
-
+			if (product.sub_category != null) {
 				product.dataValues.product_type = product.sub_category.name
 				delete product.dataValues.sub_category
-			}else{
+			} else {
 				product.dataValues.product_type = "";
 			}
-
-				product.dataValues.is_fav = isFav;
-				product.dataValues.is_added_cart = isAddCart;
-
-			res.send(setRes(resCode.OK, true, "Get product detail successfully.",product))
-			
-		}
-		else{
-			res.send(setRes(resCode.ResourceNotFound,false, "Product not found.",null))
-			// res.send(setRes(resCode.ResourceNotFound, null, true, "Resource not found."))
-
+			product.dataValues.is_fav = isFav;
+			product.dataValues.is_added_cart = isAddCart;
+			product.dataValues.is_coupon_available = is_coupon_available;
+			res.send(setRes(resCode.OK, true, "Get product detail successfully.", product))
+		} else {
+			res.send(setRes(resCode.ResourceNotFound, false, "Product not found.", null))
 		}
 	}).catch(GetProductError => {
-		res.send(setRes(resCode.InternalServer,false, "Internal server error.",null))
-		
+		res.send(setRes(resCode.InternalServer, false, "Internal server error.", null))
 	})
-
 }
 
 exports.RemoveProductImage = async(req, res) => {
@@ -907,7 +898,7 @@ exports.CreateCategory = async (req, res) => {
 			if(data.parent_id == 0){
 				return res.send(setRes(resCode.BadRequest, false, 'Please enter valid product category name.', null));
 			}else{
-				return res.send(setRes(resCode.BadRequest, false, 'Please enter valid product type name.', null));
+				return res.send(setRes(resCode.BadRequest, false, 'Please enter valid Product sub category name.', null));
 			}
 		}
 
@@ -959,7 +950,7 @@ exports.CreateCategory = async (req, res) => {
 					});
 					if(existSubCategory){
 						validation = false;
-						return res.send(setRes(resCode.BadRequest, false, 'This product type name is already exists with this category!',null))
+						return res.send(setRes(resCode.BadRequest, false, 'This Product sub category name is already exists with this category!',null))
 					}
 				}
 
@@ -978,7 +969,7 @@ exports.CreateCategory = async (req, res) => {
 							if(categoryData.parent_id == 0){
 								return res.send(setRes(resCode.OK,true,"Product category added successfully",data))
 							}else{
-								return res.send(setRes(resCode.OK,true,"Product type added successfully",data))
+								return res.send(setRes(resCode.OK,true,"Product sub category added successfully",data))
 							}
 						}else{
 							res.send(setRes(resCode.InternalServer,false,"Internal server error",null))
@@ -1094,7 +1085,7 @@ exports.UpdateCategory = async(req, res) => {
 				if(data.parent_id == 0){
 					return res.send(setRes(resCode.BadRequest, false, 'Please enter valid product category name.', null));
 				}else{
-					return res.send(setRes(resCode.BadRequest, false, 'Please enter valid product type name.', null));
+					return res.send(setRes(resCode.BadRequest, false, 'Please enter valid Product sub category name.', null));
 				}
 			}
 		}
@@ -1154,7 +1145,7 @@ exports.UpdateCategory = async(req, res) => {
 			});
 			if(existSubCategory){
 				validation = false;
-				return res.send(setRes(resCode.BadRequest, false, 'This product type name is already exists with this category!',null))
+				return res.send(setRes(resCode.BadRequest, false, 'This Product sub category name is already exists with this category!',null))
 			}
 		}
 
@@ -1198,7 +1189,7 @@ exports.UpdateCategory = async(req, res) => {
 							if(categoryDetail.parent_id == 0){
 								return res.send(setRes(resCode.OK,true,"Product category updated successfully",data))
 							}else{
-								return res.send(setRes(resCode.OK,true,"Product type updated successfully",data))
+								return res.send(setRes(resCode.OK,true,"Product sub category updated successfully",data))
 							}
 						})
 					}else{
@@ -1387,9 +1378,9 @@ exports.ProductTypeList = async(req, res) => {
 				const recordCount = await categoryModel.findAndCountAll(condition);
 				const totalRecords = recordCount?.count;
 				const response = new pagination(subCategoryData, parseInt(totalRecords), parseInt(data.page), parseInt(data.page_size));
-				res.send(setRes(resCode.OK, true, "Get product type  details successfully.",(response.getPaginationInfo())))
+				res.send(setRes(resCode.OK, true, "Get Product sub category  details successfully.",(response.getPaginationInfo())))
 			}else{
-				res.send(setRes(resCode.ResourceNotFound, true, "Product type not found.",null))
+				res.send(setRes(resCode.ResourceNotFound, true, "Product sub category not found.",null))
 			}
 		}).catch(error => {
 			res.send(setRes(resCode.InternalServer,false, "Internal server error.",null))
@@ -1417,7 +1408,7 @@ exports.removeProductType = async(req, res) => {
 	}).then(productData => {
 
 		if(productData.length > 0){
-			res.send(setRes(resCode.BadRequest,false,"You Can not delete this Product Type because it contains Existing Products!",null))
+			res.send(setRes(resCode.BadRequest,false,"You Can not delete this Product sub category because it contains Existing Products!",null))
 		}else{
 			var product_ids = [];
 			for(const data of productData){
@@ -1475,9 +1466,9 @@ exports.removeProductType = async(req, res) => {
 											if(subCategoryData != null){
 
 												subCategoryData.update({is_deleted:true,is_enable:false})
-												res.send(setRes(resCode.OK,true,"Product type deleted successfully",null))
+												res.send(setRes(resCode.OK,true,"Product sub category deleted successfully",null))
 											}else{
-												res.send(setRes(resCode.ResourceNotFound,false,"Product type not found",null))
+												res.send(setRes(resCode.ResourceNotFound,false,"Product sub category not found",null))
 											}
 										})
 									}
@@ -1572,6 +1563,7 @@ exports.GetProductRattings = async(req,res)=>{
 
 	var data = req.body
 	var productRattingModel = models.product_ratings
+	var productModel = models.products
 	var userModel = models.user
 	const businessModel = models.business;
 	const userEmail = req.userEmail;
@@ -1634,13 +1626,24 @@ exports.GetProductRattings = async(req,res)=>{
 		const skip = data.page_size * (data.page - 1)
 		const limit = parseInt(data.page_size)
 
-		const recordCounts = await productRattingModel.findAndCountAll({...condition, offset: skip, limit});
+		if(data.page_size != 0 && !_.isEmpty(data.page_size)){
+			condition.offset = skip,
+			condition.limit = limit
+		}
+
+		const productDetails = await productModel.findOne({where:{id:data.product_id,is_deleted:false}});
+		if(!(_.isUndefined(productDetails.image[0]) && _.isEmpty(productDetails.image[0]))){
+			productDetails.product_image = await awsConfig.getSignUrl(productDetails.image[0]).then(function(res){
+				productDetails.dataValues.product_image = res;
+			})
+		}else{
+			productDetails.dataValues.product_image = awsConfig.default_image;
+		}
+		delete productDetails.dataValues.image
+
+		const recordCounts = await productRattingModel.findAndCountAll(condition);
 		const totalRecords =  recordCounts?.count;
-		productRattingModel.findAll({
-			offset:skip,
-			limit:limit,
-			...condition
-		}).then(async ratingData => {
+		await productRattingModel.findAll(condition).then(async ratingData => {
 
 			for(const data of ratingData){
 
@@ -1658,26 +1661,13 @@ exports.GetProductRattings = async(req,res)=>{
 				delete data.dataValues.user
 				delete data.dataValues.description
 			}
-			const previous_page = (data.page - 1);
-			const last_page = Math.ceil(totalRecords / data.page_size);
-			let next_page = null;
-			if(last_page > data.page){
-				var pageNumber = data.page;
-				next_page = +(pageNumber) + 1;
-			}
-
+			const paginatedresponse = new pagination(ratingData, parseInt(totalRecords), parseInt(data.page), parseInt(data.page_size));
 			const response = {};
-			response.totalPages = Math.ceil(totalRecords/limit);
-			response.currentPage = parseInt(data.page);
-			response.per_page = parseInt(data.page_size);
-			response.total_records = totalRecords;
-			response.data = ratingData;
-			response.previousPage = previous_page;
-			response.nextPage = next_page;
-			response.lastPage = last_page;
-
+			response.product_details = productDetails;
+			response.review_rating_listing = (paginatedresponse.getPaginationInfo());
 			res.send(setRes(resCode.OK,true,'Get ratings successfully',response))
 		}).catch(error => {
+			console.log(error)
 			res.send(setRes(resCode.BadRequest, false,'Fail to get ratings',null))
 		})
 	}else{

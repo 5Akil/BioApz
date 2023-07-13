@@ -18,7 +18,7 @@ const Moment = MomentRange.extendMoment(moment);
 var fs = require('fs');
 var awsConfig = require('../../config/aws_S3_config');
 
-exports.AddCms = async (req, res) => {
+exports.createCMS = async (req, res) => {
 
 	var data = req.body
 	var cmsModel = models.cms_pages
@@ -33,24 +33,25 @@ exports.AddCms = async (req, res) => {
 	}
 
 	if(requiredFields == ""){
-		businessModel.findOne({
+		await businessModel.findOne({
 			where: {id: data.business_id,is_deleted: false,is_active:true}
 		}).then(async business => {
 			if(business){
-				cmsModel.findOne({
+				await cmsModel.findOne({
 					where:
 					{
 						page_key:data.page_key,
-						business_id:data.business_id
+						business_id:data.business_id,
+						is_deleted:false
 					}
-				}).then(pageDetail => {
+				}).then(async pageDetail => {
 		
 					if(pageDetail != null){
 						res.send(setRes(resCode.BadRequest,false,"This page data already exist",null))
 					}else{
 		
-						cmsModel.create(data).then(cmsData => {
-							res.send(setRes(resCode.OK,true,"Data added successfully",data))
+						await cmsModel.create(data).then(async cmsData => {
+							res.send(setRes(resCode.OK,true,"Data added successfully",cmsData))
 						}).catch(error => {
 							res.send(setRes(resCode.InternalServer,false,"Fail to add cms data",null))
 						})
@@ -66,7 +67,7 @@ exports.AddCms = async (req, res) => {
 	}
 }
 
-exports.GetPageDetails = async (req , res) => {
+exports.viewCMS = async (req , res) => {
 
 	var data = req.body
 	var page_keys = data.page_key.split(',');
@@ -112,7 +113,7 @@ exports.GetPageDetails = async (req , res) => {
 	}
 }
 
-exports.UpdatePageData = async (req, res) => {
+exports.updateCMS = async (req, res) => {
 
 	var data = req.body
 	var cmsModel = models.cms_pages

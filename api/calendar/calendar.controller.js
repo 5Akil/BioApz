@@ -18,6 +18,7 @@ const Moment = MomentRange.extendMoment(moment);
 var fs = require('fs');
 var awsConfig = require('../../config/aws_S3_config');
 const { log } = require('console')
+const pagination = require('../../helpers/pagination');
 
 // Create Event
 exports.CreateEvent = async (req, res) => {
@@ -50,8 +51,9 @@ exports.CreateEvent = async (req, res) => {
 		var endDate = moment(data.end_date).format('YYYY-MM-DD HH:mm:ss');
 		var eDate_value = endDate.split(" ");
 
-		const isStartDatePastDate =moment(startDate).isBefore(moment());
-		const isEndDatePastDate = moment(endDate).isBefore(moment());
+		const isStartDatePastDate =moment(startDate).isBefore(moment().format('YYYY-MM-DD HH:mm:ss'));
+		const isEndDatePastDate = moment(endDate).isBefore(moment().format('YYYY-MM-DD HH:mm:ss'));
+
 		if (isStartDatePastDate || isEndDatePastDate) {
 			return res.send(setRes(resCode.BadRequest, false, "Event start date and end date can not be past date.", null))
 		}
@@ -351,7 +353,6 @@ exports.DeleteEvent = async (req, res) => {
 	var comboModel = models.combo_calendar
 	var businessModel = models.business
 	var eventUserModel = models.user_events
-	var currentDate = (moment().subtract(7, "days").format('YYYY-MM-DD'));
 
 	if (data.id) {
 		await comboModel.findOne({
@@ -360,9 +361,9 @@ exports.DeleteEvent = async (req, res) => {
 				is_deleted: false
 			}
 		}).then(async eventData => {
-			const eventDate = moment(eventData.start_date).format('YYYY-MM-DD');
-			if(currentDate == eventDate){
-				res.send(setRes(resCode.BadRequest, false, "You can not delete this event in last 7 days of event start date", null))
+			const beforeSevenDay =(moment(eventData.start_date).subtract(7, "days")).isBefore(moment());
+			if(beforeSevenDay){
+				res.send(setRes(resCode.BadRequest, false, "You can not delete this event in last 7 days of event start date or current date.", null))
 			}else{
 				await eventUserModel.findAll({
 					where: { event_id: data.id, is_deleted: false, is_available: true }
@@ -394,6 +395,8 @@ exports.GetAllEvents = async (req, res) => {
 	var data = req.body
 	var comboModel = models.combo_calendar
 	var Op = models.Op
+	var startDate = moment(data.from_date).format('YYYY-MM-DD');
+	var endDate = moment(data.to_date).format('YYYY-MM-DD');
 
 	var requiredFields = _.reject(['page','page_size','business_id'], (o) => { return _.has(data, o) })
 	if (requiredFields == '') {
@@ -403,38 +406,7 @@ exports.GetAllEvents = async (req, res) => {
 		}
 		var skip = data.page_size * (data.page - 1)
 		var limit = parseInt(data.page_size)
-
-		var condition2 = {
-			subQuery:false,
-			order: [
-				['createdAt', 'DESC']
-			],
-		}
-		condition2.where = {business_id: data.business_id,is_deleted: false,}
-		condition2.attributes = { exclude: ['createdAt','updatedAt','is_deleted','repeat','repeat_every','repeat_on']}
-
-		var startDate = (moment(data.from_date).format('YYYY-MM-DD'))
-		var endDate = (moment(data.to_date).format('YYYY-MM-DD'))
-
-		if(!_.isEmpty(data.from_date) && !_.isEmpty(data.to_date)){
-			condition2.where = {...condition2.where,...{start_date: {[Op.between]: [startDate, endDate]}}}
-		}
-
-		var totalRecords = null
-
-		comboModel.findAll(condition2).then(async(eventList) => {
-			totalRecords = eventList.length
-		})
-
-		// comboModel.update({
-		// 	is_deleted: true
-		// }, {
-		// 	where: {
-		// 		is_deleted: false,
-		// 		end_date: {
-		// 			[Op.lt]: moment().format('YYYY-MM-DD')
-		// 		}
-		// 	}
+		
 			var condition = {
 				offset:skip,
 				limit:limit,
@@ -467,26 +439,11 @@ exports.GetAllEvents = async (req, res) => {
 						data.dataValues.event_images = image_array
 					}
 				}
+				const recordCount = await comboModel.findAndCountAll(condition);
+				const totalRecords = recordCount?.count;
+				const response = new pagination(combos, parseInt(totalRecords), parseInt(data.page), parseInt(data.page_size));
 
-				const previous_page = (data.page - 1);
-				const last_page = Math.ceil(totalRecords / data.page_size);
-				var next_page = null;
-				if(last_page > data.page){
-					var pageNumber = data.page;
-					pageNumber++;
-					next_page = pageNumber;
-				}
-				
-				var response = {};
-				response.totalPages = Math.ceil(combos.length/limit);
-				response.currentPage = parseInt(data.page);
-				response.per_page = parseInt(data.page_size);
-				response.total_records = totalRecords;
-				response.data = combos;
-				response.previousPage = previous_page;
-				response.nextPage = next_page;
-				response.lastPage = last_page;
-				res.send(setRes(resCode.OK, true, "Available events list.", response))
+				res.send(setRes(resCode.OK, true, "Available events list.", (response.getPaginationInfo())))
 		}).catch(error => {
 			res.send(setRes(resCode.InternalServer, false, 'Internal server error.', null))
 		})
@@ -502,6 +459,8 @@ exports.ViewEvent = async (req, res) => {
 	var comboModel = models.combo_calendar
 	var userEventsModel = models.user_events
 	var usersModel = models.user
+	var currentDate = (moment().format('YYYY-MM-DD'));
+	var beforeSevenDay = (moment().subtract(7, "days").format('YYYY-MM-DD'));
 
 	comboModel.findOne({
 		where: {
@@ -512,6 +471,10 @@ exports.ViewEvent = async (req, res) => {
 		attributes: {exclude: ['createdAt','updatedAt','is_deleted','repeat','repeat_every','repeat_on']}
 	}).then(async event => {
 		if (event != null) {
+			var isEditAndDelete = true;
+			if(beforeSevenDay <= event.start_date || currentDate == event.start_date){
+				isEditAndDelete = false;
+			}
 			var event_images = event.images
 			var image_array = [];
 			var event_users = [];
@@ -524,7 +487,8 @@ exports.ViewEvent = async (req, res) => {
 			} else {
 				image_array.push(commonConfig.default_image)
 			}
-			event.dataValues.event_images = image_array
+			event.dataValues.event_images = image_array;
+			event.dataValues.isEditAndDelete = isEditAndDelete;
 			await userEventsModel.findAll({
 				where: {
 					event_id: event.id,
@@ -533,14 +497,13 @@ exports.ViewEvent = async (req, res) => {
 				},
 				include: [
 					{
-						model: usersModel,
-						as: 'users'
+						model: usersModel
 					},
 				],
 			}).then(async eventUsers => {
 				await _.each(eventUsers, function (itm) {
 					// var profile_image = awsConfig.getSignUrl(itm.users.dataValues.profile_picture)
-					this.push(_.pick(itm.users.dataValues, ["id","username","profile_picture"])) 
+					this.push(_.pick(itm.user.dataValues, ["id","username","profile_picture"])) 
 					}, event_users);
 					for (const data of event_users) {
 						if(data.profile_picture != null){
@@ -571,7 +534,7 @@ exports.UpdateEvent = async (req, res) => {
 	var comboModel = models.combo_calendar
 	const businessModel = models.business
 	var requiredFields = _.reject(['id','title', 'description', 'end_date', 'start_date', 'location'], (o) => { return _.has(data, o) })
-	var currentDate = (moment().subtract(7, "days").format('YYYY-MM-DD'));
+	var currentDate = (moment().format('YYYY-MM-DD'));
 	// data.repeat_every == 1 ? (data.repeat_on ? '' : requiredFields.push('repeat_on')) : '';
 	// _.contains([1, 2], parseInt(data.repeat_every)) ? data.repeat = true : '';
 	var row = await comboModel.findByPk(data.id);
@@ -596,16 +559,16 @@ exports.UpdateEvent = async (req, res) => {
 			if (!isEventExists) {
 				return res.send(setRes(resCode.ResourceNotFound, false, "Event not found.", null))
 			}
-			const eventDate = moment(isEventExists.start_date).format('YYYY-MM-DD');
-			if(currentDate == eventDate){
+			const isStartDatePastDate =moment(startDate).isBefore(moment());
+			const beforeSevenDay =(moment(isEventExists.start_date).subtract(7, "days")).isBefore(moment());
+			const isEndDatePastDate = moment(endDate).isBefore(moment());
+			if(beforeSevenDay){
 				validation = false;
-				return res.send(setRes(resCode.BadRequest, false, "You can not edit this event in last 7 days of event start date", null))
+				return res.send(setRes(resCode.BadRequest, false, "You can not edit this event in last 7 days of event start date or current date", null))
 			}
 
-
-			const isStartDatePastDate =moment(startDate).isBefore(moment());
-			const isEndDatePastDate = moment(endDate).isBefore(moment());
 			if (isStartDatePastDate || isEndDatePastDate) {
+				validation = false;
 				return res.send(setRes(resCode.BadRequest, false, "Event start date and end date can not be past date.", null))
 			}
 			var image = row?.images || [];

@@ -28,7 +28,7 @@ exports.Register = async (req, res) => {
   var dbModel = models.user;
   var Op = models.Op
 
-  var requiredFields = _.reject(['username', 'email', 'password', 'address', 'mobile','confirm_password','latitude', 'longitude'], (o) => { return _.has(data, o)  })
+  var requiredFields = _.reject(['username','country_id', 'email', 'password', 'address', 'mobile','confirm_password','latitude', 'longitude'], (o) => { return _.has(data, o)  })
 
   if (requiredFields == ''){
 	var mobilenumber = /^[0-9]+$/;
@@ -51,7 +51,7 @@ exports.Register = async (req, res) => {
 			  return res.send(setRes(resCode.BadRequest, false, 'This email is already accociated with another account.', null));
 		  } else {
 			  dbModel.findOne({
-				  where: { mobile: data.mobile, is_deleted: false }
+				  where: { mobile: data.mobile,country_id:data.country_id, is_deleted: false }
 			  }).then(async phoneValidation => {
 				  if (phoneValidation != null) {
 					return res.send(setRes(resCode.BadRequest, false, 'This mobile number is already accociated with another account.', null));
@@ -151,175 +151,194 @@ exports.AccountActivationByToken = async (req, res) => {
    })
 }
 
+
 exports.Login = async (req, res) => {
 
-	var data = req.body;
-	var userModel = models.user
-	var businessModel = models.business;
-	var templateModel = models.templates
-	var categoryModel = models.business_categorys
+    var data = req.body;
+    var userModel = models.user
+    var businessModel = models.business;
+    var countryModel = models.countries
+    var templateModel = models.templates
+    var categoryModel = models.business_categorys
 
-	var requiredFields = _.reject(['email', 'password', 'role', 'device_token'], (o) => { return _.has(data, o)  })
+    var requiredFields = _.reject(['email', 'password', 'role'], (o) => {
+        return _.has(data, o)
+    })
 
-	if (requiredFields == ''){
+    if (requiredFields == '') {
 
-		//user login
-		if (data.role == 2){
+        //user login
+        if (data.role == 2) {
 
-			userModel.findOne({
-			where: {
-				email: data.email,
-				// is_active: 1,
-				is_deleted: false
-			}
-			}).then(function (user) {
-				if (!user) {
-					res.send(setRes(resCode.ResourceNotFound, false ,'User not found.',null))
-				} else {
-					if (user.is_active == false){
-						res.send(setRes(resCode.Unauthorized, false ,'Your account has been deactivated. Please contact administrator.',null))
-					}
-					else{
-						bcrypt.compare(data.password, user.password, async function (err, result) {
-							if (result == true) {
+            userModel.findOne({
+                where: {
+                    email: data.email,
+                    // is_active: 1,
+                    is_deleted: false
+                },
+                include: [{
+                    model: models.countries,
+                    attributes: ['id', 'country_code', 'phone_code', 'currency', 'currency_symbol']
+                }]
+            }).then(function(user) {
+                if (!user) {
+                    res.send(setRes(resCode.ResourceNotFound, false, 'User not found.', null))
+                } else {
+                    if (user.is_active == false) {
+                        res.send(setRes(resCode.Unauthorized, false, 'Your account has been deactivated. Please contact administrator.', null))
+                    } else {
+                        bcrypt.compare(data.password, user.password, async function(err, result) {
+                            if (result == true) {
 
-								const token =  jwt.sign({id:user.id,user: user.email,role_id:user.role_id}, 'secret', {expiresIn: 480 * 480})
-								delete user.dataValues.auth_token
-								user.dataValues.auth_token = token
+                                const token = jwt.sign({
+                                    id: user.id,
+                                    user: user.email,
+                                    role_id: user.role_id
+                                }, 'secret', {
+                                    expiresIn: 480 * 480
+                                })
+                                delete user.dataValues.auth_token
+                                user.dataValues.auth_token = token
 
-								userModel.update(
-									{
-										auth_token: token,
-										// device_type: data.device_type,
-										device_token: data.device_token,
-										// device_id: data.device_id
-									},
-									{where: {id: user.id}
-								})
-								.then(async function (newUser) {
-									if (newUser){
-										if(user.profile_picture != null){
+                                userModel.update({
+                                        auth_token: token,
+                                        device_token: data.device_token,
+                                    }, {
+                                        where: {
+                                            id: user.id
+                                        }
+                                    })
+                                    .then(async function(newUser) {
+                                        if (newUser) {
+                                            if (user.profile_picture != null) {
+                                                var profile_picture = await awsConfig.getSignUrl(user.profile_picture).then(function(res) {
+                                                    user.profile_picture = res
+                                                })
+                                            } else {
+                                                user.profile_picture = commonConfig.default_user_image;
+                                            }
+                                            res.send(setRes(resCode.OK, true, 'You are successfully logged in', user))
+                                        } else {
+                                            res.send(setRes(resCode.BadRequest, false, 'Token not updated', null))
+                                        }
+                                    })
 
-											var profile_picture = await awsConfig.getSignUrl(user.profile_picture).then(function(res){
-												user.profile_picture = res
-											})
-										}
-										else{
-											user.profile_picture = commonConfig.default_user_image;
-										}
-										res.send(setRes(resCode.OK, true, 'You are successfully logged in',user))
-									}else{
-										res.send(setRes(resCode.BadRequest, false, 'Token not updated',null))
-									}
-								})
+                            } else {
+                                res.send(setRes(resCode.BadRequest, false, "Invalid Email id or password", null))
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        //business login 
+        else if (data.role == 3) {
 
-							} else {
-								res.send(setRes(resCode.BadRequest, false, "Invalid Email id or password",null))
-							}
-						});
-					}
-				}
-			});
-		}
-		//business login 
-		else if (data.role == 3){
+            businessModel.findOne({
+                where: {
+                    email: data.email,
+                    // is_active: true,
+                    is_deleted: false
+                },
+                include: [{
+                        model: categoryModel,
+                    },
+                    {
+                        model: countryModel,
+                        attributes: ['id', 'country_code', 'phone_code', 'currency', 'currency_symbol']
+                    }
+                ]
+            }).then(function(business) {
+                if (!business) {
+                    res.send(setRes(resCode.ResourceNotFound, false, 'Business not found.', null))
+                } else {
+                    if (business.is_active == 0 || business.approve_by == null) {
+                        res.send(setRes(resCode.Unauthorized, false, 'Your account has been deactivated. Please contact administrator.', null))
+                    } else {
+                        bcrypt.compare(data.password, business.password, async function(err, result) {
+                            if (result == true) {
 
-			businessModel.findOne({
-				where: {
-					email: data.email,
-					// is_active: true,
-					is_deleted: false
-				},
-				include: [
-					// templateModel, 
-					categoryModel]
-		}).then(function (business) {
-			if (!business) {
-				res.send(setRes(resCode.ResourceNotFound, false ,'Business not found.',null))
-			} else {
-				if (business.is_active == 0){
-					res.send(setRes(resCode.Unauthorized, false,'Your account has been deactivated. Please contact administrator.',null))
-				}
-				else{
-					bcrypt.compare(data.password, business.password, async function (err, result) {
-						if (result == true) {
-		
-							const token =  jwt.sign({id:business.id,user: business.email,role_id:business.role_id}, 'secret', {expiresIn: 480 * 480})
-							delete business.dataValues.auth_token
-							business.dataValues.auth_token = token
+                                const token = jwt.sign({
+                                    id: business.id,
+                                    user: business.email,
+                                    role_id: business.role_id
+                                }, 'secret', {
+                                    expiresIn: 480 * 480
+                                })
+                                delete business.dataValues.auth_token
+                                business.dataValues.auth_token = token
 
-							businessModel.update(
-								{
-									auth_token: token,
-									// device_type: data.device_type,
-									device_token: data.device_token,
-									// device_id: data.device_id
-								},
-								{where: {id: business.id}
-							})
-							.then(async function (newBusiness) {
-								if (newBusiness){
-									if(business.profile_picture == null){
-										business.profile_picture = commonConfig.default_user_image;
-									}
-									//custome template url
-									if(business.banner != null){
+                                businessModel.update({
+                                        auth_token: token,
+                                        // device_type: data.device_type,
+                                        device_token: data.device_token,
+                                        // device_id: data.device_id
+                                    }, {
+                                        where: {
+                                            id: business.id
+                                        }
+                                    })
+                                    .then(async function(newBusiness) {
+                                        if (newBusiness) {
+                                            if (business.profile_picture == null) {
+                                                business.profile_picture = commonConfig.default_user_image;
+                                            }
+                                            //custome template url
+                                            if (business.banner != null) {
 
-										var banner = await awsConfig.getSignUrl(business.banner).then(function(res){
-											business.banner = res
-										})
-									}else{
-										business.banner = commonConfig.default_image;
-									}
-									if(business.profile_picture != null){
+                                                var banner = await awsConfig.getSignUrl(business.banner).then(function(res) {
+                                                    business.banner = res
+                                                })
+                                            } else {
+                                                business.banner = commonConfig.default_image;
+                                            }
+                                            if (business.profile_picture != null) {
 
-										var profile_picture = await awsConfig.getSignUrl(business.profile_picture).then(function(res){
-											business.profile_picture = res
-										})
-									}
-									else{
-										business.profile_picture = commonConfig.default_user_image;
-									}
-									// if(business.template != null){
+                                                var profile_picture = await awsConfig.getSignUrl(business.profile_picture).then(function(res) {
+                                                    business.profile_picture = res
+                                                })
+                                            } else {
+                                                business.profile_picture = commonConfig.default_user_image;
+                                            }
+                                            // if(business.template != null){
 
-									// 	if(business.template.template_url != null){
+                                            // 	if(business.template.template_url != null){
 
-									// 		var template_url = await awsConfig.getSignUrl(business.template.image).then(function(res){
-									// 			business.template.template_url = res;
-									// 		})
-									// 	}
-									// 	if(business.template.image != null){
+                                            // 		var template_url = await awsConfig.getSignUrl(business.template.image).then(function(res){
+                                            // 			business.template.template_url = res;
+                                            // 		})
+                                            // 	}
+                                            // 	if(business.template.image != null){
 
-									// 		var template_image = await awsConfig.getSignUrl(business.template.image).then(function(res){
-									// 			business.template.image = res;
-									// 		})
-									// 	}
+                                            // 		var template_image = await awsConfig.getSignUrl(business.template.image).then(function(res){
+                                            // 			business.template.image = res;
+                                            // 		})
+                                            // 	}
 
-									// }
+                                            // }
 
-									res.send(setRes(resCode.OK, true, 'You are successfully logged in',business))
-								}else{
-									res.send(setRes(resCode.InternalServer, false, 'Token not updated',null))
-								}
-							})
-		
-						} else {
-							res.send(setRes(resCode.BadRequest, false, "Invalid Email id or password",null))
-						}
-					});
-				}
-			}
-		}).catch(error => {
-			res.send(setRes(resCode.InternalServer, false, "Internal Server Error",null))
-		});
-		}
-		else{
-			res.send(setRes(resCode.BadRequest, false, 'Invalid role.',null))
-		}
+                                            res.send(setRes(resCode.OK, true, 'You are successfully logged in', business))
+                                        } else {
+                                            res.send(setRes(resCode.InternalServer, false, 'Token not updated', null))
+                                        }
+                                    })
 
-	}else{
-		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
-	}
+                            } else {
+                                res.send(setRes(resCode.BadRequest, false, "Invalid Email id or password", null))
+                            }
+                        });
+                    }
+                }
+            }).catch(error => {
+                res.send(setRes(resCode.InternalServer, false, "Internal Server Error", null))
+            });
+        } else {
+            res.send(setRes(resCode.BadRequest, false, 'Invalid role.', null))
+        }
+
+    } else {
+        res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
+    }
 }
 
 exports.GetProfileDetail = async (req, res) => {
@@ -343,6 +362,7 @@ exports.GetProfileDetail = async (req, res) => {
 				}else{
 					user.profile_picture = commonConfig.default_user_image;
 				}
+				user.dataValues.cashback_earned = 0;
 				res.send(setRes(resCode.OK, true, "Get user profile successfully.",user))
 			}
 			else{
@@ -401,7 +421,7 @@ exports.UpdateProfile = async (req, res) => {
 				}
 
 				const phoneData = await userModel.findOne({
-					where: { is_deleted: false, mobile: { [Op.eq]: data.mobile }, id: { [Op.ne]: data.id } }
+					where: { is_deleted: false,country_id:data.country_id , mobile: { [Op.eq]: data.mobile }, id: { [Op.ne]: data.id } }
 				});
 
 				if (phoneData != null) {
@@ -525,188 +545,187 @@ exports.SendOtp = async(req,res) => {
 	}
 }
 exports.forgotPassword = async (req, res) => {
-	var data = req.body
-	var userModel = models.user
-	var businessModel = models.business
-	var emailOtpVerifieModel = models.email_otp_verifies
+    var data = req.body
+    var userModel = models.user
+    var businessModel = models.business
+    var emailOtpVerifieModel = models.email_otp_verifies
+    var requiredFields = _.reject(['email', 'role'], (o) => {
+        return _.has(data, o)
+    })
+    if (requiredFields == '') {
+        if (data.role == 2) {
+            await userModel.findOne({
+                where: {
+                    email: data.email,
+                    role_id: data.role,
+                    is_deleted: false
+                }
+            }).then(async user => {
+                if (user != null) {
+                    if (user.is_active == false) {
+                        return res.send(setRes(resCode.Unauthorized, false, "Your account has been deactivated. Please contact administrator.", null))
+                    } else {
+                        const otp = Math.floor(Math.random() * 9000) + 1000;
+                        var currentDate = new Date();
+                        var futureDate = new Date(currentDate.getTime() + commonConfig.email_otp_expired);
+                        var expire_at = moment.utc(futureDate).format('YYYY-MM-DD HH:mm:ss');
+                        await emailOtpVerifieModel.create({
+                            user_id: user.id,
+                            email: data.email,
+                            otp: otp,
+                            role_id: data.role,
+                            expire_at: expire_at
+                        }).then(function(OtpData) {
+                            if (OtpData) {
+                                var transporter = nodemailer.createTransport({
+                                    host: mailConfig.host,
+                                    port: mailConfig.port,
+                                    secure: mailConfig.secure,
+                                    auth: mailConfig.auth,
+                                    tls: mailConfig.tls
+                                })
+                                var templates = new EmailTemplates();
+                                var context = {
+                                    otp: otp,
+                                    username: user.username,
+                                    expire_at: expire_at
+                                }
+                                templates.render(path.join(__dirname, '../../', 'template', 'email-otp.html'), context, function(
+                                    err,
+                                    html,
+                                    text,
+                                    subject
+                                ) {
+                                    transporter.sendMail({
+                                            from: 'b.a.s.e. <do-not-reply@mail.com>',
+                                            to: data.email,
+                                            subject: 'Email OTP Verification',
+                                            html: html
+                                        },
+                                        function(err, result) {
+                                            if (err) {
+                                                return res.send(setRes(resCode.BadRequsest, false, 'Something went wrong.', null));
+                                            } else {
+                                                return res.send(setRes(resCode.OK, true, `Email has been sent to ${users.email}, with account activation instuction.. `, null));
+                                            }
+                                        }
+                                    )
+                                })
+                            }
+                            data.otp = otp;
+                            data.otp_valid_till = moment.utc(commonConfig.email_otp_expired).format("mm:ss")
+                            data.expire_at = expire_at;
+                            if (data.otp_flag == 1) {
+                                // Resend otp sent successfully on your email
+                                return res.send(setRes(resCode.OK, true, 'Resend otp sent successfully on your email', data))
 
-	var requiredFields = _.reject(['email', 'role'], (o) => { return _.has(data, o) })
+                            } else {
+                                return res.send(setRes(resCode.OK, true, 'We have sent otp to your email address.', data))
 
-	if (requiredFields == '') {
-		if (data.role == 2) {
-			userModel.findOne({
-				where: {
-					email: data.email,
-					role_id: data.role,
-					is_deleted: false
-				}
-			}).then(user => {
+                            }
+                        }).catch(err => {
+                            return res.send(setRes(resCode.InternalServer, false, "Internal server error.", null))
+                        });
+                    }
 
-				if (user != null) {
+                } else {
+                    res.send(setRes(resCode.ResourceNotFound, false, "User not found.", null))
+                }
+            })
+        } else if (data.role == 3) {
+            businessModel.findOne({
+                where: {
+                    email: data.email,
+                    role_id: data.role,
+                    is_deleted: false
+                }
+            }).then(user => {
 
-					if (user.is_active == false) {
-						res.send(setRes(resCode.Unauthorized, false, "Your account has been deactivated. Please contact administrator.", null))
-					} else {
-						const otp = Math.floor(Math.random() * 9000) + 1000;
+                if (user != null) {
+                    if (user.is_active == false) {
+                        res.send(setRes(resCode.Unauthorized, false, "Your account has been deactivated. Please contact administrator.", null))
+                    } else {
+                        const otp = Math.floor(Math.random() * 9000) + 1000;
 
-						var currentDate = new Date();
-						var futureDate = new Date(currentDate.getTime() + commonConfig.email_otp_expired);
-						// var new_date = futureDate.toLocaleString('en-US', { timeZone: 'UTC' });
-						var expire_at = moment.utc(futureDate).format('YYYY-MM-DD HH:mm:ss');
+                        var currentDate = new Date();
+                        var futureDate = new Date(currentDate.getTime() + commonConfig.email_otp_expired);
+                        // var new_date = futureDate.toLocaleString('en-US', { timeZone: 'UTC' });
+                        var expire_at = moment.utc(futureDate).format('YYYY-MM-DD HH:mm:ss');
+                        emailOtpVerifieModel.create({
+                            user_id: user.id,
+                            email: data.email,
+                            otp: otp,
+                            role_id: data.role,
+                            expire_at: expire_at
+                        }).then(function(OtpData) {
 
-						emailOtpVerifieModel.create({ user_id: user.id, email: data.email, otp: otp, role_id: data.role, expire_at: expire_at }).then(function (OtpData) {
+                            if (OtpData) {
 
-							if (OtpData) {
+                                var transporter = nodemailer.createTransport({
+                                    host: mailConfig.host,
+                                    port: mailConfig.port,
+                                    secure: mailConfig.secure,
+                                    auth: mailConfig.auth,
+                                    tls: mailConfig.tls
+                                })
 
-								var transporter = nodemailer.createTransport({
-									host: mailConfig.host,
-									port: mailConfig.port,
-									secure: mailConfig.secure,
-									auth: mailConfig.auth,
-									tls: mailConfig.tls
-								})
+                                var templates = new EmailTemplates();
+                                var context = {
+                                    otp: otp,
+                                    username: user.person_name,
+                                    expire_at: expire_at,
+                                    logo_image: `../../../public/logo.png`,
+                                }
+                                templates.render(path.join(__dirname, '../../', 'template', 'email-otp.html'), context, function(
+                                    err,
+                                    html,
+                                    text,
+                                    subject
+                                ) {
+                                    transporter.sendMail({
+                                            from: 'b.a.s.e. <do-not-reply@mail.com>',
+                                            to: data.email,
+                                            subject: 'Email OTP Verification',
+                                            html: html
+                                        },
+                                        function(err, result) {
+                                            if (err) {} else {
+                                                res.send(setRes(resCode.OK, true, `Email has been sent to ${users.email}, with account activation instuction.. `, null));
+                                            }
+                                        }
+                                    )
+                                })
+                            }
+                            data.otp = otp;
+                            data.otp_valid_till = moment.utc(commonConfig.email_otp_expired).format("mm:ss")
+                            data.expire_at = expire_at;
+                            if (data.otp_flag == 1) {
+                                // Resend otp sent successfully on your email
+                                res.send(setRes(resCode.OK, true, 'Resend otp sent successfully on your email', data))
 
-								var templates = new EmailTemplates();
-								var context = {
-									otp: otp,
-									username: user.username,
-									expire_at: expire_at
-								}
-								templates.render(path.join(__dirname, '../../', 'template', 'email-otp.html'), context, function (
-									err,
-									html,
-									text,
-									subject
-								) {
-									transporter.sendMail(
-										{
-											from: 'b.a.s.e. <do-not-reply@mail.com>',
-											to: data.email,
-											subject: 'Email OTP Verification',
-											html: html
-										},
-										function (err, result) {
-											if (err) {
-												res.send(setRes(resCode.BadRequsest, false, 'Something went wrong.', null));
-											} else {
-												res.send(setRes(resCode.OK, true, `Email has been sent to ${users.email}, with account activation instuction.. `, null));
-											}
-										}
-									)
-								})
-							}
-							data.otp = otp;
-							data.otp_valid_till = moment.utc(commonConfig.email_otp_expired).format("mm:ss")
-							data.expire_at = expire_at;
-							if(data.otp_flag == 1){
-								// Resend otp sent successfully on your email
-							res.send(setRes(resCode.OK, true, 'Resend otp sent successfully on your email', data))
+                            } else {
+                                res.send(setRes(resCode.OK, true, 'We have sent otp to your email address.', data))
 
-							}else{
-							res.send(setRes(resCode.OK, true, 'We have sent otp to your email address.', data))
+                            }
 
-							}
-							res.send(setRes(resCode.OK, true, 'We have sent otp to your email address.', data))
-
-						}).catch(err => {
-							res.send(setRes(resCode.InternalServer, false, "Internal server error.", null))
-						});
-					}
-
-				} else {
-					res.send(setRes(resCode.ResourceNotFound, false, "User not found.", null))
-				}
-			})
-		} else if (data.role == 3) {
-			businessModel.findOne({
-				where: {
-					email: data.email,
-					role_id: data.role,
-					is_deleted: false
-				}
-			}).then(user => {
-
-				if (user != null) {
-					if (user.is_active == false) {
-						res.send(setRes(resCode.Unauthorized, false, "Your account has been deactivated. Please contact administrator.", null))
-					} else {
-						const otp = Math.floor(Math.random() * 9000) + 1000;
-
-						var currentDate = new Date();
-						var futureDate = new Date(currentDate.getTime() + commonConfig.email_otp_expired);
-						// var new_date = futureDate.toLocaleString('en-US', { timeZone: 'UTC' });
-						var expire_at = moment.utc(futureDate).format('YYYY-MM-DD HH:mm:ss');
-						emailOtpVerifieModel.create({ user_id: user.id, email: data.email, otp: otp, role_id: data.role, expire_at: expire_at }).then(function (OtpData) {
-
-							if (OtpData) {
-
-								var transporter = nodemailer.createTransport({
-									host: mailConfig.host,
-									port: mailConfig.port,
-									secure: mailConfig.secure,
-									auth: mailConfig.auth,
-									tls: mailConfig.tls
-								})
-
-								var templates = new EmailTemplates();
-								var context = {
-									otp: otp,
-									username: user.person_name,
-									expire_at: expire_at,
-									logo_image: `../../../public/logo.png`,
-								}
-								templates.render(path.join(__dirname, '../../', 'template', 'email-otp.html'), context, function (
-									err,
-									html,
-									text,
-									subject
-								) {
-									transporter.sendMail(
-										{
-											from: 'b.a.s.e. <do-not-reply@mail.com>',
-											to: data.email,
-											subject: 'Email OTP Verification',
-											html: html
-										},
-										function (err, result) {
-											if (err) {
-											} else {
-												res.send(setRes(resCode.OK, true, `Email has been sent to ${users.email}, with account activation instuction.. `, null));
-											}
-										}
-									)
-								})
-							}
-							data.otp = otp;
-							data.otp_valid_till = moment.utc(commonConfig.email_otp_expired).format("mm:ss")
-							data.expire_at = expire_at;
-							if(data.otp_flag == 1){
-								// Resend otp sent successfully on your email
-							res.send(setRes(resCode.OK, true, 'Resend otp sent successfully on your email', data))
-
-							}else{
-							res.send(setRes(resCode.OK, true, 'We have sent otp to your email address.', data))
-
-							}
-
-						}).catch(err => {
-							res.send(setRes(resCode.InternalServer, false, "Internal server error.", null))
-						});
-					}
-
+                        }).catch(err => {
+                            res.send(setRes(resCode.InternalServer, false, "Internal server error.", null))
+                        });
+                    }
 
 
-				} else {
-					res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
-				}
-			})
-		} else {
-			res.send(setRes(resCode.ResourceNotFound, false, "Role Not Found", null))
-		}
 
-	} else {
-		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
-	}
+                } else {
+                    res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
+                }
+            })
+        } else {
+            res.send(setRes(resCode.ResourceNotFound, false, "Role Not Found", null))
+        }
+
+    } else {
+        res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
+    }
 
 
 }
@@ -722,7 +741,7 @@ exports.OtpVerify = async (req, res) => {
 
   if(requiredFields == ""){
 
-  	emailOtpVerifieModel.findOne({where:{otp:data.otp,role_id:data.role}}).then((otpUser) => {
+  	await emailOtpVerifieModel.findOne({where:{otp:data.otp,role_id:data.role}}).then(async (otpUser) => {
 
   		if(otpUser != null){
   			
@@ -730,24 +749,22 @@ exports.OtpVerify = async (req, res) => {
 				var expire_time = moment(otpUser.expire_at).format('YYYY-MM-DD HH:mm:ss');
 				if(now_date_time > expire_time){
 					// otpUser.destroy();
-					res.send(setRes(resCode.BadRequest,false,"This otp is expired!",null));
+					return res.send(setRes(resCode.BadRequest,false,"This otp is expired!",null));
 				}else{
 					
 					if (data.role == 2){
 
-						userModel.findOne({where: {email: otpUser.email, is_deleted: false}}).then(async (user) => {
+						await userModel.findOne({where: {email: otpUser.email, is_deleted: false}}).then(async (user) => {
 							if (user == null){
-								res.send(setRes(resCode.ResourceNotFound, false, 'User not found.',null));
+								return res.send(setRes(resCode.ResourceNotFound, false, 'User not found.',null));
 							}
 							else{
 								var response = await sendForgotPasswordMail(user, 2)
 								if (response != ''){
-									res.send(
-										setRes(resCode.OK, true, 'An e-mail has been sent to given email address with further instructions.',null)
-									  )
+									return res.send(setRes(resCode.OK, true, 'An e-mail has been sent to given email address with further instructions.',null))
 								}
 								else{
-									res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
+									return res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
 								}
 							}
 						  })
@@ -756,19 +773,19 @@ exports.OtpVerify = async (req, res) => {
 					else if (data.role == 3){
 
 						// check email is exist or not
-						businessModel.findOne({where: {email: otpUser.email, is_deleted: false}}).then(async (business) => {
+						await businessModel.findOne({where: {email: otpUser.email, is_deleted: false}}).then(async (business) => {
 							if (business == null){
-								res.send(setRes(resCode.ResourceNotFound, false, 'Business not found.',null));
+								return res.send(setRes(resCode.ResourceNotFound, false, 'Business not found.',null));
 							}
 							else{
 								var response = await sendForgotPasswordMail(business, 3)
 								if (response != ''){
-									res.send(
+									return res.send(
 										setRes(resCode.OK, true, 'An e-mail has been sent to given email address with further instructions.',null)
 									  )
 								}
 								else{
-									res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
+									return res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
 								}
 							}
 						  })
@@ -776,16 +793,16 @@ exports.OtpVerify = async (req, res) => {
 						otpUser.destroy();
 					}
 					else{
-						res.send(setRes(resCode.BadRequest, false, 'Invalid role.',null))
+						return res.send(setRes(resCode.BadRequest, false, 'Invalid role.',null))
 					}
 				}
   			
   		}else{ 
-  			res.send(setRes(resCode.BadRequest,false,"Please enter valid OTP.",null))
+			return res.send(setRes(resCode.BadRequest,false,"Please enter valid OTP.",null))
   		}
   	});
   }else{
-  	res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
+  	return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
   }
 }
 function sendForgotPasswordMail(user, key){
@@ -802,17 +819,17 @@ function sendForgotPasswordMail(user, key){
 
 		async.waterfall(
 			[
-			  function (callback) {
+				function (callback) {
 				crypto.randomBytes(20, function (err, buf) {
 				  var token = buf.toString('hex')
 				  callback(err, token)
 				})
 			  },
-			  function (token, callback) {
+			  async function (token, callback) {
 				// user.resetPasswordToken = token
 				// user.resetPasswordExpires = Date.now() + 3600000 // 1 hour
-				userModel.update({reset_pass_token: token, reset_pass_expire: Date.now() + 3600000},{where: {id: user.id}})
-				.then(function (newUser) {
+				await userModel.update({reset_pass_token: token, reset_pass_expire: Date.now() + 3600000},{where: {id: user.id}})
+				.then(async function (newUser) {
 					
 					if (newUser == 0){
 						callback({err: "User not Updated"}, token)
@@ -824,7 +841,6 @@ function sendForgotPasswordMail(user, key){
 				});
 			  },
 			  function (token, callback) {
-	
 				// return
 				var transporter = nodemailer.createTransport({
 				  host: mailConfig.host,
@@ -838,7 +854,6 @@ function sendForgotPasswordMail(user, key){
 				var context = {
 				  resetUrl: commonConfig.app_url+'/api/user/resetPassword/' + token,
 				  username: user.username
-				// resetUrl: '#'
 				}
 	
 				templates.render(path.join(__dirname, '../../', 'template', 'forgot-password.html'), context, function (
@@ -850,9 +865,7 @@ function sendForgotPasswordMail(user, key){
 				  transporter.sendMail(
 					{
 					  from: 'b.a.s.e. <do-not-reply@mail.com>',
-					//   to: 'abc@yopmail.com',
 					to : user.email,
-					//   cc: ['chintan.shah@technostacks.com', 'vishal@technostacks.com'],
 					  subject: 'Reset Password',
 					  html: html
 					},
@@ -936,7 +949,7 @@ exports.UpdatePassword = function (req, res) {
 				return hash
 			})
 			
-			userModel.update({
+			await userModel.update({
 				reset_pass_token: null,
 				reset_pass_expire: null,
 				password: password
@@ -944,10 +957,10 @@ exports.UpdatePassword = function (req, res) {
 				where: {
 					id: user.id
 				}
-			}).then(updateUser => {
+			}).then(async updateUser => {
 				if (updateUser == 1){
+					res.send(setRes(resCode.OK,true, "Password Updated Successfully.",user))
 					res.sendFile(path.join(__dirname, '../../template', 'password-update.html'))
-					// res.send(setRes(resCode.OK,true, "Password Updated Successfully.",user))
 				}
 				else{
 					res.send(setRes(resCode.BadRequest, false, "Fail to Update Password.",null))		
@@ -1247,65 +1260,64 @@ exports.GetAllBusiness = async (req, res) => {
 
 exports.Logout = async (req, res) => {
 	try{
-		const authHeader = req.headers["authorization"];
-		var userModel = models.user
-		var businessModel = models.business
-		const TokenData =  jwt.verify(authHeader, 'secret', {expiresIn: 480 * 480})
-		var roleId = TokenData.role_id
-		
-		if (roleId == 2){
-			userModel.findOne({
-				where:{
-					id : TokenData.id
-				}
-			}).then(async user =>{
-				if(user){
-					const token =  jwt.sign({id:user.id,user: user.email,role_id:user.role_id}, 'secret', {expiresIn: 480 * 480})
-					delete user.dataValues.auth_token
-					user.dataValues.auth_token = token
-					userModel.update(
-						{auth_token: token,},
-						{where: {id: user.id}
-					})
-					.then(async function (newUser) {
-						if(newUser){
+		const data = req.body;
+		var Op = models.Op
+		var requiredFields = _.reject(['device_id', 'device_type'], (o) => { return _.has(data, o)  })
+
+		if(requiredFields == ""){
+			const authHeader = req.headers["authorization"];
+			const TokenData =  jwt.verify(authHeader, 'secret', {expiresIn: 480 * 480})
+			var roleId = TokenData.role_id
+
+			const authModel = (roleId == 2 && roleId != 3) ? models.user : models.business;
+			const user = await authModel.findOne({
+				where:{id : TokenData.id, is_deleted:false,is_active:true}
+			});
+			if(user){
+				const token =  jwt.sign({id:user.id,user: user.email,role_id:user.role_id}, 'secret', {expiresIn: 480 * 480})
+				delete user.dataValues.auth_token
+				user.dataValues.auth_token = token
+				authModel.update(
+					{auth_token: token,},
+					{where: {id: user.id}
+				}).then(async function (newUser) {
+					if(newUser){
+						const deviceModel = models.device_tokens;
+						const condition = {};
+						if(roleId == 2 && roleId != 3){
+							condition.where = {user_id:user.id}
+						}else{
+							condition.where = {business_id:user.id}
+						}
+						if(data.device_type == 1 && data.device_type != 2){
+							condition.where = {...condition.where,...{device_type:'ios'}}
+						}else{
+							condition.where = {...condition.where,...{device_type:'android'}}
+						}
+						condition.where = {...condition.where,...{device_id:data.device_id,status:1}}
+						const loginUserDevices = await deviceModel.findOne(condition);
+						if(loginUserDevices){
+							await deviceModel.findOne(condition).then(async Data => {
+								Data.destroy();
+							});
+							const deleteData = await loginUserDevices.update({
+								status:9,
+							});
 							res.send(setRes(resCode.OK,true,'Logout successfully',null))
 						}else{
-							res.send(setRes(resCode.BadRequest, false, "Can't logged out.",null))
+							res.send(setRes(resCode.BadRequest, false, "Oops not you have not logged in this devices.",null))
 						}
-					})
-				}else{
-					res.send(setRes(resCode.ResourceNotFound, false, "User not found.",null))
-				}
-			})
-		}else if(roleId == 3){
-			businessModel.findOne({
-				where:{
-					id : TokenData.id
-				}
-			}).then(async user =>{
-				if(user){
-					const token =  jwt.sign({id:user.id,user: user.email,role_id:user.role_id}, 'secret', {expiresIn: 480 * 480})
-					delete user.dataValues.auth_token
-					user.dataValues.auth_token = token
-					businessModel.update(
-						{auth_token: token,},
-						{where: {id: user.id}
-					})
-					.then(async function (newUser) {
-						if(newUser){
-							res.send(setRes(resCode.OK,true,'Logout successfully',null))
-						}else{
-							res.send(setRes(resCode.BadRequest, false, "Can't logged out.",null))
-						}
-					})
-				}else{
-					res.send(setRes(resCode.ResourceNotFound, false, "Business not found.",null))
-				}
-			})
+					}else{
+						res.send(setRes(resCode.BadRequest, false, "Can't logged out.",null))
+					}
+				})
+			}else{
+				res.send(setRes(resCode.ResourceNotFound, false, "User not found.",null))
+			}
 		}else{
-			res.send(setRes(resCode.BadRequest, false, 'Invalid role.',null))
+			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 		}
+		
 	}catch(error){
 		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
 	}
@@ -1953,8 +1965,7 @@ exports.businessBIO = async (req, res) => {
   var businessCategory = models.business_categorys
   var cmsModels = models.cms_pages
   var settingModel = models.settings
-  var faqModel = models.faqs
-  businessModel
+  await businessModel
     .findOne({
       where: { id: data.business_id, is_active: true, is_deleted: false },
 	  attributes: ['id', 'business_name','description'], 
@@ -1962,21 +1973,11 @@ exports.businessBIO = async (req, res) => {
 		{
 			model: businessCategory,
 			attributes: ['id','name'],
-			// where: {is_deleted:false}
 		},
 		{
 			model: settingModel,
 			attributes:['id','setting_value']
 		},
-		{
-			model: cmsModels,
-			attributes:['id','page_value','page_label'],
-			// where: {page_key:'terms_of_service'},			
-		},
-		{
-			model: faqModel,
-			attributes: ['id','title','description']
-		}
 	  ],
     })
     .then(async (bio) => {
@@ -1989,13 +1990,6 @@ exports.businessBIO = async (req, res) => {
 				bio.dataValues.business_category_name = "";
 			}
 
-			// FAQ Details
-			if (bio.faq != null) {
-				bio.dataValues.faq = bio.faq.description;
-			} else {
-				bio.dataValues.faq = "";
-			}
-
 			//  Opening Time
 			if (bio.setting != null) {
 				var date =  bio.setting.setting_value
@@ -2003,19 +1997,19 @@ exports.businessBIO = async (req, res) => {
 				var from = moment(arr1[0], "HH:mm").format("hh:mm A");
 				var to = moment(arr1[1], "HH:mm").format("hh:mm A");
 				bio.dataValues.available = `${from} - ${to}`;
-				delete bio.dataValues.setting;
 			} else {
-				bio.dataValues.available = "";
+				bio.dataValues.available = null;
 			}
 
+			const TAndC = await cmsModels.findOne({where:{business_id:data.business_id,is_deleted:false,is_enable:true,page_key:'terms_of_service'}});
+
 			// Terms And Conditions GET
-			if (bio.cms_page != null) {
-				bio.dataValues.terms_and_condition = bio.cms_page.page_value;
-				delete bio.dataValues.cms_page;
+			if (TAndC != null && !_.isEmpty(TAndC)) {
+				bio.dataValues.terms_and_condition = TAndC.page_value;
 			} else {
-				bio.dataValues.terms_and_condition = "";
+				bio.dataValues.terms_and_condition = null;
 			}
-			
+			delete bio.dataValues.setting;
 			res.send(
 				setRes(
 					resCode.OK,
@@ -2050,29 +2044,21 @@ exports.businessEventList = async (req, res) => {
 					setRes(
 						resCode.BadRequest,
 						false,
-
 						"invalid page number, should start with 1",
 						null,
-					)
-				);
-			}
-			if (data.page_size == '' || data.page_size <= 0) {
-				return res.send(
-					setRes(
-						resCode.BadRequest,
-						null,
-						false,
-						"invalid page size, should be greater than 0"
 					)
 				);
 			}
 
 			let skip = data.page_size * (data.page - 1);
 			let limit = parseInt(data.page_size);
-			var condition = {
-				attributes: ['id','business_id','images','title','description','start_date','end_date','start_time','end_time']
+			var condition = {}
+			condition.where = {is_deleted: false,end_date: {
+				[Op.gt]: currentDate
+			},}
+			if(data.search){
+				condition.where = {...condition.where,...{[Op.or]: [{title: {[Op.like]: "%" + data.search + "%",}}]}}
 			}
-			condition.where = {is_deleted: false,[Op.or]: [{title: {[Op.like]: "%" + data.search + "%",}}]}
 			if(data.business_id){
 				condition.where = {...condition.where,...{business_id:data.business_id}}
 			}
@@ -2081,7 +2067,6 @@ exports.businessEventList = async (req, res) => {
 				condition.limit = limit
 			}
 			combocalenderModel.findAll(condition).then(async event => {
-				if(event.length > 0){
 					const dataArray = [];	
 					for (const data of event) {
 						var event_images = data.images
@@ -2108,11 +2093,6 @@ exports.businessEventList = async (req, res) => {
 						  (response.getPaginationInfo())
 						)
 					  );
-				}else {
-					res.send(
-					  setRes(resCode.ResourceNotFound, false, "Event not found", [])
-					);
-				  }
 			})
 		} else {
 			res.send(
@@ -2181,6 +2161,15 @@ exports.eventUserRegister = async (req, res) => {
 					}
 				})
 			}
+
+			const isUserExist = await eventUserModel.findOne({
+				where:{user_id:data.user_id,event_id:data.event_id, business_id:data.business_id,is_deleted:false,is_available:true}
+			})
+
+			if(isUserExist){
+				validation = false;
+				return res.send(setRes(resCode.BadRequest, false, "User already registred in this business event.", null))
+			}
 			if(validation){
 				await eventUserModel.create(data).then(event_user => {
 					if(event_user){
@@ -2216,12 +2205,12 @@ exports.userEventList = async (req, res) => {
 		let limit = parseInt(data.page_size);
 
 		var condition = {
-			attributes: ['id','business_id','images','title','description','start_date','end_date','start_time','end_time'],
+			attributes: ['id','business_id','images','title','description','start_date','end_date','start_time','end_time','status'],
 			include: [
 				{
 				  model: userEventModel,
 				  attributes: ["id","user_id"],
-				  where:{user_id:data.user_id},
+				  where:{user_id:data.user_id,is_deleted:false},
 				  include: [
 					{
 						model: models.user,
@@ -2305,38 +2294,40 @@ exports.userEventList = async (req, res) => {
 // User Leave API
 exports.eventUserLeave = async (req, res) => {
 	try {
-		var param = req.params
 		var data = req.body
 		var businessModel = models.business
 		var comboModel = models.combo_calendar
 		var userModel = models.user
 		var eventUserModel = models.user_events
+		var validation = true;
 		const Op = models.Op;
 		var currentDate = (moment().format('YYYY-MM-DD'))
-		var requiredFields = _.reject(["business_id", "event_id", "user_id"], (o) => {
+		var requiredFields = _.reject(["id","business_id", "event_id", "user_id"], (o) => {
 			return _.has(data, o);
 		});
-		if(param){
+		if(data){
 			if (requiredFields == "") {
-				eventUserModel.findOne({
-					where: {id: param.id,is_deleted: false,is_available:true}
+				await eventUserModel.findOne({
+					where: {id: data.id,is_deleted: false,is_available:true}
 				}).then(async event_user => {
 					if(_.isEmpty(event_user)){
+						validation = false
 						return res.send(setRes(resCode.ResourceNotFound, false, "User Event not found.", null))
 					}
 				})
 
-				if(data.business_id){
-					businessModel.findOne({
+				if(data.business_id && validation == true){
+					await businessModel.findOne({
 						where: {id: data.business_id,is_deleted: false,is_active:true}
 					}).then(async business => {
 						if(_.isEmpty(business)){
+							validation = false
 							return res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
 						}
 					})
 				}
-	
-				if(data.event_id){
+				
+				if(data.event_id && validation == true){
 					var condition = {}		
 					if(!_.isEmpty(data.business_id)){
 						condition.where = {business_id:data.business_id}
@@ -2344,54 +2335,60 @@ exports.eventUserLeave = async (req, res) => {
 					condition.where = {...condition.where,...{id: data.event_id,is_deleted: false,end_date: {
 						[Op.gt]: currentDate
 					},}}
-					comboModel.findOne(condition).then(async event => {
+					await comboModel.findOne(condition).then(async event => {
 						if(_.isEmpty(event)){
+							validation = false
 							return res.send(setRes(resCode.ResourceNotFound, false, "Event not found.", null))
 						}
 					})
 				}
+			
 	
-				if(data.user_id){
-					userModel.findOne({
+				if(data.user_id && validation == true){
+					await userModel.findOne({
 						where: {id:data.user_id,is_deleted: false,is_active:true}
 					}).then(async user => {
 						if(_.isEmpty(user)){
+							validation = false
 							return res.send(setRes(resCode.ResourceNotFound, false, "User not found.", null))
 						}
 					})
 				}
-
-				eventUserModel.findOne({
-					where: {id: param.id,business_id:data.business_id,event_id:data.event_id,user_id:data.user_id,is_deleted: false,is_available:true},
-				}).then(async event_user => {
-					if(_.isEmpty(event_user)){
-						return res.send(setRes(resCode.ResourceNotFound, false, "User not found in any event.", null))
-					}else{
-						eventUserModel.update(
-							{is_deleted:true,
-							is_available:false}
-							,{
-							where: {id: param.id,business_id:data.business_id,event_id:data.event_id,user_id:data.user_id,is_deleted: false,is_available:true}
-						}).then(async data =>{
-							if(data){
-								eventUserModel.findOne({
-									where: {id: param.id},
-								}).then(async user_data => {
-									res.send(setRes(resCode.OK, false, 'Leave successfully from event', user_data))
-								})
-							}
-						}).catch(error => {
-							res.send(setRes(resCode.BadRequest, false, 'Fail to leave from event.', null))
-						})
-					}
-				})
+				
+				const eventUserData = await eventUserModel.findOne({
+					where: {id: data.id,business_id:data.business_id,event_id:data.event_id,user_id:data.user_id,is_deleted: false,is_available:true},
+				});
+				if(_.isEmpty(eventUserData) && validation == true){
+					validation = false;
+					return res.send(setRes(resCode.ResourceNotFound, false, "User not found in any event.", null))
+				}
+				
+				if(validation){
+					await eventUserModel.update(
+						{is_deleted:true,
+						is_available:false}
+						,{
+						where: {id: data.id,business_id:data.business_id,event_id:data.event_id,user_id:data.user_id,is_deleted: false,is_available:true}
+					}).then(async dataVal =>{
+						if(dataVal){
+							await eventUserModel.findOne({
+								where: {id: data.id},
+							}).then(async user_data => {
+								return res.send(setRes(resCode.OK, false, 'Leave successfully from event', user_data))
+							})
+						}
+					}).catch(error => {
+						return res.send(setRes(resCode.BadRequest, false, 'Fail to leave from event.', null))
+					})
+				}
+				
 			} else {
-				res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
+				return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
 			}
 		}else{
-			res.send(setRes(resCode.BadRequest, false, ('Id are required'), null))
+			return res.send(setRes(resCode.BadRequest, false, ('Id are required'), null))
 		}
 	} catch (error) {
-		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
+		return res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
 	}
 }

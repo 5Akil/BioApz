@@ -18,6 +18,7 @@ var awsConfig = require('../../config/aws_S3_config')
 const fs = require('fs');
 var multer = require('multer');
 const multerS3 = require('multer-s3');
+var pagination = require('../../helpers/pagination')
 
 // Create Reward coupones START
 exports.create = async(req,res) =>{
@@ -258,7 +259,7 @@ exports.applyCoupon = async (req, res) => {
 		const couponeModel = models.coupones
 		const userCouponModel = models.user_coupons;
 
-		const userEmail = req.userEmail;
+		const userAuth = req.user;
 		const arrayFields = ['coupon_code', 'coupon_id', 'product_id'];
 		const requiredFields = _.reject(arrayFields, (o) => { return _.has(data, o) })
 
@@ -266,7 +267,9 @@ exports.applyCoupon = async (req, res) => {
 			// check user is active and not deleted
 			const userDetails = await userModel.findOne({
 				where: {
-					email: userEmail
+					email: userAuth.user,
+					id:userAuth.id,
+					is_deleted:false
 				}
 			})
 			if (!userDetails || _.isEmpty(userDetails) || _.isUndefined(userDetails)) {
@@ -309,7 +312,7 @@ exports.applyCoupon = async (req, res) => {
 			if (appliedCoupon && !_.isEmpty(appliedCoupon)) {
 				return res.send(setRes(resCode.ResourceNotFound, false, 'Coupone is already applied!', null))
 			}
-
+			
 			// If coupon is Free product
 			if (couponDetails.coupon_type === false) {
 				// check free product coupon is applied for product
@@ -324,7 +327,10 @@ exports.applyCoupon = async (req, res) => {
 					if (userCouponDetail) {
 						const discountObj = {
 							discountValue: productDetails.price,
-							user_coupon_id: userCouponDetail.id
+							user_coupon_id: userCouponDetail.id,
+							coupon_id: couponDetails.id,
+							coupon_code: couponDetails.coupon_code,
+							value_type: couponDetails.value_type,
 						}
 						res.send(setRes(resCode.OK, true, 'Coupon applied successfully!', discountObj))
 					} else {
@@ -379,9 +385,11 @@ exports.applyCoupon = async (req, res) => {
 exports.getUserCouponList =  async (req, res) => {
 	try {
 		const data = req.body;
+		const authUser = req.user;
 		const arrayFields = ['page', 'business_id', 'page_size'];
 		const requiredFields = _.reject(arrayFields, (o) => { return _.has(data, o); })
 		const couponeModel = models.coupones;
+		const userCouponModel = models.user_coupons;
 
 		const skip = data.page_size * (data.page - 1)
 		const limit = parseInt(data.page_size)
@@ -396,38 +404,33 @@ exports.getUserCouponList =  async (req, res) => {
 				return res.send(setRes(resCode.BadRequest, false, "invalid business_id",null))
 			}
 
-			const getCouponList = await couponeModel.findAndCountAll({
-				offset: skip,
-				limit: limit,
-				attributes: { exclude: ['status', 'isDeleted', 'createdAt', 'updatedAt', 'deleted_at' ] },
+			const condition = {
+				attributes: { exclude: ['createdAt', 'updatedAt', 'deleted_at' ] },
 				where: {
 					business_id: data.business_id,
 					isDeleted: false,
-					status: 1,
+					status: true,
 				}
-			});
-
-			const getCouponListData = getCouponList?.rows;
-			const totalRecords = getCouponList?.count;
-			const previous_page = (data.page - 1);
-			const last_page = Math.ceil(totalRecords / data.page_size);
-			let next_page = null;
-			if(last_page > data.page){
-				let pageNumber = data.page;
-				next_page = parseInt(pageNumber) + 1;
 			}
 
-			const response = {};
-			response.totalPages = Math.ceil(totalRecords/limit);
-			response.currentPage = parseInt(data.page);
-			response.per_page = parseInt(data.page_size);
-			response.total_records = totalRecords;
-			response.data = getCouponListData;
-			response.previousPage = previous_page;
-			response.nextPage = next_page;
-			response.lastPage = last_page;
+			if(data.page_size != 0 && !_.isEmpty(data.page_size)){
+				condition.offset = skip,
+				condition.limit = limit
+			}
 
-			res.send(setRes(resCode.OK,true,'Get Coupons successfully',response))
+			const getCouponList = await couponeModel.findAll(condition);
+			for(const val of getCouponList){
+				var is_applied = false;
+				const appliedCoupon = await userCouponModel.findOne({
+					where:{is_deleted:false,user_id:authUser.id,coupon_id:val.id}
+				})
+				if(!_.isEmpty(appliedCoupon)){is_applied = true;}
+				val.dataValues.is_applied = is_applied;
+			}
+			const recordCount = await couponeModel.findAndCountAll(condition);
+			const totalRecords = recordCount?.count;
+			const response = new pagination(getCouponList, parseInt(totalRecords), parseInt(data.page), parseInt(data.page_size));
+			res.send(setRes(resCode.OK,true,'Get Coupons successfully',(response.getPaginationInfo())))
 
 		} else {
 			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
@@ -464,38 +467,24 @@ exports.getBusinessCouponList =  async (req, res) => {
 				where: { email: userEmail, is_deleted: false, is_active: true }
 			});
 			if (businessDetail) {
-				const getCouponList = await couponeModel.findAndCountAll({
-					offset: skip,
-					limit: limit,
+				var condition = {
 					attributes: { exclude: ['status', 'isDeleted', 'createdAt', 'updatedAt', 'deleted_at' ] },
 					where: {
 						business_id: businessDetail.id,
 						isDeleted: false,
 						status: 1,
 					}
-				});
-	
-				const getCouponListData = getCouponList?.rows;
-				const totalRecords = getCouponList?.count;
-				const previous_page = (data.page - 1);
-				const last_page = Math.ceil(totalRecords / data.page_size);
-				let next_page = null;
-				if(last_page > data.page){
-					let pageNumber = data.page;
-					next_page = +(pageNumber) + 1;
+				};
+				if(data.page_size != 0 && !_.isEmpty(data.page_size)){
+					condition.offset = skip,
+					condition.limit = limit
 				}
-	
-				const response = {};
-				response.totalPages = Math.ceil(totalRecords/limit);
-				response.currentPage = parseInt(data.page);
-				response.per_page = parseInt(data.page_size);
-				response.total_records = totalRecords;
-				response.data = getCouponListData;
-				response.previousPage = previous_page;
-				response.nextPage = next_page;
-				response.lastPage = last_page;
-	
-				res.send(setRes(resCode.OK,true,'Get Coupons successfully',response))
+				const getCouponList = await couponeModel.findAll(condition);
+
+				const recordCount = await couponeModel.findAndCountAll(condition);
+				const totalRecords = recordCount?.count;
+				const response = new pagination(getCouponList, totalRecords, parseInt(data.page), parseInt(data.page_size));
+				res.send(setRes(resCode.OK,true,'Get Coupons successfully',(response.getPaginationInfo())))
 			} else {
 				return res.send(setRes(resCode.ResourceNotFound, false, "Business user not found",null))
 			}

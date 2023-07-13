@@ -1,16 +1,12 @@
 var express = require('express')
 
 var router = express.Router()
-const uuidv1 = require('uuid/v1');
-const moment = require('moment')
-var awsConfig = require('../../config/aws_S3_config');
-
 var controller = require('./cms.controller')
-
 const {verifyToken} = require('../../config/token');
+const {authorize} = require('../../helpers/authorize');
 
-router.post('/add-cms', verifyToken, controller.AddCms)
-router.post('/get-cms-page-details', verifyToken, controller.GetPageDetails)
-router.post('/update-cms-page-data',verifyToken,controller.UpdatePageData)
+router.post('/create', verifyToken, authorize([3]), controller.createCMS)
+router.post('/view', verifyToken, authorize([3]), controller.viewCMS)
+router.post('/update',verifyToken, authorize([3]),controller.updateCMS)
 
 module.exports = router;
