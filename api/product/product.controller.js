@@ -136,7 +136,6 @@ exports.GetAllProducts = async (req, res) => {
 			]},
 		}
 		const categoryCond = (data.category_id && +(data.category_id) > 0) ? {category_id:data.category_id} : {}
-		console.log(categoryCond);
 		condition.where = {...categoryCond, ...{business_id:data.business_id,is_deleted:false,}}
 		condition.attributes = { exclude:['createdAt','updatedAt']}
 		if(!_.isEmpty(data.price)){

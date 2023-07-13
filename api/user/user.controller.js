@@ -1507,7 +1507,10 @@ function shuffle(array) {
 // Home Screeen Details END
 // =========================================Online STORE START=========================================
 // Rewards List START
-exports.rewardsList = async (req, res) => {
+/**
+ * User: Online Store Reward Older api
+ */
+exports.rewardsListOlder = async (req, res) => {
 	try{
 		var data = req.body
 		var giftCardModel = models.gift_cards
@@ -1610,6 +1613,221 @@ exports.rewardsList = async (req, res) => {
 			const mergedArray = mergeRandomArrayObjects(arrays);
 			let result =  mergedArray.slice(skip, skip+limit);
 			res.send(setRes(resCode.OK, true, "Get rewards list successfully.",result))
+		}else{
+			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
+		}
+	}catch(error){
+		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
+	}
+}
+
+/**
+ * User: Online Store Reward Latest api
+ */
+exports.rewardsList =async(req,res) => {
+	try{
+		const data = req.body
+		const giftCardModel = models.gift_cards
+		const cashbackModel = models.cashbacks
+		const discountModel = models.discounts
+		const couponeModel = models.coupones
+		const Op = models.Op
+		const currentDate = (moment().format('YYYY-MM-DD'))
+		const requiredFields = _.reject(['page','business_id'], (o) => { return _.has(data, o)  })
+		
+		if(requiredFields == ""){
+			if(!data?.page || +(data.page) <= 0) {
+				return res.send(setRes(resCode.BadRequest, null, false, "invalid page number, should start with 1"))
+			}
+			var typeArr = ['gift_cards','cashbacks','discounts','coupones'];
+			let request_type = data?.type?.includes(',') && data?.type?.split(',').length > 0 ? data?.type?.split(',') : (data?.type && data?.type?.trim() !== '' ? [data?.type] : typeArr );
+			request_type = request_type.filter( tp => tp && tp.trim() !== '');
+			const requestTypeNotExists = request_type.filter( tp => !typeArr.includes(tp) && tp !== '' );
+			if(request_type && requestTypeNotExists.length !== 0){
+				return res.send(setRes(resCode.BadRequest, null, false, "Please select valid type."))
+			}
+			// if((request_type) && !(typeArr.includes(request_type))){
+			// 	return res.send(setRes(resCode.BadRequest, null, false, "Please select valid type."))
+			// }
+
+			// Total limit for all records
+			const limit = 60;
+			const perTableLimit = limit / (request_type.length || 5) ;
+			const giftCardLoyaltyCondition =  data.search ? {
+				[Op.or]: [
+					{
+						name: {
+							[Op.like]: "%" + data.search + "%",
+						}
+					}
+				]
+			} : {}
+
+			const cashBackDiscountCouponCondition = data.search ? {
+				[Op.or]: [
+					{
+						title: {
+							[Op.like]: "%" + data.search + "%",
+						}
+					}
+				],
+			} : {};
+			const bussinessIdCond = data.business_id ? {
+				business_id: data.business_id
+			} : {};
+
+			let giftCardsRecords, cashbackRecords,discountRecords,couponeRecords;
+			let remainingGiftcardRecordLimit = 0, remainingCashbackRecordLimit = 0,remainingDiscountRecordLimit=0,remainingCouponRecordLimit=0;
+			/**
+			 * Fetch Gift cards and calculate and forward to next module not fetched record limit 
+			 */
+			if (request_type.includes('gift_cards')) {
+				giftCardsRecords = await giftCardModel.findAndCountAll({
+					offset: perTableLimit * (data.page - 1),
+					limit: perTableLimit,
+					where:{
+						isDeleted: false,
+						status: true,
+						expire_at: { 
+							[Op.gt]: currentDate
+						},
+						...bussinessIdCond,
+						...giftCardLoyaltyCondition					
+					},
+					attributes: {
+						include: [[models.sequelize.literal("'gift_cards'"),"type"]]
+					}
+				});
+				
+				const fetchedGiftCardsCount = giftCardsRecords?.rows?.length || 0 ;
+				remainingGiftcardRecordLimit = perTableLimit - fetchedGiftCardsCount > 0 ? perTableLimit - fetchedGiftCardsCount : 0 ;
+			}
+			
+
+			/**
+			 * Fetch Cashback records and calculate and forward to next module not fetched record limit 
+			 */
+			if (request_type.includes('cashbacks')) {
+				cashbackRecords = await cashbackModel.findAndCountAll({
+					offset: perTableLimit * (data.page - 1),
+					limit: perTableLimit + remainingGiftcardRecordLimit,
+					where: {
+						isDeleted: false,
+						status: true,
+						validity_for: { 
+							[Op.gt]: currentDate
+						},
+						...bussinessIdCond,
+						...cashBackDiscountCouponCondition
+					},
+					attributes: {
+						include: [[models.sequelize.literal("'cashbacks'"),"type"]]
+					}
+				});
+	
+				const fetchedCashbackCount = cashbackRecords?.rows?.length || 0 ;
+				remainingCashbackRecordLimit = (perTableLimit + remainingGiftcardRecordLimit) - fetchedCashbackCount > 0 ? (perTableLimit + remainingGiftcardRecordLimit) - fetchedCashbackCount : 0 ;
+			}
+			// -----------------------------------------------------------------------------
+
+			/**
+			 * Fetch discount records and calculate and forward to next module not fetched record limit 
+			 */
+			if (request_type.includes('discounts')) {
+				discountRecords = await discountModel.findAndCountAll({
+					offset: perTableLimit * (data.page - 1),
+					limit: perTableLimit + remainingCashbackRecordLimit,
+					where:{
+						isDeleted:false,
+						status:true,
+						validity_for: { 
+							[Op.gt]: currentDate
+						},
+						...bussinessIdCond,
+						...cashBackDiscountCouponCondition
+					},
+					attributes: {
+						include: [[models.sequelize.literal("'discounts'"),"type"]]
+					}
+				});
+				
+				const fetchedDiscountCount = discountRecords?.rows?.length || 0 ;
+				remainingDiscountRecordLimit = (perTableLimit + remainingCashbackRecordLimit) - fetchedDiscountCount > 0 ? (perTableLimit + remainingCashbackRecordLimit) - fetchedDiscountCount : 0 ;
+			}
+			// -----------------------------------------------------------------------------
+
+			/**
+			 *  Fetch coupon records and calculate and forward to next module not fetched record limit 
+			 */
+			if (request_type.includes('coupones')) {
+				couponeRecords = await couponeModel.findAndCountAll({
+					offset: perTableLimit * (data.page - 1),
+					limit: perTableLimit + remainingDiscountRecordLimit,
+					where:{
+						isDeleted:false,
+						status:true,
+						expire_at: { 
+							[Op.gt]: currentDate
+						},
+						...bussinessIdCond,
+						...cashBackDiscountCouponCondition
+					},
+					attributes: {
+						include: [[models.sequelize.literal("'coupones'"),"type"]]
+					}
+				});
+				
+				const fetchedCouponCount = couponeRecords?.rows?.length || 0 ;
+				remainingCouponRecordLimit = (perTableLimit + remainingDiscountRecordLimit) - fetchedCouponCount > 0 ? (perTableLimit + remainingDiscountRecordLimit) - fetchedCouponCount : 0 ;
+			}
+			// -----------------------------------------------------------------------------			
+
+
+			const fetchedGiftCardsRecords = giftCardsRecords?.rows || [];
+			const totalGiftCardRecords = giftCardsRecords?.count || 0;
+
+			const fetchedCashbackRecords = cashbackRecords?.rows || [];
+			const totalCashbackRecords = cashbackRecords?.count || 0;
+
+			const fetchedDiscountRecords = discountRecords?.rows || [];
+			const totalDiscountRecords = discountRecords?.count || 0;
+			
+			const fetchedCouponRecords = couponeRecords?.rows || [];
+			const totalCouponRecords = couponeRecords?.count || 0;
+
+
+			const total_records = totalGiftCardRecords + totalCashbackRecords + totalDiscountRecords + totalCouponRecords;
+			const totalPages = Math.ceil(total_records / limit);
+			const currentPage = +(data.page)
+			const per_page = limit;
+			const lastPage = totalPages;
+			const previousPage = currentPage - 1 <= 0 ? null : (currentPage - 1);
+			const nextPage = currentPage + 1 > lastPage ?  null : (currentPage + 1);
+
+			const arrays = [fetchedGiftCardsRecords, fetchedCashbackRecords, fetchedDiscountRecords, fetchedCouponRecords];
+
+			// const [giftcardRewards,cashbackData,discountData,couponeData,loyaltyPointData] = await Promise.all(promises);
+
+			// const arrays = [giftcardRewards, cashbackData,discountData,couponeData,loyaltyPointData];
+
+			const mergedArray = mergeRandomArrayObjects(arrays);
+			// let result =  mergedArray.slice(skip, skip+limit);
+			const result = mergedArray;
+			// if(!(_.isEmpty(request_type))){
+			// 	result = _.filter(result, {type: request_type})
+			// }
+			let resData = {};
+			resData.data = result;
+
+			resData.total_records = total_records;
+			resData.totalPages = totalPages;
+			resData.currentPage = currentPage;
+			resData.per_page = per_page;
+			resData.nextPage = nextPage;
+			resData.previousPage = previousPage;
+			resData.lastPage = lastPage;
+
+			res.send(setRes(resCode.OK, true, "Get rewards list successfully",resData))
 		}else{
 			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 		}
@@ -1762,13 +1980,12 @@ exports.loyaltyList = async (req, res) => {
 
       loyaltyPointModel
         .findAll({
+		  offset:skip,
+		  limit:limit,
           where: {
             isDeleted: false,
-			offset:skip,
-			limit:limit,
             status: true,
             business_id: data.business_id,
-            deleted_at: null,
 			validity: { 
 				[Op.gt]: currentDate
 			},
@@ -1786,6 +2003,26 @@ exports.loyaltyList = async (req, res) => {
         })
         .then(async (loyaltyData) => {
           if (loyaltyData.length > 0) {
+			const loyaltyRecordCounts = await loyaltyPointModel.findAndCountAll({where: {
+				isDeleted: false,
+				status: true,
+				business_id: data.business_id,
+				validity: { 
+					[Op.gt]: currentDate
+				},
+			  },
+			  include: [
+				{
+				  model: businessModel,
+				  attributes: ["id", "business_name"],
+				},
+				{
+				  model: productModel,
+				  attributes: ["id", "name"],
+				},
+			  ]
+			})
+			const totalRecords = loyaltyRecordCounts?.count;
             for (const data of loyaltyData) {
 
               // Get businesss name
@@ -1803,12 +2040,13 @@ exports.loyaltyList = async (req, res) => {
                 data.dataValues.product_name = "";
               }
             }
+			const response = new pagination(loyaltyData, totalRecords, parseInt(data.page), parseInt(data.page_size));
             res.send(
               setRes(
                 resCode.OK,
                 true,
                 "Get loyalty list successfully",
-                loyaltyData
+                (response.getPaginationInfo())
               )
             );
           } else {

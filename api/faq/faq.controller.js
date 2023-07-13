@@ -3,6 +3,13 @@ var resCode = require('../../config/res_code_config')
 var setRes = require('../../response')
 var models = require('../../models')
 var _ = require('underscore')
+const Sequelize = require('sequelize');
+var notification = require('../../push_notification')
+var moment = require('moment')
+const MomentRange = require('moment-range');
+const Moment = MomentRange.extendMoment(moment);
+var fs = require('fs');
+var awsConfig = require('../../config/aws_S3_config');
 const pagination = require('../../helpers/pagination');
 
 exports.StoreFaq = async(req, res) => {
