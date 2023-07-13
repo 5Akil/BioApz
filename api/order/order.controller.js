@@ -209,7 +209,7 @@ exports.BusinessOrderHistory = async(req,res) => {
 	var requiredFields = _.reject(['page','page_size','order_type'], (o) => { return _.has(data, o)  })
 	if(requiredFields == ""){
 		const searchText = data?.search ? data?.search.trim() : '';
-		const searchCond = searchText !== '' ? { name: { [Op.like] : `%${searchText}%` } } : {}
+		const searchCond = searchText !== '' ? { username: { [Op.like] : `%${searchText}%` } } : {}
 		const business = await  businessModel.findOne({ where: { email : userEmail, is_deleted: false } });
 		if (business) {
 			if(parseInt(data.page) < 0 || parseInt(data.page) === 0) {
