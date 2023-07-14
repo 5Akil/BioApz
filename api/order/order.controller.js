@@ -298,94 +298,99 @@ exports.BusinessOrderDetail = async (req,res) => {
 
 	const business = await businessModel.findOne({ where: { email : userEmail, is_deleted: false } });
 	if (business) {
-		await orderDetailsModel.findAll({
-			where: {
-			order_id: param.id
-		  },
-		  include: [
-			{
-			  model: productModel,
-			  attributes: ['id','image','name','price','category_id','sub_category_id'],
-			  include:  [{
-				model: categoryModel,
-				as: 'product_categorys',
-				attributes:['name']
+		const availableOrder = await orderDetailsModel.findOne({where:{order_id:param.id}});
+		if(!availableOrder){
+			res.send(setRes(resCode.ResourceNotFound,true,'Order not found.',null))
+		}else{
+			await orderDetailsModel.findAll({
+				where: {
+				order_id: param.id
 			  },
-			  {
-				model: categoryModel,
-				as: 'sub_category',
-				attributes:['name']
-			  }
+			  include: [
+				{
+				  model: productModel,
+				  attributes: ['id','image','name','price','category_id','sub_category_id'],
+				  include:  [{
+					model: categoryModel,
+					as: 'product_categorys',
+					attributes:['name']
+				  },
+				  {
+					model: categoryModel,
+					as: 'sub_category',
+					attributes:['name']
+				  }
+				  ],
+		
+				},
+				{
+					model: userModel,
+					attributes: ['username','email','address','mobile','profile_picture']
+				},
+				{
+					model: models.orders,
+				},
 			  ],
-	
-			},
-			{
-				model: userModel,
-				attributes: ['username','email','address','mobile','profile_picture']
-			},
-			{
-				model: models.orders,
-			},
-		  ],
-		  attributes: { exclude: ['is_deleted', 'updatedAt','business_id','product_id'] }
-		}).then(async orderDetails => {
-			var product_details = {};
-			for(let data of orderDetails){
-				data.dataValues.user_name = data.user.username
-				data.dataValues.user_email = data.user.email
-				data.dataValues.user_mobile = data.user.mobile
-				data.dataValues.user_address = data.user.address
-				const userImg = await awsConfig.getSignUrl(data.user.dataValues.profile_picture);
-				if(userImg && userImg != null){
-					data.dataValues.user_image = userImg;
-				}else{
-					data.dataValues.user_image = commonConfig.default_user_image;
+			}).then(async orderDetails => {
+				var product_details = {};
+				for(let data of orderDetails){
+					data.dataValues.user_name = data.user.username
+					data.dataValues.user_email = data.user.email
+					data.dataValues.user_mobile = data.user.mobile
+					data.dataValues.user_address = data.user.address
+					const userImg = await awsConfig.getSignUrl(data.user.dataValues.profile_picture);
+					if(userImg && userImg != null){
+						data.dataValues.user_image = userImg;
+					}else{
+						data.dataValues.user_image = commonConfig.default_user_image;
+					}
+					delete data.dataValues.user
+					data.product.dataValues.category_name = data?.product?.product_categorys?.name
+					data.product.dataValues.product_type = data?.product?.sub_category?.name
+					data.product.dataValues.qty = data.qty
+					const signurl = await awsConfig.getSignUrl(data.product.image[0]).then(function(res){
+						data.product.dataValues.product_image = res
+					})
+					if(signurl && signurl != null){
+						data.product.dataValues.product_image = res
+					}else{
+						data.product.dataValues.product_image = commonConfig.default_image
+					}
+					delete data.product.dataValues.sub_category_id
+					delete data.product.dataValues.image
+					delete data.product.dataValues.product_categorys
+					delete data.product.dataValues.sub_category
+					delete data.dataValues.qty
+					
 				}
-				delete data.dataValues.user
-				data.product.dataValues.category_name = data?.product?.product_categorys?.name
-				data.product.dataValues.product_type = data?.product?.sub_category?.name
-				data.product.dataValues.qty = data.qty
-				const signurl = await awsConfig.getSignUrl(data.product.image[0]).then(function(res){
-					data.product.dataValues.product_image = res
-				})
-				if(signurl && signurl != null){
-					data.product.dataValues.product_image = res
-				}else{
-					data.product.dataValues.product_image = commonConfig.default_image
+				const products = [];
+		
+				await orderDetails.forEach(async (order) => {
+				  const product = order.product;
+				  products.push(product);
+				});
+				const datas = {
+					"user_id": orderDetails[0].user_id,
+					"user_name" : orderDetails[0].user.username,
+					"user_mobile" : orderDetails[0].user.mobile,
+					"user_email" : orderDetails[0].user.email,
+					"user_address" : orderDetails[0].user.address,
+					"user_image" : orderDetails[0].dataValues.user_image,
+					"order_id": orderDetails[0].order_id,
+					"invoice_no": orderDetails[0].order?.order_no,
+					"invoice_date": orderDetails[0].order?.createdAt,
+					"amount": orderDetails[0].order?.amount,
+					"order_status": orderDetails[0].order?.order_status,
+					"createdAt": orderDetails[0].createdAt,
+					"product" : products
 				}
-				delete data.product.dataValues.sub_category_id
-				delete data.product.dataValues.image
-				delete data.product.dataValues.product_categorys
-				delete data.product.dataValues.sub_category
-				delete data.dataValues.qty
-				
-			}
-			const products = [];
-	
-			await orderDetails.forEach(async (order) => {
-			  const product = order.product;
-			  products.push(product);
-			});
-
-			const datas = {
-				"user_id": orderDetails[0].user_id,
-				"user_name" : orderDetails[0].user.username,
-				"user_mobile" : orderDetails[0].user.mobile,
-				"user_email" : orderDetails[0].user.email,
-				"user_address" : orderDetails[0].user.address,
-				"user_image" : orderDetails[0].dataValues.user_image,
-				"order_id": orderDetails[0].order_id,
-				"invoice_no": orderDetails[0].order?.order_no,
-				"invoice_date": orderDetails[0].order?.createdAt,
-				"amount": orderDetails[0].order?.amount,
-				"createdAt": orderDetails[0].createdAt,
-				"product" : products
-			}
-			orderDetails = datas
-			res.send(setRes(resCode.OK,true,'Get order details successfully',orderDetails))
-		}).catch(error => {
-			res.send(setRes(resCode.InternalServer,false,'Internal server error.',null))
-		})
+				orderDetails = datas
+				res.send(setRes(resCode.OK,true,'Get order details successfully',orderDetails))
+			}).catch(error => {
+				console.log(error)
+				res.send(setRes(resCode.InternalServer,false,'Internal server error.',null))
+			})
+		}
 	} else {
 		res.send(setRes(resCode.ResourceNotFound,false,'Authorized Business User not found',null))
 	}

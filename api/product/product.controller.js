@@ -20,6 +20,7 @@ var multer = require('multer');
 const multerS3 = require('multer-s3');
 const { condition } = require('sequelize')
 const pagination = require('../../helpers/pagination');
+const response = require('../../response')
 
 exports.createInquiry = async (req, res) => {
 	
@@ -1631,18 +1632,13 @@ exports.GetProductRattings = async(req,res)=>{
 			condition.offset = skip,
 			condition.limit = limit
 		}
-
-		const productDetails = await productModel.findOne({where:{id:data.product_id,is_deleted:false}});
+		const proCondition = {};
+		proCondition.where = {id:data.product_id,is_deleted:false}
+		if(data.business_id){
+			proCondition.where = {...proCondition.where,...{business_id:data.business_id}}
+		}
+		const productDetails = await productModel.findOne(proCondition);
 		if(productDetails){
-			if(!(_.isUndefined(productDetails.image[0]) && _.isEmpty(productDetails.image[0]))){
-				productDetails.product_image = await awsConfig.getSignUrl(productDetails.image[0]).then(function(res){
-					productDetails.dataValues.product_image = res;
-				})
-			}else{
-				productDetails.dataValues.product_image = awsConfig.default_image;
-			}
-			delete productDetails.dataValues.image
-	
 			const recordCounts = await productRattingModel.findAndCountAll(condition);
 			const totalRecords =  recordCounts?.count;
 	
@@ -1663,11 +1659,8 @@ exports.GetProductRattings = async(req,res)=>{
 					delete data.dataValues.user
 					delete data.dataValues.description
 				}
-				const paginatedresponse = new pagination(ratingData, parseInt(totalRecords), parseInt(data.page), parseInt(data.page_size));
-				const response = {};
-				response.product_details = productDetails;
-				response.review_rating_listing = (paginatedresponse.getPaginationInfo());
-				res.send(setRes(resCode.OK,true,'Get ratings successfully',response))
+				const response = new pagination(ratingData, parseInt(totalRecords), parseInt(data.page), parseInt(data.page_size));
+				res.send(setRes(resCode.OK,true,'Get ratings list successfully',response.getPaginationInfo()))
 			}).catch(error => {
 				res.send(setRes(resCode.BadRequest, false,'Fail to get ratings',null))
 			})
@@ -1675,6 +1668,50 @@ exports.GetProductRattings = async(req,res)=>{
 			res.send(setRes(resCode.ResourceNotFound, false,'Product not found',null))
 		}
 
+	}else{
+		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))	
+	}
+}
+
+exports.productRatting = async (req,res) => {
+	var params = req.params
+	var data = req.query
+	var productModel = models.products
+	var requiredFields = _.reject(['order_id'], (o) => { return _.has(data, o) })
+	var {role_id} = req.user
+	var orderDetailsModel = models.order_details
+
+	if(requiredFields == ""){
+		const proCondition = {
+			include:{
+				model:productModel
+			},
+		};
+		proCondition.where = {product_id:params.id,is_deleted:false}
+		if(data.order_id){
+			proCondition.where = {...proCondition.where,...{order_id:data.order_id}}
+		}
+		if(data.business_id){
+			proCondition.where = {...proCondition.where,...{business_id:data.business_id}}
+		}
+		const orderDetails = await orderDetailsModel.findOne(proCondition);
+		if(orderDetails){
+			const response = {}
+			response.product_name = orderDetails.product?.name ? orderDetails.product?.name : null
+			response.qty = orderDetails.qty
+			response.price = orderDetails.price
+			response.order_status = orderDetails.order_status
+			if(orderDetails?.product?.image != null){
+				await awsConfig.getSignUrl(orderDetails?.product?.image[0]).then(function(res){
+					response.product_image = res
+				})
+			}else{
+				response.product_image = commonConfig.default_image;
+			}
+			res.send(setRes(resCode.OK, true, "Get product review succesfully..",response))
+		}else{
+			res.send(setRes(resCode.ResourceNotFound, false,'Product not found',null))
+		}
 	}else{
 		res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))	
 	}

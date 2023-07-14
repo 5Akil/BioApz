@@ -77,7 +77,8 @@ router.post('/productTypeList',verifyToken,controller.ProductTypeList)
 router.delete('/sub-category/delete/:id',verifyToken,controller.removeProductType)
 
 router.post('/add-product-ratings',verifyToken,controller.AddProductRattings)
-router.post('/get_product_ratings',verifyToken, authorize([2,3]),controller.GetProductRattings)
+router.get('/get_product_ratings/:id',verifyToken, authorize([2,3]),controller.productRatting)
+router.post('/rating/list',verifyToken, authorize([2,3]),controller.GetProductRattings)
 
 router.post('/report_customer_rating',verifyToken,controller.reportCustomerReview)
 

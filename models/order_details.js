@@ -12,6 +12,7 @@ module.exports = (sequelize, DataTypes) => {
     product_id : DataTypes.INTEGER,
     price : DataTypes.DOUBLE,
     qty:DataTypes.INTEGER,
+    order_status : DataTypes.INTEGER,
     
     is_deleted: {
       type: DataTypes.BOOLEAN,
