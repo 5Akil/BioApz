@@ -29,7 +29,7 @@ exports.createCMS = async (req, res) => {
 	const possiblePageKey = ['about','store_info','terms_of_service'];
 
 	if (!data?.page_key || !possiblePageKey.includes(data?.page_key)) {
-		return res.send(setRes(res.BadRequest, false, `Possible value for page_key is one of from ${possiblePageKey.join(',')}`,null));
+		return res.send(setRes(resCode.BadRequest, false, `Possible value for page_key is one of from ${possiblePageKey.join(',')}`,null));
 	}
 
 	if(requiredFields == ""){

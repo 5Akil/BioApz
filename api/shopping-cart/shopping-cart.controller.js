@@ -55,8 +55,8 @@ exports.AddToCart = async(req,res) => {
 							if(_.isEmpty(product)){
 								res.send(setRes(resCode.ResourceNotFound, false, "Product not found.",null))
 							}else{
-								await orderDetailsModel.findOne({where: {business_id : data.business_id,product_id:data.product_id, is_deleted: false}}).then(async OrderData => {
-									if(OrderData == null){
+								// await orderDetailsModel.findOne({where: {business_id : data.business_id,product_id:data.product_id, is_deleted: false}}).then(async OrderData => {
+									// if(OrderData == null){
 										await shoppingCartModel.findAll({where:{business_id : data.business_id,user_id:data.user_id}}).then(async productData => {
 											if (productData != null) {
 												await shoppingCartModel.findOne({where: {business_id : data.business_id,user_id: data.user_id,product_id : data.product_id, is_deleted: false}}).then(async product => {
@@ -79,12 +79,14 @@ exports.AddToCart = async(req,res) => {
 											}
 												})
 												
+											}else{
+												res.send(setRes(resCode.ResourceNotFound,false,'User not available in cart.',null))		
 											}
 										});
-									}else{
-										res.send(setRes(resCode.ResourceNotFound,false,'Product not available..',null))
-									}
-								})
+									// }else{
+									// 	res.send(setRes(resCode.ResourceNotFound,false,'Product not available.',null))
+									// }
+								// })
 							}
 						})
 					}
