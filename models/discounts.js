@@ -37,6 +37,7 @@ module.exports = (sequelize, DataTypes) => {
   Discounts.associate = function(models) {
     // associations can be defined here
     Discounts.belongsTo(models.business, {foreignKey: 'business_id'})
+    Discounts.belongsTo(models.product_categorys, { foreignKey: 'product_category_id' })
   };
   return Discounts;
 };

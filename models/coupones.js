@@ -60,6 +60,7 @@ module.exports = (sequelize, DataTypes) => {
   Coupones.associate = function(models) {
     // associations can be defined here
     Coupones.belongsTo(models.business, {foreignKey: 'business_id'})
+    Coupones.belongsTo(models.product_categorys, { foreignKey: 'product_category_id' })
   };
   return Coupones;
 };
