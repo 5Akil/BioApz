@@ -422,8 +422,9 @@ exports.commonRewardsList =async(req,res) => {
 			// }
 
 			// Total limit for all records
-			const limit = 60;
-			const perTableLimit = limit / (request_type.length || 5) ;
+			const limit = 15;
+			const perTableLimit = Math.ceil(limit / (request_type.length || 5)) ;
+			const lastTableLimit = (request_type.length % 2) != 0 ?  perTableLimit : perTableLimit - 1;
 			const giftCardLoyaltyCondition =  data.search ? {
 				[Op.or]: [
 					{
@@ -589,8 +590,8 @@ exports.commonRewardsList =async(req,res) => {
 			 */
 			if (request_type.includes('loyalty_points')) {
 				loyaltyRecords = await loyaltyPointModel.findAndCountAll({
-					offset: perTableLimit * (data.page - 1),
-					limit: perTableLimit + remainingCouponRecordLimit,
+					offset: lastTableLimit * (data.page - 1),
+					limit: lastTableLimit + remainingCouponRecordLimit,
 					where:{
 						isDeleted:false,
 						status:true,
