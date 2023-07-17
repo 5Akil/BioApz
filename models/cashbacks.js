@@ -41,6 +41,7 @@ module.exports = (sequelize, DataTypes) => {
   Cashbacks.associate = function(models) {
     // associations can be defined here
     Cashbacks.belongsTo(models.business, {foreignKey: 'business_id'})
+    Cashbacks.belongsTo(models.product_categorys, { foreignKey: 'product_category_id' })
   };
   return Cashbacks;
 };

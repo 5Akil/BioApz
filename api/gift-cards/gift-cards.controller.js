@@ -402,6 +402,7 @@ exports.commonRewardsList =async(req,res) => {
 		const discountModel = models.discounts
 		const couponeModel = models.coupones
 		const loyaltyPointModel = models.loyalty_points
+		const productCategoryModel = models.product_categorys;
 		const Op = models.Op
 		const currentDate = (moment().format('YYYY-MM-DD'))
 		const requiredFields = _.reject(['page'], (o) => { return _.has(data, o)  })
@@ -502,7 +503,13 @@ exports.commonRewardsList =async(req,res) => {
 					},
 					attributes: {
 						include: [[models.sequelize.literal("'cashbacks'"),"type"]]
-					}
+					},
+					include: [
+						{
+							model: productCategoryModel,
+							attributes: ['id', 'name']
+						}
+					],
 				});
 				const tempCashbackRecords = [];
 				for(const data of cashbackRecords?.rows || []){
@@ -534,7 +541,13 @@ exports.commonRewardsList =async(req,res) => {
 					},
 					attributes: {
 						include: [[models.sequelize.literal("'discounts'"),"type"]]
-					}
+					},
+					include: [
+						{
+							model: productCategoryModel,
+							attributes: ['id', 'name']
+						}
+					],
 				});
 				const tempDiscountRecords = [];
 				for(const data of discountRecords?.rows || []){
@@ -567,7 +580,13 @@ exports.commonRewardsList =async(req,res) => {
 					},
 					attributes: {
 						include: [[models.sequelize.literal("'coupones'"),"type"]]
-					}
+					},
+					include: [
+						{
+							model: productCategoryModel,
+							attributes: ['id', 'name']
+						}
+					],
 				});
 				const tempCouponesRecords = [];
 				for(const data of couponeRecords?.rows || []){
