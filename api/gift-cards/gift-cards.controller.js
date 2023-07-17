@@ -403,6 +403,7 @@ exports.commonRewardsList =async(req,res) => {
 		const couponeModel = models.coupones
 		const loyaltyPointModel = models.loyalty_points
 		const productCategoryModel = models.product_categorys;
+		const productModel = models.products;
 		const Op = models.Op
 		const currentDate = (moment().format('YYYY-MM-DD'))
 		const requiredFields = _.reject(['page'], (o) => { return _.has(data, o)  })
@@ -468,10 +469,10 @@ exports.commonRewardsList =async(req,res) => {
 				const tempGiftCardsRecords = [];
 				for(let data of giftCardsRecords?.rows || []){
 					let gCard = JSON.parse(JSON.stringify(data));
-					if(gCard.image != null){
+					if(gCard.image && gCard.image != null){
 						let images = gCard.image
 						const signurl = await awsConfig.getSignUrl(images.toString()).then(function(res){
-							data.image = res;
+							gCard.image = res;
 						});
 					}else {
 						gCard.image = commonConfig.default_image;
@@ -514,6 +515,12 @@ exports.commonRewardsList =async(req,res) => {
 				const tempCashbackRecords = [];
 				for(const data of cashbackRecords?.rows || []){
 					let cashBackObj = JSON.parse(JSON.stringify(data));
+					const products = await productModel.findAll({ where: { id: { [Op.in] : cashBackObj.product_id.split(',') || [] } } ,attributes: ["name"], raw: true});
+					const product_name_arr = products?.map(val => val.name);
+					const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
+					cashBackObj.product_name = product_name;
+					cashBackObj.product_category_name = cashBackObj?.product_category?.name || ''
+					delete cashBackObj.product_category;
 					if(cashBackObj.validity_for < currentDate){
 						cashBackObj.is_expired = true;
 					}else{
@@ -552,6 +559,12 @@ exports.commonRewardsList =async(req,res) => {
 				const tempDiscountRecords = [];
 				for(const data of discountRecords?.rows || []){
 					let discountObj = JSON.parse(JSON.stringify(data));
+					const products = await productModel.findAll({ where: { id: { [Op.in] : discountObj.product_id.split(',') || [] } } ,attributes: ["name"], raw: true});
+					const product_name_arr = products?.map(val => val.name);
+					const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
+					discountObj.product_name = product_name;
+					discountObj.product_category_name = discountObj?.product_category?.name || ''
+					delete discountObj.product_category;
 					if(discountObj.validity_for < currentDate){
 						discountObj.is_expired = true;
 					}else{
@@ -591,6 +604,12 @@ exports.commonRewardsList =async(req,res) => {
 				const tempCouponesRecords = [];
 				for(const data of couponeRecords?.rows || []){
 					let couponeObj = JSON.parse(JSON.stringify(data));
+					const products = await productModel.findAll({ where: { id: { [Op.in] : couponeObj.product_id?.split(',') || [] } } ,attributes: ["name"], raw: true});
+					const product_name_arr = products?.map(val => val.name);
+					const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
+					couponeObj.product_name = product_name;
+					couponeObj.product_category_name = couponeObj?.product_category?.name || ''
+					delete couponeObj.product_category;
 					if(couponeObj.expire_at < currentDate){
 						couponeObj.is_expired = true;
 					}else{
@@ -618,11 +637,27 @@ exports.commonRewardsList =async(req,res) => {
 					},
 					attributes: {
 						include: [[models.sequelize.literal("'loyalty_points'"),"type"]]
-					}
+					},
+					include: [
+						{
+							model: productModel,
+							attributes: ['id', 'name', 'category_id'],
+							include: [
+								{
+									model: productCategoryModel,
+									attributes: ['id', 'name'],
+									as: 'product_categorys'
+								}
+							],
+						}
+					],
 				});
 				const tempLoyaltyRecords = [];
 				for(const data of loyaltyRecords?.rows || []){
 					let loyaltyObj = JSON.parse(JSON.stringify(data));
+					loyaltyObj.product_name = loyaltyObj?.product?.name || '';
+					loyaltyObj.product_category_name = loyaltyObj?.product?.product_categorys?.name || '';
+					delete loyaltyObj?.product;
 					if(loyaltyObj.validity < currentDate){
 						loyaltyObj.is_expired = true;
 					}else{
