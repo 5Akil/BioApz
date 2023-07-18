@@ -2665,3 +2665,4 @@ exports.eventUserLeave = async (req, res) => {
 		return res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
 	}
 }
+
