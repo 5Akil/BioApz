@@ -1337,6 +1337,8 @@ exports.homeList = async (req, res) => {
 		var loyaltyPointModel = models.loyalty_points
 		var combocalenderModel = models.combo_calendar
 		var businesscateogryModel = models.business_categorys
+		const productCategoryModel = models.product_categorys;
+		const productModel = models.products;
 		var businessArray = [];
 		var eventArray = [];
 		const promises = [];
@@ -1425,11 +1427,24 @@ exports.homeList = async (req, res) => {
 				where:{isDeleted:false,status:true,deleted_at: null,validity_for: { 
 					[Op.gt]: currentDate
 				},
-			},attributes: ['id','title','cashback_value','product_category_id','product_id','description','validity_for']}).then(async CashbackData => {
+			},
+				include: [
+					{
+						model: productCategoryModel,
+						attributes: ["id", "name"]
+					}
+				],
+			attributes: ['id','title','cashback_value','product_category_id','product_id','description','validity_for']}).then(async CashbackData => {
 				if (CashbackData.length > 0){
 					const dataArray = [];
 					for(const data of CashbackData){
 					let result = 	JSON.parse(JSON.stringify(data));
+					const products = await productModel.findAll({ where: { id: { [Op.in] : result.product_id?.split(',') || [] } } ,attributes: ["name"], raw: true});
+					const product_name_arr = products?.map(val => val.name);
+					const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
+					result.product_name = product_name;
+					result.product_category_name = result?.product_category?.name || '';
+					delete result?.product_category;
 					result.type="cashbacks";
 					dataArray.push(result);
 					}
@@ -1441,11 +1456,24 @@ exports.homeList = async (req, res) => {
 				where:{isDeleted:false,status:true,deleted_at: null,validity_for: { 
 					[Op.gt]: currentDate
 				},
-			},attributes: ['id']}).then(async DiscountData => {
+			},
+			include: [
+				{
+					model: productCategoryModel,
+					attributes: ["id", "name"]
+				}
+			],
+			attributes: ['id','business_id', 'title', 'discount_type', 'discount_value', 'product_category_id', 'product_id', 'validity_for', 'status']}).then(async DiscountData => {
 					if (DiscountData.length > 0){
 						const dataArray = [];
 						for(const data of DiscountData){
 							let result = 	JSON.parse(JSON.stringify(data));
+							const products = await productModel.findAll({ where: { id: { [Op.in] : result.product_id?.split(',') || [] } } ,attributes: ["name"], raw: true});
+							const product_name_arr = products?.map(val => val.name);
+							const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
+							result.product_name = product_name;
+							result.product_category_name = result?.product_category?.name || '';
+							delete result?.product_category;
 							result.type="discounts";
 							dataArray.push(result);
 							}
@@ -1457,11 +1485,22 @@ exports.homeList = async (req, res) => {
 				where:{isDeleted:false,status:true,deleted_at: null,expire_at: { 
 					[Op.gt]: currentDate
 				},
-			},attributes: ['id']}).then(async CouponeData => {
+			},include: [
+				{
+					model: productCategoryModel,
+					attributes: ["id", "name"]
+				}
+			],attributes: ['id', 'business_id', 'title', 'coupon_code', 'coupon_type', 'product_category_id', 'product_id', 'value_type', 'coupon_value', 'validity_for', 'expire_at', 'description', 'status']}).then(async CouponeData => {
 				if (CouponeData.length > 0){
 					const dataArray = [];
 					for(const data of CouponeData){
 					let result = 	JSON.parse(JSON.stringify(data));
+					const products = await productModel.findAll({ where: { id: { [Op.in] : result.product_id?.split(',') || [] } } ,attributes: ["name"], raw: true});
+					const product_name_arr = products?.map(val => val.name);
+					const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
+					result.product_name = product_name;
+					result.product_category_name = result?.product_category?.name || '';
+					delete result?.product_category;
 					result.type="coupones";
 					dataArray.push(result);
 					}
@@ -1474,11 +1513,26 @@ exports.homeList = async (req, res) => {
 				where:{isDeleted:false,status:true,deleted_at: null,validity: { 
 					[Op.gt]: currentDate
 				},
-			},attributes: ['id']}).then(async LoyaltyPointData => {
+			},include: [
+				{
+					model: productModel,
+					attributes: ['id', 'name', 'category_id'],
+					include: [
+						{
+							model: productCategoryModel,
+							attributes: ['id', 'name'],
+							as: 'product_categorys'
+						}
+					],
+				}
+			],attributes: ['id', 'business_id', 'loyalty_type', 'name', 'points_earned', 'product_id', 'amount', 'points_redeemed', 'validity', 'validity_period', 'status']}).then(async LoyaltyPointData => {
 				if (LoyaltyPointData.length > 0){
 					const dataArray = [];
 					for(const data of LoyaltyPointData){
 					let result = 	JSON.parse(JSON.stringify(data));
+					result.product_name = result?.product?.name || '';
+					result.product_category_name = result?.product?.product_categorys?.name || '';
+					delete result?.product;
 					result.type="loyalty_points";
 					dataArray.push(result);
 					}
@@ -1703,8 +1757,9 @@ exports.rewardsList =async(req,res) => {
 			// }
 
 			// Total limit for all records
-			const limit = 60;
-			const perTableLimit = limit / (request_type.length || 5) ;
+			const limit = 15;
+			const perTableLimit = Math.ceil(limit / (request_type.length || 4)) ;
+			const lastTableLimit = (request_type.length % 2) != 0 ?  perTableLimit : perTableLimit - 1;
 			const giftCardLoyaltyCondition =  data.search ? {
 				[Op.or]: [
 					{
@@ -1813,8 +1868,8 @@ exports.rewardsList =async(req,res) => {
 			 */
 			if (request_type.includes('coupones')) {
 				couponeRecords = await couponeModel.findAndCountAll({
-					offset: perTableLimit * (data.page - 1),
-					limit: perTableLimit + remainingDiscountRecordLimit,
+					offset: lastTableLimit * (data.page - 1),
+					limit: lastTableLimit + remainingDiscountRecordLimit,
 					where:{
 						isDeleted:false,
 						status:true,
