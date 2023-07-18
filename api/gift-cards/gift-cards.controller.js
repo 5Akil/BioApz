@@ -527,6 +527,7 @@ exports.commonRewardsList =async(req,res) => {
 					cashBackObj.product_name = product_name;
 					cashBackObj.product_category_name = cashBackObj?.product_category?.name || ''
 					cashBackObj.value_type = cashBackObj.cashback_type;
+					cashBackObj.amount = cashBackObj.cashback_value;
 					delete cashBackObj.product_category;
 					if(cashBackObj.validity_for < currentDate){
 						cashBackObj.is_expired = true;
@@ -575,6 +576,7 @@ exports.commonRewardsList =async(req,res) => {
 					discountObj.product_name = product_name;
 					discountObj.product_category_name = discountObj?.product_category?.name || ''
 					discountObj.value_type = discountObj.discount_type;
+					discountObj.amount = discountObj.discount_value;
 					delete discountObj.product_category;
 					if(discountObj.validity_for < currentDate){
 						discountObj.is_expired = true;
@@ -623,6 +625,7 @@ exports.commonRewardsList =async(req,res) => {
 					const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
 					couponeObj.product_name = product_name;
 					couponeObj.product_category_name = couponeObj?.product_category?.name || ''
+					couponeObj.amount = couponeObj.coupon_value;
 					delete couponeObj.product_category;
 					if(couponeObj.expire_at < currentDate){
 						couponeObj.is_expired = true;
