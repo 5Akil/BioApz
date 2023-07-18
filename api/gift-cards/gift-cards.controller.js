@@ -464,7 +464,10 @@ exports.commonRewardsList =async(req,res) => {
 					},
 					attributes: {
 						include: [[models.sequelize.literal("'gift_cards'"),"type"]]
-					}
+					},
+					order: [
+						['createdAt', 'DESC']
+					]
 				});
 				const tempGiftCardsRecords = [];
 				for(let data of giftCardsRecords?.rows || []){
@@ -511,11 +514,14 @@ exports.commonRewardsList =async(req,res) => {
 							attributes: ['id', 'name']
 						}
 					],
+					order: [
+						['createdAt', 'DESC']
+					]
 				});
 				const tempCashbackRecords = [];
 				for(const data of cashbackRecords?.rows || []){
 					let cashBackObj = JSON.parse(JSON.stringify(data));
-					const products = await productModel.findAll({ where: { id: { [Op.in] : cashBackObj.product_id.split(',') || [] } } ,attributes: ["name"], raw: true});
+					const products = await productModel.findAll({ where: { id: { [Op.in] : cashBackObj.product_id?.split(',') || [] } } ,attributes: ["name"], raw: true});
 					const product_name_arr = products?.map(val => val.name);
 					const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
 					cashBackObj.product_name = product_name;
@@ -555,11 +561,14 @@ exports.commonRewardsList =async(req,res) => {
 							attributes: ['id', 'name']
 						}
 					],
+					order: [
+						['createdAt', 'DESC']
+					]
 				});
 				const tempDiscountRecords = [];
 				for(const data of discountRecords?.rows || []){
 					let discountObj = JSON.parse(JSON.stringify(data));
-					const products = await productModel.findAll({ where: { id: { [Op.in] : discountObj.product_id.split(',') || [] } } ,attributes: ["name"], raw: true});
+					const products = await productModel.findAll({ where: { id: { [Op.in] : discountObj.product_id?.split(',') || [] } } ,attributes: ["name"], raw: true});
 					const product_name_arr = products?.map(val => val.name);
 					const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
 					discountObj.product_name = product_name;
@@ -600,6 +609,9 @@ exports.commonRewardsList =async(req,res) => {
 							attributes: ['id', 'name']
 						}
 					],
+					order: [
+						['createdAt', 'DESC']
+					]
 				});
 				const tempCouponesRecords = [];
 				for(const data of couponeRecords?.rows || []){
@@ -651,6 +663,9 @@ exports.commonRewardsList =async(req,res) => {
 							],
 						}
 					],
+					order: [
+						['createdAt', 'DESC']
+					]
 				});
 				const tempLoyaltyRecords = [];
 				for(const data of loyaltyRecords?.rows || []){
@@ -698,15 +713,15 @@ exports.commonRewardsList =async(req,res) => {
 			const previousPage = currentPage - 1 <= 0 ? null : (currentPage - 1);
 			const nextPage = currentPage + 1 > lastPage ?  null : (currentPage + 1);
 
-			const arrays = [fetchedGiftCardsRecords, fetchedCashbackRecords, fetchedDiscountRecords, fetchedCouponRecords, fetchedLoyaltyRecords];
+			const arrays = [...fetchedGiftCardsRecords, ...fetchedCashbackRecords, ...fetchedDiscountRecords, ...fetchedCouponRecords, ...fetchedLoyaltyRecords];
 
 			// const [giftcardRewards,cashbackData,discountData,couponeData,loyaltyPointData] = await Promise.all(promises);
 
 			// const arrays = [giftcardRewards, cashbackData,discountData,couponeData,loyaltyPointData];
 
-			const mergedArray = mergeRandomArrayObjects(arrays);
+			// const mergedArray = mergeRandomArrayObjects(arrays);
 			// let result =  mergedArray.slice(skip, skip+limit);
-			const result = mergedArray;
+			const result = arrays;
 			// if(!(_.isEmpty(request_type))){
 			// 	result = _.filter(result, {type: request_type})
 			// }
