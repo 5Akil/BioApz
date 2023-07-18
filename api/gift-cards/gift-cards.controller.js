@@ -721,7 +721,9 @@ exports.commonRewardsList =async(req,res) => {
 
 			// const mergedArray = mergeRandomArrayObjects(arrays);
 			// let result =  mergedArray.slice(skip, skip+limit);
-			const result = arrays;
+
+			const sortedArray = sortByCreatedLatest(arrays);
+			const result = sortedArray;
 			// if(!(_.isEmpty(request_type))){
 			// 	result = _.filter(result, {type: request_type})
 			// }
@@ -747,6 +749,10 @@ exports.commonRewardsList =async(req,res) => {
 	}
 }
 
+function sortByCreatedLatest (arrays) {
+	const sortedArray  = arrays.sort((a,b) => new moment(b.createdAt) - new moment(a.createdAt));
+	return sortedArray;
+}
 
 function mergeRandomArrayObjects(arrays) {
   const shuffledArrays = _.shuffle(arrays);

@@ -701,7 +701,7 @@ exports.UpdateProductDetail = async (req, res) => {
 // 		}
 // }
 
-exports.GetProductById = (req, res) => {
+exports.GetProductById = async (req, res) => {
 	var data = req.params
 	var productModel = models.products
 	var productRattingModel = models.product_ratings
@@ -709,7 +709,10 @@ exports.GetProductById = (req, res) => {
 	var shoppingCartModel = models.shopping_cart
 	var wishlistModel = models.wishlists
 	var couponModel = models.coupones
+	const userModel = models.user
+	const userCouponModel = models.user_coupons;
 	var Op = models.Op;
+	const userDetails = await userModel.findOne({ where: { email: req.userEmail, is_deleted: false , is_active: true } });
 	productModel.findOne({
 		where: {
 			id: data.id,
@@ -762,7 +765,7 @@ exports.GetProductById = (req, res) => {
 			var is_coupon_available = false;
 			if (couponData) {
 				const hobbiesString = couponData.product_id; // Retrieve the hobbies column value from the data object
-				const hobbiesArray = hobbiesString.split(',')?.includes(`${product.id}`);
+				const hobbiesArray = hobbiesString?.split(',')?.includes(`${product.id}`);
 				if(hobbiesArray){
 					is_coupon_available = true;
 				}
@@ -794,6 +797,50 @@ exports.GetProductById = (req, res) => {
 			product.dataValues.is_fav = isFav;
 			product.dataValues.is_added_cart = isAddCart;
 			product.dataValues.is_coupon_available = is_coupon_available;
+			
+			product.dataValues.applied_coupon_details = null;									
+			const couponDetails = await userCouponModel.findOne({ where: {
+					product_id: data.id,
+					user_id: userDetails?.id,
+					is_deleted: false,
+
+				},
+				include: [
+					{
+						model: couponModel,
+						attributes: ["id", "business_id", "title", "coupon_code", "coupon_type", "product_category_id", "product_id", "value_type", "coupon_value", "validity_for", "expire_at", "description"]
+					}
+				]
+			});
+			if (couponDetails) {
+				let discountObj = {
+					discountValue: 0,
+					user_coupon_id: couponDetails.id,
+					coupon_id: couponDetails.coupon_id,
+					coupon_code: couponDetails?.coupone?.coupon_code,
+					value_type: couponDetails?.coupone?.value_type,
+					coupon: couponDetails?.coupone
+				}
+				// If coupon is free product type
+				if (couponDetails?.coupone?.coupon_type === false) {
+					discountObj.discountValue = product?.dataValues?.price;
+				} // If coupon is Discount coupon
+				else {
+					if (couponDetails?.coupone?.value_type === true) {
+						// flat amount discount
+						if (couponDetails?.coupone?.coupon_value > product?.dataValues?.price) {
+							discountObj.discountValue = product?.dataValues?.price;
+						} else {
+							discountObj.discountValue = Number(couponDetails?.coupone?.coupon_value || 0);
+						}
+					} else {
+						// percentage discount calculation
+						const discount = Math.ceil(((product?.dataValues?.price || 0) * (couponDetails?.coupone?.coupon_value || 0))/100)
+						discountObj.discountValue = discount;
+					}
+				}
+				product.dataValues.applied_coupon_details = discountObj;
+			}
 			res.send(setRes(resCode.OK, true, "Get product detail successfully.", product))
 		} else {
 			res.send(setRes(resCode.ResourceNotFound, false, "Product not found.", null))
