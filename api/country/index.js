@@ -6,6 +6,6 @@ const {authorize} = require('../../helpers/authorize');
 
 
 // Countries Routes
-router.post('/list',verifyToken,authorize([2,3]),controller.countryList)
+router.post('/list',controller.countryList)
 
 module.exports = router;
