@@ -346,6 +346,10 @@ exports.UpdateBusinessDetail = async (req, res) => {
 													if (updateData == 1) {
 														businessModel.findOne({
 															where: { id: data.id, is_deleted: false, is_active: true },
+															include:[{
+																model: models.countries,
+																attributes: ['id', 'country_code', 'phone_code', 'currency', 'currency_symbol']
+															}]
 															// attributes: ['id','auth_token','category_id','banner','person_name','business_name','email','phone','address','abn_no','account_name','account_number'],
 														}).then(async dataDetail => {
 															if (data.banner != null) {
@@ -1639,6 +1643,12 @@ exports.getUserProfile = async (req, res) => {
 				is_active: true,
 				is_deleted: false
 			},
+			include:[
+				{
+                    model: models.countries,
+                    attributes: ['id', 'country_code', 'phone_code', 'currency', 'currency_symbol']
+                }
+			]
 			// attributes: ['id', 'person_name', 'profile_picture', 'phone', 'email', 'address', 'abn_no', 'business_name', 'password','auth_token']
 		}).then(async business => {
 			if (business) {
@@ -1740,6 +1750,10 @@ exports.updateUserDetils = async (req, res) => {
 								if (updateData == 1) {
 									await businessModel.findOne({
 										where: { id: data.id, is_deleted: false, is_active: true },
+										include:[{
+											model: models.countries,
+											attributes: ['id', 'country_code', 'phone_code', 'currency', 'currency_symbol']
+										}]
 										// attributes: ['id', 'person_name', 'profile_picture', 'phone', 'email', 'address', 'abn_no', 'business_name', 'password','auth_token']
 									}).then(async dataDetail => {
 										if (data.profile_picture != null) {

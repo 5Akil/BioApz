@@ -351,7 +351,11 @@ exports.GetProfileDetail = async (req, res) => {
 			where:{
 				id: data.id,
 				is_deleted:false
-			}
+			},
+			include:[{
+				model: models.countries,
+				attributes: ['id', 'country_code', 'phone_code', 'currency', 'currency_symbol']
+			}]
 		}).then(async user => {
 			if (user != null){
 				if(user.profile_picture != null){
@@ -447,7 +451,13 @@ exports.UpdateProfile = async (req, res) => {
 									id: data.id,
 									is_deleted: false,
 									is_active: true
-								}
+								},
+								include:[
+									{
+										model: models.countries,
+										attributes: ['id', 'country_code', 'phone_code', 'currency', 'currency_symbol']
+									}
+								]
 							}).then(async userData => {
 								if (data.profile_picture != null) {
 									var updateData_image = await awsConfig.getSignUrl(data.profile_picture).then(function (res) {
