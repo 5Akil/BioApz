@@ -246,6 +246,7 @@ exports.GetBusinessProfile = async (req, res) => {
 	var data = req.params
 	var businessModel = models.business
 	var categoryModel = models.business_categorys
+	var countryModel = models.countries
 
 	businessModel.findOne({
 		where: {
@@ -254,7 +255,14 @@ exports.GetBusinessProfile = async (req, res) => {
 			is_deleted: false
 		},
 		// attributes: ['id','auth_token','category_id','banner','person_name','business_name','email','phone','address','abn_no','account_name','account_number'],
-		include: [categoryModel]
+		include: [{
+			model: categoryModel,
+		},
+		{
+			model: countryModel,
+			attributes: ['id', 'country_code', 'phone_code', 'currency', 'currency_symbol']
+		}
+	]
 	}).then(async business => {
 		if (business) {
 			if (business.banner != null) {
@@ -279,6 +287,7 @@ exports.GetBusinessProfile = async (req, res) => {
 			res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
 		}
 	}).catch(userError => {
+		console.log(userError)
 		res.send(setRes(resCode.InternalServer, false, "Fail to get business profile.", null))
 	})
 
