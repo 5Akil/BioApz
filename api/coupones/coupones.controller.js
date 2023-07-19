@@ -310,7 +310,7 @@ exports.applyCoupon = async (req, res) => {
 				}
 			})
 			if (appliedCoupon && !_.isEmpty(appliedCoupon)) {
-				return res.send(setRes(resCode.ResourceNotFound, false, 'Coupone is already applied!', null))
+				return res.send(setRes(resCode.BadRequest, false, 'Coupone is already applied!', null))
 			}
 			
 			// If coupon is Free product
@@ -322,7 +322,6 @@ exports.applyCoupon = async (req, res) => {
 						coupon_id: data.coupon_id,
 						user_id: userDetails.id,
 						product_id: productDetails.id,
-						order_id: productDetails.id
 					});
 					if (userCouponDetail) {
 						const discountObj = {
@@ -355,7 +354,11 @@ exports.applyCoupon = async (req, res) => {
 					if(userCouponDetail) {
 						const discountObj = {
 							discountValue: 0,
-							user_coupon_id: userCouponDetail.id
+							user_coupon_id: userCouponDetail.id,
+							coupon_id: couponDetails.id,
+							coupon_code: couponDetails.coupon_code,
+							value_type: couponDetails.value_type,
+
 						}
 						if (couponDetails.value_type === true) {
 							// flat amount discount

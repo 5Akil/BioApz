@@ -116,6 +116,7 @@ exports.OrderDetail = async (req,res) => {
 	var orderDetailsModel = models.order_details
 	var productModel = models.products
 	var categoryModel = models.product_categorys
+	const businessModel = models.business
 	const userModel = models.user;
 	const userEmail = req.userEmail;
 
@@ -131,7 +132,13 @@ exports.OrderDetail = async (req,res) => {
 			{
 				model: orderModel,
 				required:true,
-				attributes: ['amount'],
+				attributes: ['amount','createdAt','business_id','order_no',],
+				include: [
+					{
+						model: businessModel,
+						attributes: ['banner','business_name'] 
+					}
+				],
 			},
 			{
 			  model: productModel,
@@ -153,7 +160,11 @@ exports.OrderDetail = async (req,res) => {
 		  attributes: { exclude: ['is_deleted', 'updatedAt','price','business_id','product_id'] }
 		}).then(async orderDetails => {
 			const orderdata = {
-				amount: orderDetails[0]?.order?.amount || '',				
+				amount: orderDetails[0]?.order?.amount || '',
+				business_id: orderDetails[0]?.order?.business_id || '',
+				invoice_date:  orderDetails[0]?.order?.createdAt || '',
+				invoice_no:  orderDetails[0]?.order?.order_no || '',
+				business_name:  orderDetails[0]?.order?.business?.business_name || '',
 			}
 			for (let data of orderDetails) {
 				data.dataValues.category_name = data?.product?.product_categorys?.name
