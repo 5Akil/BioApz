@@ -26,13 +26,17 @@ exports.createCMS = async (req, res) => {
 
 	var requiredFields = _.reject(['business_id','page_key', 'page_label', 'page_value'], (o) => { return _.has(data, o)  })
 
-	const possiblePageKey = ['about','store_info','terms_of_service'];
+	const possiblePageKey = ['about','store_info','terms_of_service', 'how_to_use'];
 
 	if (!data?.page_key || !possiblePageKey.includes(data?.page_key)) {
-		return res.send(setRes(resCode.BadRequest, false, `Possible value for page_key is one of from ${possiblePageKey.join(',')}`,null));
+		return res.send(setRes(resCode.BadRequest, false, `Possible value for page_key is one from ${possiblePageKey.join(',')}`,null));
 	}
 
 	if(requiredFields == ""){
+		const blankValue = _.reject(['business_id','page_key', 'page_label', 'page_value'], (o) => { return data[o]  })
+		if (blankValue != "") {
+			return res.send(setRes(resCode.BadRequest, false, (blankValue.toString() + ' can not be blank'),null))
+		}
 		await businessModel.findOne({
 			where: {id: data.business_id,is_deleted: false,is_active:true}
 		}).then(async business => {
@@ -75,7 +79,7 @@ exports.viewCMS = async (req , res) => {
 	var cmsModel = models.cms_pages
 	var requiredFields = _.reject(['business_id','page_key'], (o) => { return _.has(data, o)  })
 
-	const possiblePageKey = ['about','store_info','terms_of_service'];
+	const possiblePageKey = ['about','store_info','terms_of_service','how_to_use'];
 
 	if (data?.page_key && page_keys.map((k)=> !possiblePageKey.includes(k)).filter((t)=> t === true ).length > 0 ) {
 		return res.send(setRes(res.BadRequest, false, `Possible value for page_key are ${possiblePageKey.join(',')} `,null));
@@ -118,16 +122,19 @@ exports.updateCMS = async (req, res) => {
 	var data = req.body
 	var cmsModel = models.cms_pages
 
-	var requiredFields = _.reject(['id','page_key'], (o) => { return _.has(data, o)  })
+	var requiredFields = _.reject(['id','page_key','page_label', 'page_value'], (o) => { return _.has(data, o)  })
 	
-	const possiblePageKey = ['about','store_info','terms_of_service'];
+	const possiblePageKey = ['about','store_info','terms_of_service', 'how_to_use'];
 
 	if (!data?.page_key || !possiblePageKey.includes(data?.page_key)) {
-		return res.send(setRes(res.BadRequest, false, `Possible value for page_key is one of from ${possiblePageKey.join(',')}`,null));
+		return res.send(setRes(res.BadRequest, false, `Possible value for page_key is one from ${possiblePageKey.join(',')}`,null));
 	}
 
 	if(requiredFields == "") {
-
+		const blankValue = _.reject(['id','page_key', 'page_label', 'page_value'], (o) => { return data[o]  })
+		if (blankValue != "") {
+			return res.send(setRes(resCode.BadRequest, false, (blankValue.toString() + ' can not be blank'),null))
+		}
 		cmsModel.findOne({
 			where:{
 				id:data.id,

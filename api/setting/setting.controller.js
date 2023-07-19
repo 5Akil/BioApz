@@ -27,6 +27,11 @@ exports.AddSettingData = async (req, res) => {
 	var requiredFields = _.reject(['business_id','setting_key', 'setting_label', 'setting_value'], (o) => { return _.has(data, o)  })
 
 	if(requiredFields == ""){
+		const blankValue = _.reject(['business_id','setting_key', 'setting_label', 'setting_value'], (o) => { return data[o]  })
+		if (blankValue != "") {
+			return res.send(setRes(resCode.BadRequest, false, (blankValue.toString() + ' can not be blank'),null))
+		}
+
 		businessModel.findOne({
 			where:{
 				id:data.business_id,
@@ -110,10 +115,13 @@ exports.UpdateSettingData = async (req, res) => {
 	var data = req.body
 	var settingModel = models.settings
 
-	var requiredFields = _.reject(['id','setting_key'], (o) => { return _.has(data, o)  })
+	var requiredFields = _.reject(['id','setting_key','setting_label', 'setting_value'], (o) => { return _.has(data, o)  })
 
 	if(requiredFields == "") {
-
+		const blankValue = _.reject(['id','setting_key', 'setting_label', 'setting_value'], (o) => { return data[o]  })
+		if (blankValue != "") {
+			return res.send(setRes(resCode.BadRequest, false, (blankValue.toString() + ' can not be blank'),null))
+		}
 		settingModel.findOne({
 			where:{
 				id:data.id,

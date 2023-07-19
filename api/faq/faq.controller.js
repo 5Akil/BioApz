@@ -112,7 +112,7 @@ exports.UpdateFaq = async (req, res ) => {
 	var faqModel = models.faqs
 	const authUser = req.user;
 
-	var requiredFields = _.reject(['id'], (o) => { return _.has(data, o)  })
+	var requiredFields = _.reject(['id', 'title', 'description'], (o) => { return _.has(data, o)  })
 
 	const faqExists = await faqModel.findOne({
 		where:{
