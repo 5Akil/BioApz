@@ -1457,6 +1457,7 @@ exports.homeList = async (req, res) => {
 							result.expire_status = 0;
 						}
 						result.type = "gift_cards";
+						result.value_type = true;
 						result.rewards_type = 0;
 						dataArray.push(result);
 					}
@@ -1478,6 +1479,7 @@ exports.homeList = async (req, res) => {
 						}
 						result.type = "cashbacks";
 						result.value_type = data.cashback_type;
+						result.amount = data.cashback_value;
 						result.rewards_type = 1;
 						dataArray.push(result);
 					}
@@ -1520,6 +1522,7 @@ exports.homeList = async (req, res) => {
 							result.expire_status = 0;
 						}
 						result.type = "coupones";
+						result.amount = data.coupon_value;
 						result.rewards_type = 3;
 						dataArray.push(result);
 					}
