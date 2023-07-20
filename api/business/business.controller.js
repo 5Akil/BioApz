@@ -1477,6 +1477,7 @@ exports.homeList = async (req, res) => {
 							result.expire_status = 0;
 						}
 						result.type = "cashbacks";
+						result.value_type = data.cashback_type;
 						result.rewards_type = 1;
 						dataArray.push(result);
 					}
@@ -1497,6 +1498,8 @@ exports.homeList = async (req, res) => {
 							result.expire_status = 0;
 						}
 						result.type = "discounts";
+						result.value_type = data.discount_type;
+						result.amount = data.discount_value;
 						result.rewards_type = 2;
 						dataArray.push(result);
 					}
