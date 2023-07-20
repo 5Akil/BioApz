@@ -29,4 +29,5 @@ module.exports = function (app) {
   app.use('/api/countries', require('./api/country'))
 
   app.use('/api/device_token', require('./api/device-token'))
+  app.use('/api/rewardhistory', require('./api/reward-history'))
 }
