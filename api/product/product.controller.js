@@ -713,6 +713,7 @@ exports.GetProductById = async (req, res) => {
 	const userCouponModel = models.user_coupons;
 	var Op = models.Op;
 	const userDetails = await userModel.findOne({ where: { email: req.userEmail, is_deleted: false , is_active: true } });
+	const userId = userDetails?.id || '';
 	productModel.findOne({
 		where: {
 			id: data.id,
@@ -801,7 +802,7 @@ exports.GetProductById = async (req, res) => {
 			product.dataValues.applied_coupon_details = null;									
 			const couponDetails = await userCouponModel.findOne({ where: {
 					product_id: data.id,
-					user_id: userDetails?.id,
+					user_id: userId,
 					is_deleted: false,
 
 				},
