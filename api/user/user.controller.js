@@ -1525,7 +1525,14 @@ exports.homeList = async (req, res) => {
 						is_deleted: false
 					},
 					required: false
-				  }],
+				  },{
+					model: businessModel,
+					where: {
+						is_active: true,
+						is_deleted: false
+					},
+					required: true
+				}],
 				attributes: ['id','business_id','images','title','description','start_date','end_date','start_time','end_time', 'status']
 			}).then(async event => {
 				if(event.length > 0){
@@ -1549,7 +1556,7 @@ exports.homeList = async (req, res) => {
 							data.dataValues.is_user_join = true;
 						}
 						delete data.dataValues.user_events;
-
+						delete data.dataValues.business;
 						const eventStartDate = moment(`${data.start_date} ${data.start_time}`)
 						const eventEndDate = moment(`${data.end_date} ${data.end_time}`)
 						const isStartDatePastDate =moment(eventStartDate).isBefore(moment().format('YYYY-MM-DD HH:mm:ss'));
