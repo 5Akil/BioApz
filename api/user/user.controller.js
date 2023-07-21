@@ -2304,6 +2304,7 @@ exports.businessEventList = async (req, res) => {
 	try {
 		var data = req.body;
 		var combocalenderModel = models.combo_calendar;
+		const businesModel = models.business
 		var currentDate = moment().format("YYYY-MM-DD");
 		var Op = models.Op;
 		var requiredFields = _.reject(["page", "page_size"], (o) => {
@@ -2323,7 +2324,18 @@ exports.businessEventList = async (req, res) => {
 
 			let skip = data.page_size * (data.page - 1);
 			let limit = parseInt(data.page_size);
-			var condition = {}
+			var condition = {
+				include: [
+					{
+						model: businesModel,
+						where: {
+							is_active: true,
+							is_deleted: false
+						},
+						required: true
+					}
+				]
+			}
 			condition.where = {is_deleted: false,end_date: {
 				[Op.gt]: currentDate
 			},}
@@ -2352,6 +2364,7 @@ exports.businessEventList = async (req, res) => {
 							image_array.push(commonConfig.default_image)
 						}
 						data.dataValues.event_images = image_array
+						delete data.dataValues.business;
 					}
 					const recordCount = await combocalenderModel.findAndCountAll(condition);
 					const totalRecords = recordCount?.count;
@@ -2462,6 +2475,7 @@ exports.eventUserRegister = async (req, res) => {
 exports.userEventList = async (req, res) => {
 	var data = req.body;
 	var combocalenderModel = models.combo_calendar;
+	const businesModel = models.business;
 	var userEventModel = models.user_events
 	var currentDate = moment().format("YYYY-MM-DD");
 	var Op = models.Op;
@@ -2489,6 +2503,14 @@ exports.userEventList = async (req, res) => {
 					}
 				  ]
 				},
+				{
+					model: businesModel,
+					where: {
+						is_active: true,
+						is_deleted: false
+					},
+					required: true
+				}
 			],
 		}	
 		condition.where = {
@@ -2539,6 +2561,7 @@ exports.userEventList = async (req, res) => {
 						image_array.push(commonConfig.default_image)
 					}
 					data.dataValues.event_images = image_array
+					delete data.dataValues.business;
 				}
 				const recordCount = await combocalenderModel.findAndCountAll(condition);
 				const totalRecords = recordCount?.count;
