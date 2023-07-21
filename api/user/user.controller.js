@@ -1297,9 +1297,11 @@ exports.homeList = async (req, res) => {
 		var couponeModel = models.coupones
 		var loyaltyPointModel = models.loyalty_points
 		var combocalenderModel = models.combo_calendar
+		const userEventsModel = models.user_events;
 		var businesscateogryModel = models.business_categorys
 		const productCategoryModel = models.product_categorys;
 		const productModel = models.products;
+		const userModel = models.user;
 		var businessArray = [];
 		var eventArray = [];
 		const promises = [];
@@ -1508,11 +1510,23 @@ exports.homeList = async (req, res) => {
 		const mergedArray = mergeRandomArrayObjects(rewardsAndLoyaltyArray);
 		let result =  mergedArray.slice(0, 5);
 
+		const userDetails = await userModel.findOne({ where: { email: req.userEmail, is_deleted: false , is_active: true } });
+		const userId = userDetails?.id || '';
 		eventArray.push(
 			combocalenderModel.findAll({
-				where: { is_deleted: false ,end_date: { 
-					[Op.lt]: currentDate
-				  },},attributes: ['id','images','title','description','start_date','end_date','start_time','end_time']
+				where: { end_date: {
+					[Op.gt]: currentDate
+				  },
+				},
+				include: [{
+					model: userEventsModel,
+					where: {
+						user_id: userId,
+						is_deleted: false
+					},
+					required: false
+				  }],
+				attributes: ['id','business_id','images','title','description','start_date','end_date','start_time','end_time', 'status']
 			}).then(async event => {
 				if(event.length > 0){
 					const dataArray = [];	
@@ -1529,6 +1543,29 @@ exports.homeList = async (req, res) => {
 							image_array.push(commonConfig.default_image)
 						}
 						data.dataValues.event_images = image_array
+
+						data.dataValues.is_user_join = false;
+						if (data.user_events && data.user_events?.length > 0) {
+							data.dataValues.is_user_join = true;
+						}
+						delete data.dataValues.user_events;
+
+						const eventStartDate = moment(`${data.start_date} ${data.start_time}`)
+						const eventEndDate = moment(`${data.end_date} ${data.end_time}`)
+						const isStartDatePastDate =moment(eventStartDate).isBefore(moment().format('YYYY-MM-DD HH:mm:ss'));
+						const isEndDatePastDate = moment(eventEndDate).isBefore(moment().format('YYYY-MM-DD HH:mm:ss'));
+						if (data.dataValues.status == 4) {
+							data.dataValues.event_status = 'Cancelled';
+						} else {
+							if (isEndDatePastDate && isStartDatePastDate) {
+								data.dataValues.event_status = 'Completed';
+							}else if (isStartDatePastDate && isEndDatePastDate == false) {
+								data.dataValues.event_status = 'Inprogress';
+							} else {
+								data.dataValues.event_status = 'Pending';
+							}
+						}
+						delete data.dataValues.status
 					}
 					var array = shuffle(event);
 					var slicedArray = array.slice(0, 5);
