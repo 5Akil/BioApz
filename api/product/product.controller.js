@@ -1127,7 +1127,7 @@ exports.UpdateCategory = async(req, res) => {
 	var productCategoryModel = models.product_categorys
 	var requiredFields = _.reject(['id','business_id'], (o) => { return _.has(data, o)  })
 	if(requiredFields == ""){
-		if(! _.isEmpty){
+		if(! _.isEmpty(data.name)){
 			var name = data.name;
 			var validname = /^[A-Z+_a-z+_0-9 ]+$/;
 			if (name.match(validname) == null) {
