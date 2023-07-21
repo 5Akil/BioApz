@@ -616,22 +616,22 @@ exports.forgotPassword = async (req, res) => {
                                             if (err) {
                                                 return res.send(setRes(resCode.BadRequsest, false, 'Something went wrong.', null));
                                             } else {
-                                                return res.send(setRes(resCode.OK, true, `Email has been sent to ${users.email}, with account activation instuction.. `, null));
+                                                // return res.send(setRes(resCode.OK, true, `Email has been sent to ${users.email}, with account activation instuction.. `, null));
+												data.otp = otp;
+												data.otp_valid_till = moment.utc(commonConfig.email_otp_expired).format("mm:ss")
+												data.expire_at = expire_at;
+												if (data.otp_flag == 1) {
+													// Resend otp sent successfully on your email
+													return res.send(setRes(resCode.OK, true, 'Resend otp sent successfully on your email', data))
+					
+												} else {
+													return res.send(setRes(resCode.OK, true, 'We have sent otp to your email address.', data))
+					
+												}
                                             }
                                         }
                                     )
                                 })
-                            }
-                            data.otp = otp;
-                            data.otp_valid_till = moment.utc(commonConfig.email_otp_expired).format("mm:ss")
-                            data.expire_at = expire_at;
-                            if (data.otp_flag == 1) {
-                                // Resend otp sent successfully on your email
-                                return res.send(setRes(resCode.OK, true, 'Resend otp sent successfully on your email', data))
-
-                            } else {
-                                return res.send(setRes(resCode.OK, true, 'We have sent otp to your email address.', data))
-
                             }
                         }).catch(err => {
                             return res.send(setRes(resCode.InternalServer, false, "Internal server error.", null))
@@ -756,7 +756,7 @@ exports.OtpVerify = async (req, res) => {
 			   // otpUser.destroy();
 			   return res.send(setRes(resCode.BadRequest,false,"This otp is expired!",null));
 		   }else{
-				if(data.role == 2 && data.role != 3){
+				if(data.role == 2 || data.role == 3){
 						var roleModel = (data.role == 2 && data.role != 3) ? models.user : models.business;
 						var user = await roleModel.findOne({where: {email: otpUser.email, is_deleted: false}});
 						if (user == null){
@@ -852,7 +852,8 @@ async function sendForgotPasswordMail(user){
 		
 		return result;
 	}catch(error){
-		res.send(setRes(resCode.BadRequest, false, "Something went wrong.",null))
+		// res.send(setRes(resCode.BadRequest, false, "Something went wrong.",null))
+		return null;
 	}
 }
 
