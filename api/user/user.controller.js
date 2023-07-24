@@ -398,6 +398,10 @@ exports.UpdateProfile = async (req, res) => {
 		if (!mailId || mailId?.match(emailFormat) == null) {
 			return res.send(setRes(resCode.BadRequest, false, 'Please enter valid email format.', null));
 		}
+		if (((!data.mobile || _.isEmpty(data.mobile)) && data.country_id )|| ((!data.country_id || _.isEmpty(data.country_id)) && data.mobile )) {
+			const missingField = (!data.mobile || _.isEmpty(data.mobile)) ? 'phone number' : 'country' ;
+			return res.send(setRes(resCode.BadRequest, false, `Please enter valid ${missingField}.`, null));
+		}
 		if (!data?.mobile || (data.mobile.length > 15) || (data.mobile.length < 7) || !(mobilenumber.test(data.mobile))) {
 			return res.send(setRes(resCode.BadRequest, false, 'Please enter valid mobile number.', null));
 		}
@@ -616,22 +620,22 @@ exports.forgotPassword = async (req, res) => {
                                             if (err) {
                                                 return res.send(setRes(resCode.BadRequsest, false, 'Something went wrong.', null));
                                             } else {
-                                                return res.send(setRes(resCode.OK, true, `Email has been sent to ${users.email}, with account activation instuction.. `, null));
+                                                // return res.send(setRes(resCode.OK, true, `Email has been sent to ${users.email}, with account activation instuction.. `, null));
+												data.otp = otp;
+												data.otp_valid_till = moment.utc(commonConfig.email_otp_expired).format("mm:ss")
+												data.expire_at = expire_at;
+												if (data.otp_flag == 1) {
+													// Resend otp sent successfully on your email
+													return res.send(setRes(resCode.OK, true, 'Resend otp sent successfully on your email', data))
+					
+												} else {
+													return res.send(setRes(resCode.OK, true, 'We have sent otp to your email address.', data))
+					
+												}
                                             }
                                         }
                                     )
                                 })
-                            }
-                            data.otp = otp;
-                            data.otp_valid_till = moment.utc(commonConfig.email_otp_expired).format("mm:ss")
-                            data.expire_at = expire_at;
-                            if (data.otp_flag == 1) {
-                                // Resend otp sent successfully on your email
-                                return res.send(setRes(resCode.OK, true, 'Resend otp sent successfully on your email', data))
-
-                            } else {
-                                return res.send(setRes(resCode.OK, true, 'We have sent otp to your email address.', data))
-
                             }
                         }).catch(err => {
                             return res.send(setRes(resCode.InternalServer, false, "Internal server error.", null))
@@ -756,7 +760,7 @@ exports.OtpVerify = async (req, res) => {
 			   // otpUser.destroy();
 			   return res.send(setRes(resCode.BadRequest,false,"This otp is expired!",null));
 		   }else{
-				if(data.role == 2 && data.role != 3){
+				if(data.role == 2 || data.role == 3){
 						var roleModel = (data.role == 2 && data.role != 3) ? models.user : models.business;
 						var user = await roleModel.findOne({where: {email: otpUser.email, is_deleted: false}});
 						if (user == null){
@@ -852,7 +856,8 @@ async function sendForgotPasswordMail(user){
 		
 		return result;
 	}catch(error){
-		res.send(setRes(resCode.BadRequest, false, "Something went wrong.",null))
+		// res.send(setRes(resCode.BadRequest, false, "Something went wrong.",null))
+		return null;
 	}
 }
 
@@ -1525,7 +1530,14 @@ exports.homeList = async (req, res) => {
 						is_deleted: false
 					},
 					required: false
-				  }],
+				  },{
+					model: businessModel,
+					where: {
+						is_active: true,
+						is_deleted: false
+					},
+					required: true
+				}],
 				attributes: ['id','business_id','images','title','description','start_date','end_date','start_time','end_time', 'status']
 			}).then(async event => {
 				if(event.length > 0){
@@ -1549,7 +1561,7 @@ exports.homeList = async (req, res) => {
 							data.dataValues.is_user_join = true;
 						}
 						delete data.dataValues.user_events;
-
+						delete data.dataValues.business;
 						const eventStartDate = moment(`${data.start_date} ${data.start_time}`)
 						const eventEndDate = moment(`${data.end_date} ${data.end_time}`)
 						const isStartDatePastDate =moment(eventStartDate).isBefore(moment().format('YYYY-MM-DD HH:mm:ss'));
@@ -2304,6 +2316,7 @@ exports.businessEventList = async (req, res) => {
 	try {
 		var data = req.body;
 		var combocalenderModel = models.combo_calendar;
+		const businesModel = models.business
 		var currentDate = moment().format("YYYY-MM-DD");
 		var Op = models.Op;
 		var requiredFields = _.reject(["page", "page_size"], (o) => {
@@ -2323,7 +2336,18 @@ exports.businessEventList = async (req, res) => {
 
 			let skip = data.page_size * (data.page - 1);
 			let limit = parseInt(data.page_size);
-			var condition = {}
+			var condition = {
+				include: [
+					{
+						model: businesModel,
+						where: {
+							is_active: true,
+							is_deleted: false
+						},
+						required: true
+					}
+				]
+			}
 			condition.where = {is_deleted: false,end_date: {
 				[Op.gt]: currentDate
 			},}
@@ -2352,6 +2376,7 @@ exports.businessEventList = async (req, res) => {
 							image_array.push(commonConfig.default_image)
 						}
 						data.dataValues.event_images = image_array
+						delete data.dataValues.business;
 					}
 					const recordCount = await combocalenderModel.findAndCountAll(condition);
 					const totalRecords = recordCount?.count;
@@ -2462,6 +2487,7 @@ exports.eventUserRegister = async (req, res) => {
 exports.userEventList = async (req, res) => {
 	var data = req.body;
 	var combocalenderModel = models.combo_calendar;
+	const businesModel = models.business;
 	var userEventModel = models.user_events
 	var currentDate = moment().format("YYYY-MM-DD");
 	var Op = models.Op;
@@ -2489,6 +2515,14 @@ exports.userEventList = async (req, res) => {
 					}
 				  ]
 				},
+				{
+					model: businesModel,
+					where: {
+						is_active: true,
+						is_deleted: false
+					},
+					required: true
+				}
 			],
 		}	
 		condition.where = {
@@ -2539,6 +2573,7 @@ exports.userEventList = async (req, res) => {
 						image_array.push(commonConfig.default_image)
 					}
 					data.dataValues.event_images = image_array
+					delete data.dataValues.business;
 				}
 				const recordCount = await combocalenderModel.findAndCountAll(condition);
 				const totalRecords = recordCount?.count;

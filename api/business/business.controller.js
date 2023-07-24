@@ -319,7 +319,7 @@ exports.UpdateBusinessDetail = async (req, res) => {
 					res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
 				} else {
 					businessModel.findOne({
-						where: { is_deleted: false, business_name: { [Op.eq]: data.business_name }, id: { [Op.ne]: data.id } }
+						where: { is_deleted: false, business_name: { [Op.eq]: data.business_name.trim() }, id: { [Op.ne]: data.id } }
 					}).then(async nameData => {
 						if(nameData != null){
 							res.send(setRes(resCode.BadRequest, false, "This business name is already associated with another account.!", null))
@@ -1049,7 +1049,7 @@ exports.CreateBusiness = async (req, res) => {
 			}
 
 			var nameData = await businessModel.findOne({
-				where: { is_deleted: false, business_name: { [Op.eq]: data.business_name } }
+				where: { is_deleted: false, business_name: { [Op.eq]: data.business_name.trim() } }
 			});
 
 			if (nameData != null) {
@@ -1701,6 +1701,10 @@ exports.updateUserDetils = async (req, res) => {
 
 		if (requiredFields == '') {
 			var mobilenumber = /^[0-9]+$/;
+			if (((!data.phone || _.isEmpty(data.phone)) && data.country_id )|| ((!data.country_id || _.isEmpty(data.country_id)) && data.phone )) {
+				const missingField = (!data.phone || _.isEmpty(data.phone)) ? 'phone number' : 'country' ;
+				return res.send(setRes(resCode.BadRequest, false, `Please enter valid ${missingField}.`, null));
+			}
 			if (!_.isEmpty(data.phone)) {
 				if ((data.phone.length > 15) || (data.phone.length < 7) || !(mobilenumber.test(data.phone))) {
 					return res.send(setRes(resCode.BadRequest, false, 'Please enter valid phone number.', null));
@@ -1717,9 +1721,9 @@ exports.updateUserDetils = async (req, res) => {
 				if (_.isEmpty(businessDetail)) {
 					res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
 				} else {
-
+					const businessName = data.business_name ? data.business_name.trim() : data.business_name;
 					await businessModel.findOne({
-						where: { is_deleted: false, business_name: { [Op.eq]: data.business_name }, id: { [Op.ne]: data.id } }
+						where: { is_deleted: false, business_name: { [Op.eq]: businessName }, id: { [Op.ne]: data.id } }
 					}).then(async nameData => {
 						if (nameData != null) {
 							validation =false;

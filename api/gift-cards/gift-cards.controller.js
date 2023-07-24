@@ -404,10 +404,14 @@ exports.commonRewardsList =async(req,res) => {
 		const loyaltyPointModel = models.loyalty_points
 		const productCategoryModel = models.product_categorys;
 		const productModel = models.products;
-		const Op = models.Op
+		const businessModel = models.business;
+		const Op = models.Op;
 		const currentDate = (moment().format('YYYY-MM-DD'))
 		const requiredFields = _.reject(['page'], (o) => { return _.has(data, o)  })
-		
+		const businessEmail = req.userEmail;
+		const businessDetails = await businessModel.findOne({ where: { email: businessEmail } });
+		const businessId = businessDetails?.id || '';
+		const businessIdCond = { business_id: businessId };
 		if(requiredFields == ""){
 			if(!data?.page || +(data.page) <= 0) {
 				return res.send(setRes(resCode.BadRequest, null, false, "invalid page number, should start with 1"))
@@ -460,6 +464,7 @@ exports.commonRewardsList =async(req,res) => {
 					where:{
 						isDeleted: false,
 						status: true,
+						...businessIdCond,
 						...giftCardLoyaltyCondition					
 					},
 					attributes: {
@@ -503,6 +508,7 @@ exports.commonRewardsList =async(req,res) => {
 					where: {
 						isDeleted: false,
 						status: true,
+						...businessIdCond,
 						...cashBackDiscountCouponCondition
 					},
 					attributes: {
@@ -552,6 +558,7 @@ exports.commonRewardsList =async(req,res) => {
 					where:{
 						isDeleted:false,
 						status:true,
+						...businessIdCond,
 						...cashBackDiscountCouponCondition
 					},
 					attributes: {
@@ -602,6 +609,7 @@ exports.commonRewardsList =async(req,res) => {
 					where:{
 						isDeleted:false,
 						status:true,
+						...businessIdCond,
 						...cashBackDiscountCouponCondition
 					},
 					attributes: {
@@ -650,6 +658,7 @@ exports.commonRewardsList =async(req,res) => {
 					where:{
 						isDeleted:false,
 						status:true,
+						...businessIdCond,
 						...giftCardLoyaltyCondition
 					},
 					attributes: {
