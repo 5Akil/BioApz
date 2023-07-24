@@ -60,5 +60,6 @@ router.get('/view/:id',verifyToken,controller.commonRewardsView)
 router.post('/create', verifyToken, giftcardawsupload.single('image'), controller.giftCardCreate)
 router.delete('/delete/:id', verifyToken, controller.deleteGiftCard)
 router.post('/update',verifyToken,giftcardawsupload.single('image'), controller.giftCardUpdate)
+router.get('/list',verifyToken, controller.giftCardLists)
 // Gift Cards Section END
 module.exports = router;

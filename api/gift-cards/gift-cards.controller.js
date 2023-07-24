@@ -229,6 +229,27 @@ exports.giftCardUpdate = async (req, res) => {
 }
 // Update Reward Gift Card END
 
+// LIST Gift Cards 
+exports.giftCardLists = async (req, res) => {
+	try {
+		const query = req.query;
+		const business_id = query?.business_id || '';
+		const giftCardsModel = models.gift_cards;
+
+		const giftCards = await giftCardsModel.findAll({
+			where: {
+				business_id,
+				status: true,
+				isDeleted: false
+			},
+			attributes: { exclude: ["status", "isDeleted", "createdAt", "updatedAt", "deleted_at"] }
+		});
+		res.send(setRes(resCode.OK, true, "Gift Cards List.", giftCards));
+	} catch (error) {
+		res.send(setRes(resCode.BadRequest, false, null, "Please select valid type."));
+	}
+}
+
 // List Rewards START
 /** 
  * Older reward list api is not in use 
