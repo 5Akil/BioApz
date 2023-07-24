@@ -398,6 +398,10 @@ exports.UpdateProfile = async (req, res) => {
 		if (!mailId || mailId?.match(emailFormat) == null) {
 			return res.send(setRes(resCode.BadRequest, false, 'Please enter valid email format.', null));
 		}
+		if (((!data.mobile || _.isEmpty(data.mobile)) && data.country_id )|| ((!data.country_id || _.isEmpty(data.country_id)) && data.mobile )) {
+			const missingField = (!data.mobile || _.isEmpty(data.mobile)) ? 'phone number' : 'country' ;
+			return res.send(setRes(resCode.BadRequest, false, `Please enter valid ${missingField}.`, null));
+		}
 		if (!data?.mobile || (data.mobile.length > 15) || (data.mobile.length < 7) || !(mobilenumber.test(data.mobile))) {
 			return res.send(setRes(resCode.BadRequest, false, 'Please enter valid mobile number.', null));
 		}

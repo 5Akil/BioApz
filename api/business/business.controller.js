@@ -1698,6 +1698,10 @@ exports.updateUserDetils = async (req, res) => {
 
 		if (requiredFields == '') {
 			var mobilenumber = /^[0-9]+$/;
+			if (((!data.phone || _.isEmpty(data.phone)) && data.country_id )|| ((!data.country_id || _.isEmpty(data.country_id)) && data.phone )) {
+				const missingField = (!data.phone || _.isEmpty(data.phone)) ? 'phone number' : 'country' ;
+				return res.send(setRes(resCode.BadRequest, false, `Please enter valid ${missingField}.`, null));
+			}
 			if (!_.isEmpty(data.phone)) {
 				if ((data.phone.length > 15) || (data.phone.length < 7) || !(mobilenumber.test(data.phone))) {
 					return res.send(setRes(resCode.BadRequest, false, 'Please enter valid phone number.', null));
