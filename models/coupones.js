@@ -52,9 +52,11 @@ module.exports = (sequelize, DataTypes) => {
       return couponCode;
     }
     // Generate a unique coupon code with a length of 6 characters
-    const couponCode = generateCouponCode(6);
-    let id = couponCode;
-    coupones.coupon_code = id;
+    if (!coupones.coupon_code) {
+      const couponCode = generateCouponCode(6);
+      let id = couponCode;
+      coupones.coupon_code = id;
+    }
   });
   
   Coupones.associate = function(models) {

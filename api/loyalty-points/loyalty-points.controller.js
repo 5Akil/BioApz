@@ -42,6 +42,11 @@ exports.create = async(req,res) =>{
 				validation = false;
 				return res.send(setRes(resCode.BadRequest,false, "You can't select past and current date.!",null))
 			}
+			if (data.points_redeemed && data.points_redeemed == 1) {
+				if (!data?.gift_card_id || _.isEmpty(data.gift_card_id)) {
+					return res.send(setRes(resCode.BadRequest,false, "gift_card_id is required.",null))
+				}
+			}
 				if(data.product_id != null){
 					var productModel = models.products
 					await productModel.findOne({
@@ -76,6 +81,7 @@ exports.create = async(req,res) =>{
 										validity_period:!(_.isEmpty(data.validity_period) && data.validity_period == null) ? data.validity_period : null,
 										amount:(!(_.isEmpty(data.amount) && data.amount == null && _.isEmpty(data.loyalty_type)) && data.loyalty_type == 0) ? data.amount : null,
 										product_id:(!(_.isEmpty(data.product_id) && data.product_id == null && _.isEmpty(data.product_id)) && data.loyalty_type == 1) ? data.product_id : null,
+										gift_card_id: (!(_.isEmpty(data.gift_card_id) && data.gift_card_id == null) && data.points_redeemed == 1) ? data.gift_card_id : null,
 									}).then(async loyaltyData => {
 										if(loyaltyData){
 											res.send(setRes(resCode.OK,true,"Loyalty Point added successfully.",loyaltyData))
@@ -159,6 +165,11 @@ exports.update = async(req,res) => {
 			}else if(currentDate || pastDate){
 				res.send(setRes(resCode.BadRequest,false, "You can't select past and current date.!",null))
 			}else{
+				if (data.points_redeemed && data.points_redeemed == 1) {
+					if (!data?.gift_card_id || _.isEmpty(data.gift_card_id)) {
+						return res.send(setRes(resCode.BadRequest,false, "gift_card_id is required.",null))
+					}
+				}
 				loyaltyPointModel.findOne({
 					where:{id: data.id,isDeleted: false,status: true,deleted_at:null}
 				}).then(async loyaltyDetails => {
@@ -179,6 +190,7 @@ exports.update = async(req,res) => {
 										validity_period:!(_.isEmpty(data.validity_period) && data.validity_period == null) ? data.validity_period : null,
 										amount:(!(_.isEmpty(data.amount) && data.amount == null && _.isEmpty(data.loyalty_type)) && data.loyalty_type == 0) ? data.amount : null,
 										product_id:(!(_.isEmpty(data.product_id) && data.product_id == null && _.isEmpty(data.product_id)) && data.loyalty_type == 1) ? data.product_id : null,
+										gift_card_id: (!(_.isEmpty(data.gift_card_id) && data.gift_card_id == null) && data.points_redeemed == 1) ? data.gift_card_id : null,
 								}
 									,
 									{where: {id:data.id,isDeleted:false,status:true,deleted_at:null}
@@ -192,7 +204,7 @@ exports.update = async(req,res) => {
 									}
 								})
 							}else{
-								res.send(setRes(resCode.BadRequest),false,"Loyalty point name already taken.!",null)
+								res.send(setRes(resCode.BadRequest,false,"Loyalty point name already taken.!",null))
 							}
 						})
 					}

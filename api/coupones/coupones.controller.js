@@ -50,6 +50,17 @@ exports.create = async(req,res) =>{
 			if (valueType == false && valueType != null) {
 				return res.send(setRes(resCode.BadRequest, false, "Please enter valid percentage value!", null))
 			}
+
+			if(data?.coupon_code && data?.coupon_code != null){
+				if (data?.coupon_code?.trim().length > 50) {
+					return res.send(setRes(resCode.BadRequest, false, "Please enter valid Coupon Code!", null))
+				}
+				const isCouponCodeExists = await couponeModel.findOne({ where: { business_id: data.business_id, coupon_code: data.coupon_code.trim() ,status: true, isDeleted: false } });
+				console.log('isCouponCodeExists', isCouponCodeExists);
+				if (isCouponCodeExists) {
+					return res.send(setRes(resCode.BadRequest, false, "Coupon Code already exists!", null))
+				}
+			}
 			var valcheck = true;
 			if (validation) {
 				if(data.product_category_id){
@@ -200,6 +211,12 @@ exports.update = async (req, res) => {
 			if (valueType == false && valueType != null) {
 				validation = false;
 				return res.send(setRes(resCode.BadRequest, false, "Please enter valid percentage value!", null))
+			}
+			if(data?.coupon_code && data?.coupon_code != null){
+				const isCouponCodeExists = await couponeModel.findOne({ where: { coupon_code: data.coupon_code ,status: true, isDeleted: false, id: { [Op.ne]: data.id } } });
+				if (isCouponCodeExists) {
+					return res.send(setRes(resCode.BadRequest, false, "Coupon Code already exists!", null))
+				}
 			}
 			if (validation) {
 				couponeModel.findOne({

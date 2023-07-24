@@ -18,6 +18,9 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.INTEGER,
     },
     amount: DataTypes.DECIMAL,
+    gift_card_id: {
+      type: DataTypes.INTEGER,
+    },
     points_redeemed:{
       type:DataTypes.BOOLEAN
     },
