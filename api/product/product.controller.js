@@ -599,7 +599,7 @@ exports.UpdateProductDetail = async (req, res) => {
 						}
 					}
 					var images = files.join(';');
-					const oldFilenames = image.join(';');
+					const oldFilenames = image ? image.join(';') : '';
 					
 					
 					if(images != ""){
