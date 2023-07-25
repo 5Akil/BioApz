@@ -2316,12 +2316,17 @@ exports.businessEventList = async (req, res) => {
 	try {
 		var data = req.body;
 		var combocalenderModel = models.combo_calendar;
+		const userEventsModel = models.user_events;
+		const userModel = models.user;
 		const businesModel = models.business
+		const userEmail = req.userEmail;
 		var currentDate = moment().format("YYYY-MM-DD");
 		var Op = models.Op;
 		var requiredFields = _.reject(["page", "page_size"], (o) => {
 			return _.has(data, o);
 		});
+		const userDetails = await userModel.findOne({ where: { email: userEmail, is_deleted: false, is_active: true } });
+		const userId = userDetails.id ? userDetails.id : '';
 		if (requiredFields == "") {
 			if (data.page < 0 || data.page == 0) {
 				return res.send(
@@ -2338,6 +2343,14 @@ exports.businessEventList = async (req, res) => {
 			let limit = parseInt(data.page_size);
 			var condition = {
 				include: [
+					{
+						model: userEventsModel,
+						where: {
+							user_id: userId,
+							is_deleted: false
+						},
+						required: false
+					},
 					{
 						model: businesModel,
 						where: {
@@ -2377,6 +2390,11 @@ exports.businessEventList = async (req, res) => {
 						}
 						data.dataValues.event_images = image_array
 						delete data.dataValues.business;
+						data.dataValues.is_user_join = false;
+						if(data.dataValues.user_events?.length > 0) {
+							data.dataValues.is_user_join = true;
+						}
+						delete data.dataValues.user_events;
 					}
 					const recordCount = await combocalenderModel.findAndCountAll(condition);
 					const totalRecords = recordCount?.count;
@@ -2401,6 +2419,7 @@ exports.businessEventList = async (req, res) => {
 			);
 		}
 	} catch (error) {
+		console.log('error', error);
 		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null));
 	}
 }

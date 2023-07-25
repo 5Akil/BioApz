@@ -29,7 +29,7 @@ exports.create = async(req,res) =>{
 		var validation = true;
 
 		let arrayFields = ['business_id','name','loyalty_type','points_earned','points_redeemed','validity','validity_period'];
-		const result =  data.loyalty_type == 0 ? (arrayFields.push('amount')) : (arrayFields.push('product_id'));
+		const result =  data.loyalty_type == 0 ? (arrayFields.push('amount')) : '';
 		var requiredFields = _.reject(arrayFields, (o) => { return _.has(data, o)  })
 		if(requiredFields.length == 0){
 			var currentDate = (moment().format('YYYY-MM-DD') == moment(data.validity).format('YYYY-MM-DD'))
@@ -42,12 +42,17 @@ exports.create = async(req,res) =>{
 				validation = false;
 				return res.send(setRes(resCode.BadRequest,false, "You can't select past and current date.!",null))
 			}
-			if (data.points_redeemed && data.points_redeemed == 1) {
+			if (data.points_redeemed && data.points_redeemed == 1 && data.loyalty_type == 1) {
 				if (!data?.gift_card_id || _.isEmpty(data.gift_card_id)) {
 					return res.send(setRes(resCode.BadRequest,false, "gift_card_id is required.",null))
 				}
 			}
-				if(data.product_id != null){
+			if (data.points_redeemed && data.points_redeemed == 0 && data.loyalty_type == 1) {
+				if (!data?.product_id || _.isEmpty(data.product_id)) {
+					return res.send(setRes(resCode.BadRequest,false, "product_id is required.",null))
+				}
+			}
+				if(data.product_id && data.product_id != null){
 					var productModel = models.products
 					await productModel.findOne({
 						where:{id:data.product_id,is_deleted:false}
@@ -80,7 +85,7 @@ exports.create = async(req,res) =>{
 										validity:!(_.isEmpty(data.validity) && data.validity == null) ? data.validity : null,
 										validity_period:!(_.isEmpty(data.validity_period) && data.validity_period == null) ? data.validity_period : null,
 										amount:(!(_.isEmpty(data.amount) && data.amount == null && _.isEmpty(data.loyalty_type)) && data.loyalty_type == 0) ? data.amount : null,
-										product_id:(!(_.isEmpty(data.product_id) && data.product_id == null && _.isEmpty(data.product_id)) && data.loyalty_type == 1) ? data.product_id : null,
+										product_id:(!(_.isEmpty(data.product_id) && data.product_id == null && _.isEmpty(data.product_id)) && data.loyalty_type == 1 && data.points_redeemed == 0) ? data.product_id : null,
 										gift_card_id: (!(_.isEmpty(data.gift_card_id) && data.gift_card_id == null) && data.points_redeemed == 1) ? data.gift_card_id : null,
 									}).then(async loyaltyData => {
 										if(loyaltyData){
