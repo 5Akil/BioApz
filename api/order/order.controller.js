@@ -362,11 +362,7 @@ exports.BusinessOrderDetail = async (req,res) => {
 					const signurl = await awsConfig.getSignUrl(data.product.image[0]).then(function(res){
 						data.product.dataValues.product_image = res
 					})
-					if(signurl && signurl != null){
-						data.product.dataValues.product_image = res
-					}else{
-						data.product.dataValues.product_image = commonConfig.default_image
-					}
+
 					delete data.product.dataValues.sub_category_id
 					delete data.product.dataValues.image
 					delete data.product.dataValues.product_categorys
