@@ -2521,7 +2521,7 @@ exports.userEventList = async (req, res) => {
 		let limit = parseInt(data.page_size);
 
 		var condition = {
-			attributes: ['id','business_id','images','title','description','start_date','end_date','start_time','end_time','status'],
+			attributes: ['id','business_id','images','title','description','start_date','end_date','start_time','end_time','status','location'],
 			include: [
 				{
 				  model: userEventModel,
