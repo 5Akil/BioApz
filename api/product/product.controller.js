@@ -1039,6 +1039,7 @@ exports.CategoryList = async(req, res) => {
 	var data = req.body
 
 	var productCategoryModel = models.product_categorys
+	const Op = models.Op;
 
 	var requiredFields = _.reject(['business_id','page','page_size'], (o) => { return _.has(data, o)  })
 	if(requiredFields == ""){
@@ -1060,7 +1061,11 @@ exports.CategoryList = async(req, res) => {
 			condition.offset = skip,
 			condition.limit = limit
 		}
-
+		if (data?.search && !_.isEmpty(data.search) && data.search != null) {
+			console.log('condition.where')
+			condition.where = { ...condition.where, name: { [Op.like]: "%" + data.search + "%" } }
+		}
+		console.log('condition.where', condition.where);
 		const recordCount = await productCategoryModel.findAndCountAll(condition);
 		const totalRecords = recordCount?.count;
 
@@ -1392,10 +1397,10 @@ exports.ProductTypeList = async(req, res) => {
 			condition.attributes =  { exclude: ['is_deleted', 'is_enable','createdAt','updatedAt'] }
 
 		if(data.category_id) {
-			condition.where = {business_id:data.business_id,parent_id:data.category_id,is_deleted:false}
+			condition.where = { ...condition.where, business_id:data.business_id,parent_id:data.category_id,is_deleted:false}
 		}
 		if(data.search && data.search != null){
-			condition.where = {[Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],}
+			condition.where = { ...condition.where, [Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],}
 		}
 		if(data.page_size != 0 && !_.isEmpty(data.page_size)){
 			condition.offset = skip,

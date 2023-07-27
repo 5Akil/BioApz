@@ -1741,7 +1741,7 @@ exports.updateUserDetils = async (req, res) => {
 					})
 
 					await businessModel.findOne({
-						where: { is_deleted: false, phone: { [Op.eq]: data.phone }, country_id: data.country_id, id: { [Op.ne]: data.id } }
+						where: { is_deleted: false, phone: { [Op.eq]: data.phone }, country_id: data?.country_id || '', id: { [Op.ne]: data.id } }
 					}).then(async phoneData => {
 						if(phoneData != null){
 							validation =false;
@@ -1806,6 +1806,7 @@ exports.updateUserDetils = async (req, res) => {
 			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
 		}
 	} catch (error) {
+		console.log('error', error);
 		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
 	}
 }

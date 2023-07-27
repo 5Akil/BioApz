@@ -365,7 +365,6 @@ exports.applyCoupon = async (req, res) => {
 						coupon_id: data.coupon_id,
 						user_id: userDetails.id,
 						product_id: productDetails.id,
-						order_id: productDetails.id
 					});
 
 					if(userCouponDetail) {

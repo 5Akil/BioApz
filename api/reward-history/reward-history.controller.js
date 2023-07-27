@@ -38,7 +38,7 @@ exports.rewardHistoryList = async (req, res) => {
                     model: orderModel,
                     attributes: ["user_id", "business_id", "order_no", "amount"],
                     where: {
-                        user_id: 132
+                        user_id: data.user_id
                     },
                     required: true,
                 }
