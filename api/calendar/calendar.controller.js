@@ -408,8 +408,6 @@ exports.GetAllEvents = async (req, res) => {
 		var limit = parseInt(data.page_size)
 		
 			var condition = {
-				offset:skip,
-				limit:limit,
 				subQuery:false,
 				order: [
 					['createdAt', 'DESC']
@@ -418,8 +416,24 @@ exports.GetAllEvents = async (req, res) => {
 			condition.where = {business_id: data.business_id,is_deleted: false,}
 			condition.attributes = { exclude: ['createdAt','updatedAt','is_deleted','repeat','repeat_every','repeat_on']}
 
+			if(data.page_size != 0 && !_.isEmpty(data.page_size)){
+				condition.offset = skip,
+				condition.limit = limit
+			}
+
 			if(!_.isEmpty(data.from_date) && !_.isEmpty(data.to_date)){
 					condition.where = {...condition.where,...{start_date: {[Op.between]: [startDate, endDate]}}}
+			}
+
+			if(!_.isEmpty(data.search)){
+				condition.where = {...condition.where,...{
+					[Op.or]: [{
+							title: {
+								[Op.like]: "%" + data.search + "%",
+							}
+						},
+					],
+				}}
 			}
 
 		 	await comboModel.findAll(condition).then(async combos => {
