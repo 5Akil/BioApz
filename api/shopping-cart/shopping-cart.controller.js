@@ -157,7 +157,6 @@ exports.CartList = async(req,res) => {
 
 			if(cartData != null && cartData != ""){
 				for(dataVal of cartData){
-
 					if(dataVal.product != null){
 						if(dataVal.product.image != null && !_.isEmpty(dataVal.product.image)){
 							var product_image = await awsConfig.getSignUrl(dataVal.product.image[0]).then(function(res){
@@ -178,7 +177,7 @@ exports.CartList = async(req,res) => {
 						}else{
 							dataVal.dataValues.product_name = null;
 						}
-
+						
 						if(dataVal.product.product_categorys != null){
 							dataVal.dataValues.category_name = dataVal.product.product_categorys.name;
 						}else{
@@ -198,28 +197,12 @@ exports.CartList = async(req,res) => {
 						}
 		
 						if(dataVal.product != null){
-		
 							dataVal.dataValues.rating = null
 						}else{
 							dataVal.dataValues.rating = null
 						}
-						delete dataVal.dataValues.category_id
-						delete dataVal.dataValues.product
 					}
-					if(dataVal.product_category != null){
-
-						dataVal.dataValues.category_name = dataVal.product_category.name
-						delete dataVal.dataValues.product_category
-					}else{
-						dataVal.dataValues.category_name = ""
-					}
-					// if(data.sub_category != null){
-
-					// 	data.dataValues.product_type = data.sub_category.name
-					// 	delete data.dataValues.sub_category
-					// }else{
-					// 	data.dataValues.product_type = "";
-					// }
+					delete dataVal.dataValues.product;
 				}
 
 				const response = new pagination(cartData, totalRecords, parseInt(data.page), parseInt(data.page_size));

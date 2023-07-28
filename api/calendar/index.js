@@ -12,11 +12,12 @@ const uploadImage = multer({ dest: 'combos/' });
 var controller = require('./calendar.controller')
 
 const {verifyToken} = require('../../config/token');
+const {authorize} = require('../../helpers/authorize');
 
 router.post('/create', verifyToken, uploadImage.array('images'), controller.CreateEvent)
 router.post('/list', verifyToken, controller.GetAllEvents)
 router.post('/update', verifyToken, uploadImage.array('images'), controller.UpdateEvent)
 router.post('/removeImages', verifyToken, controller.removeImagesFromCombo);
 router.delete('/delete/:id', verifyToken, controller.DeleteEvent)
-router.get('/view/:id', verifyToken, controller.ViewEvent)
+router.get('/view/:id', verifyToken,authorize([2,3]), controller.ViewEvent)
 module.exports = router;

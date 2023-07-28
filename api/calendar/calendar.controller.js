@@ -478,6 +478,7 @@ exports.ViewEvent = async (req, res) => {
 	var usersModel = models.user
 	var currentDate = (moment().format('YYYY-MM-DD'));
 	var beforeSevenDay = (moment().subtract(7, "days").format('YYYY-MM-DD'));
+	var authData = req.user
 
 	comboModel.findOne({
 		where: {
@@ -506,6 +507,22 @@ exports.ViewEvent = async (req, res) => {
 			}
 			event.dataValues.event_images = image_array;
 			event.dataValues.isEditAndDelete = isEditAndDelete;
+			event.dataValues.is_user_join = false;
+			if(authData.role_id == 2){
+				var userDataVal = await userEventsModel.findOne({
+					where:{
+						user_id: authData.id,
+						is_deleted:false,
+						event_id:data.id,
+						business_id:val.business_id
+					}
+				});
+
+				if(userDataVal){
+					event.dataValues.is_user_join = true;
+				}
+			}
+
 			await userEventsModel.findAll({
 				where: {
 					event_id: event.id,

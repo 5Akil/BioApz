@@ -2699,7 +2699,7 @@ exports.eventUserLeave = async (req, res) => {
 							await eventUserModel.findOne({
 								where: {id: data.id},
 							}).then(async user_data => {
-								return res.send(setRes(resCode.OK, false, 'Leave successfully from event', user_data))
+								return res.send(setRes(resCode.OK, true, 'Leave successfully from event', user_data))
 							})
 						}
 					}).catch(error => {
