@@ -16,6 +16,8 @@ var moment = require('moment')
 const MomentRange = require('moment-range');
 const Moment = MomentRange.extendMoment(moment);
 var fs = require('fs');
+const util = require('util');
+const stat = util.promisify(fs.stat);
 var awsConfig = require('../../config/aws_S3_config');
 const { log } = require('console')
 const pagination = require('../../helpers/pagination');
@@ -67,9 +69,10 @@ exports.CreateEvent = async (req, res) => {
 		}
 		if (filesData.length != 0 && filesData.length <= 5) {
 			for (const image of filesData) {
+				const fileStat = await stat(image.path);
 				const fileContent = await fs.promises.readFile(image.path);
 				const fileExt = `${image.originalname}`.split('.').pop();
-				if (image.size > commonConfig.maxFileSize) {
+				if (fileStat.size > commonConfig.maxFileSize) {
 					validation = false;
 					res.send(setRes(resCode.BadRequest, false, 'You can upload only 5 mb files, some file size is too large', null))
 				} else if (!commonConfig.allowedExtensions.includes(fileExt)) {
@@ -592,18 +595,19 @@ exports.UpdateEvent = async (req, res) => {
 
 				if (total_image > 5) {
 					validation = false
-					res.send(setRes(resCode.BadRequest, false, "You cannot update more than 5 images.You already uploaded " + image.length + " images", null))
+					return res.send(setRes(resCode.BadRequest, false, "You cannot update more than 5 images.You already uploaded " + image.length + " images", null))
 				}
 				for (const imageFile of filesData) {
+					const fileStat = await stat(imageFile.path);
 					const fileContent = await fs.promises.readFile(imageFile.path);
 					const fileExt = `${imageFile.originalname}`.split('.').pop();
-					if (imageFile.size > commonConfig.maxFileSize) {
+					if (fileStat.size > commonConfig.maxFileSize) {
 						validation = false;
-						res.send(setRes(resCode.BadRequest, false, 'You can upload only 5 mb files, some file size is too large', null))
+						return res.send(setRes(resCode.BadRequest, false, 'You can upload only 5 mb files, some file size is too large', null))
 					} else if (!commonConfig.allowedExtensions.includes(fileExt)) {
 						// the file extension is not allowed
 						validation = false;
-						res.send(setRes(resCode.BadRequest, false, 'You can upload only jpg, jpeg, png, gif files', null))
+						return res.send(setRes(resCode.BadRequest, false, 'You can upload only jpg, jpeg, png, gif files', null))
 					}
 				}
 
