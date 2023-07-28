@@ -432,7 +432,7 @@ exports.commonRewardsList =async(req,res) => {
 		const businessEmail = req.userEmail;
 		const businessDetails = await businessModel.findOne({ where: { email: businessEmail, is_active: true, is_deleted: false } });
 		const businessId = businessDetails?.id || '';
-		const businessIdCond = { business_id: businessId };
+		const businessIdCond = data?.business_id ? { business_id: data?.business_id }: { business_id: businessId };
 		if(requiredFields == ""){
 			if(!data?.page || +(data.page) <= 0) {
 				return res.send(setRes(resCode.BadRequest, null, false, "invalid page number, should start with 1"))
