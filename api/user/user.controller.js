@@ -2359,7 +2359,10 @@ exports.businessEventList = async (req, res) => {
 						},
 						required: true
 					}
-				]
+				],
+				order: [
+					['start_date', 'ASC']
+				],
 			}
 			condition.where = {is_deleted: false,end_date: {
 				[Op.gt]: currentDate
@@ -2419,7 +2422,6 @@ exports.businessEventList = async (req, res) => {
 			);
 		}
 	} catch (error) {
-		console.log('error', error);
 		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null));
 	}
 }

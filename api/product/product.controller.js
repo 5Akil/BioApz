@@ -762,12 +762,16 @@ exports.GetProductById = async (req, res) => {
 				}
 			})
 
-			const couponData = await couponModel.findOne({where:{isDeleted:false,status:true}});
+			const couponData = await couponModel.findOne({where:{isDeleted:false,status:true,
+				product_id: {
+					[Op.regexp]: `(^|,)${product.id}(,|$)`,
+			  	},}});
 			var is_coupon_available = false;
+
 			if (couponData) {
-				const hobbiesString = couponData.product_id; // Retrieve the hobbies column value from the data object
-				const hobbiesArray = hobbiesString?.split(',')?.includes(`${product.id}`);
-				if(hobbiesArray){
+				const productIds = couponData.product_id; // Retrieve the hobbies column value from the data object
+				const ids = productIds?.split(',')?.includes(`${product.id}`);
+				if(ids){
 					is_coupon_available = true;
 				}
 			} 
@@ -1062,10 +1066,8 @@ exports.CategoryList = async(req, res) => {
 			condition.limit = limit
 		}
 		if (data?.search && !_.isEmpty(data.search) && data.search != null) {
-			console.log('condition.where')
 			condition.where = { ...condition.where, name: { [Op.like]: "%" + data.search + "%" } }
 		}
-		console.log('condition.where', condition.where);
 		const recordCount = await productCategoryModel.findAndCountAll(condition);
 		const totalRecords = recordCount?.count;
 
