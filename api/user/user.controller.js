@@ -2359,7 +2359,10 @@ exports.businessEventList = async (req, res) => {
 						},
 						required: true
 					}
-				]
+				],
+				order: [
+					['start_date', 'ASC']
+				],
 			}
 			condition.where = {is_deleted: false,end_date: {
 				[Op.gt]: currentDate
@@ -2419,7 +2422,6 @@ exports.businessEventList = async (req, res) => {
 			);
 		}
 	} catch (error) {
-		console.log('error', error);
 		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null));
 	}
 }
@@ -2521,7 +2523,7 @@ exports.userEventList = async (req, res) => {
 		let limit = parseInt(data.page_size);
 
 		var condition = {
-			attributes: ['id','business_id','images','title','description','start_date','end_date','start_time','end_time','status'],
+			attributes: ['id','business_id','images','title','description','start_date','end_date','start_time','end_time','status','location'],
 			include: [
 				{
 				  model: userEventModel,
@@ -2699,7 +2701,7 @@ exports.eventUserLeave = async (req, res) => {
 							await eventUserModel.findOne({
 								where: {id: data.id},
 							}).then(async user_data => {
-								return res.send(setRes(resCode.OK, false, 'Leave successfully from event', user_data))
+								return res.send(setRes(resCode.OK, true, 'Leave successfully from event', user_data))
 							})
 						}
 					}).catch(error => {
