@@ -2361,6 +2361,7 @@ exports.businessEventList = async (req, res) => {
 					}
 				],
 				order: [
+					['start_time', 'ASC'],
 					['start_date', 'ASC']
 				],
 			}
@@ -2544,6 +2545,10 @@ exports.userEventList = async (req, res) => {
 					},
 					required: true
 				}
+			],
+			order: [
+				['start_time', 'ASC'],
+				['start_date', 'ASC']
 			],
 		}	
 		condition.where = {
