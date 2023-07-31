@@ -2718,3 +2718,197 @@ exports.eventUserLeave = async (req, res) => {
 	}
 }
 
+// Purchase gift card  START
+exports.userGiftCardPurchase = async (req, res) => {
+	try {
+		const data = req.body;
+		const userModel = models.user;
+		const giftCardModel = models.gift_cards;
+		const userGiftCardModel = models.user_giftcards;
+		const userEmail = req.userEmail;
+		const currentDate = (moment().format('YYYY-MM-DD'))
+		var requiredFields = _.reject(["gift_card_id","payment_status", "amount", "qty"], (o) => {
+			return _.has(data, o);
+		});
+
+		const userDetails = await userModel.findOne({ where: { email: userEmail, is_active: true, is_deleted: false } });
+		if (!userDetails) {
+			return res.send(setRes(resCode.ResourceNotFound, false, "User not found.", null))
+		}
+		if (requiredFields == "") {
+			if (![0, 1].includes(+(data.payment_status))) {
+				return res.send(setRes(resCode.BadRequest, false, "Invalid value for Payment status.", null))
+			}
+
+			// check gift card expire or not
+			const giftCardDetails = await giftCardModel.findOne({ where: { id: data.gift_card_id, status: true, isDeleted: false } });
+			if (giftCardDetails) {
+				const giftCardObj = {
+					gift_card_id: data.gift_card_id,
+					amount: data.amount,
+					user_id: userDetails.id,
+					business_id: giftCardDetails.business_id,
+					purchase_date: currentDate,
+					redeemed_amount: 0,
+					payment_status: (data.payment_status == 1) ? true : false,
+				}
+				if (data.qty && +(data.qty) > 0) {
+					const createdGiftCards = [];
+					for(let i = 0; i < +(data.qty); i++){
+						const gCard = await userGiftCardModel.create(giftCardObj);
+						createdGiftCards.push(gCard);
+					}
+					res.send(setRes(resCode.OK, true, "Gift Card Purchased successfully!", createdGiftCards))
+				} else {
+					return res.send(setRes(resCode.BadRequest, false, "Invald Qty value.", null))
+				}
+			} else {
+				return res.send(setRes(resCode.ResourceNotFound, false, "Gift card not found.", null))
+			}
+		} else {
+			return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
+		}
+	} catch (error) {
+		return res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
+	}
+}
+// Purchase gift card  END
+
+
+// Purchase gift card  START
+exports.userGiftCardShare = async (req, res) => {
+	try {
+		const data = req.body;
+		const userModel = models.user;
+		const giftCardModel = models.gift_cards;
+		const userGiftCardModel = models.user_giftcards;
+		const giftCardTemplateModel = models.gift_card_template;
+		const userEmail = req.userEmail;
+		const currentDate = (moment().format('YYYY-MM-DD'))
+		var requiredFields = _.reject(["gift_card_id", "gift_card_template_id", "gift_for", "from", "note", "to_email", "payment_status", "amount", "qty"], (o) => {
+			return _.has(data, o);
+		});
+
+		const userDetails = await userModel.findOne({ where: { email: userEmail, is_active: true, is_deleted: false } });
+		if (!userDetails) {
+			return res.send(setRes(resCode.ResourceNotFound, false, "User not found.", null))
+		}
+
+		if (requiredFields == "") {
+			if (![0, 1].includes(+(data.payment_status))) {
+				return res.send(setRes(resCode.BadRequest, false, "Invalid value for Payment status.", null))
+			}
+
+			const giftCardTemplate = await giftCardTemplateModel.findOne({ where: { id: data.gift_card_template_id , is_enable: true, is_deleted: false } })
+			if (!giftCardTemplate) {
+				return res.send(setRes(resCode.ResourceNotFound, false, "Giftcard Template not found.", null))
+			}
+			// check gift card expire or not
+			const giftCardDetails = await giftCardModel.findOne({ where: { id: data.gift_card_id } });
+			if (giftCardDetails) {
+				const giftCardObj = {
+					gift_card_id: data.gift_card_id,
+					gift_card_template_id: data.gift_card_template_id,
+					gift_for: data.gift_for,
+					from: data.from,
+					note: data.note,
+					to_email: data.to_email,
+					amount: data.amount,
+					user_id: userDetails.id,
+					business_id: giftCardDetails.business_id,
+					purchase_date: currentDate,
+					payment_status: (data.payment_status == '1') ? true : false,
+				}
+				if (data.qty && +(data.qty) > 0) {
+					const createdSharedGiftCards = [];
+					for(let i = 0; i < +(data.qty); i++){
+						const gCard = await userGiftCardModel.create(giftCardObj);
+						createdSharedGiftCards.push(gCard);
+					}
+					res.send(setRes(resCode.OK, true, "Gift Card Shared successfully!", createdSharedGiftCards))
+				} else {
+					return res.send(setRes(resCode.BadRequest, false, "Invalid value for Qty.", null))
+				}
+			} else {
+				return res.send(setRes(resCode.ResourceNotFound, false, "Gift card not found.", null))
+			}
+		} else {
+			return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
+		}
+	} catch (error) {
+		return res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
+	}
+}
+// Purchase gift card  END
+
+
+// User giftcards list
+exports.userGiftCardList = async (req, res) => {
+	try {
+		const data = req.body;
+		const userEmail = req.userEmail;
+		const userModel = models.user;
+		const giftCardsModel = models.gift_cards;
+		const userGiftCardsModel = models.user_giftcards;
+		const Op = models.Op;
+		let requiredFields = _.reject(["page", "page_size"], (o) => {
+			return _.has(data, o);
+		});
+
+		const userDetails = await userModel.findOne({ where: { email: userEmail, is_active: true, is_deleted: false } })
+		if (!userDetails) {
+			return res.send(setRes(resCode.ResourceNotFound, false, "User not found", null))
+		}
+		if (requiredFields == "") {
+			if (data.page < 0 || data.page === 0) {
+				return res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1", null))
+			}
+			const skip = data.page_size * (data.page - 1)
+			const limit = parseInt(data.page_size)
+			
+			const condition = {
+				offset: skip,
+				limit: limit,
+				include: [
+					{
+						model: giftCardsModel,
+						attributes: { exclude: ["status","isDeleted","createdAt","updatedAt","deleted_at"] }
+					}
+				],
+				attributes: { exclude: ["status","isDeleted","createdAt","updatedAt"] },
+				order: [
+					['createdAt', 'DESC']
+				]
+			}
+			const businessCond = data.business_id ? { business_id: data.business_id } : {};
+			condition.where = {
+				status: true,
+				is_deleted: false,
+				...businessCond,
+				[Op.or] : [
+					{
+						[Op.and] : [
+							{
+								to_email: null
+							},
+							{
+								user_id: userDetails.id
+							}
+						]
+					},
+					{
+						to_email: userEmail
+					}
+				]
+			};
+			const userGiftCards = await userGiftCardsModel.findAndCountAll(condition);
+			const totalRecords = userGiftCards?.count || 0;
+			const response = new pagination(userGiftCards.rows, totalRecords, parseInt(data.page), parseInt(data.page_size));
+			res.send(setRes(resCode.OK, true, "User Gifcards List.", (response.getPaginationInfo())));
+		} else {
+			return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null));
+		}
+	} catch (error) {
+		return res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
+	}
+}

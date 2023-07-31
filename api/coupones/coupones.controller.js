@@ -41,7 +41,7 @@ exports.create = async(req,res) =>{
 			const couponTitle = data?.title?.trim() || data.title;
 			var currentDate = (moment().format('YYYY-MM-DD') == moment(data.expire_at).format('YYYY-MM-DD'))
 			var pastDate = moment(data.expire_at, 'YYYY-MM-DD').isBefore(moment());
-			if (!Number(data.amount) || isNaN(data.amount)) {
+			if (!Number(data.coupon_value) || isNaN(data.coupon_value)) {
 				return res.send(setRes(resCode.BadRequest, false, "Amount field invalid.!", null))
 			}
 			if (currentDate || pastDate) {
@@ -200,7 +200,7 @@ exports.update = async (req, res) => {
 			const couponTitle = data?.title?.trim() || data.title;
 			var currentDate = (moment().format('YYYY-MM-DD') == moment(data.expire_at).format('YYYY-MM-DD'))
 			var pastDate = moment(data.expire_at, 'YYYY-MM-DD').isBefore(moment());
-			if (!Number(data.amount) || isNaN(data.amount)) {
+			if (!Number(data.coupon_value) || isNaN(data.coupon_value)) {
 				validation = false;
 				return res.send(setRes(resCode.BadRequest, false, "Amount field invalid.!", null))
 			}
