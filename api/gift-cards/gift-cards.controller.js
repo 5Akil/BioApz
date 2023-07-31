@@ -42,7 +42,7 @@ exports.giftCardCreate = async(req,res) => {
 				res.send(setRes(resCode.BadRequest,false, "Please select valid cashback percentage!",null))
 			}else if(currentDate || pastDate){
 				res.send(setRes(resCode.BadRequest,false, "You can't select past and current date.!",null))
-			}else if(!(Number.isInteger(Number(data.amount)))){
+			}else if(!Number(data.amount) || isNaN(data.amount)){
 				res.send(setRes(resCode.BadRequest,false, "Amount field invalid.!",null))
 			}else {
 				if(validation){
