@@ -330,7 +330,7 @@ exports.createProduct = async(req,res) => {
 		var categoryModel = models.product_categorys
 		var productModel = models.products
 		var Op = models.Op
-		var requiredFields = _.reject(['business_id','category_id','sub_category_id','name','price','description'], (o) => { return _.has(data, o)  })
+		var requiredFields = _.reject(['business_id','category_id','sub_category_id','name','price','description', 'product_item'], (o) => { return _.has(data, o)  })
 		if (requiredFields == "") {
 			if(data.name && !_.isEmpty == data.name){
 				var name = data.name;
@@ -1833,7 +1833,7 @@ exports.simillarProducts = async(req,res) => {
 					},
 					category_id:product.category_id
 				}
-				condition.attributes = ['id','name','price','description','category_id','image'] 
+				condition.attributes = ['id','name','price','description','category_id','image' ,'product_item'] 
 				productModel.findAll(condition).then(async categoryData => {
 					if(categoryData.length > 0){
 						const shuffledArrays = _.shuffle(categoryData);

@@ -14,6 +14,12 @@ module.exports = (sequelize, DataTypes) => {
     name: DataTypes.STRING,
     price: DataTypes.DOUBLE,
     description: DataTypes.TEXT,
+    product_item: {
+      type: DataTypes.STRING,
+      get() {
+        return this.getDataValue('product_item') ? this.getDataValue('product_item') : ''
+      },
+    },
     image: {
       type: DataTypes.TEXT,
       get() {

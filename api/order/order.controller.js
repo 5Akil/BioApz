@@ -143,7 +143,7 @@ exports.OrderDetail = async (req,res) => {
 			{
 			  model: productModel,
 			  required:true,
-			  attributes: ['id','image','name','price','category_id','sub_category_id'],
+			  attributes: ['id','image','name','price','category_id','sub_category_id', 'product_item'],
 			  include:  [{
 				model: categoryModel,
 				as: 'product_categorys',
@@ -171,6 +171,8 @@ exports.OrderDetail = async (req,res) => {
 				data.dataValues.product_type = data?.product?.sub_category?.name
 				data.dataValues.product_name = data?.product?.name
 				data.dataValues.product_price = data?.product?.price
+				data.product.dataValues.category_name = data?.product?.product_categorys?.name
+				data.product.dataValues.product_type = data?.product?.sub_category?.name
 				data.product.dataValues.product_image = ''
 				if (data?.product?.image){
 					const signurl = await awsConfig.getSignUrl(data.product.image[0]).then(function(res){
@@ -179,8 +181,8 @@ exports.OrderDetail = async (req,res) => {
 				}else{
 					data.dataValues.product_image = commonConfig.default_image
 				}
-				// delete data?.product?.dataValues?.product_categorys
-				// delete data?.product?.dataValues?.sub_category
+				delete data?.product?.dataValues?.product_categorys
+				delete data?.product?.dataValues?.sub_category
 				// delete data?.dataValues?.product
 				// delete data?.dataValues?.order
 				
@@ -320,7 +322,7 @@ exports.BusinessOrderDetail = async (req,res) => {
 			  include: [
 				{
 				  model: productModel,
-				  attributes: ['id','image','name','price','category_id','sub_category_id'],
+				  attributes: ['id','image','name','price','category_id','sub_category_id', 'product_item'],
 				  include:  [{
 					model: categoryModel,
 					as: 'product_categorys',
