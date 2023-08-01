@@ -50,7 +50,8 @@ exports.create = async(req,res) =>{
 			if (valueType == false && valueType != null) {
 				return res.send(setRes(resCode.BadRequest, false, "Please enter valid percentage value!", null))
 			}
-
+			const couponeCode = data.coupone_code ? data.coupone_code.trim() : (data.coupon_code ? data.coupon_code.trim() : '' );
+			data.coupon_code = couponeCode;
 			if(data?.coupon_code && data?.coupon_code != null){
 				if (data?.coupon_code?.trim().length > 50) {
 					return res.send(setRes(resCode.BadRequest, false, "Please enter valid Coupon Code!", null))
@@ -212,6 +213,8 @@ exports.update = async (req, res) => {
 				validation = false;
 				return res.send(setRes(resCode.BadRequest, false, "Please enter valid percentage value!", null))
 			}
+			const couponeCode = data.coupone_code ? data.coupone_code.trim() : (data.coupon_code ? data.coupon_code.trim() : '' );
+			data.coupon_code = couponeCode;
 			if(data?.coupon_code && data?.coupon_code != null){
 				const isCouponCodeExists = await couponeModel.findOne({ where: { coupon_code: data.coupon_code ,status: true, isDeleted: false, id: { [Op.ne]: data.id } } });
 				if (isCouponCodeExists) {
