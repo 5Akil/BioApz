@@ -392,17 +392,20 @@ exports.UpdateProfile = async (req, res) => {
 		var mobilenumber = /^[0-9]+$/;
 		var mailId = data.email;
 		var emailFormat = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/;
-		if(!data?.username || (data?.username)?.length > 100){
+		if(data['username'] &&  (!data?.username || (data?.username)?.length > 100)){
 			return res.send(setRes(resCode.BadRequest, false, 'Username must be less than 100 characters',null));
 		}
-		if (!mailId || mailId?.match(emailFormat) == null) {
+		if (data['email'] && (!mailId || mailId?.match(emailFormat) == null)) {
 			return res.send(setRes(resCode.BadRequest, false, 'Please enter valid email format.', null));
 		}
-		if (((!data.mobile || _.isEmpty(data.mobile)) && data.country_id )|| ((!data.country_id || _.isEmpty(data.country_id)) && data.mobile )) {
-			const missingField = (!data.mobile || _.isEmpty(data.mobile)) ? 'phone number' : 'country' ;
+		if ((data['country_id'] && data['mobile']) && (((!data.mobile || _.isEmpty(data.mobile)) && data.country_id )|| ((!data.country_id || _.isEmpty(data.country_id)) && data.mobile ))) {
+			const missingField = (!data.mobile || _.isEmpty(data.mobile)) ? 'mobile' : 'country' ;
 			return res.send(setRes(resCode.BadRequest, false, `Please enter valid ${missingField}.`, null));
+		} else if ((data.country_id != undefined && _.isEmpty(data.country_id)) || (data.mobile != undefined && _.isEmpty(data.mobile)) || (data['country_id'] && !data['mobile']) || (!data['country_id'] && data['mobile'])) {
+				const missingField = (!data.mobile || _.isEmpty(data.mobile)) ? 'mobile' : 'country' ;
+				return res.send(setRes(resCode.BadRequest, false, `Please enter valid ${missingField}.`, null));
 		}
-		if (!data?.mobile || (data.mobile.length > 15) || (data.mobile.length < 7) || !(mobilenumber.test(data.mobile))) {
+		if (data['country_id'] && data['mobile'] && (!data?.mobile || (data.mobile.length > 15) || (data.mobile.length < 7) || !(mobilenumber.test(data.mobile)))) {
 			return res.send(setRes(resCode.BadRequest, false, 'Please enter valid mobile number.', null));
 		}
 
@@ -423,16 +426,16 @@ exports.UpdateProfile = async (req, res) => {
 					where: { is_deleted: false, email: { [Op.eq]: data.email }, id: { [Op.ne]: data.id } }
 				});
 
-				if (emailData != null) {
+				if (data['email'] && emailData != null) {
 					validation = false;
 					return res.send(setRes(resCode.BadRequest, false, 'This email is already associated with another account !', null))
 				}
 
 				const phoneData = await userModel.findOne({
-					where: { is_deleted: false,country_id:data.country_id , mobile: { [Op.eq]: data.mobile }, id: { [Op.ne]: data.id } }
+					where: { is_deleted: false,country_id:data.country_id || '' , mobile: { [Op.eq]: data.mobile }, id: { [Op.ne]: data.id } }
 				});
 
-				if (phoneData != null) {
+				if (data['mobile'] && data['country_id'] && phoneData != null) {
 					validation = false;
 					return res.send(setRes(resCode.BadRequest, false, 'This mobile number is already associated with another account !', null))
 				}

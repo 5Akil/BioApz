@@ -300,17 +300,24 @@ exports.UpdateBusinessDetail = async (req, res) => {
 	var businessModel = models.business
 	var categoryModel = models.business_categorys
 	var Op = models.Op;
-	var requiredFields = _.reject(['id','country_id','business_name', 'person_name', 'abn_no', 'email', 'phone', 'description'], (o) => { return _.has(data, o) })
+	var requiredFields = _.reject(['id'], (o) => { return _.has(data, o) })
 	var mailId = data.email;
 	var emailFormat = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/;
 
 	if (requiredFields == '') {
 		var mobilenumber = /^[0-9]+$/;
-		if (mailId.match(emailFormat) == null) {
+		// check for valid and not empty email
+		if ((data.email != undefined &&  _.isEmpty(data.email)) || mailId && mailId.match(emailFormat) == null) {
 			res.send(setRes(resCode.BadRequest, false, 'Please enter valid email format.', null));
-		}
-		else if ((data.phone.length > 15) || (data.phone.length < 7) || !(mobilenumber.test(data.phone))) {
-			res.send(setRes(resCode.BadRequest, false, 'Please enter valid mobile number.', null));
+		} // Check for valid and empty business name
+		else if (data.business_name != undefined &&  _.isEmpty(data.business_name)) {
+			return res.send(setRes(resCode.BadRequest, false, `Please enter valid business name`, null));
+		} // Check for valid and empty phone and country code
+		else if ( (data['country_id'] && !data['phone']) || (!data['country_id'] && data['phone']) || (data.country_id != undefined &&  _.isEmpty(data.country_id) )|| (_.isEmpty(data.phone) && data.phone != undefined )) {
+			const invalidField = (!data.country_id &&  _.isEmpty(data.country_id)) ? 'country' : 'phone'
+			return res.send(setRes(resCode.BadRequest, false, `Please enter valid ${invalidField}.`, null));
+		} else if (data['country_id'] && data['phone'] && ((data.phone.length > 15) || (data.phone.length < 7) || !(mobilenumber.test(data.phone)))) {
+			return res.send(setRes(resCode.BadRequest, false, 'Please enter valid phone number.', null));
 		} else {
 			businessModel.findOne({
 				where: { id: data.id, is_deleted: false, is_active: true }
@@ -319,17 +326,17 @@ exports.UpdateBusinessDetail = async (req, res) => {
 					res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
 				} else {
 					businessModel.findOne({
-						where: { is_deleted: false, business_name: { [Op.eq]: data.business_name.trim() }, id: { [Op.ne]: data.id } }
+						where: { is_deleted: false, business_name: { [Op.eq]: data.business_name?.trim() }, id: { [Op.ne]: data.id } }
 					}).then(async nameData => {
 						if(nameData != null){
 							res.send(setRes(resCode.BadRequest, false, "This business name is already associated with another account.!", null))
 						}else{
 							businessModel.findOne({
-								where: { is_deleted: false, email: { [Op.eq]: data.email }, id: { [Op.ne]: data.id } }
+								where: { is_deleted: false, email: { [Op.eq]: data.email || '' }, id: { [Op.ne]: data.id } }
 							}).then(async emailData => {
 								if (emailData == null) {
 									businessModel.findOne({
-										where: { is_deleted: false,country_id:data.country_id, phone: { [Op.eq]: data.phone }, id: { [Op.ne]: data.id } }
+										where: { is_deleted: false,country_id: data?.country_id || '', phone: { [Op.eq]: data.phone || '' }, id: { [Op.ne]: data.id } }
 									}).then(async phoneData => {
 										if (phoneData == null) {
 											if (data.email) {
@@ -1701,7 +1708,7 @@ exports.updateUserDetils = async (req, res) => {
 
 		if (requiredFields == '') {
 			var mobilenumber = /^[0-9]+$/;
-			if (((!data.phone || _.isEmpty(data.phone)) && data.country_id )|| ((!data.country_id || _.isEmpty(data.country_id)) && data.phone )) {
+			if ((data.country_id != undefined && _.isEmpty(data.country_id)) || (data.phone != undefined && _.isEmpty(data.phone)) || ((!data.phone || _.isEmpty(data.phone)) && data.country_id )|| ((!data.country_id || _.isEmpty(data.country_id)) && data.phone )) {
 				const missingField = (!data.phone || _.isEmpty(data.phone)) ? 'phone number' : 'country' ;
 				return res.send(setRes(resCode.BadRequest, false, `Please enter valid ${missingField}.`, null));
 			}
