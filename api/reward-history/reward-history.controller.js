@@ -3,6 +3,9 @@ const pagination = require('../../helpers/pagination');
 const setRes = require('../../response')
 const resCode = require('../../config/res_code_config');
 const _ = require('underscore')
+const moment = require('moment')
+const MomentRange = require('moment-range');
+const Moment = MomentRange.extendMoment(moment);
 
 exports.rewardHistoryList = async (req, res) => {
     const data = req.body;
@@ -136,5 +139,659 @@ exports.rewardHistoryList = async (req, res) => {
 
     } else {
         res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
+    }
+}
+
+exports.rewardHistoryBusinessList = async (req, res) => {
+    try {
+        const data = req.body;
+        
+        const rewardHistoryModel = models.reward_history;
+        const orderModel = models.orders;
+        const userModel = models.user;
+        const userGiftCardsModel = models.user_giftcards;
+        const giftCardsModel = models.gift_cards;
+
+        const discountsModel = models.discounts;
+        const cashbacksModel = models.cashbacks;
+        const couponesModel = models.coupones;
+        const loyaltyPointsModel = models.loyalty_points;
+
+        const businessUser = req?.user;
+        const Op = models.Op;
+
+        const requiredFields = _.reject(['page','page_size'], (o) => { return _.has(data, o) })
+        
+        if (requiredFields == '') {
+            const blankFields = _.reject(['page','page_size'], (o) => { return data[o] });
+            if (blankFields != "") {
+                return res.send(setRes(resCode.BadRequest, false, (blankValue.toString() + ' can not be blank'),null))
+            }
+            if (data.page < 0 || data.page === 0) {
+                return res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1", null))
+            }
+            const condition = {
+                include: [
+                    {
+                        model: orderModel,
+                        attributes: ["user_id", "business_id", "order_no", "amount"],
+                        include: [
+                            {
+                                model: userModel,
+                                attributes: ["id", "username", "email" ]
+                            }
+                        ],
+                        where: {
+                            business_id: businessUser?.id || ''
+                        },
+                        required: true,
+                    },
+                ],
+                attributes: { exclude:["deleted_at","updatedAt"]},
+                order: [
+                    ["createdAt","DESC"]
+                ]
+            }
+            const responseArr = [];
+            const businessRewardHistoryData = await rewardHistoryModel.findAndCountAll(condition);
+            if (businessRewardHistoryData?.rows && businessRewardHistoryData?.rows.length > 0) {
+                for (let rewardHistory of businessRewardHistoryData?.rows) {
+                    if (rewardHistory.reference_reward_type == 'gift_cards') {
+
+                        let rewardDetailsObj = await userGiftCardsModel.findOne({ 
+                            where: {
+                                id: rewardHistory?.reference_reward_id || ''
+                            },
+                            include: [{
+                                model: giftCardsModel,
+                                attributes: ["name", "cashback_percentage", "description", "is_cashback"]
+                            }],
+                            attributes: { exclude: ["payment_status","status","is_deleted","createdAt","updatedAt","deleted_at"] }
+                        });
+                        rewardDetailsObj.dataValues.name = rewardDetailsObj.dataValues.gift_card.name;
+                        rewardDetailsObj.dataValues.cashback_percentage = rewardDetailsObj.dataValues.gift_card.cashback_percentage;
+                        rewardDetailsObj.dataValues.description = rewardDetailsObj.dataValues.gift_card.description;
+                        rewardDetailsObj.dataValues.is_cashback = rewardDetailsObj.dataValues.gift_card.is_cashback;
+                        delete rewardDetailsObj.dataValues.gift_card;
+                        rewardHistory.dataValues.reward_details = rewardDetailsObj;
+                        responseArr.push(rewardHistory)
+
+                    } else if (rewardHistory.reference_reward_type == 'cashbacks') {
+
+                        const rewardDetailsObj = await cashbacksModel.findOne({
+                            where: {
+                                id: rewardHistory?.reference_reward_id || ''
+                            },
+                            attributes: ["id","title","description"]
+                        });
+                        rewardHistory.dataValues.reward_details = rewardDetailsObj;
+                        responseArr.push(rewardHistory)
+
+                    } else if (rewardHistory.reference_reward_type == 'discounts') {
+
+                        const rewardDetailsObj = await discountsModel.findOne({
+                            where: {
+                                id: rewardHistory?.reference_reward_id || ''
+                            },
+                            attributes: ["id","title"]
+                        });
+                        rewardHistory.dataValues.reward_details = rewardDetailsObj;
+                        responseArr.push(rewardHistory)
+
+                    } else if (rewardHistory.reference_reward_type == 'coupones') {
+
+                        const rewardDetailsObj = await couponesModel.findOne({
+                            where: {
+                                id: rewardHistory?.reference_reward_id || ''
+                            },
+                            attributes: ["id","title"]
+                        });
+                        rewardHistory.dataValues.reward_details = rewardDetailsObj;
+                        responseArr.push(rewardHistory)
+
+                    } else if (rewardHistory.reference_reward_type == 'loyalty_points') {
+
+                        const rewardDetailsObj = await loyaltyPointsModel.findOne({
+                            where: {
+                                id: rewardHistory?.reference_reward_id || ''
+                            },
+                            attributes: ["id","name"]
+                        });
+                        rewardHistory.dataValues.reward_details = rewardDetailsObj;
+                        responseArr.push(rewardHistory)
+
+                    } else {
+                        rewardHistory.dataValues.reward_details = null;
+                        responseArr.push(rewardHistory)
+                    }
+                }
+            } else {
+                responseArr = [...businessRewardHistoryData.rows]
+            }
+
+            const totalCount = businessRewardHistoryData?.count;
+
+            const response = new pagination(responseArr, parseInt(totalCount || 0), parseInt(data.page), parseInt(data.page_size) );
+            res.send(setRes(resCode.OK, true, 'Business Reward History List',(response.getPaginationInfo())));
+        } else {
+            res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
+        }
+    } catch(error) {
+        return res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
+    }
+}
+
+exports.rewardPerfomance = async (req, res) => {
+    try {
+        const data = req.body;
+        const rewardHistoryModel = models.reward_history;
+        
+        const userModel = models.user;
+        const userGiftCardsModel = models.user_giftcards;
+        const giftCardsModel = models.gift_cards;
+
+        const discountsModel = models.discounts;
+        const cashbacksModel = models.cashbacks;
+        const couponesModel = models.coupones;
+        const loyaltyPointsModel = models.loyalty_points;
+        const orderModel = models.orders;
+
+        const requiredFields = _.reject(['reward_id','type'], (o) => { return _.has(data, o) })
+        if (requiredFields == '') {
+            const blankFields = _.reject(['reward_id','type'], (o) => { return data[o] });
+            if (blankFields != "") {
+                return res.send(setRes(resCode.BadRequest, false, (blankValue.toString() + ' can not be blank'),null))
+            }
+            
+            const possibleTypeValue = ['gift_cards', 'cashbacks', 'coupones', 'discounts', 'loyalty_points'];
+            if (!data?.type || !possibleTypeValue.includes(data?.type)) {
+                return res.send(setRes(resCode.BadRequest, false, `Possible value for type is one from ${possibleTypeValue.join(',')}`,null));
+            }
+
+            let timeInterval = data?.time_interval && data.time_interval != undefined ? data?.time_interval : '';
+            if (timeInterval!='' && !['weekly', 'monthly', 'yearly', 'custom'].includes(timeInterval)) {
+                return res.send(setRes(resCode.BadRequest, false, `Possible value for time interval is one from weekly, monthly, yearly, custom`,null));
+            }
+            /** Check startdate and enddate for custom */
+            let startDate,endDate;
+            if (timeInterval == 'custom') {
+                startDate = data.start_date ?  moment(`${data.start_date}`) : '';
+                endDate = data.end_date ? moment(`${data.end_date}`) : '';
+                if (!startDate || !endDate) {
+                    return res.send(setRes(resCode.BadRequest, false, `Please select valid start date and end date`,null));
+                }
+                const range = Moment.range(startDate, endDate);
+                const isEndDateBeforeStartDate = moment(endDate).isBefore(startDate);
+                if (isEndDateBeforeStartDate) {
+                    return res.send(setRes(resCode.BadRequest, false, `Please select valid start date and end date`,null));
+                }
+            }
+            
+            /** Inputs rewatd type and reward id to check perfomance  */
+            const rewardId = data?.reward_id || '';
+            const rewardType = data?.type ? data?.type.trim() : '';
+
+            let responseObject = {}
+            if (rewardType == 'gift_cards') {
+                
+                // Fetch Reward details
+                const giftCardDetails = await giftCardsModel.findOne({
+                    where: {
+                        id: rewardId,
+                    }
+                });
+                responseObject.generatedDate = giftCardDetails.createdAt;
+
+                // attributes and where clause conditions for different time intervals
+                const weekMonthYear = [
+                    [models.sequelize.fn("YEAR", models.sequelize.col("user_giftcards.createdAt")), 'year'],
+                    [models.sequelize.fn("WEEK", models.sequelize.col("user_giftcards.createdAt")), 'week'],
+                    [models.sequelize.fn("MONTH", models.sequelize.col("user_giftcards.createdAt")), 'month'],
+                ]
+
+                let timeIntervalCondition, timeIntervalConditionForRewardTable;
+                if (timeInterval == 'monthly' && data.month) {
+                    timeIntervalCondition =  models.sequelize.where(models.sequelize.fn("MONTH", models.sequelize.col("user_giftcards.createdAt")), data.month ? data.month : moment().month() + 1),
+                    models.sequelize.where(models.sequelize.fn("YEAR", models.sequelize.col("user_giftcards.createdAt")), data.year ? data.year : moment().year());
+
+                    timeIntervalConditionForRewardTable =  models.sequelize.where(models.sequelize.fn("MONTH", models.sequelize.col("reward_history.createdAt")), data.month ? data.month : moment().month() + 1),
+                    models.sequelize.where(models.sequelize.fn("YEAR", models.sequelize.col("reward_history.createdAt")), data.year ? data.year : moment().year())
+                }
+                if (timeInterval == 'yearly' && data.year) {
+                    timeIntervalCondition =  models.sequelize.where(models.sequelize.fn("YEAR", models.sequelize.col("user_giftcards.createdAt")), data.year ? data.year : moment().year())
+
+                    timeIntervalConditionForRewardTable =  models.sequelize.where(models.sequelize.fn("YEAR", models.sequelize.col("reward_history.createdAt")), data.year ? data.year : moment().year())
+                }
+                if (timeInterval == 'weekly' && data.week) {
+                    timeIntervalCondition =  models.sequelize.where(models.sequelize.fn("WEEK", models.sequelize.col("user_giftcards.createdAt")), data.week ? data.week : moment().week()),
+                    models.sequelize.where(models.sequelize.fn("YEAR", models.sequelize.col("user_giftcards.createdAt")), data.year ? data.year : moment().year())
+
+                    timeIntervalConditionForRewardTable =  models.sequelize.where(models.sequelize.fn("WEEK", models.sequelize.col("reward_history.createdAt")), data.week ? data.week : moment().week()),
+                    models.sequelize.where(models.sequelize.fn("YEAR", models.sequelize.col("reward_history.createdAt")), data.year ? data.year : moment().year())
+                }
+                if (timeInterval == 'custom') {
+
+                    timeIntervalCondition = {
+                        [models.Op.and] : [
+                            {
+                                createdAt: {
+                                    [models.Op.gte] : startDate,
+                                }
+                            },
+                            {
+                                createdAt: {
+                                    [models.Op.lte] : endDate,
+                                }
+                            }
+                        ]
+                    }
+
+                    timeIntervalConditionForRewardTable = {
+                        [models.Op.and] : [
+                            {
+                                createdAt: {
+                                    [models.Op.gte] : startDate,
+                                }
+                            },
+                            {
+                                createdAt: {
+                                    [models.Op.lte] : endDate,
+                                }
+                            }
+                        ]
+                    }
+                }
+                
+                const condition = {
+                    where: {
+                        [models.Op.and] : [
+                            {
+                                gift_card_id: rewardId,
+                            },
+                            timeIntervalCondition ? (timeInterval != 'custom' ? {timeIntervalCondition } : { ...timeIntervalCondition }) : true
+                        ]
+                    },
+                    attributes: [
+                        [models.sequelize.fn('sum', models.sequelize.col('amount')), 'total_amount'],
+                        ...weekMonthYear
+                    ],
+                }
+                // total purcase count and total purchased amount 
+                const totalUsersPurchasedGiftCards = await userGiftCardsModel.findAndCountAll(condition);
+                responseObject.totalPurchase = totalUsersPurchasedGiftCards?.count || 0;
+                responseObject.totalEarnings = totalUsersPurchasedGiftCards?.rows[0]?.dataValues?.total_amount ? Number(totalUsersPurchasedGiftCards?.rows[0]?.dataValues?.total_amount) : 0;
+
+                // total purchase by user count
+                const userPurchasedGiftCardsCount = await userGiftCardsModel.findAndCountAll({
+                    include: [
+                        {
+                            model: userModel,
+                            attributes: ["id", "username"],
+                            where: {
+                                role_id: 2
+                            },
+                            required: true
+                        }
+                    ],
+                    attributes: [ ...weekMonthYear ],
+                    where: {
+                        [models.Op.and] : [
+                            {
+                                gift_card_id: rewardId,
+                            },
+                            timeIntervalCondition ? (timeInterval != 'custom' ? {timeIntervalCondition } : { ...timeIntervalCondition }) : true
+                        ]
+                    },
+                });
+                responseObject.purchasedByUser = userPurchasedGiftCardsCount?.count || 0;
+                
+                // User used reward counts
+                const userUsedRewardCounts = await rewardHistoryModel.findAndCountAll({
+                    attributes: {
+                        include: [
+                            [models.sequelize.fn("YEAR", models.sequelize.col("reward_history.createdAt")), 'year'],
+                            [models.sequelize.fn("WEEK", models.sequelize.col("reward_history.createdAt")), 'week'],
+                            [models.sequelize.fn("MONTH", models.sequelize.col("reward_history.createdAt")), 'month'],
+                        ]
+                    },
+                    where: {
+                        [models.Op.and] : [
+                            {
+                                reference_reward_type: rewardType,
+                                reference_reward_id: rewardId,
+                                credit_debit: true
+                            },
+                            timeIntervalConditionForRewardTable ? (timeInterval != 'custom' ? {timeIntervalConditionForRewardTable } : { ...timeIntervalConditionForRewardTable }) : true
+                        ]
+                    }
+                });
+                responseObject.usedByUser = userUsedRewardCounts?.count || 0
+
+                // pending gift cards
+                const pendingUserGiftCards = await userGiftCardsModel.findAndCountAll({
+                    where: {
+                        [models.Op.and] : [
+                            {
+                                gift_card_id: rewardId,
+                                payment_status: 0,
+                            },
+                            timeIntervalCondition ? (timeInterval != 'custom' ? {timeIntervalCondition } : { ...timeIntervalCondition }) : true
+                        ]
+                    },
+                    attributes: [
+                        [models.sequelize.fn('sum', models.sequelize.col('amount')), 'total_amount'],
+                        ...weekMonthYear
+                    ]
+                });
+                responseObject.pending = pendingUserGiftCards?.rows[0]?.dataValues?.total_amount ? Number(pendingUserGiftCards?.rows[0]?.dataValues?.total_amount) : 0
+
+            /** Graph data for */
+
+            } else if (['cashbacks', 'coupones', 'discounts', 'loyalty_points'].includes(rewardType)) {
+                // Total Purchase
+                let timeIntervalCondition;
+                if (timeInterval == 'monthly' && data.month) {
+                    timeIntervalCondition =  models.sequelize.where(models.sequelize.fn("MONTH", models.sequelize.col("reward_history.createdAt")), data.month ? data.month : moment().month() + 1),models.sequelize.where(models.sequelize.fn("YEAR", models.sequelize.col("reward_history.createdAt")), data.year ? data.year : moment().year())
+                }
+                if (timeInterval == 'yearly' && data.year) {
+                    timeIntervalCondition =  models.sequelize.where(models.sequelize.fn("YEAR", models.sequelize.col("reward_history.createdAt")), data.year ? data.year : moment().year())
+                }
+                if (timeInterval == 'weekly' && data.week) {
+                    timeIntervalCondition =  models.sequelize.where(models.sequelize.fn("WEEK", models.sequelize.col("reward_history.createdAt")), data.week ? data.week : moment().week())
+                }
+                if (timeInterval == 'custom') {
+
+                    timeIntervalCondition = {
+                        [models.Op.and] : [
+                            {
+                                createdAt: {
+                                    [models.Op.gte] : startDate,
+                                }
+                            },
+                            {
+                                createdAt: {
+                                    [models.Op.lte] : endDate,
+                                }
+                            }
+                        ]
+                    }
+                }
+                const condition = {
+                    include: [
+                        {
+                            model: orderModel,
+                            attributes: ["id", "amount", "order_status"],
+                        }
+                    ],
+                    attributes: {
+                        include: [
+                            [models.sequelize.fn('sum', models.sequelize.col('order.amount')), 'total_amount'],
+                            [models.sequelize.fn("YEAR", models.sequelize.col("reward_history.createdAt")), 'year'],
+                            [models.sequelize.fn("WEEK", models.sequelize.col("reward_history.createdAt")), 'week'],
+                            [models.sequelize.fn("MONTH", models.sequelize.col("reward_history.createdAt")), 'month'],
+                        ]
+                    },
+                    where: {
+                        [models.Op.and] : [
+                            {
+                                reference_reward_type: rewardType,
+                                reference_reward_id: rewardId,
+                                credit_debit: true,
+                            },
+                            timeIntervalCondition ? (timeInterval != 'custom' ? {timeIntervalCondition } : { ...timeIntervalCondition }) : true
+                        ]
+                    },
+                }
+                const purchasedTotalOrdersCashbacks = await rewardHistoryModel.findAll(condition);
+                responseObject.totalPurchase = (purchasedTotalOrdersCashbacks[0]?.dataValues?.total_amount) ? Number(purchasedTotalOrdersCashbacks[0]?.dataValues?.total_amount || 0) : 0;
+                
+                // total cashback redeem amount
+                const totalCashbackRdeemCondition = {
+                    include: [
+                        {
+                            model: orderModel,
+                            attributes: ["id", "order_status"],
+                            where: {
+                                order_status: 3 // completed
+                            }
+                        }
+                    ],
+                    where : {
+                        [models.Op.and] : [
+                            {
+                                reference_reward_type: rewardType,
+                                reference_reward_id: rewardId,
+                                credit_debit: true,
+                            },
+                            timeIntervalCondition ? (timeInterval != 'custom' ? {timeIntervalCondition } : { ...timeIntervalCondition }) : true
+                        ]
+                    },
+                };
+                const totalRedeemAmountData = await rewardHistoryModel.findAll({
+                    ...totalCashbackRdeemCondition,
+                    attributes: {
+                        include: [
+                            [models.sequelize.fn('sum', models.sequelize.col('reward_history.amount')), 'total_amount'],
+                            [models.sequelize.fn("YEAR", models.sequelize.col("reward_history.createdAt")), 'year'],
+                            [models.sequelize.fn("WEEK", models.sequelize.col("reward_history.createdAt")), 'week'],
+                            [models.sequelize.fn("MONTH", models.sequelize.col("reward_history.createdAt")), 'month'],
+                        ]
+                    },
+                });
+                responseObject.totalRedeemAmount = totalRedeemAmountData[0]?.dataValues?.total_amount ? Number(totalRedeemAmountData[0]?.dataValues?.total_amount || 0) : 0;
+
+                // total cashback redeem by users count
+                const totalRedeemByUser = await rewardHistoryModel.findAndCountAll({
+                    attributes: {
+                        include: [
+                            [models.sequelize.fn("YEAR", models.sequelize.col("reward_history.createdAt")), 'year'],
+                            [models.sequelize.fn("WEEK", models.sequelize.col("reward_history.createdAt")), 'week'],
+                            [models.sequelize.fn("MONTH", models.sequelize.col("reward_history.createdAt")), 'month'],
+                        ]
+                    },
+                    where : {
+                        [models.Op.and] : [
+                            {
+                                reference_reward_type: rewardType,
+                                reference_reward_id: rewardId,
+                                credit_debit: true,
+                            },
+                            timeIntervalCondition ? (timeInterval != 'custom' ? {timeIntervalCondition } : { ...timeIntervalCondition }) : {}
+                        ]
+                    },
+                });
+                responseObject.totalRedeemByUser = totalRedeemByUser?.count || 0;
+
+                // Total pending amount
+                const totalPendingAmountcondition = {
+                    include: [
+                        {
+                            model: orderModel,
+                            attributes: ["id", "order_status"],
+                            where: {
+                                order_status: 1 // pending
+                            }
+                        }
+                    ],
+                    attributes: {
+                        include: [
+                            [models.sequelize.fn('sum', models.sequelize.col('reward_history.amount')), 'total_amount'],
+                            [models.sequelize.fn("YEAR", models.sequelize.col("reward_history.createdAt")), 'year'],
+                            [models.sequelize.fn("WEEK", models.sequelize.col("reward_history.createdAt")), 'week'],
+                            [models.sequelize.fn("MONTH", models.sequelize.col("reward_history.createdAt")), 'month'],
+                        ]
+                    },
+                    where: {
+                        [models.Op.and] : [
+                            {
+                                reference_reward_type: rewardType,
+                                reference_reward_id: rewardId,
+                                credit_debit: true,
+                            },
+                            timeIntervalCondition ? (timeInterval != 'custom' ? {timeIntervalCondition } : { ...timeIntervalCondition }) : true
+                        ]
+                    }
+                }
+                const totalPendingAmount = await rewardHistoryModel.findAll(totalPendingAmountcondition);
+                responseObject.totalPendingAmount = totalPendingAmount[0]?.dataValues?.total_amount ?  Number(totalPendingAmount[0]?.dataValues?.total_amount) : 0 ;
+            
+            } else {
+                responseObject = {
+                    totalPurchase: 0,
+                    totalRedeemAmount: 0,
+                    totalRedeemByUser: 0,
+                    totalPendingAmount: 0
+                }
+
+                responseObject.graphData = {
+                    dataSet : [],
+                    label : []
+                }
+            }
+
+
+            /**
+             * Graph data fetch 
+             */
+            if (['gift_cards', 'cashbacks', 'coupones', 'discounts', 'loyalty_points'].includes(rewardType)) {
+                const includeAttribute = []
+                const groupBy = [];
+                const label = [], dataSet = [];
+
+                // default monthly graph
+                includeAttribute.push([models.sequelize.fn("YEAR", models.sequelize.col("reward_history.createdAt")), 'year']);
+                includeAttribute.push([models.sequelize.fn("MONTH", models.sequelize.col("reward_history.createdAt")), 'month']);
+                groupBy.push(["month", "year"]);
+                timeInterval  = timeInterval ? timeInterval : "monthly";
+
+                if (timeInterval == 'yearly') {
+                    includeAttribute.push([models.sequelize.fn("YEAR", models.sequelize.col("reward_history.createdAt")), 'year']);
+                    groupBy.push("year");
+                }
+                
+                if (timeInterval == 'weekly') {
+                    includeAttribute.push([models.sequelize.fn("YEAR", models.sequelize.col("reward_history.createdAt")), 'year']);
+                    includeAttribute.push([models.sequelize.fn("WEEK", models.sequelize.col("reward_history.createdAt")), 'week'])
+                    groupBy.push(["week", "year"]);
+                }
+                let customTimeCondition= {};
+                if (timeInterval == 'custom') {
+                    includeAttribute.push([models.sequelize.fn("DAY", models.sequelize.col("reward_history.createdAt")), 'day'])
+                    includeAttribute.push([models.sequelize.fn("YEAR", models.sequelize.col("reward_history.createdAt")), 'year']);
+                    includeAttribute.push([models.sequelize.fn("WEEK", models.sequelize.col("reward_history.createdAt")), 'week'])
+                    groupBy.push(["day","month", "year"]);
+                    customTimeCondition = {
+                        [models.Op.and] : [
+                            {
+                                createdAt: {
+                                    [models.Op.gte] : startDate,
+                                }
+                            },
+                            {
+                                createdAt: {
+                                    [models.Op.lte] : endDate,
+                                }
+                            }
+                        ]
+                    }
+                }
+                const totalRedeemAmountDataByInterval = await rewardHistoryModel.findAll({
+                    include: [
+                        {
+                            model: orderModel,
+                            attributes: ["id", "order_status"],
+                            where: {
+                                order_status: 3 // completed
+                            }
+                        }
+                    ],
+                    where : {
+                        reference_reward_id: rewardId,
+                        reference_reward_type: rewardType,
+                        credit_debit: true,
+                        ...customTimeCondition                        
+                    },
+                    attributes: {
+                        include: [
+                            ...includeAttribute,
+                            [models.sequelize.fn('sum', models.sequelize.col('reward_history.amount')), 'total_amount'],
+                    ]},
+                    group: groupBy
+                });
+
+                if (timeInterval == 'yearly') {
+                    // totalRedeemAmountDataByInterval
+                    const sortByYearAsc = totalRedeemAmountDataByInterval.sort((objA,objB) => objA .year - objB.year );
+                    const startYearObj = sortByYearAsc.length > 0 ? sortByYearAsc[0] : 0;
+                    const endYearObj  = sortByYearAsc.length > 0 ? sortByYearAsc[sortByYearAsc.length - 1] : 0;
+                    for (let i = startYearObj?.dataValues?.year; i <= endYearObj?.dataValues?.year; i++) {
+                        label.push(`${i}`);
+                        const index = sortByYearAsc.findIndex((obj) => obj?.dataValues?.year == i);
+                        dataSet.push(index >= 0 ? sortByYearAsc[index]?.dataValues?.total_amount : 0);
+                    }
+                }
+                if (timeInterval == 'monthly') {
+                    const sortByMonthAsc = totalRedeemAmountDataByInterval.sort((objA,objB) => objA.month - objB.month );
+                    const sortByYearAsc = sortByMonthAsc.sort((objA,objB) => objA.year - objB.year );
+                    
+                    const startMonthObj = sortByYearAsc.length > 0 ? sortByYearAsc[0] : 0;
+                    const endMonthObj  = sortByYearAsc.length > 0 ? sortByYearAsc[sortByYearAsc.length - 1] : 0;
+                    for (let j = startMonthObj?.dataValues?.year; j <= endMonthObj?.dataValues?.year; j++) {
+                        for (let i = startMonthObj?.dataValues?.month; i <= endMonthObj?.dataValues?.month; i++) {
+                            label.push(`${i}/${j}`);
+                            const index = sortByYearAsc.findIndex((obj) => obj?.dataValues?.month == i);
+                            dataSet.push(index >= 0 ? sortByYearAsc[index]?.dataValues?.total_amount : 0);
+                        }
+                    }
+                }
+                if (timeInterval == 'weekly') {
+                    const sortByWeekAsc = totalRedeemAmountDataByInterval.sort((objA,objB) => objA.week - objB.week );
+                    const sortByYearAsc = sortByWeekAsc.sort((objA,objB) => objA.year - objB.year );
+                    
+                    const startWeekObj = sortByYearAsc.length > 0 ? sortByYearAsc[0] : 0;
+                    const endWeekObj  = sortByYearAsc.length > 0 ? sortByYearAsc[sortByYearAsc.length - 1] : 0;
+                    for (let j = startWeekObj?.dataValues?.year; j <= endWeekObj?.dataValues?.year; j++) {
+                        for (let i = startWeekObj?.dataValues?.week; i <= endWeekObj?.dataValues?.week; i++) {
+                            label.push(`Week ${i}, ${j}`);
+                            const index = sortByYearAsc.findIndex((obj) => obj?.dataValues?.week == i &&  obj?.dataValues?.year == j);
+                            dataSet.push(index >= 0 ? sortByYearAsc[index]?.dataValues?.total_amount : 0);
+                        }
+                    }
+                }
+                if (timeInterval == 'custom') {
+                    const sortByDayAsc = totalRedeemAmountDataByInterval.sort((objA,objB) => objA.year - objB.year );
+                    const sortByMonthAsc = sortByDayAsc.sort((objA,objB) => objA.month - objB.month );
+                    const sortByYearAsc = sortByMonthAsc.sort((objA,objB) => objA.day - objB.day );
+                    
+                    const startDayObj = sortByYearAsc.length > 0 ? sortByYearAsc[0] : 0;
+                    const endDayObj  = sortByYearAsc.length > 0 ? sortByYearAsc[sortByYearAsc.length - 1] : 0;
+                    for (let k = startDayObj?.dataValues?.year; k <= endDayObj?.dataValues?.year; k++) {
+                        for (let j = startDayObj?.dataValues?.month; j <= endDayObj?.dataValues?.month; j++) {
+                            for (let i = startDayObj?.dataValues?.day; i <= endDayObj?.dataValues?.day; i++) {
+                                label.push(`${i}/${j}/${k}`);
+                                const index = sortByYearAsc.findIndex((obj) => obj?.dataValues?.day == i && obj?.dataValues?.month == j && obj?.dataValues?.year == k);
+                                dataSet.push(index >= 0 ? sortByYearAsc[index]?.dataValues?.total_amount : 0);
+                            }
+                        }
+                    }
+                }
+                responseObject.graphData = {
+                    dataSet,
+                    label
+                }
+                
+            } else {
+                responseObject.graphData = {
+                    dataSet : [],
+                    label : []
+                }
+            }
+
+            return res.send(setRes(resCode.OK, true, 'Perfomance details!', responseObject))
+        } else {
+            return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
+        }
+    } catch (error) {
+        return res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
     }
 }
