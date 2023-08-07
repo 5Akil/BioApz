@@ -163,6 +163,7 @@ exports.giftCardUpdate = async (req, res) => {
 		var data = req.body;
 		req.file ? data.image = `${req.file.key}` : '';
 		var giftCardModel = models.gift_cards;
+		const userGiftCardList = models.user_giftcards;
 		var Op = models.Op;
 		let arrayFields = ['id', 'name', 'amount', 'expire_at', 'description', 'is_cashback'];
 		const result = data.is_cashback == 1 ? (arrayFields.push('cashback_percentage')) : '';
@@ -197,7 +198,17 @@ exports.giftCardUpdate = async (req, res) => {
 										}
 										if (updateData) {
 											giftCardModel.findOne({
-												where: { id: data.id, isDeleted: false, status: true }
+												where: { id: data.id, isDeleted: false, status: true },
+												include: [
+													{
+														model: userGiftCardList,
+														attributes: ['id'],
+														where: {
+															payment_status: 1
+														},
+														required: false
+													}
+												]
 											}).then(async updatedGiftCardDetail => {
 												if (data.image != null) {
 													var updateData_image = await awsConfig.getSignUrl(updatedGiftCardDetail.image).then(function (res) {
@@ -211,6 +222,16 @@ exports.giftCardUpdate = async (req, res) => {
 												else {
 													updatedGiftCardDetail.image = awsConfig.default_image;
 												}
+												const curentDate = (moment().format('YYYY-MM-DD'));
+												if(updatedGiftCardDetail.dataValues.expire_at < curentDate){
+													updatedGiftCardDetail.dataValues.is_expired = true;
+												}else{
+													updatedGiftCardDetail.dataValues.is_expired = false;
+												}
+												updatedGiftCardDetail.dataValues.type = "gift_cards";
+												updatedGiftCardDetail.dataValues.totalPurchase = updatedGiftCardDetail?.dataValues?.user_giftcards?.length  || 0; 
+												delete updatedGiftCardDetail?.dataValues?.user_giftcards;
+
 												res.send(setRes(resCode.OK, true, 'Gift card update successfully', updatedGiftCardDetail))
 											})
 										} else {
