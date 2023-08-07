@@ -178,6 +178,7 @@ exports.cashbackUpdate = async (req, res) => {
 		var data = req.body;
 		var cashbackModel = models.cashbacks;
 		var categoryModel = models.product_categorys;
+		var productModel = models.products;
 		var Op = models.Op;
 		var validation = true;
 		var requiredFields = _.reject(["id"], (o) => {
@@ -245,7 +246,7 @@ exports.cashbackUpdate = async (req, res) => {
 							})
 							.then(async (cashbackData) => {
 								if (cashbackData == null) {
-									cashbackModel
+									await cashbackModel
 										.update(data, {
 											where: {
 												id: data.id,
@@ -256,9 +257,29 @@ exports.cashbackUpdate = async (req, res) => {
 										})
 										.then(async (updateData) => {
 											if (updateData) {
-												cashbackModel
-													.findOne({ where: { id: data.id } })
+												await cashbackModel
+													.findOne({ where: { id: data.id },
+														include: [
+														{
+															model: categoryModel,
+															attributes: ['id', 'name']
+														}
+													], })
 													.then(async (data) => {
+														const products = await productModel.findAll({ where: { id: { [Op.in] : data.product_id?.split(',') || [] } } ,attributes: ["name"], raw: true});
+														const product_name_arr = products?.map(val => val.name);
+														const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
+														data.dataValues.type = "cashbacks";
+														data.dataValues.value_type = data.cashback_type;
+														data.dataValues.amount = data.cashback_value;
+														if(data.validity_for < moment().format('YYYY-MM-DD')){
+															data.dataValues.is_expired = true;
+														}else{
+															data.dataValues.is_expired = false;
+														}
+														data.dataValues.product_category_name = data?.product_category?.name || '';
+														data.dataValues.product_name = product_name.trim();
+														delete data.dataValues.product_category;
 														res.send(
 															setRes(
 																resCode.OK,

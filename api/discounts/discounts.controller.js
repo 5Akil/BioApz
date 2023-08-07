@@ -198,7 +198,26 @@ exports.update =async(req,res) => {
 													{where: {id:data.id,isDeleted:false,status:true,deleted_at:null}
 												}).then(async updateData => {
 													if(updateData){
-														discountModel.findOne({where:{id:data.id}}).then(async data => {
+														discountModel.findOne({where:{id:data.id},include: [
+															{
+																model: categoryModel,
+																attributes: ['id', 'name']
+															}
+														],}).then(async data => {
+															const products = await productModel.findAll({ where: { id: { [Op.in] : data.product_id?.split(',') || [] } } ,attributes: ["name"], raw: true});
+															const product_name_arr = products?.map(val => val.name);
+															const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
+															data.dataValues.type = "discounts";
+															data.dataValues.value_type = data.discount_type;
+															data.dataValues.amount = data.discount_value;
+															if(data.validity_for < moment().format('YYYY-MM-DD')){
+																data.dataValues.is_expired = true;
+															}else{
+																data.dataValues.is_expired = false;
+															}
+															data.dataValues.product_category_name = data?.product_category?.name || '';
+															data.dataValues.product_name = product_name.trim();
+															delete data.dataValues.product_category;
 															res.send(setRes(resCode.OK,true,'Discount update successfully',data))
 														})
 													}else{

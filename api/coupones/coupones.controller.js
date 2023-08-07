@@ -187,7 +187,7 @@ exports.delete = async(req,res) => {
 exports.update = async (req, res) => {
 	try {
 		var data = req.body
-		var businessModel = models.business
+		var productModel = models.products
 		var couponeModel = models.coupones
 		var Op = models.Op;
 		var validation = true;
@@ -248,7 +248,26 @@ exports.update = async (req, res) => {
 										where: { id: data.id, isDeleted: false, status: true, deleted_at: null }
 									}).then(async updateData => {
 										if (updateData) {
-											couponeModel.findOne({ where: { id: data.id } }).then(async data => {
+											couponeModel.findOne({ where: { id: data.id },include: [
+												{
+													model: models.product_categorys,
+													attributes: ['id', 'name']
+												}
+											], }).then(async data => {
+												const products = await productModel.findAll({ where: { id: { [Op.in] : data.product_id?.split(',') || [] } } ,attributes: ["name"], raw: true});
+												const product_name_arr = products?.map(val => val.name);
+												const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
+												data.dataValues.type = "coupones";
+												data.dataValues.value_type = data.coupon_type;
+												data.dataValues.amount = data.coupon_value;
+												if(data.expire_at < moment().format('YYYY-MM-DD')){
+													data.dataValues.is_expired = true;
+												}else{
+													data.dataValues.is_expired = false;
+												}
+												data.dataValues.product_category_name = data?.product_category?.name || '';
+												data.dataValues.product_name = product_name.trim();
+												delete data.dataValues.product_category;
 												res.send(setRes(resCode.OK, true, 'coupon update successfully', data))
 											})
 										} else {
