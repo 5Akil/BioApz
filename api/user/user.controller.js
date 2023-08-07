@@ -2885,7 +2885,7 @@ exports.userGiftCardList = async (req, res) => {
 						attributes: { exclude: ["status","isDeleted","createdAt","updatedAt","deleted_at"] }
 					}
 				],
-				attributes: { exclude: ["status","isDeleted","createdAt","updatedAt"] },
+				attributes: { exclude: ["status","isDeleted","createdAt","updatedAt"], include: [[models.sequelize.literal('(user_giftcards.amount - user_giftcards.redeemed_amount)'), 'remaining_amount']] },
 				order: [
 					['createdAt', 'DESC']
 				]
@@ -2915,6 +2915,87 @@ exports.userGiftCardList = async (req, res) => {
 			const totalRecords = userGiftCards?.count || 0;
 			const response = new pagination(userGiftCards.rows, totalRecords, parseInt(data.page), parseInt(data.page_size));
 			res.send(setRes(resCode.OK, true, "User Gifcards List.", (response.getPaginationInfo())));
+		} else {
+			return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null));
+		}
+	} catch (error) {
+		return res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
+	}
+}
+
+// Gift Card Redeem 
+exports.redeemGiftCard = async (req, res) => {
+	try {
+		const giftCardsModel = models.gift_cards;
+		const userGiftCardsModel = models.user_giftcards;
+		const data = req.body;
+		const user = req.user;
+		const requiredFields = _.reject(["user_gift_card_id", "redeem_amount"], (o) => {
+			return _.has(data, o);
+		});
+
+		if (requiredFields == "") {
+			const giftCardDetails = await userGiftCardsModel.findOne({
+				include: [
+					{
+						model: giftCardsModel,
+						attributes: ["id", "amount", "name", "expire_at", "description"]
+					}
+				],
+				where: {
+					id: data.user_gift_card_id,
+					user_id: user?.id || ''
+				}
+			});
+			// Check for user gift card exist for user
+			if (!giftCardDetails) {
+				return res.send(setRes(resCode.BadRequest, false, "User Giftcard not found.", null));
+			}
+
+			// Check for gift card expiration
+			const expireAt = giftCardDetails?.dataValues?.gift_card.expire_at;
+			const currentDate = (moment().format('YYYY-MM-DD'));
+			if (currentDate > expireAt) {
+				return res.send(setRes(resCode.BadRequest, false, "Giftcard is expired", null));		
+			}
+			
+			// Check for redeem amount request to eligible to deduct from remaining
+			const giftCardAmount = Number(giftCardDetails?.dataValues?.amount || 0);
+			let giftCardRedeemedAmount = Number(giftCardDetails?.dataValues?.redeemed_amount || 0);
+			const giftCardRemainingAmount = giftCardAmount - giftCardRedeemedAmount;
+			if (data.redeem_amount > giftCardRemainingAmount) {
+				return res.send(setRes(resCode.BadRequest, false, "Redeem amount is more than remaining balance for giftcard", null));
+			}
+			
+			giftCardRedeemedAmount += Number(data.redeem_amount || 0);
+
+			const redeemeUpdatedRecord = await userGiftCardsModel.update(
+				{ 
+					redeemed_amount: giftCardRedeemedAmount
+				},
+				{
+					where: {
+						id: data.user_gift_card_id,
+					} 
+				});
+			if (redeemeUpdatedRecord) {
+				const updatedUserGiftCard = await userGiftCardsModel.findOne({
+					include: [
+						{
+							model: giftCardsModel,
+							attributes: { exclude: ["status","isDeleted","createdAt","updatedAt","deleted_at", "amount"] }
+						}
+					],
+					attributes: { exclude: ["status","isDeleted","createdAt","updatedAt"], include: [[models.sequelize.literal('(user_giftcards.amount - user_giftcards.redeemed_amount)'), 'remaining_amount']] },
+					where: {
+						id: data.user_gift_card_id,
+					}
+				})
+				return res.send(setRes(resCode.OK, true, "Giftcard Amount Redeemed Successfully!", updatedUserGiftCard));
+			} else {
+				return res.send(setRes(resCode.BadRequest, false, "Giftcard Amount Redeeme failed", null));
+			}
+
 		} else {
 			return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null));
 		}

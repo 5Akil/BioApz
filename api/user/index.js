@@ -81,6 +81,7 @@ router.get('/business/bio', verifyToken, controller.businessBIO)
 router.post('/giftcards/purchase', verifyToken, controller.userGiftCardPurchase)
 router.post('/giftcards/share', verifyToken, controller.userGiftCardShare)
 router.post('/giftcards/list', verifyToken, controller.userGiftCardList)
+router.post('/giftcards/redeem', verifyToken, authorize([2]), controller.redeemGiftCard)
 // Event routes
 router.post('/business/event/list', verifyToken,authorize([2]), controller.businessEventList)
 router.post('/event/list', verifyToken,authorize([2]), controller.userEventList)
