@@ -37,6 +37,7 @@ module.exports = (sequelize, DataTypes) => {
   GiftCards.associate = function(models) {
     // associations can be defined here
     GiftCards.belongsTo(models.business, {foreignKey: 'business_id'})
+    GiftCards.hasMany(models.user_giftcards, {foreignKey: 'gift_card_id'})
   };
   return GiftCards;
 };
