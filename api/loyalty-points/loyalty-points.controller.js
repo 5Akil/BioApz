@@ -156,6 +156,8 @@ exports.update = async(req,res) => {
 		var data = req.body
 		var loyaltyPointModel = models.loyalty_points
 		var businessModel = models.business
+		const productModel= models.products;
+		const categoryModel = models.product_categorys;
 		var Op = models.Op;
 		var validation = true;
 
@@ -201,7 +203,35 @@ exports.update = async(req,res) => {
 									{where: {id:data.id,isDeleted:false,status:true,deleted_at:null}
 								}).then(async updateData => {
 									if(updateData){
-										loyaltyPointModel.findOne({where:{id:data.id}}).then(async data => {
+										loyaltyPointModel.findOne({
+											where:{id:data.id},
+											include: [
+												{
+													model: productModel,
+													attributes: ['id', 'name', 'category_id'],
+													include: [
+														{
+															model: categoryModel,
+															attributes: ['id', 'name'],
+															as: 'product_categorys'
+														}
+													],
+												}
+											],
+										}).then(async data => {
+											const products = await productModel.findAll({ where: { id: { [Op.in] : data.product_id?.split(',') || [] } } ,attributes: ["name"], raw: true});
+											const product_name_arr = products?.map(val => val.name);
+											const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
+											data.dataValues.product_name = product_name;
+											data.dataValues.product_category_name = data.dataValues?.product?.product_categorys?.name || '';
+											data.dataValues.amount = data.dataValues.coupon_value;
+											delete data.dataValues.product;
+											const curentDate = (moment().format('YYYY-MM-DD'));
+											if(data.dataValues.validity < curentDate){
+												data.dataValues.is_expired = true;
+											}else{
+												data.dataValues.is_expired = false;
+											}
 											res.send(setRes(resCode.OK,true,'Loyalty point update successfully.',data))
 										})
 									}else{
