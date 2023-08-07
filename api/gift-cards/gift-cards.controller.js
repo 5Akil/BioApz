@@ -195,20 +195,24 @@ exports.giftCardUpdate = async (req, res) => {
 										if (data.image != null) {
 											const params = { Bucket: awsConfig.Bucket, Key: giftCardDetail.image }; awsConfig.deleteImageAWS(params)
 										}
-										if (updateData == 1) {
-											if (data.image != null) {
-												var updateData_image = await awsConfig.getSignUrl(data.image).then(function (res) {
-													giftCardDetail.image = res;
-												})
-											} else if (giftCardDetail.image != null) {
-												var updateData_image = await awsConfig.getSignUrl(giftCardDetail.image).then(function (res) {
-													giftCardDetail.image = res;
-												})
-											}
-											else {
-												giftCardDetail.image = awsConfig.default_image;
-											}
-											res.send(setRes(resCode.OK, true, 'Gift card update successfully', giftCardDetail))
+										if (updateData) {
+											giftCardModel.findOne({
+												where: { id: data.id, isDeleted: false, status: true }
+											}).then(async updatedGiftCardDetail => {
+												if (data.image != null) {
+													var updateData_image = await awsConfig.getSignUrl(updatedGiftCardDetail.image).then(function (res) {
+														updatedGiftCardDetail.image = res;
+													})
+												} else if (updatedGiftCardDetail.image != null) {
+													var updateData_image = await awsConfig.getSignUrl(updatedGiftCardDetail.image).then(function (res) {
+														updatedGiftCardDetail.image = res;
+													})
+												}
+												else {
+													updatedGiftCardDetail.image = awsConfig.default_image;
+												}
+												res.send(setRes(resCode.OK, true, 'Gift card update successfully', updatedGiftCardDetail))
+											})
 										} else {
 											res.send(setRes(resCode.BadRequest, false, "Fail to update gift card.", null))
 										}
