@@ -8,6 +8,7 @@ const MomentRange = require('moment-range');
 const Moment = MomentRange.extendMoment(moment);
 
 exports.rewardHistoryList = async (req, res) => {
+    try{
     const data = req.body;
     
     const rewardHistoryModel = models.reward_history;
@@ -27,7 +28,7 @@ exports.rewardHistoryList = async (req, res) => {
     if (requiredFields == '') {
         const blankFields = _.reject(['page','page_size','type', 'user_id'], (o) => { return data[o] });
         if (blankFields != "") {
-			return res.send(setRes(resCode.BadRequest, false, (blankValue.toString() + ' can not be blank'),null))
+			return res.send(setRes(resCode.BadRequest, false, (blankFields.toString() + ' can not be blank'),null))
 		}
 
         const possibleTypeValue = ['rewards','loyalty_points'];
@@ -59,7 +60,7 @@ exports.rewardHistoryList = async (req, res) => {
             }
         };
         const rewardHistoryData = await rewardHistoryModel.findAndCountAll(condition)
-        const responseArr = [];
+        let responseArr = [];
         if (rewardHistoryData?.rows && rewardHistoryData?.rows.length > 0) {
             for (let rewardHistory of rewardHistoryData?.rows) {
                 if (rewardHistory.reference_reward_type == 'gift_cards') {
@@ -140,6 +141,9 @@ exports.rewardHistoryList = async (req, res) => {
     } else {
         res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
     }
+    } catch (error) {
+        return res.send(setRes(resCode.BadRequest, false, error?.message || "Something went wrong!", null))
+    }
 }
 
 exports.rewardHistoryBusinessList = async (req, res) => {
@@ -165,7 +169,7 @@ exports.rewardHistoryBusinessList = async (req, res) => {
         if (requiredFields == '') {
             const blankFields = _.reject(['page','page_size'], (o) => { return data[o] });
             if (blankFields != "") {
-                return res.send(setRes(resCode.BadRequest, false, (blankValue.toString() + ' can not be blank'),null))
+                return res.send(setRes(resCode.BadRequest, false, (blankFields.toString() + ' can not be blank'),null))
             }
             if (data.page < 0 || data.page === 0) {
                 return res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1", null))
@@ -792,6 +796,6 @@ exports.rewardPerfomance = async (req, res) => {
             return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
         }
     } catch (error) {
-        return res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
+        return res.send(setRes(resCode.BadRequest, false, error?.message || "Something went wrong!", null))
     }
 }
