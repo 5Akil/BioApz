@@ -34,7 +34,7 @@ module.exports = (sequelize, DataTypes) => {
 
   RewardHistory.associate = function(models) {
     // associations can be defined here
-    RewardHistory.belongsTo(models.orders, {foreignKey: 'order_id', as: 'rewards'});
+    RewardHistory.belongsTo(models.orders, {foreignKey: 'order_id'});
   };
   
   return RewardHistory;
