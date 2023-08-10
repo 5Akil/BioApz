@@ -158,6 +158,7 @@ exports.update = async(req,res) => {
 		var businessModel = models.business
 		const productModel= models.products;
 		const categoryModel = models.product_categorys;
+		const giftCardModel = models.gift_cards;
 		var Op = models.Op;
 		var validation = true;
 
@@ -216,6 +217,10 @@ exports.update = async(req,res) => {
 															as: 'product_categorys'
 														}
 													],
+												},
+												{
+													model: giftCardModel,
+													attributes: ['id', 'name'],
 												}
 											],
 										}).then(async data => {
@@ -226,6 +231,9 @@ exports.update = async(req,res) => {
 											data.dataValues.type = "loyalty_points";
 											data.dataValues.product_category_name = data.dataValues?.product?.product_categorys?.name || '';
 											data.dataValues.amount = data.dataValues.amount;
+
+											data.dataValues.giftcard_name = data?.dataValues?.gift_card?.name || '';
+											delete data?.dataValues?.gift_card;
 											delete data.dataValues.product;
 											const curentDate = (moment().format('YYYY-MM-DD'));
 											if(data.dataValues.validity < curentDate){

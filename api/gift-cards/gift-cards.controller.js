@@ -497,126 +497,6 @@ exports.commonRewardsList =async(req,res) => {
 					}
 				],
 			} : {};
-
-			/** Extra Skip calculation */
-			let skipRecordsForCardGift = 0,skipRecordsForCashback = 0, skipRecordsForDiscount=0, skipRecordsForCoupones=0, skipRecordsForLoyaltyPoints=0;
-			const giftCardRecordsCount = await giftCardModel.count({
-				include: [
-					{
-						model: userGiftCardList,
-						attributes: ['id'],
-						where: {
-							payment_status: 1
-						},
-						required: false
-					}
-				],
-				where:{
-					isDeleted: false,
-					status: true,
-					...businessIdCond,
-					...giftCardLoyaltyCondition					
-				},
-				attributes: {
-					include: [
-						[models.sequelize.literal("'gift_cards'"),"type"],
-					]
-				}
-			});
-
-			const cashbackRecordsCounts = await cashbackModel.count({
-				where: {
-					isDeleted: false,
-					status: true,
-					...businessIdCond,
-					...cashBackDiscountCouponCondition
-				},
-				attributes: {
-					include: [[models.sequelize.literal("'cashbacks'"),"type"]]
-				},
-				include: [
-					{
-						model: productCategoryModel,
-						attributes: ['id', 'name']
-					}
-				],
-			});
-
-			const discountRecordsCounts = await discountModel.count({
-				where:{
-					isDeleted:false,
-					status:true,
-					...businessIdCond,
-					...cashBackDiscountCouponCondition
-				},
-				attributes: {
-					include: [[models.sequelize.literal("'discounts'"),"type"]]
-				},
-				include: [
-					{
-						model: productCategoryModel,
-						attributes: ['id', 'name']
-					}
-				],
-			});
-
-			const couponesRecordsCounts = await couponeModel.count({
-				where:{
-					isDeleted:false,
-					status:true,
-					...businessIdCond,
-					...cashBackDiscountCouponCondition
-				},
-				attributes: {
-					include: [[models.sequelize.literal("'coupones'"),"type"]]
-				},
-				include: [
-					{
-						model: productCategoryModel,
-						attributes: ['id', 'name']
-					}
-				],
-			});
-
-			const loyaltyPointsRecordsCounts = await loyaltyPointModel.count({
-				where:{
-					isDeleted:false,
-					status:true,
-					...businessIdCond,
-					...giftCardLoyaltyCondition
-				},
-				attributes: {
-					include: [[models.sequelize.literal("'loyalty_points'"),"type"]]
-				},
-				include: [
-					{
-						model: productModel,
-						attributes: ['id', 'name', 'category_id'],
-						include: [
-							{
-								model: productCategoryModel,
-								attributes: ['id', 'name'],
-								as: 'product_categorys'
-							}
-						],
-					}
-				],
-			});
-			
-			if (data.page > 1) {
-				const giftCardNotHaveRecords = ((data.page - 2) * perTableLimit) < giftCardRecordsCount ? 0 : (((data.page - 2) * perTableLimit) - giftCardRecordsCount) ;
-				skipRecordsForCardGift = 0;
-				const cashBackNotHaveRecords = ((data.page - 2) * perTableLimit) < cashbackRecordsCounts ? 0 : (((data.page - 2) * perTableLimit) - cashbackRecordsCounts);
-				skipRecordsForCashback = 0;
-				const discountNotHaveRecords = ((data.page - 2) * perTableLimit) < discountRecordsCounts ? 0 : (((data.page - 2) * perTableLimit) - discountRecordsCounts);
-				skipRecordsForDiscount = 0;
-				const couponesNotHaveRecords = ((data.page - 2) * perTableLimit) < couponesRecordsCounts ? 0 : (((data.page - 2) * perTableLimit) - couponesRecordsCounts);
-				skipRecordsForCoupones = 0;
-				const loyaltyNotHaveRecords = ((data.page - 2) * perTableLimit) < loyaltyPointsRecordsCounts ? 0 : (((data.page - 2) * perTableLimit) - loyaltyPointsRecordsCounts);
-				skipRecordsForLoyaltyPoints = 0;
-				console.log('giftCardNotHaveRecords', giftCardNotHaveRecords, cashBackNotHaveRecords, discountNotHaveRecords, couponesNotHaveRecords, loyaltyNotHaveRecords);
-			}
-			console.log('giftCardRecordsCount', giftCardRecordsCount, cashbackRecordsCounts, discountRecordsCounts, couponesRecordsCounts, loyaltyPointsRecordsCounts);
 			
 			let giftCardsRecords, cashbackRecords,discountRecords,couponeRecords,loyaltyRecords;
 			let remainingGiftcardRecordLimit = 0, remainingCashbackRecordLimit = 0,remainingDiscountRecordLimit=0,remainingCouponRecordLimit=0;
@@ -855,6 +735,10 @@ exports.commonRewardsList =async(req,res) => {
 									as: 'product_categorys'
 								}
 							],
+						},
+						{
+							model: giftCardModel,
+							attributes: ['id', 'name'],
 						}
 					],
 					order: [
@@ -864,8 +748,15 @@ exports.commonRewardsList =async(req,res) => {
 				const tempLoyaltyRecords = [];
 				for(const data of loyaltyRecords?.rows || []){
 					let loyaltyObj = JSON.parse(JSON.stringify(data));
-					loyaltyObj.product_name = loyaltyObj?.product?.name || '';
+					// loyaltyObj.product_name = loyaltyObj?.product?.name || '';
 					loyaltyObj.product_category_name = loyaltyObj?.product?.product_categorys?.name || '';
+					const products = await productModel.findAll({ where: { id: { [Op.in] : loyaltyObj.product_id?.split(',') || [] } } ,attributes: ["name"], raw: true});
+					const product_name_arr = products?.map(val => val.name);
+					const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
+					loyaltyObj.product_name = product_name;
+
+					loyaltyObj.giftcard_name = loyaltyObj?.gift_card?.name || '';
+					delete loyaltyObj?.gift_card;
 					delete loyaltyObj?.product;
 					if(loyaltyObj.validity < currentDate){
 						loyaltyObj.is_expired = true;
