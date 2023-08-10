@@ -110,7 +110,7 @@ exports.delete = async(req,res) => {
 		var requiredFields = _.reject(['id'], (o) => { return _.has(data, o)  })
 		if(requiredFields == ""){
 			discountModel.findOne(
-				{where: {id: data.id,status:true,isDeleted: false,deleted_at:null}
+				{where: {id: data.id,isDeleted: false,deleted_at:null}
 			}).then(async discountData => {
 				if (discountData) {
 					await discountData.update({ 

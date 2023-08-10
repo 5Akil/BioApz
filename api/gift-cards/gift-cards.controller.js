@@ -18,6 +18,7 @@ var awsConfig = require('../../config/aws_S3_config')
 const fs = require('fs');
 var multer = require('multer');
 const multerS3 = require('multer-s3');
+const pagination = require('../../helpers/pagination');
 
 
 // Create Reward Gift Card START
@@ -110,7 +111,6 @@ exports.deleteGiftCard =async(req,res) => {
 			giftCardModel.findOne({
 			where: {
 				id: data.id,
-				status:true,
 				isDeleted: false
 			}
 			}).then(async giftCardData => {
@@ -440,7 +440,7 @@ exports.commonRewardsListOlder =async(req,res) => {
 /**
  * 	Wallet Reward Latest api
  */
-exports.commonRewardsList =async(req,res) => {
+exports.commonRewardsListOld =async(req,res) => {
 	try{
 		const data = req.body
 		const giftCardModel = models.gift_cards
@@ -831,6 +831,296 @@ exports.commonRewardsList =async(req,res) => {
 		}
 	}catch(error){
 		console.log('error', error);
+		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
+	}
+}
+
+exports.commonRewardsList =async(req,res) => {
+	try{
+		const data = req.body
+		const giftCardModel = models.gift_cards
+		const userGiftCardList = models.user_giftcards;
+		const cashbackModel = models.cashbacks
+		const discountModel = models.discounts
+		const couponeModel = models.coupones
+		const loyaltyPointModel = models.loyalty_points
+		const productCategoryModel = models.product_categorys;
+		const productModel = models.products;
+		const businessModel = models.business;
+		const Op = models.Op;
+		
+		const currentDate = (moment().format('YYYY-MM-DD'))
+		const requiredFields = _.reject(['page'], (o) => { return _.has(data, o)  })
+		const businessEmail = req.userEmail;
+		const businessDetails = await businessModel.findOne({ where: { email: businessEmail, is_active: true, is_deleted: false } });
+		const businessId = businessDetails?.id || '';
+		const businessIdCond = data?.business_id ? `AND business_id="${data.business_id}"` : `AND business_id="${businessId}"`;
+
+		if (requiredFields == '') {
+			const limit = 15; 
+			const offset = (data.page >= 1)  ? (data.page - 1) * limit : 0
+
+			const typeArr = ['gift_cards','cashbacks','discounts','coupones','loyalty_points'];
+			let request_type = data?.type?.includes(',') && data?.type?.split(',').length > 0 ? data?.type?.split(',') : (data?.type && data?.type?.trim() !== '' ? [data?.type] : typeArr );
+
+			let unionQuery = '';
+			
+			const giftCardAndLoyaltyCond = data.search ? ` AND name LIKE "%${data.search}%"` : '';
+			const cashbackDiscountCouponCond = data.search ? `AND title LIKE "%${data.search}%"` : '';
+			
+			const giftLoyaltyWhereClause = `WHERE isDeleted=false AND status=true ${giftCardAndLoyaltyCond} ${businessIdCond}`;
+			const cashbackDiscountCouponWhereClause = `WHERE isDeleted=false AND status=true ${cashbackDiscountCouponCond} ${businessIdCond}`;
+
+
+			const giftCardQuery = `SELECT id, createdAt, "gift_cards" as type FROM gift_cards ${giftLoyaltyWhereClause}`;
+			const cashbackQuery = `SELECT id, createdAt, "cashbacks" as type FROM cashbacks ${cashbackDiscountCouponWhereClause}`;
+			const discountQuery = `SELECT id, createdAt, "discounts" as type FROM discounts ${cashbackDiscountCouponWhereClause}`;
+			const couponesQuery = `SELECT id, createdAt, "coupones" as type FROM coupones ${cashbackDiscountCouponWhereClause}`;
+			const loyaltyPointsQuery = `SELECT id, createdAt, "loyalty_points" as type FROM loyalty_points ${giftLoyaltyWhereClause}`;
+			
+			if (request_type.includes('gift_cards')) {
+				unionQuery += giftCardQuery;
+			}
+			
+			if (request_type.includes('cashbacks')) {
+				unionQuery += unionQuery != '' ?  ` UNION ${cashbackQuery}`: cashbackQuery;
+			}
+			
+			if (request_type.includes('discounts')) {
+				unionQuery += unionQuery != '' ?  ` UNION ${discountQuery}`: discountQuery;
+			}
+			
+			if (request_type.includes('coupones')) {
+				unionQuery += unionQuery != '' ?  ` UNION ${couponesQuery}`: couponesQuery;
+			}
+			
+			if (request_type.includes('loyalty_points')) {
+				unionQuery += unionQuery != '' ?  ` UNION ${loyaltyPointsQuery}`: loyaltyPointsQuery;
+			}
+			// unionQuery += `${unionQuery}`
+			const total_rewards_purchase = "";
+			const total_loyalty_purchase = "" ;
+			const rewards = await models.sequelize.query(`SELECT * FROM (${unionQuery}) Rewards ORDER BY createdAt desc LIMIT ${offset}, ${limit}`,{
+				type: models.sequelize.QueryTypes.SELECT
+			});
+			const rewardsCounts = await models.sequelize.query(`SELECT * FROM (${unionQuery}) Rewards`,{
+				type: models.sequelize.QueryTypes.SELECT
+			})
+			const allRewardsData = await Promise.all([
+				...rewards.map((rew) => {
+					if (rew.type == 'gift_cards') {
+						return new Promise(async (resolve) => {
+							let gCard = await giftCardModel.findOne({
+								include: [
+									{
+										model: userGiftCardList,
+										attributes: ['id'],
+										where: {
+											payment_status: 1
+										},
+										required: false
+									}
+								],
+								where:{
+									id: rew.id
+								},
+								attributes: {
+									include: [
+										[models.sequelize.literal("'gift_cards'"),"type"],
+									]
+								},
+								order: [
+									['createdAt', 'DESC']
+								]
+							});
+							gCard = JSON.parse(JSON.stringify(gCard));
+							if(gCard.image && gCard.image != null){
+								let images = gCard.image
+								const signurl = await awsConfig.getSignUrl(images.toString()).then(function(res){
+									gCard.image = res;
+								});
+							}else {
+								gCard.image = commonConfig.default_image;
+							}
+							if(gCard.expire_at < currentDate){
+								gCard["is_expired"] = true;
+							}else{
+								gCard["is_expired"] = false;
+							}
+							gCard.totalPurchase = gCard.user_giftcards.length  || 0; 
+							delete gCard.user_giftcards;
+							// responseArr.push(gCard);
+							if (gCard) {
+								resolve(gCard);
+							} else {
+								resolve(null);
+							}
+						})
+					} else if (rew.type == 'cashbacks') {
+						return new Promise(async (resolve) => {
+							let cashBackObj = await cashbackModel.findOne({
+								where: {
+									id: rew.id
+								},
+								attributes: {
+									include: [[models.sequelize.literal("'cashbacks'"),"type"]]
+								},
+								include: [
+									{
+										model: productCategoryModel,
+										attributes: ['id', 'name']
+									}
+								],
+							});
+							cashBackObj = JSON.parse(JSON.stringify(cashBackObj));
+							const products = await productModel.findAll({ where: { id: { [Op.in] : cashBackObj.product_id?.split(',') || [] } } ,attributes: ["name"], raw: true});
+							const product_name_arr = products?.map(val => val.name);
+							const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
+							cashBackObj.product_name = product_name;
+							cashBackObj.product_category_name = cashBackObj?.product_category?.name || ''
+							cashBackObj.value_type = cashBackObj.cashback_type;
+							cashBackObj.amount = cashBackObj.cashback_value;
+							delete cashBackObj.product_category;
+							if(cashBackObj.validity_for < currentDate){
+								cashBackObj.is_expired = true;
+							}else{
+								cashBackObj.is_expired = false;
+							}
+							if (cashBackObj) {
+								resolve(cashBackObj);
+							} else {
+								resolve(null);
+							}
+						})
+					} else if (rew.type == 'discounts') {
+						return new Promise(async (resolve) => {
+							let discountObj = await discountModel.findOne({
+								where:{
+									id :rew.id
+								},
+								attributes: {
+									include: [[models.sequelize.literal("'discounts'"),"type"]]
+								},
+								include: [
+									{
+										model: productCategoryModel,
+										attributes: ['id', 'name']
+									}
+								],
+							});
+							discountObj = JSON.parse(JSON.stringify(discountObj));
+							const products = await productModel.findAll({ where: { id: { [Op.in] : discountObj.product_id?.split(',') || [] } } ,attributes: ["name"], raw: true});
+							const product_name_arr = products?.map(val => val.name);
+							const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
+							discountObj.product_name = product_name;
+							discountObj.product_category_name = discountObj?.product_category?.name || ''
+							discountObj.value_type = discountObj.discount_type;
+							discountObj.amount = discountObj.discount_value;
+							delete discountObj.product_category;
+							if(discountObj.validity_for < currentDate){
+								discountObj.is_expired = true;
+							}else{
+								discountObj.is_expired = false;
+							}
+							if (discountObj) {
+								resolve(discountObj);
+							} else {
+								resolve(null);
+							}
+						})
+					} else if (rew.type == 'coupones') {
+						return new Promise(async (resolve) => {
+							let couponeObj = await couponeModel.findOne({
+								where:{
+									id: rew.id
+								},
+								attributes: {
+									include: [[models.sequelize.literal("'coupones'"),"type"]]
+								},
+								include: [
+									{
+										model: productCategoryModel,
+										attributes: ['id', 'name']
+									}
+								],
+							});
+							couponeObj = JSON.parse(JSON.stringify(couponeObj));
+							const products = await productModel.findAll({ where: { id: { [Op.in] : couponeObj.product_id?.split(',') || [] } } ,attributes: ["name"], raw: true});
+							const product_name_arr = products?.map(val => val.name);
+							const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
+							couponeObj.product_name = product_name;
+							couponeObj.product_category_name = couponeObj?.product_category?.name || ''
+							couponeObj.amount = couponeObj.coupon_value;
+							delete couponeObj.product_category;
+							if(couponeObj.expire_at < currentDate){
+								couponeObj.is_expired = true;
+							}else{
+								couponeObj.is_expired = false;
+							}
+							if (couponeObj) {
+								resolve(couponeObj);
+							} else {
+								resolve(null);
+							}
+						})
+					} else if (rew.type == 'loyalty_points') {
+						return new Promise(async (resolve) => {
+							let loyaltyObj = await loyaltyPointModel.findOne({
+								where:{
+									id: rew.id
+								},
+								attributes: {
+									include: [[models.sequelize.literal("'loyalty_points'"),"type"]]
+								},
+								include: [
+									{
+										model: productModel,
+										attributes: ['id', 'name', 'category_id'],
+										include: [
+											{
+												model: productCategoryModel,
+												attributes: ['id', 'name'],
+												as: 'product_categorys'
+											},
+										],
+									},
+									{
+										model: giftCardModel,
+										attributes: ['id', 'name'],
+									}
+								],
+							});
+							// loyaltyObj.dataValues.product_name = loyaltyObj?.dataValues?.product?.dataValues?.name || '';
+							loyaltyObj.dataValues.product_category_name = loyaltyObj?.dataValues?.product?.dataValues?.product_categorys?.name || '';
+							const products = await productModel.findAll({ where: { id: { [Op.in] : loyaltyObj?.dataValues?.product_id?.split(',') || [] } } ,attributes: ["name"], raw: true});
+							const product_name_arr = products?.dataValues?.map(val => val.name);
+							const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
+							loyaltyObj.dataValues.product_name = product_name;
+		
+							loyaltyObj.giftcard_name = loyaltyObj?.dataValues?.gift_card?.name || '';
+							delete loyaltyObj?.dataValues?.gift_card;
+							delete loyaltyObj?.dataValues.product;
+							if(loyaltyObj.validity < currentDate){
+								loyaltyObj.is_expired = true;
+							}else{
+								loyaltyObj.is_expired = false;
+							}
+							if (loyaltyObj) {
+								resolve(loyaltyObj);
+							} else {
+								resolve(null);
+							}
+						})
+					}
+				})
+			])
+			const rewardList  = allRewardsData.filter(obj => obj != null);
+			const response = new pagination(rewardList, rewardsCounts?.length || 0, parseInt(data.page), parseInt(limit) );
+			res.send(setRes(resCode.OK, true, "Get rewards list successfully", ({ total_rewards_purchase, total_loyalty_purchase, ...response.getPaginationInfo(), })));
+		} else {
+			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
+		}
+	} catch (error) {
 		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
 	}
 }
