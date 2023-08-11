@@ -174,7 +174,11 @@ exports.rewardHistoryBusinessList = async (req, res) => {
             if (data.page < 0 || data.page === 0) {
                 return res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1", null))
             }
+            const skip = data.page_size * (data.page - 1)
+		    const limit = parseInt(data.page_size)
             const condition = {
+                skip: skip,
+                limit: limit,
                 include: [
                     {
                         model: orderModel,

@@ -871,6 +871,26 @@ exports.commonRewardsList =async(req,res) => {
 			const giftLoyaltyWhereClause = `WHERE isDeleted=false AND status=true ${giftCardAndLoyaltyCond} ${businessIdCond}`;
 			const cashbackDiscountCouponWhereClause = `WHERE isDeleted=false AND status=true ${cashbackDiscountCouponCond} ${businessIdCond}`;
 
+			let filteCondition = '';
+			if ( data.category_id != undefined && data.category_id ) {
+				const category = data.category_id ? data.category_id.trim(): '' ;
+				filteCondition += ` product_category_id IN (${category})`;
+			}
+
+			if ( data.product_type != undefined && data.product_type ) {
+				const productType = data.product_type ? data.product_type.trim() : '' ;
+				const condition = `products.sub_category_id IN (${productType})`
+				filteCondition += filteCondition != '' ?  ` AND ${condition}` :  condition;
+			}
+			if (data.price != undefined && data.price) {
+				const priceRange = data.price != '' ? data.price.split('-') : [];
+				const lowerRange = priceRange.length > 1 ? priceRange[0] : 0;
+				const upperRange = priceRange.length > 1 ? priceRange[1] : 0;
+				const condition = `products.price >= ${lowerRange} AND  products.price >= ${upperRange}`;
+				filteCondition += filteCondition != '' ?  ` AND ${condition}` :  condition;
+			}
+
+			const productFilterCondition = `JOIN products ON product_id=products.id WHERE ${filteCondition}`
 
 			const giftCardQuery = `SELECT id, createdAt, "gift_cards" as type FROM gift_cards ${giftLoyaltyWhereClause}`;
 			const cashbackQuery = `SELECT id, createdAt, "cashbacks" as type FROM cashbacks ${cashbackDiscountCouponWhereClause}`;
@@ -1092,12 +1112,12 @@ exports.commonRewardsList =async(req,res) => {
 							});
 							// loyaltyObj.dataValues.product_name = loyaltyObj?.dataValues?.product?.dataValues?.name || '';
 							loyaltyObj.dataValues.product_category_name = loyaltyObj?.dataValues?.product?.dataValues?.product_categorys?.name || '';
-							const products = await productModel.findAll({ where: { id: { [Op.in] : loyaltyObj?.dataValues?.product_id?.split(',') || [] } } ,attributes: ["name"], raw: true});
-							const product_name_arr = products?.dataValues?.map(val => val.name);
+							const products = await productModel.findAll({ where: { id: { [Op.in] : loyaltyObj?.dataValues?.product_id?.split(',') || [] } } ,attributes: ["name"]});
+							const product_name_arr = products?.map(val => val.name);
 							const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
 							loyaltyObj.dataValues.product_name = product_name;
 		
-							loyaltyObj.giftcard_name = loyaltyObj?.dataValues?.gift_card?.name || '';
+							loyaltyObj.dataValues.giftcard_name = loyaltyObj?.dataValues?.gift_card?.name || '';
 							delete loyaltyObj?.dataValues?.gift_card;
 							delete loyaltyObj?.dataValues.product;
 							if(loyaltyObj.validity < currentDate){
