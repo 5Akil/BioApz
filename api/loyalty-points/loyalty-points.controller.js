@@ -42,7 +42,7 @@ exports.create = async(req,res) =>{
 				validation = false;
 				return res.send(setRes(resCode.BadRequest,false, "You can't select past and current date.!",null))
 			}
-			if (data.points_redeemed && data.points_redeemed == 1) {
+			if (data.points_redeemed && data.points_redeemed == 1 && data.loyalty_type != 0) {
 				if (!data?.gift_card_id || _.isEmpty(data.gift_card_id)) {
 					return res.send(setRes(resCode.BadRequest,false, "gift_card_id is required.",null))
 				}
@@ -174,7 +174,7 @@ exports.update = async(req,res) => {
 			}else if(currentDate || pastDate){
 				res.send(setRes(resCode.BadRequest,false, "You can't select past and current date.!",null))
 			}else{
-				if (data.points_redeemed && data.points_redeemed == 1) {
+				if (data.points_redeemed && data.points_redeemed == 1 && data.loyalty_type != 0) {
 					if (!data?.gift_card_id || _.isEmpty(data.gift_card_id)) {
 						return res.send(setRes(resCode.BadRequest,false, "gift_card_id is required.",null))
 					}
