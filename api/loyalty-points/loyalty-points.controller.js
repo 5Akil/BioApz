@@ -116,30 +116,31 @@ exports.delete = async(req,res) => {
 		var loyaltyPointModel = models.loyalty_points
 		var requiredFields = _.reject(['id'], (o) => { return _.has(data, o)  })
 		if(requiredFields == ""){
-			loyaltyPointModel.findOne(
-				{where: {id: data.id,status:true,isDeleted: false,deleted_at:null}
+			await loyaltyPointModel.findOne(
+				{where: {id: data.id,isDeleted: false,deleted_at:null}
 			}).then(async loyaltyData => {
 				if (loyaltyData) {
-					await loyaltyData.update({ 
+					const deleteData = await loyaltyData.update({ 
 						isDeleted: true,
 						status:false
-					}).then(async deleteData => {
+					});
 						if(deleteData){
-							await loyaltyData.findOne({
+							await loyaltyPointModel.findOne({
 								where: {
 									id: deleteData.id
 								}
 								}).then(async Data => {
 									Data.destroy();
 								});
+							return res.send(setRes(resCode.OK, true, "loyalty point deleted successfully.", null))
+						}else{
+							return res.send(setRes(resCode.BadRequest, false, "Fail to delete loyalty point.", null))
 						}
-					});
-					res.send(setRes(resCode.OK, true, "loyalty point deleted successfully.", null))
 				} else {
-					res.send(setRes(resCode.ResourceNotFound, false, "Coupone not found.", null))
+					return res.send(setRes(resCode.ResourceNotFound, false, "Loyalty point not found.", null))
 				}
 			}).catch(error => {
-				res.send(setRes(resCode.BadRequest, false, "Fail to delete loyalty point.", null))
+				return res.send(setRes(resCode.BadRequest, false, "Fail to delete loyalty point.", null))
 			})
 		}else{
 			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required.'),null))

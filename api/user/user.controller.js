@@ -2364,8 +2364,8 @@ exports.businessEventList = async (req, res) => {
 					}
 				],
 				order: [
+					['start_date', 'ASC'],
 					['start_time', 'ASC'],
-					['start_date', 'ASC']
 				],
 			}
 			condition.where = {is_deleted: false,end_date: {
@@ -2550,8 +2550,8 @@ exports.userEventList = async (req, res) => {
 				}
 			],
 			order: [
+				['start_date', 'ASC'],
 				['start_time', 'ASC'],
-				['start_date', 'ASC']
 			],
 		}	
 		condition.where = {
@@ -3003,3 +3003,162 @@ exports.redeemGiftCard = async (req, res) => {
 		return res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
 	}
 }
+
+exports.priceFilterForWallet =async(req,res) => {
+	try{
+		const data = req.query
+		const promises = [];
+		const request_type = data.type
+		const giftCardModel = models.gift_cards
+		const cashbackModel = models.cashbacks
+		const discountModel = models.discounts
+		const couponeModel = models.coupones
+		const loyaltyPointModel = models.loyalty_points
+		const Op = models.Op;
+		const currentDate = (moment().format('YYYY-MM-DD'))
+		const requiredFields = _.reject([], (o) => { return _.has(data, o)  })
+		if(requiredFields == ""){
+			var typeArr = ['gift_cards','cashbacks','discounts','coupones','loyalty_points'];
+
+			if((request_type) && !(typeArr.includes(request_type))){
+				return res.send(setRes(resCode.BadRequest, null, false, "Please select valid type."))
+			}
+			promises.push(
+				await giftCardModel.findAll({
+					where:{isDeleted:false,status:true,deleted_at: null,},
+					attributes:['id','amount']
+				}).then(async giftCardData => {
+					if (giftCardData){
+						const dataArray = [];
+						// Update Sign URL
+						for(const data of giftCardData){
+							let result = 	JSON.parse(JSON.stringify(data));
+							result.type="gift_cards";
+							dataArray.push(result);
+						}
+						return dataArray;
+					}
+					return [];
+				}),
+				await cashbackModel.findAll({
+					where:{isDeleted:false,status:true,deleted_at: null,},
+					attributes:['id','cashback_type','cashback_value']
+				}).then(async CashbackData => {
+					if (CashbackData){
+						const dataArray = [];
+						for(const data of CashbackData){
+						let result = JSON.parse(JSON.stringify(data));
+						result.type="cashbacks";
+						result.amount= data.cashback_value;
+						dataArray.push(result);
+						}
+						return dataArray;
+					}
+					return [];		
+				}),
+				await discountModel.findAll({
+					where:{isDeleted:false,status:true,deleted_at: null,},
+					attributes:['id','discount_type','discount_value']
+				}).then(async DiscountData => {
+						if (DiscountData){
+							const dataArray = [];
+							for(const data of DiscountData){
+								let result = 	JSON.parse(JSON.stringify(data));
+								result.type="discounts";
+								result.amount= data.discount_value;
+								dataArray.push(result);
+								}
+								return dataArray;
+						}
+					return [];
+				}),
+				await couponeModel.findAll({
+					where:{isDeleted:false,status:true,deleted_at: null,},
+					attributes:['id','value_type','coupon_value']
+				}).then(async CouponeData => {
+					if (CouponeData){
+						const dataArray = [];
+						for(const data of CouponeData){
+						let result = 	JSON.parse(JSON.stringify(data));
+						result.type="coupones";
+						result.amount= data.coupon_value;
+						dataArray.push(result);
+						}
+						return dataArray;
+						
+					}
+					return [];
+				}),
+				await loyaltyPointModel.findAll({
+					where:{isDeleted:false,status:true,deleted_at: null},
+					attributes:['id','amount']
+					}).then(async LoyaltyPointData => {
+						if(LoyaltyPointData){
+							const dataArray = [];
+							for(const data of LoyaltyPointData){
+								let result = JSON.parse(JSON.stringify(data));
+								result.type="loyalty_points";
+								dataArray.push(result);
+						}
+						return dataArray;
+						}
+						return [];
+				})
+			);
+
+			const [giftcardRewards,cashbackData,discountData,couponeData,loyaltyPointData] = await Promise.all(promises);
+
+			const arrays = [giftcardRewards, cashbackData,discountData,couponeData,loyaltyPointData];
+			const mergedArray = mergeRandomArrayObjects(arrays);
+			let result =  mergedArray;
+			if(!(_.isEmpty(request_type))){
+				result = _.filter(result, {type: request_type})
+			}
+			var filters = []; 
+			const attrToExtract = "amount";
+            const extractedData = _.map(result, obj => Math.round(obj[attrToExtract]));
+
+			if(!_.isEmpty(extractedData)){
+				var minValue = null;
+				if(extractedData.length == 1){
+					minValue = 1;
+				}else{
+					minValue = Math.min(...extractedData);
+				}
+				const maxValue = Math.max(...extractedData);
+				filters = generateFilters(minValue, maxValue, 2);
+			}
+
+			res.send(setRes(resCode.OK, true, "Get rewards list successfully",filters))
+		}else{
+			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
+		}
+	}catch(error){
+		console.log('error', error);
+		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
+	}
+}
+// Function to generate filters
+function generateFilters(min, max, size) {
+    const midValue = Math.floor((min + max) / size);
+    
+    return [
+      {
+        "name": `Below ${min}`,
+        "value": `<= ${min}`,
+      },
+      {
+        "name": `${min}-${midValue}`,
+        "value": `${min} - ${midValue}`,
+      },
+      {
+        "name": `${midValue + 1}-${max}`,
+        "value": `${midValue + 1} - ${max}`,
+      },
+      {
+        "name": `Above ${max}`,
+        "value": `>= ${max}`,
+      },
+    ];
+  }
+
