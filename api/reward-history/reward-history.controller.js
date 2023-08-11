@@ -196,7 +196,7 @@ exports.rewardHistoryBusinessList = async (req, res) => {
                     ["createdAt","DESC"]
                 ]
             }
-            const responseArr = [];
+            let responseArr = [];
             const businessRewardHistoryData = await rewardHistoryModel.findAndCountAll(condition);
             if (businessRewardHistoryData?.rows && businessRewardHistoryData?.rows.length > 0) {
                 for (let rewardHistory of businessRewardHistoryData?.rows) {
