@@ -30,4 +30,6 @@ module.exports = function (app) {
 
   app.use('/api/device_token', require('./api/device-token'))
   app.use('/api/rewardhistory', require('./api/reward-history'))
+  app.use('/api/notifications', require('./api/notification'))
+
 }
