@@ -137,7 +137,6 @@ exports.deleteCashback = async (req, res) => {
 			cashbackModel.findOne({
 				where: {
 					id: data.id,
-					status: true,
 					isDeleted: false
 				}
 			}).then(async cashbackData => {

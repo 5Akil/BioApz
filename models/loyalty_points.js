@@ -43,6 +43,7 @@ module.exports = (sequelize, DataTypes) => {
     // associations can be defined here
     LoyaltyPoints.belongsTo(models.business, {foreignKey: 'business_id'})
     LoyaltyPoints.belongsTo(models.products, {foreignKey: 'product_id'})
+    LoyaltyPoints.belongsTo(models.gift_cards, {foreignKey: 'gift_card_id'})
   };
   return LoyaltyPoints;
 };

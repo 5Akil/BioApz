@@ -489,8 +489,9 @@ exports.ViewEvent = async (req, res) => {
 		attributes: {exclude: ['createdAt','updatedAt','is_deleted','repeat','repeat_every','repeat_on']}
 	}).then(async event => {
 		if (event != null) {
+			const sevenDayBeforeEvent = (moment(event.start_date).subtract(7, "days").format('YYYY-MM-DD'));
 			var isEditAndDelete = true;
-			if(beforeSevenDay <= event.start_date || currentDate == event.start_date){
+			if(currentDate >= sevenDayBeforeEvent || currentDate == event.start_date){
 				isEditAndDelete = false;
 			}
 			var event_images = event.images

@@ -27,7 +27,7 @@ function authorize(roles = []) {
                         resCode.Unauthorized,
                         false,
                         'Invalid Token Access denied/Unauthorized',
-                        httpStatus.FORBIDDEN
+                        null
                     ));
                 }
             }

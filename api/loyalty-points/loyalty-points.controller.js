@@ -42,7 +42,7 @@ exports.create = async(req,res) =>{
 				validation = false;
 				return res.send(setRes(resCode.BadRequest,false, "You can't select past and current date.!",null))
 			}
-			if (data.points_redeemed && data.points_redeemed == 1 && data.loyalty_type == 1) {
+			if (data.points_redeemed && data.points_redeemed == 1 && data.loyalty_type != 0) {
 				if (!data?.gift_card_id || _.isEmpty(data.gift_card_id)) {
 					return res.send(setRes(resCode.BadRequest,false, "gift_card_id is required.",null))
 				}
@@ -159,6 +159,7 @@ exports.update = async(req,res) => {
 		var businessModel = models.business
 		const productModel= models.products;
 		const categoryModel = models.product_categorys;
+		const giftCardModel = models.gift_cards;
 		var Op = models.Op;
 		var validation = true;
 
@@ -173,7 +174,7 @@ exports.update = async(req,res) => {
 			}else if(currentDate || pastDate){
 				res.send(setRes(resCode.BadRequest,false, "You can't select past and current date.!",null))
 			}else{
-				if (data.points_redeemed && data.points_redeemed == 1) {
+				if (data.points_redeemed && data.points_redeemed == 1 && data.loyalty_type != 0) {
 					if (!data?.gift_card_id || _.isEmpty(data.gift_card_id)) {
 						return res.send(setRes(resCode.BadRequest,false, "gift_card_id is required.",null))
 					}
@@ -217,6 +218,10 @@ exports.update = async(req,res) => {
 															as: 'product_categorys'
 														}
 													],
+												},
+												{
+													model: giftCardModel,
+													attributes: ['id', 'name'],
 												}
 											],
 										}).then(async data => {
@@ -224,8 +229,12 @@ exports.update = async(req,res) => {
 											const product_name_arr = products?.map(val => val.name);
 											const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
 											data.dataValues.product_name = product_name;
+											data.dataValues.type = "loyalty_points";
 											data.dataValues.product_category_name = data.dataValues?.product?.product_categorys?.name || '';
-											data.dataValues.amount = data.dataValues.coupon_value;
+											data.dataValues.amount = data.dataValues.amount;
+
+											data.dataValues.giftcard_name = data?.dataValues?.gift_card?.name || '';
+											delete data?.dataValues?.gift_card;
 											delete data.dataValues.product;
 											const curentDate = (moment().format('YYYY-MM-DD'));
 											if(data.dataValues.validity < curentDate){

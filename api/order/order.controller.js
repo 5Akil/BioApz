@@ -404,3 +404,314 @@ exports.BusinessOrderDetail = async (req,res) => {
 		res.send(setRes(resCode.ResourceNotFound,false,'Authorized Business User not found',null))
 	}
 }
+
+exports.transactionDetails = async (req, res) => {
+    try {
+        const data = req.body;
+        
+        const rewardHistoryModel = models.reward_history;
+        const productModel = models.products;
+        const orderModel = models.orders;
+        const productCategoryModel = models.product_categorys;
+        const orderDetailsModel = models.order_details        
+        const businessModel = models.business;
+		
+        const userGiftCardsModel = models.user_giftcards;
+        const giftCardsModel = models.gift_cards;
+        const discountsModel = models.discounts;
+        const cashbacksModel = models.cashbacks;
+        const couponesModel = models.coupones;
+        const loyaltyPointsModel = models.loyalty_points;
+
+        const user = req.user;
+
+        const requiredFields = _.reject(['order_id'], (o) => { return _.has(data, o) })
+        if (requiredFields == "") {
+            const condition = {
+                include:[
+                    {
+                        model: orderDetailsModel,
+                        attributes: ["product_id", "price", "qty", ],
+                        include: [
+                            {
+                                model: productModel,
+                                attributes: ["name","description","image","product_item"],
+                                include: [
+                                    {
+                                        model: productCategoryModel,
+                                        as: "product_categorys",
+                                        attributes: ["name"]
+                                    },
+                                    {
+                                        model: productCategoryModel,
+                                        as: "sub_category",
+                                        attributes: ["name"]
+                                    },
+                                ]
+                            },
+                        ]
+                    },
+					{
+						model: rewardHistoryModel,
+						attributes: ["amount", "reference_reward_id", "reference_reward_type", "createdAt"],
+						required: false,
+						as: "rewards",
+						where: {
+							order_id: data.order_id,
+							credit_debit: true,
+						}
+					},
+                    {
+                        model: businessModel,
+                        attributes: ["business_name", "banner", "email"]
+                    }
+                ],
+                attributes: ["id", "order_no", "amount", "payment_status", "order_status", "createdAt"],
+                where: {
+                    id: data.order_id,
+                    user_id: user.id
+                }
+            }
+            const orderDetail = await orderModel.findOne(condition);
+            if (orderDetail) {
+                for (let product of orderDetail.dataValues.order_details) {
+
+                    // product type and categories
+                    product.dataValues.product.dataValues.category_name = product?.dataValues?.product?.product_categorys?.name || ""
+                    product.dataValues.product.dataValues.product_type = product?.dataValues?.product?.sub_category?.name || ""
+                    delete product?.dataValues?.product?.dataValues?.product_categorys;
+                    delete product?.dataValues?.product?.dataValues?.sub_category;
+                    
+                    // product images
+                    product.dataValues.product.dataValues.product_images = [];
+                    for (let img of product.dataValues.product.image) {
+                        const signurl = await awsConfig.getSignUrl(img).then(function(res){
+                            product.dataValues.product.dataValues.product_images.push(res);
+                        });
+                    }
+                }
+				// product rewards
+				for (let reward of orderDetail.dataValues.rewards) {
+					if (reward.reference_reward_type == "gift_cards") {
+						const giftCardDetails = await userGiftCardsModel.findOne({
+							include: [
+								{
+									model: giftCardsModel,
+									attributes: ["image", "name", "description", "expire_at", "is_cashback" ]
+								}
+							],
+							where: {
+								id: reward.reference_reward_id
+							},
+							attributes: { exclude: ["payment_status","status","is_deleted","createdAt","updatedAt"] },
+						});
+						reward.dataValues.reward_details = giftCardDetails;
+					}
+					if (reward.reference_reward_type == "cashbacks") {
+						const cashbackDetails = await cashbacksModel.findOne({
+							where: {
+								id: reward.reference_reward_id
+							},
+							attributes: { exclude: [ "status", "isDeleted", "createdAt", "updatedAt", "deleted_at" ] }
+						});
+						reward.dataValues.reward_details = cashbackDetails;
+					}
+					if (reward.reference_reward_type == "discounts") {
+						const discoutDetails = await discountsModel.findOne({
+							where: {
+								id: reward.reference_reward_id
+							},
+							attributes: { exclude: [ "status", "isDeleted", "createdAt", "updatedAt", "deleted_at" ] }
+						});
+						reward.dataValues.reward_details = discoutDetails;
+					}
+					if (reward.reference_reward_type == "coupones") {
+						const couponesDetails = await couponesModel.findOne({
+							where: {
+								id: reward.reference_reward_id
+							},
+							attributes: { exclude: [ "status", "isDeleted", "createdAt", "updatedAt", "deleted_at" ] }
+						});
+						reward.dataValues.reward_details = couponesDetails;
+					}
+					if (reward.reference_reward_type == "loyalty_points") {
+						const loyaltyPointsDetails = await loyaltyPointsModel.findOne({
+							where: {
+								id: reward.reference_reward_id
+							},
+							attributes: { exclude: [ "status", "isDeleted", "createdAt", "updatedAt", "deleted_at" ] }
+						});
+						reward.dataValues.reward_details = loyaltyPointsDetails;
+					}
+				}
+				const signurl = await awsConfig.getSignUrl(orderDetail?.dataValues?.business?.dataValues?.banner).then(function(res){
+					orderDetail.dataValues.business.dataValues.banner = res;
+				});
+                return res.send(setRes(resCode.OK, false, "Transaction details for order", orderDetail))
+            } else {
+                return res.send(setRes(resCode.BadRequest, false, "Order not found", null))
+            }
+        } else {
+            return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
+        }
+
+    } catch (error) {
+        return res.send(setRes(resCode.BadRequest, false, "Something went wrong", "", null))
+    }
+}
+
+
+exports.businessTransactionDetails = async (req, res) => {
+    try {
+        const data = req.body;
+        
+        const rewardHistoryModel = models.reward_history;
+        const productModel = models.products;
+        const orderModel = models.orders;
+        const productCategoryModel = models.product_categorys;
+        const orderDetailsModel = models.order_details        
+        const userModel = models.user;
+
+        const userGiftCardsModel = models.user_giftcards;
+        const giftCardsModel = models.gift_cards;
+        const discountsModel = models.discounts;
+        const cashbacksModel = models.cashbacks;
+        const couponesModel = models.coupones;
+        const loyaltyPointsModel = models.loyalty_points;
+
+        const user = req.user;
+
+        const requiredFields = _.reject(['order_id'], (o) => { return _.has(data, o) })
+        if (requiredFields == "") {
+            const condition = {
+                include:[
+                    {
+                        model: orderDetailsModel,
+                        attributes: ["product_id", "price", "qty", ],
+                        include: [
+                            {
+                                model: productModel,
+                                attributes: ["name","description","image","product_item"],
+                                include: [
+                                    {
+                                        model: productCategoryModel,
+                                        as: "product_categorys",
+                                        attributes: ["name"]
+                                    },
+                                    {
+                                        model: productCategoryModel,
+                                        as: "sub_category",
+                                        attributes: ["name"]
+                                    },
+                                ]
+                            },
+                        ]
+                    },
+					{
+						model: rewardHistoryModel,
+						attributes: ["amount", "reference_reward_id", "reference_reward_type", "createdAt"],
+						required: false,
+						as: "rewards",
+						where: {
+							order_id: data.order_id,
+							credit_debit: true,
+						}
+					},
+                    {
+                        model: userModel,
+                        attributes: ["username", "profile_picture", "email"]
+                    }
+                ],
+                attributes: ["id", "order_no", "amount", "payment_status", "order_status", "createdAt"],
+                where: {
+                    id: data.order_id,
+                    business_id: user.id
+                }
+            }
+            const orderDetail = await orderModel.findOne(condition);
+			if (orderDetail) {
+				for (let product of orderDetail.dataValues.order_details) {
+
+                    // product type and categories
+                    product.dataValues.product.dataValues.category_name = product?.dataValues?.product?.product_categorys?.name || ""
+                    product.dataValues.product.dataValues.product_type = product?.dataValues?.product?.sub_category?.name || ""
+                    delete product?.dataValues?.product?.dataValues?.product_categorys;
+                    delete product?.dataValues?.product?.dataValues?.sub_category;
+                    
+                    // product images
+                    product.dataValues.product.dataValues.product_images = [];
+                    for (let img of product.dataValues.product.image) {
+                        const signurl = await awsConfig.getSignUrl(img).then(function(res){
+                            product.dataValues.product.dataValues.product_images.push(res);
+                        });
+                    }
+                }
+				// product rewards
+				for (let reward of orderDetail.dataValues.rewards) {
+					if (reward.reference_reward_type == "gift_cards") {
+						const giftCardDetails = await userGiftCardsModel.findOne({
+							include: [
+								{
+									model: giftCardsModel,
+									attributes: ["image", "name", "description", "expire_at", "is_cashback" ]
+								}
+							],
+							attributes: { exclude: ["payment_status","status","is_deleted","createdAt","updatedAt"] },
+							where: {
+								id: reward.reference_reward_id
+							}
+						});
+						reward.dataValues.reward_details = giftCardDetails;
+					}
+					if (reward.reference_reward_type == "cashbacks") {
+						const cashbackDetails = await cashbacksModel.findOne({
+							where: {
+								id: reward.reference_reward_id
+							},
+							attributes: { exclude: ["status","isDeleted","createdAt","updatedAt","deleted_at"] }
+						});
+						reward.dataValues.reward_details = cashbackDetails;
+					}
+					if (reward.reference_reward_type == "discounts") {
+						const discoutDetails = await discountsModel.findOne({
+							where: {
+								id: reward.reference_reward_id
+							},
+							attributes: { exclude: ["status", "isDeleted", "createdAt", "updatedAt", "deleted_at"] }
+						});
+						reward.dataValues.reward_details = discoutDetails;
+					}
+					if (reward.reference_reward_type == "coupones") {
+						const couponesDetails = await couponesModel.findOne({
+							where: {
+								id: reward.reference_reward_id
+							},
+							attributes: { exclude: [ "status", "isDeleted", "createdAt", "updatedAt", "deleted_at" ] }
+						});
+						reward.dataValues.reward_details = couponesDetails;
+					}
+					if (reward.reference_reward_type == "loyalty_points") {
+						const loyaltyPointsDetails = await loyaltyPointsModel.findOne({
+							where: {
+								id: reward.reference_reward_id
+							},
+							attributes: { exclude: [ "status", "isDeleted", "createdAt", "updatedAt", "deleted_at" ] }
+						});
+						reward.dataValues.reward_details = loyaltyPointsDetails;
+					}
+				}
+				const signurl = await awsConfig.getSignUrl(orderDetail?.dataValues?.user?.dataValues?.profile_picture).then(function(res){
+					orderDetail.dataValues.user.dataValues.profile_picture = res;
+				});
+				return res.send(setRes(resCode.OK, false, "Transaction details for order", orderDetail))
+			} else {
+				return res.send(setRes(resCode.BadRequest, false, "Order not found", null))	
+			}
+        } else {
+            return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
+        }
+
+    } catch (error) {
+        return res.send(setRes(resCode.BadRequest, false, "Something went wrong", "", null))
+    }
+}

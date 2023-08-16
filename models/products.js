@@ -41,6 +41,7 @@ module.exports = (sequelize, DataTypes) => {
     Products.hasMany(models.product_ratings, { foreignKey: 'product_id' })
     Products.hasMany(models.loyalty_points, {foreignKey: 'product_id'})
     Products.hasMany(models.order_details, { foreignKey: 'product_id' })
+    Products.hasMany(models.reward_history, { foreignKey: 'product_id', as: 'rewards' })
   };
   return Products;
 };
