@@ -89,4 +89,6 @@ router.post('/event/list', verifyToken,authorize([2]), controller.userEventList)
 router.post('/event/register', verifyToken,authorize([2]), controller.eventUserRegister)
 router.post('/event/leave', verifyToken,authorize([2]), controller.eventUserLeave)
 
+router.get('/price_filter', verifyToken, controller.priceFilterForWallet)
+
 module.exports = router;

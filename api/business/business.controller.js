@@ -1440,10 +1440,16 @@ exports.homeList = async (req, res) => {
 		const promises = [];
 		var eventArray = [];
 		var currentDate = (moment().format('YYYY-MM-DD'));
+		const dataLimit = 3
 
 		promises.push(
-			giftCardModel.findAll({
-				where: { business_id:data.business_id,isDeleted: false, status: true, deleted_at: null }
+			await giftCardModel.findAll({
+				where: { business_id:data.business_id,isDeleted: false, status: true, deleted_at: null,
+					},
+					order: [
+						['createdAt', 'DESC']
+					],
+					limit: dataLimit
 			}).then(async giftCardData => {
 				if (giftCardData.length > 0) {
 					const dataArray = [];
@@ -1472,8 +1478,13 @@ exports.homeList = async (req, res) => {
 				}
 				return [];
 			}),
-			cashbackModel.findAll({
-				where: { business_id:data.business_id,isDeleted: false, status: true, deleted_at: null }
+			await cashbackModel.findAll({
+				where: { business_id:data.business_id,isDeleted: false, status: true, deleted_at: null,
+					 },
+					 order: [
+						['createdAt', 'DESC']
+					],
+					limit: dataLimit
 			}).then(async CashbackData => {
 				if (CashbackData.length > 0) {
 					const dataArray = [];
@@ -1494,8 +1505,12 @@ exports.homeList = async (req, res) => {
 				}
 				return [];
 			}),
-			discountModel.findAll({
-				where: { business_id:data.business_id,isDeleted: false, status: true, deleted_at: null }
+			await discountModel.findAll({
+				where: { business_id:data.business_id,isDeleted: false, status: true, deleted_at: null,},
+					order: [
+						['createdAt', 'DESC']
+					],
+					limit: dataLimit
 			}).then(async DiscountData => {
 				if (DiscountData.length > 0) {
 					const dataArray = [];
@@ -1516,8 +1531,13 @@ exports.homeList = async (req, res) => {
 				}
 				return [];
 			}),
-			couponeModel.findAll({
-				where: { business_id:data.business_id,isDeleted: false, status: true, deleted_at: null }
+			await couponeModel.findAll({
+				where: { business_id:data.business_id,isDeleted: false, status: true, deleted_at: null,
+					 },
+					 order: [
+						['createdAt', 'DESC']
+					],
+					limit: dataLimit
 			}).then(async CouponeData => {
 				if (CouponeData.length > 0) {
 					const dataArray = [];
@@ -1538,8 +1558,13 @@ exports.homeList = async (req, res) => {
 				}
 				return [];
 			}),
-			loyaltyPointModel.findAll({
-				where: { business_id:data.business_id,isDeleted: false, status: true, deleted_at: null }
+			await loyaltyPointModel.findAll({
+				where: { business_id:data.business_id,isDeleted: false, status: true, deleted_at: null,
+					 },
+					 order: [
+						['createdAt', 'DESC']
+					],
+					limit: dataLimit
 			}).then(async LoyaltyPointData => {
 				if (LoyaltyPointData.length > 0) {
 					const dataArray = [];
@@ -1563,11 +1588,18 @@ exports.homeList = async (req, res) => {
 		const [giftcardRewards, cashbackData, discountData, couponeData, loyaltyData] = await Promise.all(promises);
 		const rewardsAndLoyaltyArray = [giftcardRewards, cashbackData, discountData, couponeData, loyaltyData];
 		const mergedArray = mergeRandomArrayObjects(rewardsAndLoyaltyArray);
-		let result = mergedArray.slice(0, 5);
+		const finalresult = sortByCreatedLatest(mergedArray);
+		let result = finalresult.slice(0, 2);
 
 		eventArray.push(
-			combocalenderModel.findAll({
-				where: { is_deleted: false,business_id:data.business_id}
+			await combocalenderModel.findAll({
+				where: { is_deleted: false,business_id:data.business_id,
+					},
+					order: [
+						['start_date', 'ASC'],
+						['start_time', 'ASC'],
+					],
+					limit:5
 			}).then(async event => {
 				if(event.length > 0){
 					const dataArray = [];	
@@ -1585,9 +1617,7 @@ exports.homeList = async (req, res) => {
 						}
 						data.dataValues.event_images = image_array
 					}
-					var array = shuffle(event);
-					var slicedArray = array.slice(0, 5);
-					let result = 	JSON.parse(JSON.stringify(slicedArray));
+					let result = JSON.parse(JSON.stringify(event));
 					dataArray.push(result);
 					return result;
 				}
@@ -1597,16 +1627,46 @@ exports.homeList = async (req, res) => {
 		
 		const [eventsData] = await Promise.all(eventArray);
 		const eventDataArray = eventsData;
+		const productModel = models.products;
+		const orderModel = models.orders;
+
+		const productCount = await productModel.findAndCountAll({where:{business_id:data.business_id,is_deleted:false}});
+        const totalProducts = productCount?.count;
+
+		const orderCount = await orderModel.findAll({
+			attributes: [
+				[models.sequelize.fn('sum', models.sequelize.col('amount')), 'total_amount'],
+			],
+			where:{
+				business_id:data.business_id,
+				is_deleted:false
+			},
+			raw: true,
+			group: ['business_id']
+		});
+		const orderDetailsModel = models.order_details;
+		const orderDetails = await orderDetailsModel.findAll({
+			where:{
+				business_id:data.business_id,
+				is_deleted:false
+			},
+			attributes:[
+				[models.sequelize.fn('count', models.sequelize.col('order_id')), 'total_orders'],
+			],
+			raw: true,
+			group: ['business_id']
+		});
 
 		let resData = {};
-		resData.total_sale = "";
-		resData.total_ongoing = "";
-		resData.total_products = "";
+		resData.total_sale = orderCount[0].total_amount;
+		resData.total_ongoing_orders = orderDetails[0].total_orders;
+		resData.total_products = totalProducts;
 		resData.rewards_and_loyalty = result;
 		resData.events = eventDataArray;
 
 		res.send(setRes(resCode.OK, true, "Get home page details successfully.",resData))
 	} catch (error) {
+		console.log(error)
 		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
 	}
 }
@@ -1816,4 +1876,9 @@ exports.updateUserDetils = async (req, res) => {
 		console.log('error', error);
 		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
 	}
+}
+
+function sortByCreatedLatest (arrays) {
+	const sortedArray  = arrays.sort((a,b) => new moment(b.createdAt) - new moment(a.createdAt));
+	return sortedArray;
 }

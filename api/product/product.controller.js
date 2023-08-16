@@ -420,7 +420,7 @@ exports.createProduct = async(req,res) => {
 		if (requiredFields == "") {
 			if(data.name && !_.isEmpty == data.name){
 				var name = data.name;
-				var validname = /^[A-Z+_a-z+_0-9 ]+$/;
+				var validname = /^[A-Z+_.a-z+_.0-9 ]+$/;
 				if (name.match(validname) == null) {
 						return res.send(setRes(resCode.BadRequest, false, 'Please enter valid product name.', null));
 				}
@@ -608,7 +608,7 @@ exports.UpdateProductDetail = async (req, res) => {
 	if (data.id){
 		if(data.name){
 			var name = data.name;
-			var validname = /^[A-Z+_a-z+_0-9 ]+$/;
+			var validname = /^[A-Z+_.a-z+_.0-9 ]+$/;
 			if (name.match(validname) == null) {
 				return res.send(setRes(resCode.BadRequest, false, 'Please enter valid product name.', null));
 			}
@@ -1032,7 +1032,7 @@ exports.CreateCategory = async (req, res) => {
 
 		if(requiredFields == ""){
 		var name = data.name;
-		var validname = /^[A-Z+_a-z+_0-9 ]+$/;
+		var validname = /^[A-Z+_.a-z+_.0-9 ]+$/;
 		if (name.match(validname) == null) {
 			if(data.parent_id == 0){
 				return res.send(setRes(resCode.BadRequest, false, 'Please enter valid product category name.', null));
@@ -1222,7 +1222,7 @@ exports.UpdateCategory = async(req, res) => {
 	if(requiredFields == ""){
 		if(! _.isEmpty(data.name)){
 			var name = data.name;
-			var validname = /^[A-Z+_a-z+_0-9 ]+$/;
+			var validname = /^[A-Z+_.a-z+_.0-9 ]+$/;
 			if (name.match(validname) == null) {
 				if(data.parent_id == 0){
 					return res.send(setRes(resCode.BadRequest, false, 'Please enter valid product category name.', null));
