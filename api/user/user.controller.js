@@ -3012,3 +3012,59 @@ exports.redeemGiftCard = async (req, res) => {
 		return res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
 	}
 }
+
+exports.recommendedGiftCard = async (req, res) => {
+	try {
+		const giftCardsModel = models.gift_cards;
+		const Op = models.Op;
+		const data = req.body;
+		const user = req.user;
+		const requiredFields = _.reject(["page", "page_size", "giftcard_id"], (o) => {
+			return _.has(data, o);
+		});
+
+		if (data.page < 0 || data.page === 0) {
+			return res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1", null))
+		}
+
+		const skip = data.page_size * (data.page - 1)
+		const limit = parseInt(data.page_size)
+
+		if (requiredFields == "") {
+
+			const giftCardExists = await giftCardsModel.findOne({
+				where: {
+					id: data.giftcard_id
+				}
+			});
+			if (!giftCardExists) {
+				return res.send(setRes(resCode.BadRequest, false, "User Giftcard not found.", null));	
+			}
+
+			const giftCards = await giftCardsModel.findAndCountAll({
+				offset: skip,
+				limit: limit,
+				where: {
+					id: {
+						[Op.ne]: data.giftcard_id
+					},
+					business_id: giftCardExists.business_id
+				},
+				order: [
+					['createdAt', 'DESC']
+				]
+			});
+			
+			const totalRecords = +(giftCards.count) || 0;
+
+			const response = new pagination(giftCards.rows, +(totalRecords), data.page, data.page_size)
+
+			return res.send(setRes(resCode.BadRequest, false, "Gift cards reccomended list.", (response.getPaginationInfo())));
+
+		} else {
+			return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null));
+		}
+	} catch (error) {
+		return res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
+	}
+}
