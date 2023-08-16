@@ -322,7 +322,7 @@ exports.BusinessOrderDetail = async (req,res) => {
 			  include: [
 				{
 				  model: productModel,
-				  attributes: ['id','image','name','price','category_id','sub_category_id', 'product_item'],
+				  attributes: { exclude: ['createdAt', 'updatedAt']},
 				  include:  [{
 					model: categoryModel,
 					as: 'product_categorys',
@@ -361,12 +361,27 @@ exports.BusinessOrderDetail = async (req,res) => {
 					data.product.dataValues.category_name = data?.product?.product_categorys?.name
 					data.product.dataValues.product_type = data?.product?.sub_category?.name
 					data.product.dataValues.qty = data.qty
-					const signurl = await awsConfig.getSignUrl(data.product.image[0]).then(function(res){
-						data.product.dataValues.product_image = res
-					})
+
+					let product_images = data.product.image
+
+					const image_array = [];
+					if(product_images != null){
+						for(const data of product_images){
+							const signurl = await awsConfig.getSignUrl(data).then(function(res){
+				  				image_array.push(res);
+							});
+						}
+					}else{
+						image_array.push(commonConfig.default_image)
+					}
+						
+					data.product.dataValues.product_images = image_array
+					// const signurl = await awsConfig.getSignUrl(data.product.image[0]).then(function(res){
+					// 	data.product.dataValues.product_image = res
+					// })
 
 					delete data.product.dataValues.sub_category_id
-					delete data.product.dataValues.image
+					// delete data.product.dataValues.image
 					delete data.product.dataValues.product_categorys
 					delete data.product.dataValues.sub_category
 					delete data.dataValues.qty

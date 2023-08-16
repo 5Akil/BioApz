@@ -177,7 +177,7 @@ exports.rewardHistoryBusinessList = async (req, res) => {
             const skip = data.page_size * (data.page - 1)
 		    const limit = parseInt(data.page_size)
             const condition = {
-                skip: skip,
+                offset: skip,
                 limit: limit,
                 include: [
                     {
