@@ -187,7 +187,7 @@ exports.GetAllProducts = async (req, res) => {
 						} else {
 							discountString += `${data.discount_value} Discount`
 						}
-						rewards.push(discountString);
+						rewards.push({ type: 'discounts', title: discountString});
 					}
 
 					const coupones = await couponesModel.findAll({
@@ -208,7 +208,7 @@ exports.GetAllProducts = async (req, res) => {
 							} else {
 								couponString += `${data.coupon_value} Discount`
 							}
-							rewards.push(couponString)
+							rewards.push({ type: 'coupones', title: couponString});
 						}
 					}
 
@@ -230,7 +230,7 @@ exports.GetAllProducts = async (req, res) => {
 							} else {
 								discountString += `${data.cashback_value}% cashback`;
 							}
-							rewards.push(discountString)
+							rewards.push({ type: 'discounts', title: discountString});
 						}
 					}
 
@@ -248,7 +248,7 @@ exports.GetAllProducts = async (req, res) => {
 						let loyaltyString = '';
 						if (data.loyalty_type == 1) {
 							loyaltyString += `Earn ${data.points_earned} points`
-							rewards.push(loyaltyString);
+							rewards.push({ type: 'loyalty_points', title: loyaltyString});
 						}
 					}
 					
