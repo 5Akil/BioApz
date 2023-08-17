@@ -164,7 +164,7 @@ exports.update = async(req,res) => {
 		var validation = true;
 
 		let arrayFields = ['id','name','loyalty_type','points_earned','points_redeemed','validity','validity_period'];
-		const result =  data.loyalty_type == 0 ? (arrayFields.push('amount')) : (arrayFields.push('product_id'));
+		const result =  data.loyalty_type == 0 ? (arrayFields.push('amount')) : '';
 		var requiredFields = _.reject(arrayFields, (o) => { return _.has(data, o)  })
 		if(requiredFields.length == 0){
 			var currentDate = (moment().format('YYYY-MM-DD') == moment(data.validity).format('YYYY-MM-DD'))
