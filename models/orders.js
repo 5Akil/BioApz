@@ -26,7 +26,7 @@ module.exports = (sequelize, DataTypes) => {
     Orders.hasMany(models.order_details, {foreignKey: 'order_id'})
     Orders.belongsTo(models.user, {foreignKey: 'user_id'})
     Orders.belongsTo(models.business, {foreignKey: 'business_id'})
-    
+    Orders.hasMany(models.reward_history, { foreignKey: 'order_id', as: 'rewards' })
   };
   return Orders;
 };
