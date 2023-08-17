@@ -854,7 +854,8 @@ exports.commonRewardsList =async(req,res) => {
 		const businessEmail = req.userEmail;
 		const businessDetails = await businessModel.findOne({ where: { email: businessEmail, is_active: true, is_deleted: false } });
 		const businessId = businessDetails?.id || '';
-		const businessIdCond = data?.business_id ? `AND business_id="${data.business_id}"` : `AND business_id="${businessId}"`;
+		// const businessIdCond = data?.business_id ? `AND business_id="${data.business_id}"` : `AND business_id="${businessId}"`;
+		const businessIdCond = (tableName) => data?.business_id ? `AND ${tableName}.business_id="${data.business_id}"` : `AND ${tableName}.business_id="${businessId}"`;
 
 		if (requiredFields == '') {
 			const limit = 15; 
@@ -868,13 +869,13 @@ exports.commonRewardsList =async(req,res) => {
 			const giftCardAndLoyaltyCond = data.search ? ` AND name LIKE "%${data.search}%"` : '';
 			const cashbackDiscountCouponCond = data.search ? `AND title LIKE "%${data.search}%"` : '';
 			
-			const giftLoyaltyWhereClause = `WHERE isDeleted=false AND status=true ${giftCardAndLoyaltyCond} ${businessIdCond}`;
-			const cashbackDiscountCouponWhereClause = `WHERE isDeleted=false AND status=true ${cashbackDiscountCouponCond} ${businessIdCond}`;
+			const giftLoyaltyWhereClause = (tableName) => `isDeleted=false AND status=true ${giftCardAndLoyaltyCond} ${businessIdCond(tableName)}`;
+			const cashbackDiscountCouponWhereClause = (tableName) => `isDeleted=false AND status=true ${cashbackDiscountCouponCond} ${businessIdCond(tableName)}`;
 
 			let filteCondition = '';
 			if ( data.category_id != undefined && data.category_id ) {
 				const category = data.category_id ? data.category_id.trim(): '' ;
-				filteCondition += ` product_category_id IN (${category})`;
+				filteCondition += ` products.category_id IN (${category})`;
 			}
 
 			if ( data.product_type != undefined && data.product_type ) {
@@ -886,17 +887,20 @@ exports.commonRewardsList =async(req,res) => {
 				const priceRange = data.price != '' ? data.price.split('-') : [];
 				const lowerRange = priceRange.length > 1 ? priceRange[0] : 0;
 				const upperRange = priceRange.length > 1 ? priceRange[1] : 0;
-				const condition = `products.price >= ${lowerRange} AND  products.price >= ${upperRange}`;
+				let condition = `products.price >= ${lowerRange} `;
+				if (upperRange - lowerRange  != 1) {
+					condition += `AND  products.price <= ${upperRange}`;
+				}
 				filteCondition += filteCondition != '' ?  ` AND ${condition}` :  condition;
 			}
 
-			const productFilterCondition = `JOIN products ON product_id=products.id WHERE ${filteCondition}`
+			const productFilterCondition = (tableName) => `JOIN products ON FIND_IN_SET(products.id, product_id) > 0 WHERE ${filteCondition}`
 
-			const giftCardQuery = `SELECT id, createdAt, "gift_cards" as type FROM gift_cards ${giftLoyaltyWhereClause}`;
-			const cashbackQuery = `SELECT id, createdAt, "cashbacks" as type FROM cashbacks ${cashbackDiscountCouponWhereClause}`;
-			const discountQuery = `SELECT id, createdAt, "discounts" as type FROM discounts ${cashbackDiscountCouponWhereClause}`;
-			const couponesQuery = `SELECT id, createdAt, "coupones" as type FROM coupones ${cashbackDiscountCouponWhereClause}`;
-			const loyaltyPointsQuery = `SELECT id, createdAt, "loyalty_points" as type FROM loyalty_points ${giftLoyaltyWhereClause}`;
+			const giftCardQuery = `SELECT gift_cards.id, gift_cards.createdAt, "gift_cards" as type FROM gift_cards WHERE ${giftLoyaltyWhereClause('gift_cards') }`;
+			const cashbackQuery = `SELECT cashbacks.id, cashbacks.createdAt, "cashbacks" as type FROM cashbacks ${filteCondition != '' ? productFilterCondition('cashbacks') : ''} ${filteCondition != '' ? 'AND '+cashbackDiscountCouponWhereClause('cashbacks') : 'WHERE '+cashbackDiscountCouponWhereClause('cashbacks') }`;
+			const discountQuery = `SELECT discounts.id, discounts.createdAt, "discounts" as type FROM discounts ${filteCondition != '' ? productFilterCondition('discounts') : ''} ${filteCondition != '' ? 'AND '+cashbackDiscountCouponWhereClause('discounts') : 'WHERE '+cashbackDiscountCouponWhereClause('discounts') }`;
+			const couponesQuery = `SELECT coupones.id, coupones.createdAt, "coupones" as type FROM coupones ${filteCondition != '' ? productFilterCondition('coupones') : ''} ${filteCondition != '' ? 'AND '+cashbackDiscountCouponWhereClause('coupones') : 'WHERE '+cashbackDiscountCouponWhereClause('coupones') }`;
+			const loyaltyPointsQuery = `SELECT loyalty_points.id, loyalty_points.createdAt, "loyalty_points" as type FROM loyalty_points ${filteCondition != '' ? productFilterCondition('loyalty_points') : ''} ${filteCondition != '' ? 'AND '+giftLoyaltyWhereClause('loyalty_points') : 'WHERE '+giftLoyaltyWhereClause('loyalty_points') }`;
 			
 			if (request_type.includes('gift_cards')) {
 				unionQuery += giftCardQuery;
@@ -920,10 +924,10 @@ exports.commonRewardsList =async(req,res) => {
 			// unionQuery += `${unionQuery}`
 			const total_rewards_purchase = "";
 			const total_loyalty_purchase = "" ;
-			const rewards = await models.sequelize.query(`SELECT * FROM (${unionQuery}) Rewards ORDER BY createdAt desc LIMIT ${offset}, ${limit}`,{
+			const rewards = await models.sequelize.query(`SELECT * FROM (${unionQuery}) Rewards ${filteCondition != '' ? 'GROUP BY id' : ''} ORDER BY createdAt desc LIMIT ${offset}, ${limit}`,{
 				type: models.sequelize.QueryTypes.SELECT
 			});
-			const rewardsCounts = await models.sequelize.query(`SELECT * FROM (${unionQuery}) Rewards`,{
+			const rewardsCounts = await models.sequelize.query(`SELECT * FROM (${unionQuery}) Rewards ${filteCondition != '' ? 'GROUP BY id' : ''}`,{
 				type: models.sequelize.QueryTypes.SELECT
 			})
 			const allRewardsData = await Promise.all([

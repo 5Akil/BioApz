@@ -92,6 +92,10 @@ exports.GetAllProducts = async (req, res) => {
 	var category = models.business_categorys;
 	var product_category = models.product_categorys
 	var productRattingModel = models.product_ratings
+	const discountsModel = models.discounts;
+	const couponesModel = models.coupones;
+	const cashbaksModel = models.cashbacks;
+	const loyaltyPointModel = models.loyalty_points;
 	var Op = models.Op
 	var categoryModel = models.product_categorys
 	var data = req.body
@@ -165,6 +169,88 @@ exports.GetAllProducts = async (req, res) => {
 			
 			if (products){
 				for(const data of products){
+					const rewards = [];
+					const discounts = await discountsModel.findAll({
+						attributes: ['id','discount_value', 'title', 'discount_type'],
+						where: {
+							product_id: {
+								[Op.regexp]: `(^|,)${data.id}(,|$)`,
+							},
+							status: true,
+							isDeleted: false
+						}
+					});
+					for (const data of discounts) {
+						let discountString = ''
+						if (data.discount_type == 0) {
+							discountString += `${data.discount_value}% Discount`
+						} else {
+							discountString += `${data.discount_value} Discount`
+						}
+						rewards.push({ type: 'discounts', title: discountString});
+					}
+
+					const coupones = await couponesModel.findAll({
+						attributes: ['id','value_type', 'coupon_value', 'coupon_type'],
+						where: {
+							product_id: {
+								[Op.regexp]: `(^|,)${data.id}(,|$)`,
+							},
+							status: true,
+							isDeleted: false
+						}
+					});
+					for (const data of coupones) {
+						let couponString = ''
+						if (data.coupon_type == 1) {
+							if (data.value_type == 1) {
+								couponString += `${data.coupon_value}% Discount`
+							} else {
+								couponString += `${data.coupon_value} Discount`
+							}
+							rewards.push({ type: 'coupones', title: couponString});
+						}
+					}
+
+					const cashbacks = await cashbaksModel.findAll({
+						attributes: ['id','cashback_value', 'cashback_type', 'cashback_on'],
+						where: {
+							product_id: {
+								[Op.regexp]: `(^|,)${data.id}(,|$)`,
+							},
+							status: true,
+							isDeleted: false
+						}
+					});
+					for (const data of cashbacks) {
+						let discountString = '';
+						if (data.cashback_on == 0) {
+							if (data.cashback_type == 0) {
+								discountString += `${data.cashback_value}% cashback`;
+							} else {
+								discountString += `${data.cashback_value}% cashback`;
+							}
+							rewards.push({ type: 'discounts', title: discountString});
+						}
+					}
+
+					const loyaltyPoints = await loyaltyPointModel.findAll({
+						attributes: ['id','loyalty_type', 'points_earned'],
+						where: {
+							product_id: {
+								[Op.regexp]: `(^|,)${data.id}(,|$)`,
+							},
+							status: true,
+							isDeleted: false
+						}
+					});
+					for (const data of loyaltyPoints) {
+						let loyaltyString = '';
+						if (data.loyalty_type == 1) {
+							loyaltyString += `Earn ${data.points_earned} points`
+							rewards.push({ type: 'loyalty_points', title: loyaltyString});
+						}
+					}
 					
 				  	var product_images = data.image
 
@@ -198,7 +284,7 @@ exports.GetAllProducts = async (req, res) => {
 					}else{
 						data.dataValues.product_type = "";
 					}
-
+					data.dataValues.rewards = rewards;
 				}
 				const response = new pagination(products, parseInt(totalRecords), parseInt(data.page), parseInt(data.page_size));
 				res.send(setRes(resCode.OK, true, "Get product list successfully",(response.getPaginationInfo())))

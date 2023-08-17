@@ -1359,7 +1359,9 @@ exports.homeList = async (req, res) => {
 						},
 					]
 				},
-			], attributes: ['id','image','name','amount','cashback_percentage','expire_at'] },
+			], attributes: ['id','image','name','amount','cashback_percentage','expire_at', 'createdAt'],
+			order: [['createdAt', 'DESC']]
+			 },
 			).then(async giftCardData => {
 				if (giftCardData.length > 0){
 					const dataArray = [];
@@ -1405,7 +1407,8 @@ exports.homeList = async (req, res) => {
 						attributes: ["id", "name"]
 					}
 				],
-			attributes: ['id','title','cashback_value','product_category_id','product_id','description','validity_for']}).then(async CashbackData => {
+			order: [['createdAt', 'DESC']],
+			attributes: ['id','title','cashback_value','product_category_id','product_id','description','validity_for', 'createdAt']}).then(async CashbackData => {
 				if (CashbackData.length > 0){
 					const dataArray = [];
 					for(const data of CashbackData){
@@ -1434,7 +1437,8 @@ exports.homeList = async (req, res) => {
 					attributes: ["id", "name"]
 				}
 			],
-			attributes: ['id','business_id', 'title', 'discount_type', 'discount_value', 'product_category_id', 'product_id', 'validity_for', 'status']}).then(async DiscountData => {
+			order: [['createdAt', 'DESC']],
+			attributes: ['id','business_id', 'title', 'discount_type', 'discount_value', 'product_category_id', 'product_id', 'validity_for', 'status', 'createdAt']}).then(async DiscountData => {
 					if (DiscountData.length > 0){
 						const dataArray = [];
 						for(const data of DiscountData){
@@ -1461,7 +1465,9 @@ exports.homeList = async (req, res) => {
 					model: productCategoryModel,
 					attributes: ["id", "name"]
 				}
-			],attributes: ['id', 'business_id', 'title', 'coupon_code', 'coupon_type', 'product_category_id', 'product_id', 'value_type', 'coupon_value', 'validity_for', 'expire_at', 'description', 'status']}).then(async CouponeData => {
+			],
+			order: [['createdAt', 'DESC']],
+			attributes: ['id', 'business_id', 'title', 'coupon_code', 'coupon_type', 'product_category_id', 'product_id', 'value_type', 'coupon_value', 'validity_for', 'expire_at', 'description', 'status', 'createdAt']}).then(async CouponeData => {
 				if (CouponeData.length > 0){
 					const dataArray = [];
 					for(const data of CouponeData){
@@ -1496,7 +1502,9 @@ exports.homeList = async (req, res) => {
 						}
 					],
 				}
-			],attributes: ['id', 'business_id', 'loyalty_type', 'name', 'points_earned', 'product_id', 'amount', 'points_redeemed', 'validity', 'validity_period', 'status']}).then(async LoyaltyPointData => {
+			],
+			order: [['createdAt', 'DESC']],
+			attributes: ['id', 'business_id', 'loyalty_type', 'name', 'points_earned', 'product_id', 'amount', 'points_redeemed', 'validity', 'validity_period', 'status', 'createdAt']}).then(async LoyaltyPointData => {
 				if (LoyaltyPointData.length > 0){
 					const dataArray = [];
 					for(const data of LoyaltyPointData){
@@ -1514,16 +1522,17 @@ exports.homeList = async (req, res) => {
 			}),
 		);
 		const [giftcardRewards,cashbackData,discountData,couponeData,loyaltyData] = await Promise.all(promises);
-		const rewardsAndLoyaltyArray = [giftcardRewards, cashbackData,discountData,couponeData,loyaltyData];
-		const mergedArray = mergeRandomArrayObjects(rewardsAndLoyaltyArray);
-		let result =  mergedArray.slice(0, 5);
+		const rewardsAndLoyaltyArray = [...giftcardRewards, ...cashbackData,...discountData,...couponeData,...loyaltyData];
+		// const mergedArray = mergeRandomArrayObjects(rewardsAndLoyaltyArray);
+		const sortedArray  = rewardsAndLoyaltyArray.sort((a,b) => new moment(b.createdAt) - new moment(a.createdAt));
+		let result =  sortedArray.slice(0, 2);
 
 		const userDetails = await userModel.findOne({ where: { email: req.userEmail, is_deleted: false , is_active: true } });
 		const userId = userDetails?.id || '';
 		eventArray.push(
 			combocalenderModel.findAll({
-				where: { end_date: {
-					[Op.gt]: currentDate
+				where: { start_date: {
+					[Op.gte]: currentDate
 				  },
 				},
 				include: [{
@@ -1541,7 +1550,7 @@ exports.homeList = async (req, res) => {
 					},
 					required: true
 				}],
-				attributes: ['id','business_id','images','title','description','start_date','end_date','start_time','end_time', 'status']
+				attributes: ['id','business_id','images','title','description','start_date','end_date','start_time','end_time', 'status'],
 			}).then(async event => {
 				if(event.length > 0){
 					const dataArray = [];	
@@ -2995,6 +3004,62 @@ exports.redeemGiftCard = async (req, res) => {
 			} else {
 				return res.send(setRes(resCode.BadRequest, false, "Giftcard Amount Redeeme failed", null));
 			}
+
+		} else {
+			return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null));
+		}
+	} catch (error) {
+		return res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
+	}
+}
+
+exports.recommendedGiftCard = async (req, res) => {
+	try {
+		const giftCardsModel = models.gift_cards;
+		const Op = models.Op;
+		const data = req.body;
+		const user = req.user;
+		const requiredFields = _.reject(["page", "page_size", "giftcard_id"], (o) => {
+			return _.has(data, o);
+		});
+
+		if (data.page < 0 || data.page === 0) {
+			return res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1", null))
+		}
+
+		const skip = data.page_size * (data.page - 1)
+		const limit = parseInt(data.page_size)
+
+		if (requiredFields == "") {
+
+			const giftCardExists = await giftCardsModel.findOne({
+				where: {
+					id: data.giftcard_id
+				}
+			});
+			if (!giftCardExists) {
+				return res.send(setRes(resCode.BadRequest, false, "User Giftcard not found.", null));	
+			}
+
+			const giftCards = await giftCardsModel.findAndCountAll({
+				offset: skip,
+				limit: limit,
+				where: {
+					id: {
+						[Op.ne]: data.giftcard_id
+					},
+					business_id: giftCardExists.business_id
+				},
+				order: [
+					['createdAt', 'DESC']
+				]
+			});
+			
+			const totalRecords = +(giftCards.count) || 0;
+
+			const response = new pagination(giftCards.rows, +(totalRecords), data.page, data.page_size)
+
+			return res.send(setRes(resCode.BadRequest, false, "Gift cards reccomended list.", (response.getPaginationInfo())));
 
 		} else {
 			return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null));
