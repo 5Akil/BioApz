@@ -1435,12 +1435,13 @@ exports.homeList = async (req, res) => {
 		var couponeModel = models.coupones
 		var loyaltyPointModel = models.loyalty_points
 		var combocalenderModel = models.combo_calendar
-		var businessModel = models.business;
+		var productModel = models.products;
+		var productCategoryModel = models.product_categorys;
 		var Op = models.Op;
 		const promises = [];
 		var eventArray = [];
 		var currentDate = (moment().format('YYYY-MM-DD'));
-		const dataLimit = 3
+		const dataLimit = 2
 
 		promises.push(
 			await giftCardModel.findAll({
@@ -1465,9 +1466,9 @@ exports.homeList = async (req, res) => {
 						}
 						let result = JSON.parse(JSON.stringify(data));
 						if(result.expire_at < currentDate){
-							result.expire_status = 1;
+							result.is_expired = 1;
 						}else{
-							result.expire_status = 0;
+							result.is_expired = 0;
 						}
 						result.type = "gift_cards";
 						result.value_type = true;
@@ -1484,21 +1485,33 @@ exports.homeList = async (req, res) => {
 					 order: [
 						['createdAt', 'DESC']
 					],
+					include: [
+						{
+							model: productCategoryModel,
+							attributes: ['id', 'name']
+						}
+					],
 					limit: dataLimit
 			}).then(async CashbackData => {
 				if (CashbackData.length > 0) {
 					const dataArray = [];
 					for (const data of CashbackData) {
 						let result = JSON.parse(JSON.stringify(data));
-						if(result.validity_for < currentDate){
-							result.expire_status = 1;
-						}else{
-							result.expire_status = 0;
-						}
 						result.type = "cashbacks";
 						result.value_type = data.cashback_type;
 						result.amount = data.cashback_value;
 						result.rewards_type = 1;
+						const products = await productModel.findAll({ where: { id: { [Op.in] : result.product_id?.split(',') || [] } } ,attributes: ["name"], raw: true});
+						const product_name_arr = products?.map(val => val.name);
+						const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
+						result.product_name = product_name.trim();
+						result.product_category_name = result?.product_category?.name.trim() || '';
+						delete result.product_category;
+						if(result.validity_for < currentDate){
+							result.is_expired = true;
+						}else{
+							result.is_expired = false;
+						}
 						dataArray.push(result);
 					}
 					return dataArray;
@@ -1510,21 +1523,33 @@ exports.homeList = async (req, res) => {
 					order: [
 						['createdAt', 'DESC']
 					],
+					include: [
+						{
+							model: productCategoryModel,
+							attributes: ['id', 'name']
+						}
+					],
 					limit: dataLimit
 			}).then(async DiscountData => {
 				if (DiscountData.length > 0) {
 					const dataArray = [];
 					for (const data of DiscountData) {
 						let result = JSON.parse(JSON.stringify(data));
-						if(result.validity_for < currentDate){
-							result.expire_status = 1;
-						}else{
-							result.expire_status = 0;
-						}
 						result.type = "discounts";
 						result.value_type = data.discount_type;
 						result.amount = data.discount_value;
 						result.rewards_type = 2;
+						const products = await productModel.findAll({ where: { id: { [Op.in] : result.product_id?.split(',') || [] } } ,attributes: ["name"], raw: true});
+						const product_name_arr = products?.map(val => val.name);
+						const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
+						result.product_name = product_name.trim();
+						result.product_category_name = result?.product_category?.name.trim() || '';
+						delete result.product_category;
+						if(result.validity_for < currentDate){
+							result.is_expired = true;
+						}else{
+							result.is_expired = false;
+						}
 						dataArray.push(result);
 					}
 					return dataArray;
@@ -1537,20 +1562,32 @@ exports.homeList = async (req, res) => {
 					 order: [
 						['createdAt', 'DESC']
 					],
+					include: [
+						{
+							model: productCategoryModel,
+							attributes: ['id', 'name']
+						}
+					],
 					limit: dataLimit
 			}).then(async CouponeData => {
 				if (CouponeData.length > 0) {
 					const dataArray = [];
 					for (const data of CouponeData) {
 						let result = JSON.parse(JSON.stringify(data));
-						if(result.expire_at < currentDate){
-							result.expire_status = 1;
-						}else{
-							result.expire_status = 0;
-						}
 						result.type = "coupones";
 						result.amount = data.coupon_value;
 						result.rewards_type = 3;
+						const products = await productModel.findAll({ where: { id: { [Op.in] : result.product_id?.split(',') || [] } } ,attributes: ["name"], raw: true});
+						const product_name_arr = products?.map(val => val.name);
+						const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
+						result.product_name = product_name.trim();
+						result.product_category_name = result?.product_category?.name.trim() || '';
+						delete result.product_category;
+						if(result.expire_at < currentDate){
+							result.is_expired = true;
+						}else{
+							result.is_expired = false;
+						}
 						dataArray.push(result);
 					}
 					return dataArray;
@@ -1571,10 +1608,14 @@ exports.homeList = async (req, res) => {
 					for (const data of LoyaltyPointData) {
 						let result = JSON.parse(JSON.stringify(data));
 						if(result.validity < currentDate){
-							result.expire_status = 1;
+							result.is_expired = 1;
 						}else{
-							result.expire_status = 0;
+							result.is_expired = 0;
 						}
+						const products = await productModel.findAll({ where: { id: { [Op.in] : result.product_id?.split(',') || [] } } ,attributes: ["name"], raw: true});
+						const product_name_arr = products?.map(val => val.name);
+						const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
+						result.product_name = product_name.trim();
 						result.type = "loyalty_points";
 						result.rewards_type = 4;
 						dataArray.push(result);
@@ -1627,7 +1668,6 @@ exports.homeList = async (req, res) => {
 		
 		const [eventsData] = await Promise.all(eventArray);
 		const eventDataArray = eventsData;
-		const productModel = models.products;
 		const orderModel = models.orders;
 
 		const productCount = await productModel.findAndCountAll({where:{business_id:data.business_id,is_deleted:false}});
