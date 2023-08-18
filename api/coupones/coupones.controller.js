@@ -258,7 +258,7 @@ exports.update = async (req, res) => {
 												const product_name_arr = products?.map(val => val.name);
 												const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
 												data.dataValues.type = "coupones";
-												data.dataValues.value_type = data.coupon_type;
+												// data.dataValues.value_type = data.coupon_type;
 												data.dataValues.amount = data.coupon_value;
 												if(data.expire_at < moment().format('YYYY-MM-DD')){
 													data.dataValues.is_expired = true;
@@ -275,7 +275,7 @@ exports.update = async (req, res) => {
 										}
 									})
 							} else {
-								res.send(setRes(resCode.BadRequest), false, "Coupon title already taken.!", null)
+								res.send(setRes(resCode.BadRequest, false, "Coupon title already taken.!", null))
 							}
 						})
 					}

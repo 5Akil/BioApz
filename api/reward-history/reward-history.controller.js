@@ -217,10 +217,10 @@ exports.rewardHistoryBusinessList = async (req, res) => {
                             }],
                             attributes: { exclude: ["payment_status","status","is_deleted","createdAt","updatedAt","deleted_at"] }
                         });
-                        rewardDetailsObj.dataValues.name = rewardDetailsObj.dataValues.gift_card.name;
-                        rewardDetailsObj.dataValues.cashback_percentage = rewardDetailsObj.dataValues.gift_card.cashback_percentage;
-                        rewardDetailsObj.dataValues.description = rewardDetailsObj.dataValues.gift_card.description;
-                        rewardDetailsObj.dataValues.is_cashback = rewardDetailsObj.dataValues.gift_card.is_cashback;
+                        rewardDetailsObj.dataValues.name = rewardDetailsObj?.dataValues?.gift_card?.dataValues?.name || "";
+                        rewardDetailsObj.dataValues.cashback_percentage = rewardDetailsObj?.dataValues?.gift_card?.dataValues?.cashback_percentage || "";
+                        rewardDetailsObj.dataValues.description = rewardDetailsObj?.dataValues?.gift_card?.dataValues?.description || "";
+                        rewardDetailsObj.dataValues.is_cashback = rewardDetailsObj?.dataValues?.gift_card?.dataValues?.is_cashback;
                         delete rewardDetailsObj.dataValues.gift_card;
                         rewardHistory.dataValues.reward_details = rewardDetailsObj;
                         responseArr.push(rewardHistory)
