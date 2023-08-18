@@ -286,7 +286,7 @@ exports.rewardHistoryBusinessList = async (req, res) => {
             res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
         }
     } catch(error) {
-        return res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
+        return res.send(setRes(resCode.BadRequest, false, error?.message || "Something went wrong!", null))
     }
 }
 

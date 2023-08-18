@@ -847,7 +847,12 @@ exports.commonRewardsList =async(req,res) => {
 		const productCategoryModel = models.product_categorys;
 		const productModel = models.products;
 		const businessModel = models.business;
+		const rewardHistoryModel = models.reward_history;
+		const userModel = models.user;
+		const orderModel = models.orders
 		const Op = models.Op;
+
+		const user = req?.user || {};
 		
 		const currentDate = (moment().format('YYYY-MM-DD'))
 		const requiredFields = _.reject(['page'], (o) => { return _.has(data, o)  })
@@ -922,8 +927,54 @@ exports.commonRewardsList =async(req,res) => {
 				unionQuery += unionQuery != '' ?  ` UNION ${loyaltyPointsQuery}`: loyaltyPointsQuery;
 			}
 			// unionQuery += `${unionQuery}`
-			const total_rewards_purchase = "";
-			const total_loyalty_purchase = "" ;
+			let total_rewards_purchase = "0";
+			let total_loyalty_purchase = "0" ;
+			if (user.role_id == '2') {
+				const userDetails = await userModel.findOne({
+					where: {
+						id: user.id
+					}
+				});
+				const total_rewards = userDetails?.dataValues?.total_cashbacks ? userDetails?.dataValues?.total_cashbacks : "0" ;
+				const total_loyalty =  userDetails?.dataValues?.total_loyalty_points ? userDetails?.dataValues?.total_loyalty_points : "0";
+				total_rewards_purchase = total_rewards;
+				total_loyalty_purchase = total_loyalty;
+			}
+			if (user.role_id == '3') {
+				const businessRewardsDetails = await rewardHistoryModel.findAll({
+					include: [
+						{
+							model: orderModel,
+							attributes: [],
+							where: {
+								business_id: businessId
+							},
+							required: true
+						}
+					],
+					attributes: [[models.sequelize.fn('sum', models.sequelize.col('reward_history.amount')), 'total_rewards']],
+					where: {
+						reference_reward_type: { [Op.ne] : 'loyalty_points' }
+					}
+				});
+				const businessLoyaltyDetails = await rewardHistoryModel.findAll({
+					include: [
+						{
+							model: orderModel,
+							where: {
+								business_id: businessId
+							},
+							required: true
+						}
+					],
+					attributes: [[models.sequelize.fn('sum', models.sequelize.col('reward_history.amount')), 'total_loyalty']],
+					where: {
+						reference_reward_type: { [Op.eq] : 'loyalty_points' }
+					}
+				});
+				total_rewards_purchase = businessRewardsDetails[0]?.dataValues?.total_rewards ? businessRewardsDetails[0].dataValues.total_rewards : "0";
+				total_loyalty_purchase = businessLoyaltyDetails[0]?.dataValues?.total_loyalty ? businessLoyaltyDetails[0].dataValues.total_loyalty : "0";
+			}
 			const rewards = await models.sequelize.query(`SELECT * FROM (${unionQuery}) Rewards ${filteCondition != '' ? 'GROUP BY id' : ''} ORDER BY createdAt desc LIMIT ${offset}, ${limit}`,{
 				type: models.sequelize.QueryTypes.SELECT
 			});

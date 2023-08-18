@@ -3074,7 +3074,7 @@ exports.recommendedGiftCard = async (req, res) => {
 
 			const response = new pagination(giftCards.rows, +(totalRecords), parseInt(data.page), parseInt(data.page_size))
 
-			return res.send(setRes(resCode.OK, false, "Gift cards reccomended list.", (response.getPaginationInfo())));
+			return res.send(setRes(resCode.OK, true, "Gift cards reccomended list.", (response.getPaginationInfo())));
 
 		} else {
 			return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null));
