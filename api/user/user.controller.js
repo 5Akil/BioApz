@@ -2740,12 +2740,13 @@ exports.eventUserLeave = async (req, res) => {
 // Purchase gift card  START
 exports.userGiftCardPurchase = async (req, res) => {
 	try {
+		const Op =  models.Op;
 		const data = req.body;
 		const userModel = models.user;
 		const giftCardModel = models.gift_cards;
 		const userGiftCardModel = models.user_giftcards;
 		const userEmail = req.userEmail;
-		const currentDate = (moment().format('YYYY-MM-DD'))
+		const currentDate = moment().format('YYYY-MM-DD')
 		var requiredFields = _.reject(["gift_card_id","payment_status", "amount", "qty"], (o) => {
 			return _.has(data, o);
 		});
@@ -2757,6 +2758,20 @@ exports.userGiftCardPurchase = async (req, res) => {
 		if (requiredFields == "") {
 			if (![0, 1].includes(+(data.payment_status))) {
 				return res.send(setRes(resCode.BadRequest, false, "Invalid value for Payment status.", null))
+			}
+
+			// Gift card purchased in any 
+			const isGiftCardPurchased = await userGiftCardModel.findAll({
+				where: {						
+							purchase_date: { [Op.eq] : new Date(currentDate) },
+							user_id:  userDetails.id,
+							to_email: {
+								[Op.eq]: null
+							}
+				}
+			})
+			if (isGiftCardPurchased.length > 0) {
+				return res.send(setRes(resCode.BadRequest, false, "User already purchased Giftcard for day.", null))
 			}
 
 			// check gift card expire or not
@@ -3057,9 +3072,9 @@ exports.recommendedGiftCard = async (req, res) => {
 			
 			const totalRecords = +(giftCards.count) || 0;
 
-			const response = new pagination(giftCards.rows, +(totalRecords), data.page, data.page_size)
+			const response = new pagination(giftCards.rows, +(totalRecords), parseInt(data.page), parseInt(data.page_size))
 
-			return res.send(setRes(resCode.BadRequest, false, "Gift cards reccomended list.", (response.getPaginationInfo())));
+			return res.send(setRes(resCode.OK, false, "Gift cards reccomended list.", (response.getPaginationInfo())));
 
 		} else {
 			return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null));

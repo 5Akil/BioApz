@@ -6,6 +6,7 @@ const _ = require('underscore')
 const moment = require('moment')
 const MomentRange = require('moment-range');
 const Moment = MomentRange.extendMoment(moment);
+const awsConfig = require('../../config/aws_S3_config');
 
 exports.rewardHistoryList = async (req, res) => {
     try{
@@ -796,6 +797,98 @@ exports.rewardPerfomance = async (req, res) => {
             }
 
             return res.send(setRes(resCode.OK, true, 'Perfomance details!', responseObject))
+        } else {
+            return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
+        }
+    } catch (error) {
+        return res.send(setRes(resCode.BadRequest, false, error?.message || "Something went wrong!", null))
+    }
+}
+
+/** Purchased or Earned rewards by user list */
+exports.purchasedEarnedRewardList = async (req, res) => {
+    try {
+        const data = req.body;
+
+        const rewardHistoryModel = models.reward_history;
+        const userModel = models.user;
+        const userGiftCardsModel = models.user_giftcards;
+        const orderModel = models.orders
+
+        const requiredFields = _.reject(['reward_id','type', 'page', 'page_size'], (o) => { return _.has(data, o) })
+        if (requiredFields == '') {
+
+            const typeArr = ['gift_cards','cashbacks','discounts','coupones','loyalty_points'];
+            const request_type = data.type
+			if((request_type) && !(typeArr.includes(request_type))){
+				return res.send(setRes(resCode.BadRequest, null, false, "Please select valid type."))
+			}
+
+            if (data.page < 0 || data.page === 0) {
+                return res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1", null))
+            }
+            
+            if (request_type == 'gift_cards') {
+                const responseArr = [];
+                const giftCards = await userGiftCardsModel.findAndCountAll({
+                    include: [
+                        {
+                            model: userModel,
+                            attributes: ['id', 'username', 'profile_picture']
+                        }
+                    ],
+                    attributes: ['id', 'amount', 'createdAt' ],
+                    where: {
+                        gift_card_id: data.reward_id
+                    }
+                });
+                for (let giftCard of giftCards?.rows) {
+                    var profile_picture = await awsConfig.getSignUrl(giftCard.user.profile_picture).then(function (res) {
+                        giftCard.dataValues.profile_picture = res
+                    });
+                    giftCard.dataValues.username = giftCard.user.username;
+                    delete giftCard?.dataValues?.user;
+                    responseArr.push(giftCard);
+                }
+                const totalRecords =  giftCards?.count || 0;
+                const response = new pagination(giftCards.rows, totalRecords, parseInt(data.page), parseInt(data.page_size));
+                return res.send(setRes(resCode.OK, true, 'Purchased Reward List',(response.getPaginationInfo())))
+            } else if (['cashbacks', 'coupones', 'discounts', 'loyalty_points'].includes(request_type)) {
+                const responseArr = [];
+                const rewards = await rewardHistoryModel.findAndCountAll({
+                    include: [
+                        {
+                            model: orderModel,
+                            attributes: ["id"],
+                            include: [
+                                {
+                                    model: userModel,
+                                    attributes: ["id", "username", "profile_picture"]
+                                }
+                            ]
+                        }
+                    ],
+                    attributes: ['id', 'amount', 'createdAt' ],
+                    where: {
+                        reference_reward_type: request_type,
+                        reference_reward_id: data.reward_id,
+                    },
+                    order: [
+                        ['createdAt', 'DESC']
+                    ]
+                });
+                for (let reward of rewards?.rows) {
+                    var profile_picture = await awsConfig.getSignUrl(reward.order.user.profile_picture).then(function (res) {
+                        reward.dataValues.profile_picture = res
+                    });
+                    reward.dataValues.username = reward.order.user.username;
+                    delete reward?.dataValues?.order;
+                    responseArr.push(reward);
+                }
+                const totalRecords =  rewards?.count || 0;
+                const response = new pagination(responseArr, totalRecords, parseInt(data.page), parseInt(data.page_size));
+                return res.send(setRes(resCode.OK, true, 'Earned Reward List',(response.getPaginationInfo())))
+            }
         } else {
             return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
         }
