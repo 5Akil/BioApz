@@ -233,7 +233,11 @@ exports.update = async(req,res) => {
 											data.dataValues.product_category_name = data.dataValues?.product?.product_categorys?.name || '';
 											data.dataValues.amount = data.dataValues.amount;
 
-											data.dataValues.giftcard_name = data?.dataValues?.gift_card?.name || '';
+											const giftCards = await giftCardModel.findAll({ where: { id: { [Op.in] : data?.dataValues?.gift_card_id?.split(',') || [] } } ,attributes: ["name"] });
+											const giftcards_name_arr = giftCards?.map(val => val.name);
+											const giftcard_name = giftcards_name_arr?.length > 0 ? giftcards_name_arr?.join(',') : '';
+											data.dataValues.giftcard_name = giftcard_name;
+											// data.dataValues.giftcard_name = data?.dataValues?.gift_card?.name || '';
 											delete data?.dataValues?.gift_card;
 											delete data.dataValues.product;
 											const curentDate = (moment().format('YYYY-MM-DD'));

@@ -1171,8 +1171,13 @@ exports.commonRewardsList =async(req,res) => {
 							const product_name_arr = products?.map(val => val.name);
 							const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
 							loyaltyObj.dataValues.product_name = product_name;
-		
-							loyaltyObj.dataValues.giftcard_name = loyaltyObj?.dataValues?.gift_card?.name || '';
+
+							const giftCards = await giftCardModel.findAll({ where: { id: { [Op.in] : loyaltyObj?.dataValues?.gift_card_id?.split(',') || [] } } ,attributes: ["name"] });
+							const giftcards_name_arr = giftCards?.map(val => val.name);
+							const giftcard_name = giftcards_name_arr?.length > 0 ? giftcards_name_arr?.join(',') : '';
+							loyaltyObj.dataValues.giftcard_name = giftcard_name;
+
+							// loyaltyObj.dataValues.giftcard_name = loyaltyObj?.dataValues?.gift_card?.name || '';
 							delete loyaltyObj?.dataValues?.gift_card;
 							delete loyaltyObj?.dataValues.product;
 							if(loyaltyObj.validity < currentDate){
