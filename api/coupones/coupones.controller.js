@@ -105,6 +105,9 @@ exports.create = async(req,res) =>{
 								if (couponSame) {
 									res.send(setRes(resCode.BadRequest, false, "Coupon title already taken.!", null))
 								} else {
+									if (data?.coupon_type == 0) {
+										data.value_type = true;
+									}
 									couponeModel.create(data
 										// 	{
 										// 	business_id:!(_.isEmpty(data.business_id) && data.business_id == null) ? data.business_id : null,
@@ -231,9 +234,6 @@ exports.update = async (req, res) => {
 						await couponeModel.findOne({
 							where: { isDeleted: false, status: true, deleted_at: null, title: { [Op.eq]: couponTitle }, id: { [Op.ne]: data.id } }
 						}).then(async nameData => {
-							if (data?.coupon_type == 0) {
-								data.value_type = null;
-							}
 							if (nameData == null) {
 								couponeModel.update(data,
 								// 	{
