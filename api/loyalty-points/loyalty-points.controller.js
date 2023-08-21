@@ -34,10 +34,13 @@ exports.create = async(req,res) =>{
 		if(requiredFields.length == 0){
 			var currentDate = (moment().format('YYYY-MM-DD') == moment(data.validity).format('YYYY-MM-DD'))
 			var pastDate = moment(data.validity,'YYYY-MM-DD').isBefore(moment());
-			if(data.amount!== undefined  && (!Number(data.amount) || isNaN(data.amount))){
+			if(data.amount!== undefined  && (!Number(data.amount) || isNaN(data.amount)) || data.amount <= 0){
 				validation = false;
-				return res.send(setRes(resCode.BadRequest,false, "Amount field invalid.!",null))
-			} 
+				return res.send(setRes(resCode.BadRequest,false, "Amount value should be greater than 0!",null))
+			}
+			if (data.points_earned!== undefined  && (!Number(data.points_earned) || isNaN(data.points_earned)) || data.points_earned <= 0) {
+				return res.send(setRes(resCode.BadRequest,false, 'Reward points value should be greater than 0 !',null))
+			}
 			if(currentDate || pastDate){
 				validation = false;
 				return res.send(setRes(resCode.BadRequest,false, "You can't select past and current date.!",null))
@@ -169,9 +172,14 @@ exports.update = async(req,res) => {
 		if(requiredFields.length == 0){
 			var currentDate = (moment().format('YYYY-MM-DD') == moment(data.validity).format('YYYY-MM-DD'))
 			var pastDate = moment(data.validity,'YYYY-MM-DD').isBefore(moment());
-			if(data.amount !== undefined && (!Number(data.amount) || isNaN(data.amount))){
-				res.send(setRes(resCode.BadRequest,false, "Amount field invalid.!",null))
-			}else if(currentDate || pastDate){
+
+			if(data.amount !== undefined && (!Number(data.amount) || isNaN(data.amount)) || data.amount <= 0 ){
+				return res.send(setRes(resCode.BadRequest,false, "Amount value should be greater than 0!",null))
+			}
+			else if (data.points_earned!== undefined  && (!Number(data.points_earned) || isNaN(data.points_earned)) || data.points_earned <= 0) {
+				return res.send(setRes(resCode.BadRequest,false, 'Reward points value should be greater than 0 !',null))
+			}
+			else if(currentDate || pastDate){
 				res.send(setRes(resCode.BadRequest,false, "You can't select past and current date.!",null))
 			}else{
 				if (data.points_redeemed && data.points_redeemed == 1 && data.loyalty_type != 0) {

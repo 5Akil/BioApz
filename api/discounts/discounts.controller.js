@@ -41,6 +41,10 @@ exports.create = async(req,res) =>{
 
 		var requiredFields = _.reject(['business_id','title','discount_type','discount_value','product_category_id','product_id','validity_for'], (o) => { return _.has(data, o)  })
 		const result =  data.discount_type == 0 ? (!((data.discount_value >= Math.min(1,100)) && (data.discount_value <= Math.max(1,100))) ? true : false) : '';
+		if(data.discount_value!== undefined  && (!Number(data.discount_value) || isNaN(data.discount_value)) || data.discount_value <= 0){
+			validation = false;
+			return res.send(setRes(resCode.BadRequest,false, "Discount value should be greater than 0!",null))
+		}
 		if(requiredFields == ""){
 			const discountTitle = data?.title?.trim() || data.title;
 
@@ -170,6 +174,10 @@ exports.update =async(req,res) => {
 			if(result){
 				validation = false;
 				res.send(setRes(resCode.BadRequest,false, "Please select valid cashback value in percentage(between 1 to 100)!",null))
+			}
+			if(data.discount_value!== undefined  && (!Number(data.discount_value) || isNaN(data.discount_value)) || data.discount_value <= 0){
+				validation = false;
+				return res.send(setRes(resCode.BadRequest,false, "Discount value should be greater than 0!",null))
 			}
 			if(validation){
 				discountModel.findOne({

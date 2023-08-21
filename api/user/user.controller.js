@@ -1157,6 +1157,10 @@ exports.GetAllBusiness = async (req, res) => {
 				attributes: ['name'] 
 			}, {
 				model: settingModel,
+				where: {
+					setting_key: "working_hours"
+				},
+				required: false
 			}],
 			order: [
 				['createdAt', 'DESC']
@@ -1551,6 +1555,7 @@ exports.homeList = async (req, res) => {
 					required: true
 				}],
 				attributes: ['id','business_id','images','title','description','start_date','end_date','start_time','end_time', 'status'],
+				order: [['start_date', 'ASC']]
 			}).then(async event => {
 				if(event.length > 0){
 					const dataArray = [];	
@@ -1591,9 +1596,8 @@ exports.homeList = async (req, res) => {
 						}
 						delete data.dataValues.status
 					}
-					var array = shuffle(event);
-					var slicedArray = array.slice(0, 5);
-					let result = 	JSON.parse(JSON.stringify(slicedArray));
+					const arr = event.slice(0,5);
+					let result = JSON.parse(JSON.stringify(arr));
 					dataArray.push(result);
 					return result;
 				}
@@ -2746,6 +2750,7 @@ exports.userGiftCardPurchase = async (req, res) => {
 		const giftCardModel = models.gift_cards;
 		const userGiftCardModel = models.user_giftcards;
 		const userEmail = req.userEmail;
+		const rewardHistoryModel = models.reward_history;
 		const currentDate = moment().format('YYYY-MM-DD')
 		var requiredFields = _.reject(["gift_card_id","payment_status", "amount", "qty"], (o) => {
 			return _.has(data, o);
@@ -2790,6 +2795,11 @@ exports.userGiftCardPurchase = async (req, res) => {
 					const createdGiftCards = [];
 					for(let i = 0; i < +(data.qty); i++){
 						const gCard = await userGiftCardModel.create(giftCardObj);
+						const createRewardHistory = await rewardHistoryModel.create({ 
+							amount: data.amount,
+							reference_reward_id: gCard.id,
+							reference_reward_type: 'gift_cards'
+						});
 						createdGiftCards.push(gCard);
 					}
 					res.send(setRes(resCode.OK, true, "Gift Card Purchased successfully!", createdGiftCards))
@@ -2857,6 +2867,11 @@ exports.userGiftCardShare = async (req, res) => {
 					const createdSharedGiftCards = [];
 					for(let i = 0; i < +(data.qty); i++){
 						const gCard = await userGiftCardModel.create(giftCardObj);
+						const createRewardHistory = await rewardHistoryModel.create({ 
+							amount: data.amount,
+							reference_reward_id: gCard.id,
+							reference_reward_type: 'gift_cards'
+						});
 						createdSharedGiftCards.push(gCard);
 					}
 					res.send(setRes(resCode.OK, true, "Gift Card Shared successfully!", createdSharedGiftCards))

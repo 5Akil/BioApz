@@ -66,7 +66,7 @@ exports.rewardHistoryList = async (req, res) => {
             for (let rewardHistory of rewardHistoryData?.rows) {
                 if (rewardHistory.reference_reward_type == 'gift_cards') {
 
-                    let rewardDetailsObj = await userGiftCardsModel.findOne({ 
+                    let rewardDetailsObj = await userGiftCardsModel.findOne({
                         where: {
                             id: rewardHistory?.reference_reward_id || ''
                         },
@@ -76,10 +76,10 @@ exports.rewardHistoryList = async (req, res) => {
                         }],
                         attributes: { exclude: ["payment_status","status","is_deleted","createdAt","updatedAt","deleted_at"] }
                     });
-                    rewardDetailsObj.dataValues.name = rewardDetailsObj.dataValues.gift_card.name;
-                    rewardDetailsObj.dataValues.cashback_percentage = rewardDetailsObj.dataValues.gift_card.cashback_percentage;
-                    rewardDetailsObj.dataValues.description = rewardDetailsObj.dataValues.gift_card.description;
-                    rewardDetailsObj.dataValues.is_cashback = rewardDetailsObj.dataValues.gift_card.is_cashback;
+                    rewardDetailsObj.dataValues.name = rewardDetailsObj?.dataValues?.gift_card?.dataValues?.name || "";
+                    rewardDetailsObj.dataValues.cashback_percentage = rewardDetailsObj?.dataValues?.gift_card?.dataValues?.cashback_percentage || "";
+                    rewardDetailsObj.dataValues.description = rewardDetailsObj?.dataValues?.gift_card?.dataValues?.description || "";
+                    rewardDetailsObj.dataValues.is_cashback = rewardDetailsObj?.dataValues?.gift_card?.dataValues?.is_cashback;
                     delete rewardDetailsObj.dataValues.gift_card;
                     rewardHistory.dataValues.reward_details = rewardDetailsObj;
                     responseArr.push(rewardHistory)
@@ -349,7 +349,7 @@ exports.rewardPerfomance = async (req, res) => {
                         id: rewardId,
                     }
                 });
-                responseObject.generatedDate = giftCardDetails.createdAt;
+                responseObject.generatedDate = giftCardDetails?.createdAt || '';
 
                 // attributes and where clause conditions for different time intervals
                 const weekMonthYear = [

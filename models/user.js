@@ -54,6 +54,18 @@ module.exports = (sequelize, DataTypes) => {
     auth_token: {
       type: DataTypes.STRING,
       defaultValue: null
+    },
+    total_loyalty_points: {
+      type: DataTypes.DECIMAL,
+      get() {
+        return this.getDataValue('total_loyalty_points') ? this.getDataValue('total_loyalty_points') : '';
+      },
+    },
+    total_cashbacks: {
+      type: DataTypes.DECIMAL,
+      get() {
+        return this.getDataValue('total_cashbacks') ? this.getDataValue('total_cashbacks') : '';
+      },
     }
   }, {
     // timestamps: false
