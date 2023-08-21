@@ -1545,7 +1545,7 @@ exports.homeList = async (req, res) => {
 						user_id: userId,
 						is_deleted: false
 					},
-					required: false
+					required: true
 				  },{
 					model: businessModel,
 					where: {
@@ -3086,6 +3086,14 @@ exports.recommendedGiftCard = async (req, res) => {
 			});
 			
 			const totalRecords = +(giftCards.count) || 0;
+
+			for (let giftCardObj of giftCards.rows) {
+				if (giftCardObj.image != null) {
+					var profile_picture = await awsConfig.getSignUrl(giftCardObj.image).then(function(res) {
+						giftCardObj.dataValues.image = res;
+					})
+				}
+			}
 
 			const response = new pagination(giftCards.rows, +(totalRecords), parseInt(data.page), parseInt(data.page_size))
 
