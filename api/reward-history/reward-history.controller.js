@@ -711,7 +711,8 @@ exports.rewardPerfomance = async (req, res) => {
                             attributes: ["id", "order_status"],
                             where: {
                                 order_status: 3 // completed
-                            }
+                            },
+                            required: false
                         }
                     ],
                     where : {

@@ -1545,7 +1545,6 @@ exports.homeList = async (req, res) => {
 						user_id: userId,
 						is_deleted: false
 					},
-					required: true
 				  },{
 					model: businessModel,
 					where: {
