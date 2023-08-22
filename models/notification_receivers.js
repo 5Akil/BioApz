@@ -6,6 +6,9 @@ module.exports = (sequelize, DataTypes) => {
 			primaryKey: true,
 			autoIncrement: true,
 		},
+		role_id: {
+			type: DataTypes.INTEGER,
+		},
 		notification_id: {
 			type: DataTypes.INTEGER,
 		},
@@ -32,6 +35,7 @@ module.exports = (sequelize, DataTypes) => {
 	 });
 
 	notificationReceivers.associate = function(models) {
+		notificationReceivers.belongsTo(models.role, {foreignKey: 'role_id'})
 		notificationReceivers.belongsTo(models.notifications, {foreignKey: 'notification_id'})
 	};
 	

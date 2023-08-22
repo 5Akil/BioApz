@@ -13,7 +13,7 @@ exports.list = async (req,res) =>{
 		const data = req.query;
 		const authUser = req.user;
 		const Op = models.Op;
-		console.log(authUser)
+		
 		var requiredFields = _.reject(['page', 'page_size'], (o) => { return _.has(data, o) })
 		if (_.isEmpty(requiredFields)) {
 			if (data.page < 0 || data.page === 0) {
@@ -27,6 +27,7 @@ exports.list = async (req,res) =>{
 					model: notificationReceiverModel,
 					where: {
 						is_deleted:false,
+						role_id:authUser.role_id,
 						receiver_id: authUser.id
 					},
 					attributes: {exclude:['created_at','updated_at','deleted_at']}
@@ -38,7 +39,6 @@ exports.list = async (req,res) =>{
 				notification_type:{
 					[Op.ne]:'global_push_notification'
 				},
-				role_id:authUser.role_id
 			}
 			
 			if(data.page_size != 0 && !_.isEmpty(data.page_size)){
@@ -59,7 +59,6 @@ exports.list = async (req,res) =>{
 			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), true))
 		}
 	}catch(error){
-		console.log(error)
 		res.send(setRes(resCode.BadRequest,false,"An error occurred.",null))
 	}
 }
@@ -78,15 +77,15 @@ exports.markAsRead = async (req,res) =>{
 				  {
 					model: notificationModel,
 					where: {
-						role_id:authUser.role_id,
-					  notification_type: {
-						[Op.ne]: 'global_push_notification',
-					  },
+						notification_type: {
+							[Op.ne]: 'global_push_notification',
+						},
 					},
 				  },
 				],
 				where: {
 				  receiver_id: authUser.id,
+				  role_id:authUser.role_id,
 				  is_deleted: false,
 				},
 				attributes: {
@@ -146,15 +145,15 @@ exports.delete = async (req,res) =>{
 				  {
 					model: notificationModel,
 					where: {
-						role_id:authUser.role_id,
-					  notification_type: {
-						[Op.ne]: 'global_push_notification',
-					  },
+						notification_type: {
+							[Op.ne]: 'global_push_notification',
+						},
 					},
 				  },
 				],
 				where: {
 				  receiver_id: authUser.id,
+				  role_id:authUser.role_id,
 				  is_deleted: false,
 				},
 				attributes: {

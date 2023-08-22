@@ -47,7 +47,6 @@ exports.deviceToken = async (req, res) => {
 			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
 		}
 	}catch(error){
-		console.log(error)
 		return res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
 	}
 }
