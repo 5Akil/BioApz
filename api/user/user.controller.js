@@ -2474,9 +2474,7 @@ exports.eventUserRegister = async (req, res) => {
 				if(!_.isEmpty(data.business_id)){
 					condition.where = {business_id:data.business_id}
 				}
-				condition.where = {...condition.where,...{id: data.event_id,is_deleted: false,end_date: {
-					[Op.gt]: currentDate
-				},}}
+				condition.where = {...condition.where,...{id: data.event_id,is_deleted: false}}
 				await comboModel.findOne(condition).then(async event => {
 					if(_.isEmpty(event)){
 						validation = false;
