@@ -43,8 +43,8 @@ exports.giftCardCreate = async(req,res) => {
 				res.send(setRes(resCode.BadRequest,false, "Please select valid cashback percentage!",null))
 			}else if(currentDate || pastDate){
 				res.send(setRes(resCode.BadRequest,false, "You can't select past and current date.!",null))
-			}else if(!Number(data.amount) || isNaN(data.amount)){
-				res.send(setRes(resCode.BadRequest,false, "Amount field invalid.!",null))
+			}else if(!Number(data.amount) || isNaN(data.amount) || data.amount <= 0 ){
+				res.send(setRes(resCode.BadRequest,false, "Amount value should be greater than 0!",null))
 			}else {
 				if(validation){
 					businessModel.findOne({
@@ -176,6 +176,8 @@ exports.giftCardUpdate = async (req, res) => {
 			var pastDate = moment(data.expire_at, 'YYYY-MM-DD').isBefore(moment());
 			if ((result != '' && !(data.cashback_percentage >= Math.min(1, 100)) && (data.cashback_percentage <= Math.max(1, 100)))) {
 				res.send(setRes(resCode.BadRequest, false, "Please select valid cashback percentage!", null))
+			} else if(!Number(data.amount) || isNaN(data.amount) || data.amount <= 0 ){
+				res.send(setRes(resCode.BadRequest,false, "Amount value should be greater than 0!",null))
 			} else if (currentDate || pastDate) {
 				res.send(setRes(resCode.BadRequest, false, "You can't select past and current date.!", null))
 			} else {
@@ -188,6 +190,9 @@ exports.giftCardUpdate = async (req, res) => {
 						giftCardModel.findOne({
 							where: { isDeleted: false, status: true, name: { [Op.eq]: giftCardName }, id: { [Op.ne]: data.id } }
 						}).then(async giftCardData => {
+							if (data?.is_cashback == 0) {
+								data.cashback_percentage = null;
+							}
 							if (giftCardData == null) {
 								giftCardModel.update(data,
 									{
@@ -847,13 +852,69 @@ exports.commonRewardsList =async(req,res) => {
 		const productCategoryModel = models.product_categorys;
 		const productModel = models.products;
 		const businessModel = models.business;
+		const rewardHistoryModel = models.reward_history;
+		const userModel = models.user;
+		const orderModel = models.orders
 		const Op = models.Op;
+
+		const user = req?.user || {};
 		
 		const currentDate = (moment().format('YYYY-MM-DD'))
 		const requiredFields = _.reject(['page'], (o) => { return _.has(data, o)  })
 		const businessEmail = req.userEmail;
 		const businessDetails = await businessModel.findOne({ where: { email: businessEmail, is_active: true, is_deleted: false } });
 		const businessId = businessDetails?.id || '';
+
+		let total_rewards_purchase = "0";
+		let total_loyalty_purchase = "0" ;
+		let total_cashbacks = "0";
+		let total_loyalty_points = "0";
+		if (user.role_id == '2') {
+			const userDetails = await userModel.findOne({
+				where: {
+					id: user.id
+				}
+			});
+			const total_rewards = userDetails?.dataValues?.total_cashbacks ? userDetails?.dataValues?.total_cashbacks : "0" ;
+			const total_loyalty =  userDetails?.dataValues?.total_loyalty_points ? userDetails?.dataValues?.total_loyalty_points : "0";
+			total_cashbacks = total_rewards;
+			total_loyalty_points = total_loyalty;
+		}
+		if (user.role_id == '3') {
+			const businessRewardsDetails = await rewardHistoryModel.findAll({
+				include: [
+					{
+						model: orderModel,
+						attributes: [],
+						where: {
+							business_id: businessId
+						},
+						required: true
+					}
+				],
+				attributes: [[models.sequelize.fn('sum', models.sequelize.col('reward_history.amount')), 'total_rewards']],
+				where: {
+					reference_reward_type: { [Op.ne] : 'loyalty_points' }
+				}
+			});
+			const businessLoyaltyDetails = await rewardHistoryModel.findAll({
+				include: [
+					{
+						model: orderModel,
+						where: {
+							business_id: businessId
+						},
+						required: true
+					}
+				],
+				attributes: [[models.sequelize.fn('sum', models.sequelize.col('reward_history.amount')), 'total_loyalty']],
+				where: {
+					reference_reward_type: { [Op.eq] : 'loyalty_points' }
+				}
+			});
+			total_rewards_purchase = businessRewardsDetails[0]?.dataValues?.total_rewards ? businessRewardsDetails[0].dataValues.total_rewards : "0";
+			total_loyalty_purchase = businessLoyaltyDetails[0]?.dataValues?.total_loyalty ? businessLoyaltyDetails[0].dataValues.total_loyalty : "0";
+		}
 		// const businessIdCond = data?.business_id ? `AND business_id="${data.business_id}"` : `AND business_id="${businessId}"`;
 		const businessIdCond = (tableName) => data?.business_id ? `AND ${tableName}.business_id="${data.business_id}"` : `AND ${tableName}.business_id="${businessId}"`;
 
@@ -922,14 +983,64 @@ exports.commonRewardsList =async(req,res) => {
 				unionQuery += unionQuery != '' ?  ` UNION ${loyaltyPointsQuery}`: loyaltyPointsQuery;
 			}
 			// unionQuery += `${unionQuery}`
-			const total_rewards_purchase = "";
-			const total_loyalty_purchase = "" ;
-			const rewards = await models.sequelize.query(`SELECT * FROM (${unionQuery}) Rewards ${filteCondition != '' ? 'GROUP BY id' : ''} ORDER BY createdAt desc LIMIT ${offset}, ${limit}`,{
+			let rewards = [];
+			let rewardsCounts = [];
+			if (user.role_id == 3) {
+			rewards = await models.sequelize.query(`SELECT * FROM (${unionQuery}) Rewards ${filteCondition != '' ? 'GROUP BY id' : ''} ORDER BY createdAt desc LIMIT ${offset}, ${limit}`,{
 				type: models.sequelize.QueryTypes.SELECT
 			});
-			const rewardsCounts = await models.sequelize.query(`SELECT * FROM (${unionQuery}) Rewards ${filteCondition != '' ? 'GROUP BY id' : ''}`,{
+			rewardsCounts = await models.sequelize.query(`SELECT * FROM (${unionQuery}) Rewards ${filteCondition != '' ? 'GROUP BY id' : ''}`,{
 				type: models.sequelize.QueryTypes.SELECT
 			})
+			} // for user's rewards
+			else {
+			const textSearch = (tableName) =>  {
+				if (['gift_cards','loyalty_points'].includes(tableName)) {
+					return data.search ? ` AND ${tableName}.name LIKE "%${data.search}%"` : '';
+				} 
+				if (['cashbacks','discounts','coupones'].includes(tableName)){
+					return data.search ? `AND ${tableName}.title LIKE "%${data.search}%"` : '';
+				}
+			}
+
+			const userGiftCardQuery = `SELECT user_giftcards.gift_card_id as "id", user_giftcards.createdAt, "gift_cards" as type FROM user_giftcards JOIN gift_cards ON user_giftcards.gift_card_id=gift_cards.id WHERE ((user_id=${user?.id} AND to_email IS NULL) OR (to_email = '${user?.user}')) AND user_giftcards.is_deleted=false AND user_giftcards.status=true ${textSearch('gift_cards')}`;
+			// const userRewardQuery = `SELECT user_earned_rewards.reference_reward_id, createdAt, user_earned_rewards.reference_reward_type as "type"  FROM user_earned_rewards WHERE user_id=${user?.id}`;
+			const productFilter = (tableName) => `JOIN ${tableName} ON user_earned_rewards.reference_reward_id=${tableName}.id ${filteCondition != '' ? `JOIN products ON FIND_IN_SET(products.id, ${tableName}.product_id) > 0` : ''} WHERE ${filteCondition} ${filteCondition !== '' ? 'AND' : ''} user_id=${user?.id} AND reference_reward_type='${tableName}' ${textSearch(tableName)} ${ filteCondition !== '' ? 'GROUP BY user_earned_rewards.id' : ''}`
+
+			const userCashbackRewardQuery = `SELECT user_earned_rewards.reference_reward_id as "id", user_earned_rewards.createdAt, user_earned_rewards.reference_reward_type as "type"  FROM user_earned_rewards ${productFilter('cashbacks')}`;
+			const userDiscountRewardQuery = `SELECT user_earned_rewards.reference_reward_id as "id", user_earned_rewards.createdAt, user_earned_rewards.reference_reward_type as "type"  FROM user_earned_rewards ${productFilter('discounts')}`;
+			const userCouponesRewardQuery = `SELECT user_earned_rewards.reference_reward_id as "id", user_earned_rewards.createdAt, user_earned_rewards.reference_reward_type as "type"  FROM user_earned_rewards ${productFilter('coupones')}`;
+			const userLoyaltyRewardQuery = `SELECT user_earned_rewards.reference_reward_id as "id", user_earned_rewards.createdAt, user_earned_rewards.reference_reward_type as "type"  FROM user_earned_rewards ${productFilter('loyalty_points')}`;
+			
+			let userUnionQuery = '';
+			// const userUnionQuery = `${userGiftCardQuery} UNION ${userRewardQuery}`;
+			if (request_type.includes('gift_cards')) {
+				userUnionQuery += userGiftCardQuery;
+			}
+			
+			if (request_type.includes('cashbacks')) {
+				userUnionQuery += userUnionQuery != '' ?  ` UNION ${userCashbackRewardQuery}`: userCashbackRewardQuery;
+			}
+			
+			if (request_type.includes('discounts')) {
+				userUnionQuery += userUnionQuery != '' ?  ` UNION ${userDiscountRewardQuery}`: userDiscountRewardQuery;
+			}
+			
+			if (request_type.includes('coupones')) {
+				userUnionQuery += userUnionQuery != '' ?  ` UNION ${userCouponesRewardQuery}`: userCouponesRewardQuery;
+			}
+			
+			if (request_type.includes('loyalty_points')) {
+				userUnionQuery += userUnionQuery != '' ?  ` UNION ${userLoyaltyRewardQuery}`: userLoyaltyRewardQuery;
+			}
+
+			rewards = await models.sequelize.query(`SELECT * FROM (${userUnionQuery}) Rewards ORDER BY createdAt desc LIMIT ${offset}, ${limit}`,{
+				type: models.sequelize.QueryTypes.SELECT
+			});
+			rewardsCounts = await models.sequelize.query(`SELECT * FROM (${userUnionQuery}) Rewards`,{
+				type: models.sequelize.QueryTypes.SELECT
+			})
+			}
 			const allRewardsData = await Promise.all([
 				...rewards.map((rew) => {
 					if (rew.type == 'gift_cards') {
@@ -1120,8 +1231,13 @@ exports.commonRewardsList =async(req,res) => {
 							const product_name_arr = products?.map(val => val.name);
 							const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
 							loyaltyObj.dataValues.product_name = product_name;
-		
-							loyaltyObj.dataValues.giftcard_name = loyaltyObj?.dataValues?.gift_card?.name || '';
+
+							const giftCards = await giftCardModel.findAll({ where: { id: { [Op.in] : loyaltyObj?.dataValues?.gift_card_id?.split(',') || [] } } ,attributes: ["name"] });
+							const giftcards_name_arr = giftCards?.map(val => val.name);
+							const giftcard_name = giftcards_name_arr?.length > 0 ? giftcards_name_arr?.join(',') : '';
+							loyaltyObj.dataValues.giftcard_name = giftcard_name;
+
+							// loyaltyObj.dataValues.giftcard_name = loyaltyObj?.dataValues?.gift_card?.name || '';
 							delete loyaltyObj?.dataValues?.gift_card;
 							delete loyaltyObj?.dataValues.product;
 							if(loyaltyObj.validity < currentDate){
@@ -1140,7 +1256,7 @@ exports.commonRewardsList =async(req,res) => {
 			])
 			const rewardList  = allRewardsData.filter(obj => obj != null);
 			const response = new pagination(rewardList, rewardsCounts?.length || 0, parseInt(data.page), parseInt(limit) );
-			res.send(setRes(resCode.OK, true, "Get rewards list successfully", ({ total_rewards_purchase, total_loyalty_purchase, ...response.getPaginationInfo(), })));
+			res.send(setRes(resCode.OK, true, "Get rewards list successfully", ({ total_cashbacks , total_loyalty_points, total_rewards_purchase, total_loyalty_purchase, ...response.getPaginationInfo(), })));
 		} else {
 			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 		}

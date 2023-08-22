@@ -185,7 +185,7 @@ exports.GetAllProducts = async (req, res) => {
 						if (data.discount_type == 0) {
 							discountString += `${data.discount_value}% Discount`
 						} else {
-							discountString += `${data.discount_value} Discount`
+							discountString += `$${data.discount_value} Discount`
 						}
 						rewards.push({ type: 'discounts', title: discountString});
 					}
@@ -228,7 +228,7 @@ exports.GetAllProducts = async (req, res) => {
 							if (data.cashback_type == 0) {
 								discountString += `${data.cashback_value}% cashback`;
 							} else {
-								discountString += `${data.cashback_value}% cashback`;
+								discountString += `$${data.cashback_value} cashback`;
 							}
 							rewards.push({ type: 'discounts', title: discountString});
 						}
@@ -800,6 +800,8 @@ exports.GetProductById = async (req, res) => {
 	var Op = models.Op;
 	const userDetails = await userModel.findOne({ where: { email: req.userEmail, is_deleted: false , is_active: true } });
 	const userId = userDetails?.id || '';
+	const total_loyalty_points = userDetails?.total_loyalty_points ? userDetails?.total_loyalty_points : 0;
+	const total_cashbacks = userDetails?.total_cashbacks ? userDetails?.total_cashbacks : 0;
 	productModel.findOne({
 		where: {
 			id: data.id,
@@ -932,6 +934,8 @@ exports.GetProductById = async (req, res) => {
 				}
 				product.dataValues.applied_coupon_details = discountObj;
 			}
+			product.dataValues.total_loyalty_points = total_loyalty_points;
+			product.dataValues.total_cashbacks = total_cashbacks;
 			res.send(setRes(resCode.OK, true, "Get product detail successfully.", product))
 		} else {
 			res.send(setRes(resCode.ResourceNotFound, false, "Product not found.", null))

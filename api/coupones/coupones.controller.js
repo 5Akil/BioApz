@@ -41,8 +41,8 @@ exports.create = async(req,res) =>{
 			const couponTitle = data?.title?.trim() || data.title;
 			var currentDate = (moment().format('YYYY-MM-DD') == moment(data.expire_at).format('YYYY-MM-DD'))
 			var pastDate = moment(data.expire_at, 'YYYY-MM-DD').isBefore(moment());
-			if (!Number(data.coupon_value) || isNaN(data.coupon_value)) {
-				return res.send(setRes(resCode.BadRequest, false, "Amount field invalid.!", null))
+			if (!Number(data.coupon_value) || isNaN(data.coupon_value) || data.coupon_value <= 0) {
+				return res.send(setRes(resCode.BadRequest, false, "Coupon value should be greater than 0!", null))
 			}
 			if (currentDate || pastDate) {
 				return res.send(setRes(resCode.BadRequest, false, "You can't select past and current date.!", null))
@@ -105,6 +105,9 @@ exports.create = async(req,res) =>{
 								if (couponSame) {
 									res.send(setRes(resCode.BadRequest, false, "Coupon title already taken.!", null))
 								} else {
+									if (data?.coupon_type == 0) {
+										data.value_type = true;
+									}
 									couponeModel.create(data
 										// 	{
 										// 	business_id:!(_.isEmpty(data.business_id) && data.business_id == null) ? data.business_id : null,
@@ -201,10 +204,6 @@ exports.update = async (req, res) => {
 			const couponTitle = data?.title?.trim() || data.title;
 			var currentDate = (moment().format('YYYY-MM-DD') == moment(data.expire_at).format('YYYY-MM-DD'))
 			var pastDate = moment(data.expire_at, 'YYYY-MM-DD').isBefore(moment());
-			if (!Number(data.coupon_value) || isNaN(data.coupon_value)) {
-				validation = false;
-				return res.send(setRes(resCode.BadRequest, false, "Amount field invalid.!", null))
-			}
 			if (currentDate || pastDate) {
 				validation = false;
 				return res.send(setRes(resCode.BadRequest, false, "You can't select past and current date.!", null))
@@ -212,6 +211,10 @@ exports.update = async (req, res) => {
 			if (valueType == false && valueType != null) {
 				validation = false;
 				return res.send(setRes(resCode.BadRequest, false, "Please enter valid percentage value!", null))
+			}
+			if (!Number(data.coupon_value) || isNaN(data.coupon_value) || data.coupon_value <= 0 ) {
+				validation = false;
+				return res.send(setRes(resCode.BadRequest, false, "Coupon value should be greater than 0!", null))
 			}
 			const couponeCode = data.coupone_code ? data.coupone_code.trim() : (data.coupon_code ? data.coupon_code.trim() : '' );
 			data.coupon_code = couponeCode;
@@ -258,7 +261,7 @@ exports.update = async (req, res) => {
 												const product_name_arr = products?.map(val => val.name);
 												const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
 												data.dataValues.type = "coupones";
-												data.dataValues.value_type = data.coupon_type;
+												// data.dataValues.value_type = data.coupon_type;
 												data.dataValues.amount = data.coupon_value;
 												if(data.expire_at < moment().format('YYYY-MM-DD')){
 													data.dataValues.is_expired = true;
@@ -275,7 +278,7 @@ exports.update = async (req, res) => {
 										}
 									})
 							} else {
-								res.send(setRes(resCode.BadRequest), false, "Coupon title already taken.!", null)
+								res.send(setRes(resCode.BadRequest, false, "Coupon title already taken.!", null))
 							}
 						})
 					}
@@ -299,7 +302,7 @@ exports.applyCoupon = async (req, res) => {
 		const userCouponModel = models.user_coupons;
 
 		const userAuth = req.user;
-		const arrayFields = ['coupon_code', 'coupon_id', 'product_id'];
+		const arrayFields = ['coupon_code', 'product_id'];
 		const requiredFields = _.reject(arrayFields, (o) => { return _.has(data, o) })
 
 		if (requiredFields.length == 0) {
@@ -328,16 +331,17 @@ exports.applyCoupon = async (req, res) => {
 			// get coupon details if active and exists
 			const couponDetails = await couponeModel.findOne({
 				where: {
-					id: data.coupon_id,
+					coupon_code: data.coupon_code,
+					business_id: productDetails.business_id,
 					isDeleted: false,
-					status: 1
+					status: true
 				}
 			})
 
 			if (!couponDetails || _.isEmpty(couponDetails) || _.isUndefined(couponDetails)){
 				return res.send(setRes(resCode.ResourceNotFound, false, 'Coupone not found', null))
 			}
-
+			console.log('couponDetails', couponDetails.id);
 
 			// check if user has already applied coupon
 			const appliedCoupon = await userCouponModel.findOne({
@@ -358,7 +362,7 @@ exports.applyCoupon = async (req, res) => {
 				if (couponDetails.product_id && couponDetails?.product_id?.split(',')?.includes(`${productDetails.id}`)) {
 					// apply coupon for user
 					const userCouponDetail = await userCouponModel.create({
-						coupon_id: data.coupon_id,
+						coupon_id: couponDetails.id,
 						user_id: userDetails.id,
 						product_id: productDetails.id,
 					});
@@ -384,7 +388,7 @@ exports.applyCoupon = async (req, res) => {
 				
 					// apply coupon for user
 					const userCouponDetail = await userCouponModel.create({
-						coupon_id: data.coupon_id,
+						coupon_id: couponDetails.id,
 						user_id: userDetails.id,
 						product_id: productDetails.id,
 					});

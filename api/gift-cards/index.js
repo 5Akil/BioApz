@@ -7,6 +7,7 @@ const moment = require('moment')
 var awsConfig = require('../../config/aws_S3_config')
 var commonConfig = require('../../config/common_config')
 const {verifyToken} = require('../../config/token');
+const {authorize} = require('../../helpers/authorize');
 
 var storage = multer.diskStorage({ 
     destination: function (req, file, cb) {
@@ -52,7 +53,7 @@ var giftcardawsupload = multer({
 
 
 // Common
-router.post('/list', verifyToken, controller.commonRewardsList)
+router.post('/list', verifyToken, authorize([2,3]), controller.commonRewardsList)
 router.get('/view/:id',verifyToken,controller.commonRewardsView)
 
 

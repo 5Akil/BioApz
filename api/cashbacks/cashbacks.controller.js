@@ -45,6 +45,9 @@ exports.cashbackCreate = async (req, res) => {
 			if (result) {
 				return res.send(setRes(resCode.BadRequest, false, "Please select valid cashback value in percentage(between 1 to 100)!", null))
 			}
+			if (data.cashback_value!== undefined  && (!Number(data.cashback_value) || isNaN(data.cashback_value)) || data.cashback_value <= 0) {
+				return res.send(setRes(resCode.BadRequest,false, "Cashback value should be greater than 0!",null))
+			}
 			if (currentDate || pastDate) {
 				return res.send(setRes(resCode.BadRequest, false, "You can't select past and current date.!", null))
 			}
@@ -207,12 +210,14 @@ exports.cashbackUpdate = async (req, res) => {
 							)
 						);
 					} else {
-						if (!(_.isEmpty(data.cashback_value))) {
+						const cashbackType = data.cashback_type ? data.cashback_type : cashbackDetails.cashback_type;
+						const cashbackValue = data.cashback_value ? data.cashback_value : cashbackDetails.cashback_value;
+						if (!(_.isEmpty(data.cashback_value)) ||  !(_.isEmpty(data.cashback_type))) {
 							const result =
-							cashbackDetails.cashback_type == 0
+							cashbackType == 0
 									? !(
-										data.cashback_value >= Math.min(1, 100) &&
-										data.cashback_value <= Math.max(1, 100)
+										cashbackValue >= Math.min(1, 100) &&
+										cashbackValue <= Math.max(1, 100)
 									)
 										? true
 										: false
@@ -226,6 +231,9 @@ exports.cashbackUpdate = async (req, res) => {
 										null
 									)
 								);
+							}
+							if (cashbackValue!== undefined  && (!Number(cashbackValue) || isNaN(cashbackValue)) || cashbackValue <= 0) {
+								return res.send(setRes(resCode.BadRequest,false, "Cashback value should be greater than 0!",null))
 							}
 						}
 						if (!_.isEmpty(data.validity_for)) {

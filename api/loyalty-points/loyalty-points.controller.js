@@ -34,10 +34,13 @@ exports.create = async(req,res) =>{
 		if(requiredFields.length == 0){
 			var currentDate = (moment().format('YYYY-MM-DD') == moment(data.validity).format('YYYY-MM-DD'))
 			var pastDate = moment(data.validity,'YYYY-MM-DD').isBefore(moment());
-			if(data.amount!== undefined  && (!Number(data.amount) || isNaN(data.amount))){
+			if(data.amount!== undefined  && (!Number(data.amount) || isNaN(data.amount)) || data.amount <= 0){
 				validation = false;
-				return res.send(setRes(resCode.BadRequest,false, "Amount field invalid.!",null))
-			} 
+				return res.send(setRes(resCode.BadRequest,false, "Amount value should be greater than 0!",null))
+			}
+			if (data.points_earned!== undefined  && (!Number(data.points_earned) || isNaN(data.points_earned)) || data.points_earned <= 0) {
+				return res.send(setRes(resCode.BadRequest,false, 'Reward points value should be greater than 0 !',null))
+			}
 			if(currentDate || pastDate){
 				validation = false;
 				return res.send(setRes(resCode.BadRequest,false, "You can't select past and current date.!",null))
@@ -169,9 +172,14 @@ exports.update = async(req,res) => {
 		if(requiredFields.length == 0){
 			var currentDate = (moment().format('YYYY-MM-DD') == moment(data.validity).format('YYYY-MM-DD'))
 			var pastDate = moment(data.validity,'YYYY-MM-DD').isBefore(moment());
-			if(data.amount !== undefined && (!Number(data.amount) || isNaN(data.amount))){
-				res.send(setRes(resCode.BadRequest,false, "Amount field invalid.!",null))
-			}else if(currentDate || pastDate){
+
+			if(data.amount !== undefined && (!Number(data.amount) || isNaN(data.amount)) || data.amount <= 0 ){
+				return res.send(setRes(resCode.BadRequest,false, "Amount value should be greater than 0!",null))
+			}
+			else if (data.points_earned!== undefined  && (!Number(data.points_earned) || isNaN(data.points_earned)) || data.points_earned <= 0) {
+				return res.send(setRes(resCode.BadRequest,false, 'Reward points value should be greater than 0 !',null))
+			}
+			else if(currentDate || pastDate){
 				res.send(setRes(resCode.BadRequest,false, "You can't select past and current date.!",null))
 			}else{
 				if (data.points_redeemed && data.points_redeemed == 1 && data.loyalty_type != 0) {
@@ -233,7 +241,11 @@ exports.update = async(req,res) => {
 											data.dataValues.product_category_name = data.dataValues?.product?.product_categorys?.name || '';
 											data.dataValues.amount = data.dataValues.amount;
 
-											data.dataValues.giftcard_name = data?.dataValues?.gift_card?.name || '';
+											const giftCards = await giftCardModel.findAll({ where: { id: { [Op.in] : data?.dataValues?.gift_card_id?.split(',') || [] } } ,attributes: ["name"] });
+											const giftcards_name_arr = giftCards?.map(val => val.name);
+											const giftcard_name = giftcards_name_arr?.length > 0 ? giftcards_name_arr?.join(',') : '';
+											data.dataValues.giftcard_name = giftcard_name;
+											// data.dataValues.giftcard_name = data?.dataValues?.gift_card?.name || '';
 											delete data?.dataValues?.gift_card;
 											delete data.dataValues.product;
 											const curentDate = (moment().format('YYYY-MM-DD'));
