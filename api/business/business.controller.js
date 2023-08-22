@@ -1601,7 +1601,7 @@ exports.homeList = async (req, res) => {
 					 order: [
 						['createdAt', 'DESC']
 					],
-					limit: dataLimit
+					limit: 1
 			}).then(async LoyaltyPointData => {
 				if (LoyaltyPointData.length > 0) {
 					const dataArray = [];
@@ -1636,10 +1636,7 @@ exports.homeList = async (req, res) => {
 			await combocalenderModel.findAll({
 				where: { is_deleted: false,business_id:data.business_id,
 					},
-					order: [
-						['start_date', 'ASC'],
-						['start_time', 'ASC'],
-					],
+					order: Sequelize.literal("trim(concat(start_date,' ', start_time)) ASC"),
 					limit:5
 			}).then(async event => {
 				if(event.length > 0){

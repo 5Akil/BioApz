@@ -6,6 +6,10 @@ module.exports = (sequelize, DataTypes) => {
       primaryKey: true,
       autoIncrement: true,
     },
+    type: {
+      type: DataTypes.STRING,
+      enum:['admin','business']
+    },
     business_id: {
         type: DataTypes.INTEGER,
     },
