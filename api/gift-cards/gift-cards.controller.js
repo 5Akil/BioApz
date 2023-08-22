@@ -1064,12 +1064,10 @@ exports.commonRewardsList =async(req,res) => {
 										[models.sequelize.literal("'gift_cards'"),"type"],
 									]
 								},
-								order: [
-									['createdAt', 'DESC']
-								]
 							});
-							gCard = JSON.parse(JSON.stringify(gCard));
-							if(gCard.image && gCard.image != null){
+						if (gCard) {
+						gCard = JSON.parse(JSON.stringify(gCard));
+							if(gCard?.image && gCard?.image != null){
 								let images = gCard.image
 								const signurl = await awsConfig.getSignUrl(images.toString()).then(function(res){
 									gCard.image = res;
@@ -1085,7 +1083,6 @@ exports.commonRewardsList =async(req,res) => {
 							gCard.totalPurchase = gCard.user_giftcards.length  || 0; 
 							delete gCard.user_giftcards;
 							// responseArr.push(gCard);
-							if (gCard) {
 								resolve(gCard);
 							} else {
 								resolve(null);
@@ -1107,6 +1104,7 @@ exports.commonRewardsList =async(req,res) => {
 									}
 								],
 							});
+							if (cashBackObj) {
 							cashBackObj = JSON.parse(JSON.stringify(cashBackObj));
 							const products = await productModel.findAll({ where: { id: { [Op.in] : cashBackObj.product_id?.split(',') || [] } } ,attributes: ["name"], raw: true});
 							const product_name_arr = products?.map(val => val.name);
@@ -1121,7 +1119,6 @@ exports.commonRewardsList =async(req,res) => {
 							}else{
 								cashBackObj.is_expired = false;
 							}
-							if (cashBackObj) {
 								resolve(cashBackObj);
 							} else {
 								resolve(null);
@@ -1143,6 +1140,7 @@ exports.commonRewardsList =async(req,res) => {
 									}
 								],
 							});
+							if (discountObj) {
 							discountObj = JSON.parse(JSON.stringify(discountObj));
 							const products = await productModel.findAll({ where: { id: { [Op.in] : discountObj.product_id?.split(',') || [] } } ,attributes: ["name"], raw: true});
 							const product_name_arr = products?.map(val => val.name);
@@ -1157,7 +1155,6 @@ exports.commonRewardsList =async(req,res) => {
 							}else{
 								discountObj.is_expired = false;
 							}
-							if (discountObj) {
 								resolve(discountObj);
 							} else {
 								resolve(null);
@@ -1179,6 +1176,7 @@ exports.commonRewardsList =async(req,res) => {
 									}
 								],
 							});
+							if (couponeObj) {
 							couponeObj = JSON.parse(JSON.stringify(couponeObj));
 							const products = await productModel.findAll({ where: { id: { [Op.in] : couponeObj.product_id?.split(',') || [] } } ,attributes: ["name"], raw: true});
 							const product_name_arr = products?.map(val => val.name);
@@ -1192,7 +1190,6 @@ exports.commonRewardsList =async(req,res) => {
 							}else{
 								couponeObj.is_expired = false;
 							}
-							if (couponeObj) {
 								resolve(couponeObj);
 							} else {
 								resolve(null);
@@ -1225,6 +1222,7 @@ exports.commonRewardsList =async(req,res) => {
 									}
 								],
 							});
+							if (loyaltyObj) {
 							// loyaltyObj.dataValues.product_name = loyaltyObj?.dataValues?.product?.dataValues?.name || '';
 							loyaltyObj.dataValues.product_category_name = loyaltyObj?.dataValues?.product?.dataValues?.product_categorys?.name || '';
 							const products = await productModel.findAll({ where: { id: { [Op.in] : loyaltyObj?.dataValues?.product_id?.split(',') || [] } } ,attributes: ["name"]});
@@ -1245,7 +1243,6 @@ exports.commonRewardsList =async(req,res) => {
 							}else{
 								loyaltyObj.is_expired = false;
 							}
-							if (loyaltyObj) {
 								resolve(loyaltyObj);
 							} else {
 								resolve(null);

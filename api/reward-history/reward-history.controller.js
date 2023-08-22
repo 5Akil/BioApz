@@ -143,7 +143,7 @@ exports.rewardHistoryList = async (req, res) => {
         res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
     }
     } catch (error) {
-        return res.send(setRes(resCode.BadRequest, false, error?.message || "Something went wrong!", null))
+        return res.send(setRes(resCode.BadRequest, false,  "Something went wrong!", null))
     }
 }
 
@@ -286,7 +286,7 @@ exports.rewardHistoryBusinessList = async (req, res) => {
             res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
         }
     } catch(error) {
-        return res.send(setRes(resCode.BadRequest, false, error?.message || "Something went wrong!", null))
+        return res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
     }
 }
 
@@ -711,7 +711,8 @@ exports.rewardPerfomance = async (req, res) => {
                             attributes: ["id", "order_status"],
                             where: {
                                 order_status: 3 // completed
-                            }
+                            },
+                            required: false
                         }
                     ],
                     where : {
