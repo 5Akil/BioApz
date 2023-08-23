@@ -2829,6 +2829,7 @@ exports.userGiftCardShare = async (req, res) => {
 		const userGiftCardModel = models.user_giftcards;
 		const giftCardTemplateModel = models.gift_card_template;
 		const userEmail = req.userEmail;
+		const rewardHistoryModel = models.reward_history;
 		const currentDate = (moment().format('YYYY-MM-DD'))
 		var requiredFields = _.reject(["gift_card_id", "gift_card_template_id", "gift_for", "from", "note", "to_email", "payment_status", "amount", "qty"], (o) => {
 			return _.has(data, o);
@@ -2886,6 +2887,7 @@ exports.userGiftCardShare = async (req, res) => {
 			return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
 		}
 	} catch (error) {
+		console.log(error)
 		return res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
 	}
 }
