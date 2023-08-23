@@ -1954,22 +1954,23 @@ exports.rewardsList =async(req,res) => {
 			// if(!(_.isEmpty(request_type))){
 			// 	result = _.filter(result, {type: request_type})
 			// }
-			let resData = {};
-			resData.data = result;
+			//let resData = {};
+			//resData.data = result;
 
-			resData.total_records = total_records;
-			resData.totalPages = totalPages;
-			resData.currentPage = currentPage;
-			resData.per_page = per_page;
-			resData.nextPage = nextPage;
-			resData.previousPage = previousPage;
-			resData.lastPage = lastPage;
-
-			res.send(setRes(resCode.OK, true, "Get rewards list successfully",resData))
+			//resData.total_records = total_records;
+			//resData.totalPages = totalPages;
+			//resData.currentPage = currentPage;
+			//resData.per_page = per_page;
+			//resData.nextPage = nextPage;
+			//resData.previousPage = previousPage;
+			//resData.lastPage = lastPage;
+			const response = new pagination(result, total_records, parseInt(data.page), parseInt(data.page_size));
+			res.send(setRes(resCode.OK, true, "Get rewards list successfully",(response.getPaginationInfo())))
 		}else{
 			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 		}
 	}catch(error){
+		console.log(error)
 		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
 	}
 }
