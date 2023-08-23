@@ -339,7 +339,7 @@ exports.rewardPerfomance = async (req, res) => {
             /** Inputs rewatd type and reward id to check perfomance  */
             const rewardId = data?.reward_id || '';
             const rewardType = data?.type ? data?.type.trim() : '';
-
+ 
             let responseObject = {}
             if (rewardType == 'gift_cards') {
                 
