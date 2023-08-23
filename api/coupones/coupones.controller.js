@@ -235,13 +235,18 @@ exports.update = async (req, res) => {
 							where: { isDeleted: false, status: true, deleted_at: null, title: { [Op.eq]: couponTitle }, id: { [Op.ne]: data.id } }
 						}).then(async nameData => {
 							if (nameData == null) {
-								couponeModel.update(data,
-								// 	{
+								if (data.coupon_type == 0 && data.coupon_type != null) {
+									data.value_type = 1;
+								  } else {
+									data.value_type = 0;
+								  }
+								await couponeModel.update(data,
+								 	//{
 								// 	title: !(_.isEmpty(data.title) && data.title == null) ? data.title : null,
-								// 	coupon_type: !(_.isEmpty(data.coupon_type) && data.coupon_type == null) ? data.coupon_type : null,
+								 	//coupon_type: !(_.isEmpty(data.coupon_type == 0)) ? data.coupon_type : null,
 								// 	product_category_id: (!(_.isEmpty(data.product_category_id) && data.product_category_id == null)) && data.coupon_type == 0 ? data.product_category_id : null,
 								// 	product_id: (!(_.isEmpty(data.product_id) && data.product_id == null)) && (!_.isEmpty(data.product_category_id)) && data.coupon_type == 0 ? data.product_id : null,
-								// 	value_type: !(_.isEmpty(data.value_type) && data.value_type == null) && data.coupon_type == 1 && data.coupon_type != null ? data.value_type : null,
+								 	//value_type: data.coupon_type == 0 && data.coupon_type != null ? data.value_type = 1 : data.value_type = 0,
 								// 	coupon_value: (!(_.isEmpty(data.coupon_value) && data.coupon_value == null)) ? data.coupon_value : null,
 								// 	validity_for: !(_.isEmpty(data.validity_for) && data.validity_for == null) ? data.validity_for : null,
 								// 	expire_at: !(_.isEmpty(data.expire_at) && data.expire_at == null) ? data.expire_at : null,
