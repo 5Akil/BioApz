@@ -1645,7 +1645,6 @@ exports.homeList = async (req, res) => {
 						[Op.lte]: currentDate
 					  }
 					},
-					
 					order: Sequelize.literal("trim(concat(start_date,' ', start_time)) ASC"),
 					limit:5
 			}).then(async event => {
@@ -1691,6 +1690,7 @@ exports.homeList = async (req, res) => {
 			raw: true,
 			group: ['business_id']
 		});
+
 		const orderDetailsModel = models.order_details;
 		const orderDetails = await orderDetailsModel.findAll({
 			where:{
@@ -1705,8 +1705,8 @@ exports.homeList = async (req, res) => {
 		});
 
 		let resData = {};
-		resData.total_sale = orderCount[0].total_amount;
-		resData.total_ongoing_orders = orderDetails[0].total_orders;
+		resData.total_sale = !_.isEmpty(orderCount) ? orderCount[0].total_amount : 0.00;
+		resData.total_ongoing_orders = !_.isEmpty(orderCount) ? orderCount[0].total_orders : 0.00;
 		resData.total_products = totalProducts;
 		resData.rewards_and_loyalty = result;
 		resData.events = eventDataArray;
