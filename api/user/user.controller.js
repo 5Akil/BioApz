@@ -1303,6 +1303,7 @@ exports.homeList = async (req, res) => {
 		var businessModel = models.business;
 		var Op = models.Op;
 		var currentDate = moment().format('YYYY-MM-DD');
+		var currentDateTime = moment().format('YYYY-MM-DD HH:mm:ss');
 		var giftCardModel = models.gift_cards
 		var cashbackModel = models.cashbacks
 		var discountModel = models.discounts
@@ -1534,23 +1535,18 @@ exports.homeList = async (req, res) => {
 		const userDetails = await userModel.findOne({ where: { email: req.userEmail, is_deleted: false , is_active: true } });
 		const userId = userDetails?.id || '';
 		eventArray.push(
-			combocalenderModel.findAll({
-				where: { start_date: {
-					[Op.gte]: currentDate
-				  },
-				  end_date:{
-					[Op.lte]: currentDate
-				  },
-				  status:{
-					[Op.ne] : 4
-				  }
+			await combocalenderModel.findAll({
+				where: {
+					[Op.and]: [
+						Sequelize.literal(`CONCAT(start_date, ' ', start_time) >= '${currentDateTime}'`),
+					],
+					status:{
+						[Op.eq] : 1
+					},
+					is_deleted:false,
 				},
 				include: [{
 					model: userEventsModel,
-					where: {
-						user_id: userId,
-						is_deleted: false
-					},
 				  },{
 					model: businessModel,
 					where: {
@@ -1561,6 +1557,7 @@ exports.homeList = async (req, res) => {
 				}],
 				attributes: ['id','business_id','images','title','description','start_date','end_date','start_time','end_time', 'status'],
 				order: Sequelize.literal("trim(concat(start_date,' ', start_time)) ASC"),
+				limit:5
 			}).then(async event => {
 				if(event.length > 0){
 					const dataArray = [];	
@@ -1601,8 +1598,7 @@ exports.homeList = async (req, res) => {
 						}
 						delete data.dataValues.status
 					}
-					const arr = event.slice(0,5);
-					let result = JSON.parse(JSON.stringify(arr));
+					let result = JSON.parse(JSON.stringify(event));
 					dataArray.push(result);
 					return result;
 				}
@@ -1620,6 +1616,7 @@ exports.homeList = async (req, res) => {
 
 		res.send(setRes(resCode.OK, true, "Get home page details successfully.",resData))
 	} catch(error){
+		console.log(error)
 		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
 	}
 }
@@ -3115,7 +3112,7 @@ exports.priceFilterForWallet =async(req,res) => {
 	try{
 		const data = req.query
 		const promises = [];
-		const request_type = data.type
+		var request_type = data.type;
 		const giftCardModel = models.gift_cards
 		const cashbackModel = models.cashbacks
 		const discountModel = models.discounts
@@ -3127,20 +3124,24 @@ exports.priceFilterForWallet =async(req,res) => {
 		if(requiredFields == ""){
 			var typeArr = ['gift_cards','cashbacks','discounts','coupones','loyalty_points'];
 
-			if((request_type) && !(typeArr.includes(request_type))){
-				return res.send(setRes(resCode.BadRequest, null, false, "Please select valid type."))
+			let reqTypeArr = request_type.includes(',') && request_type.split(',').length > 0 ? request_type.split(',') : (request_type && request_type.trim() !== '' ? [request_type] : typeArr );
+			reqTypeArr = reqTypeArr.filter( tp => tp && tp.trim() !== '');
+			const requestTypeNotExists = reqTypeArr.filter( tp => !typeArr.includes(tp) && tp !== '' );
+			if(reqTypeArr && requestTypeNotExists.length !== 0){
+				return res.send(setRes(resCode.BadRequest, false, "Please select valid type.", null))
 			}
 			promises.push(
 				await giftCardModel.findAll({
 					where:{isDeleted:false,status:true,deleted_at: null,},
-					attributes:['id','amount']
+					attributes: {
+						include: ['id','amount',[models.sequelize.literal("'gift_cards'"),"type"]]
+					}
 				}).then(async giftCardData => {
 					if (giftCardData){
 						const dataArray = [];
 						// Update Sign URL
 						for(const data of giftCardData){
 							let result = 	JSON.parse(JSON.stringify(data));
-							result.type="gift_cards";
 							dataArray.push(result);
 						}
 						return dataArray;
@@ -3149,13 +3150,14 @@ exports.priceFilterForWallet =async(req,res) => {
 				}),
 				await cashbackModel.findAll({
 					where:{isDeleted:false,status:true,deleted_at: null,},
-					attributes:['id','cashback_type','cashback_value']
+					attributes:{
+						include: ['id','cashback_type','cashback_value',[models.sequelize.literal("'cashbacks'"),"type"]]
+					}
 				}).then(async CashbackData => {
 					if (CashbackData){
 						const dataArray = [];
 						for(const data of CashbackData){
 						let result = JSON.parse(JSON.stringify(data));
-						result.type="cashbacks";
 						result.amount= data.cashback_value;
 						dataArray.push(result);
 						}
@@ -3165,13 +3167,14 @@ exports.priceFilterForWallet =async(req,res) => {
 				}),
 				await discountModel.findAll({
 					where:{isDeleted:false,status:true,deleted_at: null,},
-					attributes:['id','discount_type','discount_value']
+					attributes:{
+						include: ['id','discount_type','discount_value',[models.sequelize.literal("'discounts'"),"type"]]
+					}
 				}).then(async DiscountData => {
 						if (DiscountData){
 							const dataArray = [];
 							for(const data of DiscountData){
 								let result = 	JSON.parse(JSON.stringify(data));
-								result.type="discounts";
 								result.amount= data.discount_value;
 								dataArray.push(result);
 								}
@@ -3181,13 +3184,14 @@ exports.priceFilterForWallet =async(req,res) => {
 				}),
 				await couponeModel.findAll({
 					where:{isDeleted:false,status:true,deleted_at: null,},
-					attributes:['id','value_type','coupon_value']
+					attributes:{
+						include: ['id','value_type','coupon_value',[models.sequelize.literal("'coupones'"),"type"]]
+					}
 				}).then(async CouponeData => {
 					if (CouponeData){
 						const dataArray = [];
 						for(const data of CouponeData){
 						let result = 	JSON.parse(JSON.stringify(data));
-						result.type="coupones";
 						result.amount= data.coupon_value;
 						dataArray.push(result);
 						}
@@ -3198,13 +3202,14 @@ exports.priceFilterForWallet =async(req,res) => {
 				}),
 				await loyaltyPointModel.findAll({
 					where:{isDeleted:false,status:true,deleted_at: null},
-					attributes:['id','amount']
+					attributes:{
+						include: ['id','amount',[models.sequelize.literal("'loyalty_points'"),"type"]]
+					}
 					}).then(async LoyaltyPointData => {
 						if(LoyaltyPointData){
 							const dataArray = [];
 							for(const data of LoyaltyPointData){
 								let result = JSON.parse(JSON.stringify(data));
-								result.type="loyalty_points";
 								dataArray.push(result);
 						}
 						return dataArray;
@@ -3218,8 +3223,10 @@ exports.priceFilterForWallet =async(req,res) => {
 			const arrays = [giftcardRewards, cashbackData,discountData,couponeData,loyaltyPointData];
 			const mergedArray = mergeRandomArrayObjects(arrays);
 			let result =  mergedArray;
+			
 			if(!(_.isEmpty(request_type))){
-				result = _.filter(result, {type: request_type})
+				result = _.filter(result, reward => reqTypeArr.includes(reward.type));
+				//result = _.filter(result, {type: request_type})
 			}
 			var filters = []; 
 			const attrToExtract = "amount";
@@ -3228,9 +3235,13 @@ exports.priceFilterForWallet =async(req,res) => {
 			if(!_.isEmpty(extractedData)){
 				var minValue = null;
 				if(extractedData.length == 1){
-					minValue = 1;
+					minValue = 10;
 				}else{
-					minValue = Math.min(...extractedData);
+					if(Math.min(...extractedData) <= 5){
+						minValue = 10
+					}else{
+						minValue = Math.min(...extractedData);
+					}
 				}
 				const maxValue = Math.max(...extractedData);
 				filters = generateFilters(minValue, maxValue, 2);
@@ -3241,7 +3252,6 @@ exports.priceFilterForWallet =async(req,res) => {
 			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 		}
 	}catch(error){
-		console.log('error', error);
 		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
 	}
 }

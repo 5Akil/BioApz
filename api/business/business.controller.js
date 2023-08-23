@@ -1441,8 +1441,8 @@ exports.homeList = async (req, res) => {
 		const promises = [];
 		var eventArray = [];
 		var currentDate = (moment().format('YYYY-MM-DD'));
+		var currentDateTime = moment().format('YYYY-MM-DD HH:mm:ss');
 		const dataLimit = 2
-
 		promises.push(
 			await giftCardModel.findAll({
 				where: { business_id:data.business_id,isDeleted: false, status: true, deleted_at: null,
@@ -1634,16 +1634,15 @@ exports.homeList = async (req, res) => {
 
 		eventArray.push(
 			await combocalenderModel.findAll({
-				where: { is_deleted: false,business_id:data.business_id,
-					start_date: {
-						[Op.gte]: currentDate
-					  },
-					  status:{
-						[Op.ne] : 4
-					  },
-					  end_date:{
-						[Op.lte]: currentDate
-					  }
+				where: {
+						business_id:data.business_id,
+						[Op.and]: [
+							Sequelize.literal(`CONCAT(start_date, ' ', start_time) >= '${currentDateTime}'`),
+						],
+						status:{
+							[Op.eq] : 1
+						},
+						is_deleted:false,
 					},
 					order: Sequelize.literal("trim(concat(start_date,' ', start_time)) ASC"),
 					limit:5
