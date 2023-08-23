@@ -361,6 +361,11 @@ exports.applyCoupon = async (req, res) => {
 				// check free product coupon is applied for product
 				if (couponDetails.product_id && couponDetails?.product_id?.split(',')?.includes(`${productDetails.id}`)) {
 					// apply coupon for user
+					if (data?.order_value && !isNaN(data.order_value)) {
+						if (Number(couponDetails.coupon_value) > Number(data.order_value)) {
+							return res.send(setRes(resCode.BadRequest, false, `Coupon minimum order value ${couponDetails.coupon_value}`, null));
+						}
+					}
 					const userCouponDetail = await userCouponModel.create({
 						coupon_id: couponDetails.id,
 						user_id: userDetails.id,
@@ -368,6 +373,7 @@ exports.applyCoupon = async (req, res) => {
 					});
 					if (userCouponDetail) {
 						const discountObj = {
+							minimumOrderValue: +(couponDetails.coupon_value),
 							discountValue: productDetails.price,
 							user_coupon_id: userCouponDetail.id,
 							coupon_id: couponDetails.id,
@@ -435,7 +441,7 @@ exports.getUserCouponList =  async (req, res) => {
 		const requiredFields = _.reject(arrayFields, (o) => { return _.has(data, o); })
 		const couponeModel = models.coupones;
 		const userCouponModel = models.user_coupons;
-		var currentDate = (moment().format('YYYY-MM-DD'));
+		const currentDate = moment().format('YYYY-MM-DD');
 		var Op = models.Op;
 
 		const skip = data.page_size * (data.page - 1)
@@ -458,7 +464,7 @@ exports.getUserCouponList =  async (req, res) => {
 					isDeleted: false,
 					status: true,
 					expire_at: {
-						[Op.gt]: currentDate // Add this condition to check if expire_at >= current date
+						[models.Op.gt] : currentDate
 					}
 				}
 			}

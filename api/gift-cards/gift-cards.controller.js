@@ -1003,7 +1003,7 @@ exports.commonRewardsList =async(req,res) => {
 				}
 			}
 
-			const userGiftCardQuery = `SELECT user_giftcards.gift_card_id as "id", user_giftcards.createdAt, "gift_cards" as type FROM user_giftcards JOIN gift_cards ON user_giftcards.gift_card_id=gift_cards.id WHERE ((user_id=${user?.id} AND to_email IS NULL) OR (to_email = '${user?.user}')) AND user_giftcards.is_deleted=false AND user_giftcards.status=true ${textSearch('gift_cards')}`;
+			const userGiftCardQuery = `SELECT user_giftcards.gift_card_id as "id", user_giftcards.createdAt, "gift_cards" as type FROM user_giftcards JOIN gift_cards ON user_giftcards.gift_card_id=gift_cards.id WHERE ((user_id=${user?.id}) OR (to_email = '${user?.user}')) AND user_giftcards.is_deleted=false AND user_giftcards.status=true ${textSearch('gift_cards')}`;
 			// const userRewardQuery = `SELECT user_earned_rewards.reference_reward_id, createdAt, user_earned_rewards.reference_reward_type as "type"  FROM user_earned_rewards WHERE user_id=${user?.id}`;
 			const productFilter = (tableName) => `JOIN ${tableName} ON user_earned_rewards.reference_reward_id=${tableName}.id ${filteCondition != '' ? `JOIN products ON FIND_IN_SET(products.id, ${tableName}.product_id) > 0` : ''} WHERE ${filteCondition} ${filteCondition !== '' ? 'AND' : ''} user_id=${user?.id} AND reference_reward_type='${tableName}' ${textSearch(tableName)} ${ filteCondition !== '' ? 'GROUP BY user_earned_rewards.id' : ''}`
 
@@ -1082,6 +1082,29 @@ exports.commonRewardsList =async(req,res) => {
 							}
 							gCard.totalPurchase = gCard.user_giftcards.length  || 0; 
 							delete gCard.user_giftcards;
+							if (user.role_id == 2) {
+								const userGiftCard = await userGiftCardList.findOne({
+									where: {
+										gift_card_id: rew.id,
+										user_id: user.id,
+										is_deleted: false,
+										status: true,
+									}
+								})
+								console.log('userGiftCard', rew.id, userGiftCard.to_email);
+								const userEmail = userGiftCard?.to_email;
+								const userDetails =  await userModel.findOne({ 
+									where: {
+										email: userEmail,
+										is_deleted: false,
+										is_active: true
+									}
+								 });
+								const purchase_for = userGiftCard?.to_email ?  (userDetails?.email == userGiftCard?.to_email ? 'Self' : (userDetails?.username ? userDetails?.username : userGiftCard?.to_email) ) : 'Self';
+								gCard['purchase_for'] = purchase_for;
+								gCard['purchase_date'] = userGiftCard?.purchase_date || "";
+								gCard['redeemed_amount'] = userGiftCard?.purchase_date || "";
+							}
 							// responseArr.push(gCard);
 								resolve(gCard);
 							} else {
