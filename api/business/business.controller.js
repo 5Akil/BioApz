@@ -1635,7 +1635,17 @@ exports.homeList = async (req, res) => {
 		eventArray.push(
 			await combocalenderModel.findAll({
 				where: { is_deleted: false,business_id:data.business_id,
+					start_date: {
+						[Op.gte]: currentDate
+					  },
+					  status:{
+						[Op.ne] : 4
+					  },
+					  end_date:{
+						[Op.lte]: currentDate
+					  }
 					},
+					
 					order: Sequelize.literal("trim(concat(start_date,' ', start_time)) ASC"),
 					limit:5
 			}).then(async event => {

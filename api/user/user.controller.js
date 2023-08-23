@@ -1538,6 +1538,12 @@ exports.homeList = async (req, res) => {
 				where: { start_date: {
 					[Op.gte]: currentDate
 				  },
+				  end_date:{
+					[Op.lte]: currentDate
+				  },
+				  status:{
+					[Op.ne] : 4
+				  }
 				},
 				include: [{
 					model: userEventsModel,
@@ -1554,7 +1560,7 @@ exports.homeList = async (req, res) => {
 					required: true
 				}],
 				attributes: ['id','business_id','images','title','description','start_date','end_date','start_time','end_time', 'status'],
-				order: [['start_date', 'ASC']]
+				order: Sequelize.literal("trim(concat(start_date,' ', start_time)) ASC"),
 			}).then(async event => {
 				if(event.length > 0){
 					const dataArray = [];	

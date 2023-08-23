@@ -123,7 +123,7 @@ exports.rewardHistoryList = async (req, res) => {
                         where: {
                             id: rewardHistory?.reference_reward_id || ''
                         },
-                        attributes: ["id","name"]
+                        attributes: ["id","name", "validity_period"]
                     });
                     rewardHistory.dataValues.reward_details = rewardDetailsObj;
                     responseArr.push(rewardHistory)
