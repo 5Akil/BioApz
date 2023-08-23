@@ -435,6 +435,8 @@ exports.getUserCouponList =  async (req, res) => {
 		const requiredFields = _.reject(arrayFields, (o) => { return _.has(data, o); })
 		const couponeModel = models.coupones;
 		const userCouponModel = models.user_coupons;
+		var currentDate = (moment().format('YYYY-MM-DD'));
+		var Op = models.Op;
 
 		const skip = data.page_size * (data.page - 1)
 		const limit = parseInt(data.page_size)
@@ -455,6 +457,9 @@ exports.getUserCouponList =  async (req, res) => {
 					business_id: data.business_id,
 					isDeleted: false,
 					status: true,
+					expire_at: {
+						[Op.gt]: currentDate // Add this condition to check if expire_at >= current date
+					}
 				}
 			}
 
