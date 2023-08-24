@@ -270,7 +270,10 @@ exports.giftCardLists = async (req, res) => {
 			where: {
 				business_id,
 				status: true,
-				isDeleted: false
+				isDeleted: false,
+				expire_at:{
+					[Op.gte] : moment().format('YYYY-MM-DD')
+				},
 			},
 			attributes: { exclude: ["status", "isDeleted", "createdAt", "updatedAt", "deleted_at"] }
 		});
@@ -1104,7 +1107,7 @@ exports.commonRewardsList =async(req,res) => {
 									 const purchase_for = userGiftCard?.to_email ?  (userDetails?.email == userGiftCard?.to_email ? 'Self' : (userDetails?.username ? userDetails?.username : userGiftCard?.to_email) ) : 'Self';
 									 gCard['purchase_for'] = purchase_for;
 									 gCard['purchase_date'] = userGiftCard?.purchase_date || "";
-									 gCard['redeemed_amount'] = userGiftCard?.purchase_date || "";
+									 gCard['redeemed_amount'] = userGiftCard?.amount || "";
 								 }
 							}
 							// responseArr.push(gCard);
@@ -1259,7 +1262,7 @@ exports.commonRewardsList =async(req,res) => {
 							const giftcards_name_arr = giftCards?.map(val => val.name);
 							const giftcard_name = giftcards_name_arr?.length > 0 ? giftcards_name_arr?.join(',') : '';
 							loyaltyObj.dataValues.giftcard_name = giftcard_name;
-
+							loyaltyObj.dataValues.expire_at = loyaltyObj.validity;
 							// loyaltyObj.dataValues.giftcard_name = loyaltyObj?.dataValues?.gift_card?.name || '';
 							delete loyaltyObj?.dataValues?.gift_card;
 							delete loyaltyObj?.dataValues.product;

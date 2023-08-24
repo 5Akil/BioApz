@@ -3081,7 +3081,12 @@ exports.recommendedGiftCard = async (req, res) => {
 					id: {
 						[Op.ne]: data.giftcard_id
 					},
-					business_id: giftCardExists.business_id
+					expire_at:{
+						[Op.gte] : moment().format('YYYY-MM-DD')
+					},
+					business_id: giftCardExists.business_id,
+					isDeleted:false,
+					status:true
 				},
 				order: [
 					['createdAt', 'DESC']
