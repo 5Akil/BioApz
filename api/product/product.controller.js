@@ -798,6 +798,11 @@ exports.GetProductById = async (req, res) => {
 	const userModel = models.user
 	const userCouponModel = models.user_coupons;
 	var Op = models.Op;
+	var auth =req.user;
+	var auth_id = '';
+	if (auth.role_id == 2){
+		auth_id = auth.id
+	}
 	const userDetails = await userModel.findOne({ where: { email: req.userEmail, is_deleted: false , is_active: true } });
 	const userId = userDetails?.id || '';
 	const total_loyalty_points = userDetails?.total_loyalty_points ? userDetails?.total_loyalty_points : 0;
@@ -832,7 +837,8 @@ exports.GetProductById = async (req, res) => {
 				where: {
 					product_id: product.id,
 					business_id: product.business_id,
-					is_deleted: false
+					is_deleted: false,
+					user_id: auth_id
 				},
 			}).then(async cart => {
 				if (cart) {

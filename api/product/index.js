@@ -65,7 +65,7 @@ router.post('/removeImage',verifyToken,controller.RemoveProductImage)
 
 
 // router.post('/initChat', verifyToken, controller.ChatInitialize)
-router.get('/view/:id', verifyToken, controller.GetProductById)
+router.get('/view/:id', verifyToken,authorize([2,3]), controller.GetProductById)
 
 router.post('/createCategory',verifyToken, categoryawsupload.single('image'), controller.CreateCategory)
 router.post('/category-list/',verifyToken,controller.CategoryList)
