@@ -206,7 +206,7 @@ exports.GetAllProducts = async (req, res) => {
 							if (data.value_type == 1) {
 								couponString += `${data.coupon_value}% Discount`
 							} else {
-								couponString += `${data.coupon_value} Discount`
+								couponString += `$${data.coupon_value} Discount`
 							}
 							rewards.push({ type: 'coupones', title: couponString});
 						}
