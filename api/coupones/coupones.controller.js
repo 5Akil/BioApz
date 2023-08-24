@@ -237,9 +237,7 @@ exports.update = async (req, res) => {
 							if (nameData == null) {
 								if (data.coupon_type == 0 && data.coupon_type != null) {
 									data.value_type = 1;
-								  } else {
-									data.value_type = 0;
-								  }
+								  } 
 								await couponeModel.update(data,
 								 	//{
 								// 	title: !(_.isEmpty(data.title) && data.title == null) ? data.title : null,
