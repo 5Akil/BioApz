@@ -80,7 +80,7 @@ exports.viewCMS = async (req , res) => {
 	var page_keys = data.page_key.split(',');
 	var Op = models.Op;
 	var cmsModel = models.cms_pages
-	var requiredFields = _.reject(['business_id','page_key'], (o) => { return _.has(data, o)  })
+	var requiredFields = _.reject(['page_key','type'], (o) => { return _.has(data, o)  })
 
 	const possiblePageKey = ['about','store_info','terms_of_service','how_to_use'];
 
@@ -88,19 +88,24 @@ exports.viewCMS = async (req , res) => {
 		return res.send(setRes(res.BadRequest, false, `Possible value for page_key are ${possiblePageKey.join(',')} `,null));
 	}
 	if(requiredFields == ""){
-
-		await cmsModel.findAll({
-			where:{
-				business_id : data.business_id,
-				page_key:{
-					[Op.in]:page_keys
-				},
-				is_enable:true,
-				is_deleted:false,
-				type:'business'
-			},
+		var condition = {
 			attributes: { exclude: ['is_deleted', 'is_enable','createdAt','updatedAt','type'] }
-		}).then(async pageData => {
+		}
+		condition.where = {
+			page_key:{
+				[Op.in]:page_keys
+			},
+			is_enable:true,
+			is_deleted:false,
+		}
+		const type = (data.type == 0) ? 'admin' : 'business';
+		if(!_.isEmpty(data.type)){
+			condition.where = {...condition.where,...{type:type}}
+		}
+		if(!_.isEmpty(data.business_id)){
+			condition.where = {...condition.where,...{business_id:data.business_id}}
+		}
+		await cmsModel.findAll(condition).then(async pageData => {
 			var page_details = {};
 			if(pageData != null){
 				
