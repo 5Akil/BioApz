@@ -80,10 +80,17 @@ exports.viewCMS = async (req , res) => {
 	var page_keys = data.page_key.split(',');
 	var Op = models.Op;
 	var cmsModel = models.cms_pages
+	const type = (data.type == 0) ? 'admin' : 'business';
+
 	var requiredFields = _.reject(['page_key','type'], (o) => { return _.has(data, o)  })
 
-	const possiblePageKey = ['about','store_info','terms_of_service','how_to_use'];
-
+	const possiblePageKey = [];
+	if(data.type == 0){
+		possiblePageKey.push('about','store_info','terms_of_service','how_to_use');
+	}else{
+		possiblePageKey.push('about','privacy_policy','terms_of_service');
+	}
+	console.log(possiblePageKey)
 	if (data?.page_key && page_keys.map((k)=> !possiblePageKey.includes(k)).filter((t)=> t === true ).length > 0 ) {
 		return res.send(setRes(res.BadRequest, false, `Possible value for page_key are ${possiblePageKey.join(',')} `,null));
 	}
@@ -98,7 +105,6 @@ exports.viewCMS = async (req , res) => {
 			is_enable:true,
 			is_deleted:false,
 		}
-		const type = (data.type == 0) ? 'admin' : 'business';
 		if(!_.isEmpty(data.type)){
 			condition.where = {...condition.where,...{type:type}}
 		}
