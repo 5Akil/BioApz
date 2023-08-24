@@ -416,6 +416,8 @@ exports.rewardPerfomance = async (req, res) => {
                         [models.Op.and] : [
                             {
                                 gift_card_id: rewardId,
+                                status: true,
+                                is_deleted: false
                             },
                             timeIntervalCondition ? (timeInterval != 'custom' ? {timeIntervalCondition } : { ...timeIntervalCondition }) : true
                         ]
@@ -447,6 +449,8 @@ exports.rewardPerfomance = async (req, res) => {
                         [models.Op.and] : [
                             {
                                 gift_card_id: rewardId,
+                                status: true,
+                                is_deleted: false
                             },
                             timeIntervalCondition ? (timeInterval != 'custom' ? {timeIntervalCondition } : { ...timeIntervalCondition }) : true
                         ]
@@ -455,6 +459,7 @@ exports.rewardPerfomance = async (req, res) => {
                 responseObject.purchasedByUser = userPurchasedGiftCardsCount?.count || 0;
                 
                 // User used reward counts
+                console.log('\n\nuserUsedRewardCounts');
                 const userUsedRewardCounts = await rewardHistoryModel.findAndCountAll({
                     attributes: {
                         include: [
@@ -468,13 +473,17 @@ exports.rewardPerfomance = async (req, res) => {
                             {
                                 reference_reward_type: rewardType,
                                 reference_reward_id: rewardId,
-                                credit_debit: true
+                                credit_debit: true,
+                                order_id: {
+                                    [models.Op.ne] : null
+                                }
                             },
                             timeIntervalConditionForRewardTable ? (timeInterval != 'custom' ? {timeIntervalConditionForRewardTable } : { ...timeIntervalConditionForRewardTable }) : true
                         ]
                     }
                 });
                 responseObject.usedByUser = userUsedRewardCounts?.count || 0
+                console.log('\n\nuserUsedRewardCounts  count: ' , userUsedRewardCounts?.count);
 
                 // pending gift cards
                 const pendingUserGiftCards = await userGiftCardsModel.findAndCountAll({
@@ -483,6 +492,8 @@ exports.rewardPerfomance = async (req, res) => {
                             {
                                 gift_card_id: rewardId,
                                 payment_status: 0,
+                                status: true,
+                                is_deleted: false
                             },
                             timeIntervalCondition ? (timeInterval != 'custom' ? {timeIntervalCondition } : { ...timeIntervalCondition }) : true
                         ]
@@ -726,18 +737,18 @@ exports.rewardPerfomance = async (req, res) => {
                             ...includeAttribute,
                             [models.sequelize.fn('sum', models.sequelize.col('reward_history.amount')), 'total_amount'],
                     ]},
-                    group: groupBy
+                    group: groupBy,
+                    raw: true,
                 });
-
                 if (timeInterval == 'yearly') {
                     // totalRedeemAmountDataByInterval
-                    const sortByYearAsc = totalRedeemAmountDataByInterval.sort((objA,objB) => objA .year - objB.year );
+                    const sortByYearAsc = totalRedeemAmountDataByInterval.sort((objA,objB) => objA.year - objB.year );
                     const startYearObj = sortByYearAsc.length > 0 ? sortByYearAsc[0] : 0;
                     const endYearObj  = sortByYearAsc.length > 0 ? sortByYearAsc[sortByYearAsc.length - 1] : 0;
-                    for (let i = startYearObj?.dataValues?.year; i <= endYearObj?.dataValues?.year; i++) {
+                    for (let i = startYearObj?.year; i <= endYearObj?.year; i++) {
                         label.push(`${i}`);
-                        const index = sortByYearAsc.findIndex((obj) => obj?.dataValues?.year == i);
-                        dataSet.push(index >= 0 ? sortByYearAsc[index]?.dataValues?.total_amount : 0);
+                        const index = sortByYearAsc.findIndex((obj) => obj?.year == i);
+                        dataSet.push(index >= 0 ? sortByYearAsc[index]?.total_amount : 0);
                     }
                 }
                 if (timeInterval == 'monthly') {
@@ -746,11 +757,11 @@ exports.rewardPerfomance = async (req, res) => {
                     
                     const startMonthObj = sortByYearAsc.length > 0 ? sortByYearAsc[0] : 0;
                     const endMonthObj  = sortByYearAsc.length > 0 ? sortByYearAsc[sortByYearAsc.length - 1] : 0;
-                    for (let j = startMonthObj?.dataValues?.year; j <= endMonthObj?.dataValues?.year; j++) {
-                        for (let i = startMonthObj?.dataValues?.month; i <= endMonthObj?.dataValues?.month; i++) {
+                    for (let j = startMonthObj?.year; j <= endMonthObj?.year; j++) {
+                        for (let i = startMonthObj?.month; i <= endMonthObj?.month; i++) {
                             label.push(`${i}/${j}`);
-                            const index = sortByYearAsc.findIndex((obj) => obj?.dataValues?.month == i);
-                            dataSet.push(index >= 0 ? sortByYearAsc[index]?.dataValues?.total_amount : 0);
+                            const index = sortByYearAsc.findIndex((obj) => obj?.month == i);
+                            dataSet.push(index >= 0 ? sortByYearAsc[index]?.total_amount : 0);
                         }
                     }
                 }
@@ -760,11 +771,11 @@ exports.rewardPerfomance = async (req, res) => {
                     
                     const startWeekObj = sortByYearAsc.length > 0 ? sortByYearAsc[0] : 0;
                     const endWeekObj  = sortByYearAsc.length > 0 ? sortByYearAsc[sortByYearAsc.length - 1] : 0;
-                    for (let j = startWeekObj?.dataValues?.year; j <= endWeekObj?.dataValues?.year; j++) {
-                        for (let i = startWeekObj?.dataValues?.week; i <= endWeekObj?.dataValues?.week; i++) {
+                    for (let j = startWeekObj?.year; j <= endWeekObj?.year; j++) {
+                        for (let i = startWeekObj?.week; i <= endWeekObj?.week; i++) {
                             label.push(`Week ${i}, ${j}`);
-                            const index = sortByYearAsc.findIndex((obj) => obj?.dataValues?.week == i &&  obj?.dataValues?.year == j);
-                            dataSet.push(index >= 0 ? sortByYearAsc[index]?.dataValues?.total_amount : 0);
+                            const index = sortByYearAsc.findIndex((obj) => obj?.week == i &&  obj?.year == j);
+                            dataSet.push(index >= 0 ? sortByYearAsc[index]?.total_amount : 0);
                         }
                     }
                 }
@@ -775,12 +786,12 @@ exports.rewardPerfomance = async (req, res) => {
                     
                     const startDayObj = sortByYearAsc.length > 0 ? sortByYearAsc[0] : 0;
                     const endDayObj  = sortByYearAsc.length > 0 ? sortByYearAsc[sortByYearAsc.length - 1] : 0;
-                    for (let k = startDayObj?.dataValues?.year; k <= endDayObj?.dataValues?.year; k++) {
-                        for (let j = startDayObj?.dataValues?.month; j <= endDayObj?.dataValues?.month; j++) {
-                            for (let i = startDayObj?.dataValues?.day; i <= endDayObj?.dataValues?.day; i++) {
+                    for (let k = startDayObj?.year; k <= endDayObj?.year; k++) {
+                        for (let j = startDayObj?.month; j <= endDayObj?.month; j++) {
+                            for (let i = startDayObj?.day; i <= endDayObj?.day; i++) {
                                 label.push(`${i}/${j}/${k}`);
-                                const index = sortByYearAsc.findIndex((obj) => obj?.dataValues?.day == i && obj?.dataValues?.month == j && obj?.dataValues?.year == k);
-                                dataSet.push(index >= 0 ? sortByYearAsc[index]?.dataValues?.total_amount : 0);
+                                const index = sortByYearAsc.findIndex((obj) => obj?.day == i && obj?.month == j && obj?.year == k);
+                                dataSet.push(index >= 0 ? sortByYearAsc[index]?.total_amount : 0);
                             }
                         }
                     }

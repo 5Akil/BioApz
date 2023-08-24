@@ -1100,10 +1100,12 @@ exports.commonRewardsList =async(req,res) => {
 										is_active: true
 									}
 								 });
-								const purchase_for = userGiftCard?.to_email ?  (userDetails?.email == userGiftCard?.to_email ? 'Self' : (userDetails?.username ? userDetails?.username : userGiftCard?.to_email) ) : 'Self';
-								gCard['purchase_for'] = purchase_for;
-								gCard['purchase_date'] = userGiftCard?.purchase_date || "";
-								gCard['redeemed_amount'] = userGiftCard?.purchase_date || "";
+								 if (userGiftCard.payment_status == true) {
+									 const purchase_for = userGiftCard?.to_email ?  (userDetails?.email == userGiftCard?.to_email ? 'Self' : (userDetails?.username ? userDetails?.username : userGiftCard?.to_email) ) : 'Self';
+									 gCard['purchase_for'] = purchase_for;
+									 gCard['purchase_date'] = userGiftCard?.purchase_date || "";
+									 gCard['redeemed_amount'] = userGiftCard?.purchase_date || "";
+								 }
 							}
 							// responseArr.push(gCard);
 								resolve(gCard);
