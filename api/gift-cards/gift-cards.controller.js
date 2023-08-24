@@ -270,7 +270,10 @@ exports.giftCardLists = async (req, res) => {
 			where: {
 				business_id,
 				status: true,
-				isDeleted: false
+				isDeleted: false,
+				expire_at:{
+					[Op.gte] : moment().format('YYYY-MM-DD')
+				},
 			},
 			attributes: { exclude: ["status", "isDeleted", "createdAt", "updatedAt", "deleted_at"] }
 		});
