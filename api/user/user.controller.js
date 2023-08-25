@@ -1616,7 +1616,6 @@ exports.homeList = async (req, res) => {
 
 		res.send(setRes(resCode.OK, true, "Get home page details successfully.",resData))
 	} catch(error){
-		console.log(error)
 		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
 	}
 }
@@ -1967,7 +1966,6 @@ exports.rewardsList =async(req,res) => {
 			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 		}
 	}catch(error){
-		console.log(error)
 		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
 	}
 }
@@ -2751,13 +2749,14 @@ exports.userGiftCardPurchase = async (req, res) => {
 		const giftCardModel = models.gift_cards;
 		const userGiftCardModel = models.user_giftcards;
 		const userEmail = req.userEmail;
+		const user = req?.user;
 		const rewardHistoryModel = models.reward_history;
 		const currentDate = moment().format('YYYY-MM-DD')
 		var requiredFields = _.reject(["gift_card_id","payment_status", "amount", "qty"], (o) => {
 			return _.has(data, o);
 		});
 
-		const userDetails = await userModel.findOne({ where: { email: userEmail, is_active: true, is_deleted: false } });
+		const userDetails = await userModel.findOne({ where: { id: user.id, is_active: true, is_deleted: false } });
 		if (!userDetails) {
 			return res.send(setRes(resCode.ResourceNotFound, false, "User not found.", null))
 		}
@@ -2783,6 +2782,10 @@ exports.userGiftCardPurchase = async (req, res) => {
 			// check gift card expire or not
 			const giftCardDetails = await giftCardModel.findOne({ where: { id: data.gift_card_id, status: true, isDeleted: false } });
 			if (giftCardDetails) {
+				let giftCardImage = '';
+				const img = await awsConfig.getSignUrl(giftCardDetails.image).then(function(res) {
+					giftCardImage = res;
+				})
 				const giftCardObj = {
 					gift_card_id: data.gift_card_id,
 					amount: data.amount,
@@ -2791,10 +2794,12 @@ exports.userGiftCardPurchase = async (req, res) => {
 					purchase_date: currentDate,
 					redeemed_amount: 0,
 					payment_status: (data.payment_status == 1) ? true : false,
+					// qty: data.qty || 1,
+					// is_email_sent: true
 				}
 				if (data.qty && +(data.qty) > 0) {
 					const createdGiftCards = [];
-					for(let i = 0; i < +(data.qty); i++){
+					// for(let i = 0; i < +(data.qty); i++){
 						const gCard = await userGiftCardModel.create(giftCardObj);
 						const createRewardHistory = await rewardHistoryModel.create({ 
 							amount: data.amount,
@@ -2802,7 +2807,54 @@ exports.userGiftCardPurchase = async (req, res) => {
 							reference_reward_type: 'gift_cards'
 						});
 						createdGiftCards.push(gCard);
-					}
+						const transporter = nodemailer.createTransport({
+							host: mailConfig.host,
+							port: mailConfig.port,
+							secure: mailConfig.secure,
+							auth: mailConfig.auth,
+							tls: mailConfig.tls
+						})
+
+						const templates = new EmailTemplates({
+								juice: {
+									webResources: {
+										images : false
+									}
+								}
+						})
+						const expiryDate = moment(giftCardDetails.expire_at).format('MMM,DD YYYY');
+						const context = {
+							userName : userDetails.username,
+							giftCardName: giftCardDetails.name,
+							giftCardAmount: giftCardDetails.amount,
+							giftCardUrl: `${giftCardImage}`,
+							expireDate: expiryDate,
+							giftCardQty: data.qty || 1,
+						}
+
+
+					templates.render(path.join(__dirname, '../../', 'template', 'gift-card-purchased.html'), context,
+						(
+							err,
+							html,
+							text,
+							subject
+						) => {
+							transporter.sendMail(
+								{
+									from: 'b.a.s.e. <do-not-reply@mail.com>',
+									to: userDetails.email,
+									subject: `B.a.s.e Gift card`,
+									html: html
+								},
+								function (err, result) {
+									if (err) {
+										console.log('mail error', err);
+									}
+								}
+							);
+						});
+					// }
 					res.send(setRes(resCode.OK, true, "Gift Card Purchased successfully!", createdGiftCards))
 				} else {
 					return res.send(setRes(resCode.BadRequest, false, "Invald Qty value.", null))
@@ -2840,6 +2892,15 @@ exports.userGiftCardShare = async (req, res) => {
 			return res.send(setRes(resCode.ResourceNotFound, false, "User not found.", null))
 		}
 
+
+		// TODO: for scheduled email
+		// const currentDateTime = moment().format('YYYY-MM-DD HH:mm:ss');
+		// const scheduledDateTime = moment(data.schedule_datetime).format("YYYY-MM-DD HH:mm:ss");
+		// console.log('data.schedule_datetime', new Date(data.schedule_datetime), scheduledDateTime);
+		// const isScheduleDateFutureDate = moment(currentDateTime).isBefore(scheduledDateTime);
+		// const isScheduleDatePastDate = moment(scheduledDateTime).isBefore(currentDateTime);
+
+
 		if (requiredFields == "") {
 			if (![0, 1].includes(+(data.payment_status))) {
 				return res.send(setRes(resCode.BadRequest, false, "Invalid value for Payment status.", null))
@@ -2851,6 +2912,14 @@ exports.userGiftCardShare = async (req, res) => {
 			}
 			// check gift card expire or not
 			const giftCardDetails = await giftCardModel.findOne({ where: { id: data.gift_card_id } });
+			let giftCardImage = '';
+			let giftCardTemplateUrl = '';
+			const img = await awsConfig.getSignUrl(giftCardDetails.image).then(function(res) {
+				giftCardImage = res;
+			})
+			const imgGiftTemplate = await awsConfig.getSignUrl(giftCardTemplate.template_image).then(function(res) {
+				giftCardTemplateUrl = res;
+			})
 			if (giftCardDetails) {
 				const giftCardObj = {
 					gift_card_id: data.gift_card_id,
@@ -2863,11 +2932,19 @@ exports.userGiftCardShare = async (req, res) => {
 					user_id: userDetails.id,
 					business_id: giftCardDetails.business_id,
 					purchase_date: currentDate,
+					redeemed_amount: 0,
 					payment_status: (data.payment_status == '1') ? true : false,
+					// qty: data.qty
 				}
+				// TODO:
+				// if (data.schedule_datetime) {
+				// 	giftCardObj.schedule_datetime = data.schedule_datetime;
+				// 	giftCardObj.is_email_sent = false;
+				// }else {
+				// 	giftCardObj.is_email_sent = true;
+				// }
 				if (data.qty && +(data.qty) > 0) {
 					const createdSharedGiftCards = [];
-					for(let i = 0; i < +(data.qty); i++){
 						const gCard = await userGiftCardModel.create(giftCardObj);
 						const createRewardHistory = await rewardHistoryModel.create({ 
 							amount: data.amount,
@@ -2875,7 +2952,91 @@ exports.userGiftCardShare = async (req, res) => {
 							reference_reward_type: 'gift_cards'
 						});
 						createdSharedGiftCards.push(gCard);
-					}
+						const transporter = nodemailer.createTransport({
+							host: mailConfig.host,
+							port: mailConfig.port,
+							secure: mailConfig.secure,
+							auth: mailConfig.auth,
+							tls: mailConfig.tls
+						})
+
+						const templates = new EmailTemplates({
+								juice: {
+									webResources: {
+										images : false
+									}
+								}
+						})
+
+						// If Sharing Giftcard to Self
+						const expireDate = moment(giftCardDetails.expire_at).format('MMM,DD YYYY');
+						if (userDetails.email == data.to_email) {
+							const context = {
+								userName : userDetails.username,
+								giftCardName: giftCardDetails.name,
+								giftCardAmount: giftCardDetails.amount,
+								giftCardUrl: `${giftCardImage}`,
+								expireDate: expireDate,
+								giftCardQty: data?.qty || 1
+							}
+
+
+							templates.render(path.join(__dirname, '../../', 'template', 'gift-card-purchased.html'), context,
+							(
+								err,
+								html,
+								text,
+								subject
+							) => {
+								transporter.sendMail(
+									{
+										from: 'b.a.s.e. <do-not-reply@mail.com>',
+										to: userDetails.email,
+										subject: `B.a.s.e Gift card`,
+										html: html
+									},
+									function (err, result) {
+										if (err) {
+											console.log('mail error', err);
+										}
+									}
+								);
+							});
+						}
+						if (userDetails.email != data.to_email && !data?.schedule_datetime) {
+							const context = {
+								userName : userDetails.username,
+								giftCardName: giftCardDetails.name,
+								giftCardAmount: giftCardDetails.amount,
+								giftCardUrl: `${giftCardImage}`,
+								giftCardTemplateUrl: `${giftCardTemplateUrl}`,
+								expireDate: expireDate,
+								giftCardQty: data.qty || 1,
+
+							}
+							templates.render(path.join(__dirname, '../../', 'template', 'gift-card-shared.html'), context,
+							(
+								err,
+								html,
+								text,
+								subject
+							) => {
+								transporter.sendMail(
+									{
+										from: 'b.a.s.e. <do-not-reply@mail.com>',
+										to: data.to_email,
+										subject: `${userDetails.username} Sent you  B.a.s.e Gift card !`,
+										html: html
+									},
+									function (err, result) {
+										if (err) {
+											console.log('mail error', err);
+										}
+									}
+								);
+							});
+						}
+					// }
 					res.send(setRes(resCode.OK, true, "Gift Card Shared successfully!", createdSharedGiftCards))
 				} else {
 					return res.send(setRes(resCode.BadRequest, false, "Invalid value for Qty.", null))
@@ -2887,7 +3048,6 @@ exports.userGiftCardShare = async (req, res) => {
 			return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
 		}
 	} catch (error) {
-		console.log(error)
 		return res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
 	}
 }
@@ -2903,6 +3063,7 @@ exports.userGiftCardList = async (req, res) => {
 		const giftCardsModel = models.gift_cards;
 		const userGiftCardsModel = models.user_giftcards;
 		const Op = models.Op;
+		const currentDate = moment().format('YYYY-MM-DD');
 		let requiredFields = _.reject(["page", "page_size"], (o) => {
 			return _.has(data, o);
 		});
@@ -2924,7 +3085,12 @@ exports.userGiftCardList = async (req, res) => {
 				include: [
 					{
 						model: giftCardsModel,
-						attributes: { exclude: ["status","isDeleted","createdAt","updatedAt","deleted_at"] }
+						attributes: { exclude: ["status","isDeleted","createdAt","updatedAt","deleted_at"] },
+						where: {
+							expire_at: {
+								[Op.gte] : currentDate
+							}
+						}
 					}
 				],
 				attributes: { exclude: ["status","isDeleted","createdAt","updatedAt"], include: [[models.sequelize.literal('(user_giftcards.amount - user_giftcards.redeemed_amount)'), 'remaining_amount']] },
@@ -3052,6 +3218,7 @@ exports.recommendedGiftCard = async (req, res) => {
 		const Op = models.Op;
 		const data = req.body;
 		const user = req.user;
+		const currentDate = moment().format('YYYY-MM-DD')
 		const requiredFields = _.reject(["page", "page_size", "giftcard_id"], (o) => {
 			return _.has(data, o);
 		});
@@ -3067,7 +3234,7 @@ exports.recommendedGiftCard = async (req, res) => {
 
 			const giftCardExists = await giftCardsModel.findOne({
 				where: {
-					id: data.giftcard_id
+					id: data.giftcard_id,
 				}
 			});
 			if (!giftCardExists) {
@@ -3081,12 +3248,12 @@ exports.recommendedGiftCard = async (req, res) => {
 					id: {
 						[Op.ne]: data.giftcard_id
 					},
-					expire_at:{
-						[Op.gte] : moment().format('YYYY-MM-DD')
-					},
 					business_id: giftCardExists.business_id,
-					isDeleted:false,
-					status:true
+					status: true,
+					isDeleted: false,
+					expire_at: {
+						[Op.gte] : currentDate
+					}
 				},
 				order: [
 					['createdAt', 'DESC']
@@ -3230,7 +3397,7 @@ exports.priceFilterForWallet =async(req,res) => {
 			const arrays = [giftcardRewards, cashbackData,discountData,couponeData,loyaltyPointData];
 			const mergedArray = mergeRandomArrayObjects(arrays);
 			let result =  mergedArray;
-			
+
 			if(!(_.isEmpty(request_type))){
 				result = _.filter(result, reward => reqTypeArr.includes(reward.type));
 				//result = _.filter(result, {type: request_type})
