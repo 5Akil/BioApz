@@ -82,8 +82,8 @@ exports.viewCMS = async (req , res) => {
 		var data = req.body
 		//var page_keys = data.page_key.split(',');
 		var Op = models.Op;
-		var cmsModel = models.cms_pages
-		const type = (data.type == 0) ? 'admin' : 'business';
+		var cmsModel = models.cms_pages;
+		var type = (data.type == 0) ? 'admin' : 'business';
 
 		var requiredFields = _.reject(['type'], (o) => { return _.has(data, o)  })
 
@@ -114,6 +114,9 @@ exports.viewCMS = async (req , res) => {
 				is_enable:true,
 				is_deleted:false,
 			}
+			if(type == 0){
+				condition.where = {...condition.where,...{business_id:null}}
+			}
 			if(!_.isEmpty(data.type)){
 				condition.where = {...condition.where,...{type:type}}
 			}
@@ -127,6 +130,9 @@ exports.viewCMS = async (req , res) => {
 				var page_details = {};
 				if(pageData != null){
 					for(const data of pageData){
+						if(type == 'admin'){
+							data.dataValues.page_url = commonConfig.admin_url + data.page_key;
+						}
 						page_details[data.page_key] = data;
 					}
 					pageData = page_details
