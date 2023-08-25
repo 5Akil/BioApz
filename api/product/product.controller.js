@@ -171,7 +171,7 @@ exports.GetAllProducts = async (req, res) => {
 				for(const data of products){
 					const rewards = [];
 					const discounts = await discountsModel.findAll({
-						attributes: ['id','discount_value', 'title', 'discount_type'],
+						attributes: {exclude:['createdAt','updatedAt', 'deleted_at', 'isDeleted']},
 						where: {
 							product_id: {
 								[Op.regexp]: `(^|,)${data.id}(,|$)`,
@@ -187,7 +187,8 @@ exports.GetAllProducts = async (req, res) => {
 						} else {
 							discountString += `$${data.discount_value} Discount`
 						}
-						rewards.push({ type: 'discounts', title: discountString});
+						rewards.push({type: 'discounts',title: discountString,business_id:data.business_id,discount_type:data.discount_type,discount_value:data.discount_value,product_category_id:data.product_category_id,product_id:data.product_id,validity_for:data.validity_for,status:data.status,
+						});
 					}
 
 					const coupones = await couponesModel.findAll({

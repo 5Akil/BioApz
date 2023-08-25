@@ -838,7 +838,7 @@ exports.commonRewardsListOld =async(req,res) => {
 			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 		}
 	}catch(error){
-		console.log('error', error);
+		//console.log('error', error);
 		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
 	}
 }
@@ -1094,7 +1094,7 @@ exports.commonRewardsList =async(req,res) => {
 										status: true,
 									}
 								})
-								console.log('userGiftCard', rew.id, userGiftCard.to_email);
+								//console.log('userGiftCard', rew.id, userGiftCard.to_email);
 								const userEmail = userGiftCard?.to_email;
 								const userDetails =  await userModel.findOne({ 
 									where: {
@@ -1108,6 +1108,21 @@ exports.commonRewardsList =async(req,res) => {
 								gCard['purchase_date'] = userGiftCard?.purchase_date || "";
 								gCard['redeemed_amount'] = userGiftCard?.amount || "";
 							}
+							let giftcardLoyalty = await loyaltyPointModel.findOne({
+								where:{
+									gift_card_id: {
+										[Op.regexp]: `(^|,)${gCard.id}(,|$)`,
+									},
+									points_redeemed:true,
+									//status:true,
+									//isDeleted:false,
+									//validity:{
+									//	[Op.gte] : moment().format('YYYY-MM-DD')
+									//},
+								}
+							})
+							gCard['points_earned'] = giftcardLoyalty?.points_earned;
+							gCard['points_redeemed'] = giftcardLoyalty?.amount;
 							// responseArr.push(gCard);
 								resolve(gCard);
 							} else {
