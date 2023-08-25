@@ -16,7 +16,7 @@ module.exports.SendNotification = (req) =>{
         req.title != null ? MessageTitle = req.title : MessageTitle = 'BioApz' 
 
         const message = {
-            to: req.device_token,
+            ...(typeof(req.device_token) == 'string' ? { to: req.device_token } : { registration_ids: req.device_token }),
             // to: 'daJGid1NabI:APA91bEZbgejvjbfqcgXG_XTyPrdrJgC3KQk3RfDolWqSgfWezT17WX_OY8tMiDG3jdlp8SZ2uYj57yEj_M6mXlWaPjqqpMBTZmZRQkZf2_Z3t0cposs1HhKJJ67jEVS_m4WqaOr7cnj',
             collapse_key: 'green',
             notification: {

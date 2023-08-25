@@ -20,6 +20,8 @@ const Sequelize = require('sequelize');
 const { model } = require('mongoose')
 const { error } = require('console')
 const pagination = require('../../helpers/pagination');
+const { NOTIFICATION_TITLES, NOTIFICATION_TYPES, NOTIFICATION_MESSAGE } = require('../../config/notificationTypes')
+const fcmNotification = require('../../push_notification')
 
 exports.Register = async (req, res) => {
 
@@ -2452,13 +2454,19 @@ exports.eventUserRegister = async (req, res) => {
 		var comboModel = models.combo_calendar
 		var userModel = models.user
 		var eventUserModel = models.user_events
+		const notificationModel = models.notifications;
+		const notificationReceiverModel = models.notification_receivers;
+		const deviceModel = models.device_tokens;
+		const user = req?.user;
+
 		const Op = models.Op;
 		var validation = true;
 		var currentDate = (moment().format('YYYY-MM-DD'))
 		var requiredFields = _.reject(["business_id","event_id", "user_id"], (o) => {
 			return _.has(data, o);
 		});
-		if (requiredFields == "") { 
+		let businessDetails, eventDetails;
+		if (requiredFields == "") {
 			if(data.business_id){
 				await businessModel.findOne({
 					where: {id: data.business_id,is_deleted: false,is_active:true}
@@ -2467,6 +2475,7 @@ exports.eventUserRegister = async (req, res) => {
 						validation = false;
 						return res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
 					}
+					businessDetails = business;
 				})
 			}
 
@@ -2481,6 +2490,7 @@ exports.eventUserRegister = async (req, res) => {
 						validation = false;
 						return res.send(setRes(resCode.ResourceNotFound, false, "Event not found.", null))
 					}
+					eventDetails = event;
 				})
 			}
 
@@ -2504,9 +2514,39 @@ exports.eventUserRegister = async (req, res) => {
 				return res.send(setRes(resCode.BadRequest, false, "User already registred in this business event.", null))
 			}
 			if(validation){
-				await eventUserModel.create(data).then(event_user => {
+				await eventUserModel.create(data).then(async event_user => {
 					if(event_user){
-						res.send(setRes(resCode.OK,true,"You are successfully register in this event.",event_user))
+						/** Notification object created */
+						const notificationObj = {
+							role_id : user.role_id,
+							params: JSON.stringify({ notification_type:NOTIFICATION_TYPES.EVENT_USER_JOIN, sender_id:user.id, receiver_type: businessDetails.role_id }),
+							title: NOTIFICATION_TITLES.EVENT_USER_JOIN(),
+							message: NOTIFICATION_MESSAGE.EVENT_USER_JOIN(eventDetails?.title),
+							notification_type: NOTIFICATION_TYPES.EVENT_USER_JOIN,
+						}
+						const notification = await notificationModel.create(notificationObj);
+						if (notification && notification.id) {
+							const notificationReceiverObj = {
+								role_id : user.role_id,
+								notification_id : notification.id, 
+								sender_id: user.id, 
+								receiver_id: businessDetails.id,
+							}
+							const notificationReceiver = await notificationReceiverModel.create(notificationReceiverObj);
+						}
+						/** FCM push noifiation */
+						const activeReceiverDevices = await deviceModel.findAll({ where: { status: 1, business_id: businessDetails.id, device_name: 'M33' } },{ attributes: ["device_token"] });
+						const deviceTokensList = activeReceiverDevices.map((device) => device.device_token);
+						const uniqueDeviceTokens = Array.from(new Set(deviceTokensList))
+						const notificationPayload = {
+							device_token: uniqueDeviceTokens,
+							title: NOTIFICATION_TITLES.EVENT_USER_JOIN(),
+							message: NOTIFICATION_MESSAGE.EVENT_USER_JOIN(eventDetails?.title),
+							data: { notification_type:NOTIFICATION_TYPES.EVENT_USER_JOIN, sender_id:user.id, receiver_type: businessDetails.role_id }
+						};
+						fcmNotification.SendNotification(notificationPayload);
+
+						res.send(setRes(resCode.OK,true,"You are successfully register in this event.",event_user));
 					}
 				}).catch(error => {
 					res.send(setRes(resCode.BadRequest, false, "Fail to register in this event!", null))
@@ -2645,15 +2685,22 @@ exports.eventUserLeave = async (req, res) => {
 		var businessModel = models.business
 		var comboModel = models.combo_calendar
 		var userModel = models.user
-		var eventUserModel = models.user_events
+		var eventUserModel = models.user_events;
+		var combocalenderModel = models.combo_calendar;
+		const notificationModel = models.notifications;
+		const notificationReceiverModel = models.notification_receivers;
+		const deviceModel = models.device_tokens;
+		const user = req?.user;
 		var validation = true;
 		const Op = models.Op;
 		var currentDate = (moment().format('YYYY-MM-DD'))
 		var requiredFields = _.reject(["id","business_id", "event_id", "user_id"], (o) => {
 			return _.has(data, o);
 		});
+		let businessDetails;
 		if(data){
 			if (requiredFields == "") {
+				const eventDetails = await combocalenderModel.findOne({ where: { id: data.event_id }});
 				await eventUserModel.findOne({
 					where: {id: data.id,is_deleted: false,is_available:true}
 				}).then(async event_user => {
@@ -2671,6 +2718,7 @@ exports.eventUserLeave = async (req, res) => {
 							validation = false
 							return res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
 						}
+						businessDetails = business;
 					})
 				}
 				
@@ -2718,6 +2766,35 @@ exports.eventUserLeave = async (req, res) => {
 						where: {id: data.id,business_id:data.business_id,event_id:data.event_id,user_id:data.user_id,is_deleted: false,is_available:true}
 					}).then(async dataVal =>{
 						if(dataVal){
+							/** Notification object created */
+							const notificationObj = {
+								role_id : user.role_id,
+								params: JSON.stringify({ notification_type:NOTIFICATION_TYPES.EVENT_USER_LEAVE, sender_id:user.id, receiver_type: businessDetails.role_id }),
+								title: NOTIFICATION_TITLES.EVENT_USER_LEAVE(),
+								message: NOTIFICATION_MESSAGE.EVENT_USER_LEAVE(eventDetails?.title),
+								notification_type: NOTIFICATION_TYPES.EVENT_USER_LEAVE,
+							}
+							const notification = await notificationModel.create(notificationObj);
+							if (notification && notification.id) {
+								const notificationReceiverObj = {
+									role_id : user.role_id,
+									notification_id : notification.id, 
+									sender_id: user.id, 
+									receiver_id: businessDetails.id,
+								}
+								const notificationReceiver = await notificationReceiverModel.create(notificationReceiverObj);
+							}
+							/** FCM push noifiation */
+							const activeReceiverDevices = await deviceModel.findAll({ where: { status: 1, business_id: businessDetails.id, device_name: 'M33' } },{ attributes: ["device_token"] });
+							const deviceTokensList = activeReceiverDevices.map((device) => device.device_token);
+							const uniqueDeviceTokens = Array.from(new Set(deviceTokensList))
+							const notificationPayload = {
+								device_token: uniqueDeviceTokens,
+								title: NOTIFICATION_TITLES.EVENT_USER_LEAVE(),
+								message: NOTIFICATION_MESSAGE.EVENT_USER_LEAVE(eventDetails?.title),
+								data: { notification_type:NOTIFICATION_TYPES.EVENT_USER_LEAVE, sender_id:user.id, receiver_type: businessDetails.role_id }
+							};
+							fcmNotification.SendNotification(notificationPayload);
 							await eventUserModel.findOne({
 								where: {id: data.id},
 							}).then(async user_data => {
