@@ -87,6 +87,11 @@ exports.viewCMS = async (req , res) => {
 
 		var requiredFields = _.reject(['type'], (o) => { return _.has(data, o)  })
 
+
+		let arrayFields = ['type'];
+		const result =  (data.type == 1) ? (arrayFields.push('business_id')) : '';
+
+		var requiredFields = _.reject(arrayFields, (o) => { return _.has(data, o)  });
 		//const possiblePageKey = [];
 		//if(data.type == 0){
 		//	possiblePageKey.push('about','privacy_policy','terms_of_service');
@@ -115,7 +120,7 @@ exports.viewCMS = async (req , res) => {
 			if(!_.isEmpty(data.business_id)){
 				condition.where = {...condition.where,...{business_id:data.business_id}}
 			}
-			if(!_.isEmpty(data.business_id)){
+			if(!_.isEmpty(data.page_key)){
 				condition.where = {...condition.where,...{page_key:data.page_key}}
 			}
 			await cmsModel.findAll(condition).then(async pageData => {
@@ -130,6 +135,7 @@ exports.viewCMS = async (req , res) => {
 					res.send(setRes(resCode.ResourceNotFound,false,'Cms page not found',null))
 				}
 			}).catch(error => {
+				console.log(error)
 				res.send(setRes(resCode.BadRequest,false,"Fail to get page details",true))
 			})
 		}else{

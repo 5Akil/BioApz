@@ -16,6 +16,7 @@ var notification = require('../../push_notification');
 var commonConfig = require('../../config/common_config')
 const { condition } = require('sequelize')
 const pagination = require('../../helpers/pagination');
+const {model} = require('mongoose')
 
 exports.AddToCart = async(req,res) => {
 	
@@ -158,6 +159,94 @@ exports.CartList = async(req,res) => {
 			if(cartData != null && cartData != ""){
 				for(dataVal of cartData){
 					if(dataVal.product != null){
+						var rewards = [];
+						const cashbaksModel = models.cashbacks;
+						var discountsModel = models.discounts;
+						const loyaltyPointModel = models.loyalty_points;
+						var couponModel = models.coupones
+						var Op = models.Op;
+						const discounts = await discountsModel.findAll({
+							attributes: {exclude:['createdAt','updatedAt', 'deleted_at', 'isDeleted']},
+							where: {
+								product_id: {
+									[Op.regexp]: `(^|,)${dataVal.product.id}(,|$)`,
+								},
+								status: true,
+								isDeleted: false
+							}
+						});
+						for (const data of discounts) {
+							let discountString = ''
+							if (data.discount_type == 0) {
+								discountString += `${data.discount_value}% Discount`
+							} else {
+								discountString += `$${data.discount_value} Discount`
+							}
+							rewards.push({type: 'discounts',title: discountString,business_id:data.business_id,discount_type:data.discount_type,discount_value:data.discount_value,product_category_id:data.product_category_id,product_id:data.product_id,validity_for:data.validity_for,status:data.status,
+							});
+						}
+
+						const coupones = await couponModel.findAll({
+							attributes: ['id','value_type', 'coupon_value', 'coupon_type'],
+							where: {
+								product_id: {
+									[Op.regexp]: `(^|,)${dataVal.product.id}(,|$)`,
+								},
+								status: true,
+								isDeleted: false
+							}
+						});
+						for (const data of coupones) {
+							let couponString = ''
+							if (data.coupon_type == 1) {
+								if (data.value_type == 1) {
+									couponString += `${data.coupon_value}% Discount`
+								} else {
+									couponString += `$${data.coupon_value} Discount`
+								}
+								rewards.push({ type: 'coupones', title: couponString});
+							}
+						}
+
+						const cashbacks = await cashbaksModel.findAll({
+							attributes: ['id','cashback_value', 'cashback_type', 'cashback_on'],
+							where: {
+								product_id: {
+									[Op.regexp]: `(^|,)${dataVal.product.id}(,|$)`,
+								},
+								status: true,
+								isDeleted: false
+							}
+						});
+						for (const data of cashbacks) {
+							let discountString = '';
+							if (data.cashback_on == 0) {
+								if (data.cashback_type == 0) {
+									discountString += `${data.cashback_value}% cashback`;
+								} else {
+									discountString += `$${data.cashback_value} cashback`;
+								}
+								rewards.push({ type: 'discounts', title: discountString});
+							}
+						}
+
+						const loyaltyPoints = await loyaltyPointModel.findAll({
+							attributes: ['id','loyalty_type', 'points_earned'],
+							where: {
+								product_id: {
+									[Op.regexp]: `(^|,)${dataVal.product.id}(,|$)`,
+								},
+								status: true,
+								isDeleted: false
+							}
+						});
+						for (const data of loyaltyPoints) {
+							let loyaltyString = '';
+							if (data.loyalty_type == 1) {
+								loyaltyString += `Earn ${data.points_earned} points`
+								rewards.push({ type: 'loyalty_points', title: loyaltyString});
+							}
+						}
 						if(dataVal.product.image != null && !_.isEmpty(dataVal.product.image)){
 							var product_image = await awsConfig.getSignUrl(dataVal.product.image[0]).then(function(res){
 								dataVal.dataValues.product_image = res;
@@ -201,6 +290,7 @@ exports.CartList = async(req,res) => {
 						}else{
 							dataVal.dataValues.rating = null
 						}
+						dataVal.dataValues.rewards = rewards;
 					}
 					delete dataVal.dataValues.product;
 				}
@@ -211,6 +301,7 @@ exports.CartList = async(req,res) => {
 				res.send(setRes(resCode.OK, true, "Your cart is empty.",null))
 			}
 		}).catch(error => {
+			console.log(error)
 			res.send(setRes(resCode.InternalServer,false,"Internal server error",null))
 		})
 	}else{
