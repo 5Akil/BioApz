@@ -2535,7 +2535,7 @@ exports.eventUserRegister = async (req, res) => {
 							const notificationReceiver = await notificationReceiverModel.create(notificationReceiverObj);
 						}
 						/** FCM push noifiation */
-						const activeReceiverDevices = await deviceModel.findAll({ where: { status: 1, business_id: businessDetails.id, device_name: 'M33' } },{ attributes: ["device_token"] });
+						const activeReceiverDevices = await deviceModel.findAll({ where: { status: 1, business_id: businessDetails.id } },{ attributes: ["device_token"] });
 						const deviceTokensList = activeReceiverDevices.map((device) => device.device_token);
 						const uniqueDeviceTokens = Array.from(new Set(deviceTokensList))
 						const notificationPayload = {
@@ -2785,7 +2785,7 @@ exports.eventUserLeave = async (req, res) => {
 								const notificationReceiver = await notificationReceiverModel.create(notificationReceiverObj);
 							}
 							/** FCM push noifiation */
-							const activeReceiverDevices = await deviceModel.findAll({ where: { status: 1, business_id: businessDetails.id, device_name: 'M33' } },{ attributes: ["device_token"] });
+							const activeReceiverDevices = await deviceModel.findAll({ where: { status: 1, business_id: businessDetails.id } },{ attributes: ["device_token"] });
 							const deviceTokensList = activeReceiverDevices.map((device) => device.device_token);
 							const uniqueDeviceTokens = Array.from(new Set(deviceTokensList))
 							const notificationPayload = {
@@ -2958,7 +2958,7 @@ exports.userGiftCardPurchase = async (req, res) => {
 							const notificationReceiver = await notificationReceiverModel.create(notificationReceiverObj);
 						}
 						/** FCM push noifiation */
-						const activeReceiverDevices = await deviceModel.findAll({ where: { status: 1, business_id: giftCardDetails.business_id, device_name: 'M33' } },{ attributes: ["device_token"] });
+						const activeReceiverDevices = await deviceModel.findAll({ where: { status: 1, business_id: giftCardDetails.business_id } },{ attributes: ["device_token"] });
 						const deviceTokensList = activeReceiverDevices.map((device) => device.device_token);
 						const uniqueDeviceTokens = Array.from(new Set(deviceTokensList))
 						const notificationPayload = {
@@ -3179,7 +3179,7 @@ exports.userGiftCardShare = async (req, res) => {
 								const notificationReceiver = await notificationReceiverModel.create(notificationReceiverObj);
 							}
 							/** FCM push noifiation */
-							const activeReceiverDevices = await deviceModel.findAll({ where: { status: 1, business_id: giftCardDetails.business_id, device_name: 'M33' } },{ attributes: ["device_token"] });
+							const activeReceiverDevices = await deviceModel.findAll({ where: { status: 1, business_id: giftCardDetails.business_id } },{ attributes: ["device_token"] });
 							const deviceTokensList = activeReceiverDevices.map((device) => device.device_token);
 							const uniqueDeviceTokens = Array.from(new Set(deviceTokensList))
 							const notificationPayload = {
@@ -3213,7 +3213,7 @@ exports.userGiftCardShare = async (req, res) => {
 									const notificationReceiver = await notificationReceiverModel.create(notificationReceiverObj);
 								}
 								/** FCM push noifiation */
-								const activeReceiverDevices = await deviceModel.findAll({ where: { status: 1, user_id: toEmailUserExists.id, device_name: 'M33' } },{ attributes: ["device_token"] });
+								const activeReceiverDevices = await deviceModel.findAll({ where: { status: 1, user_id: toEmailUserExists.id } },{ attributes: ["device_token"] });
 								const deviceTokensList = activeReceiverDevices.map((device) => device.device_token);
 								const uniqueDeviceTokens = Array.from(new Set(deviceTokensList))
 								const notificationPayload = {
