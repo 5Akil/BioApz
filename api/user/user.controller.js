@@ -2519,7 +2519,7 @@ exports.eventUserRegister = async (req, res) => {
 						/** Notification object created */
 						const notificationObj = {
 							role_id : user.role_id,
-							params: JSON.stringify({ notification_type:NOTIFICATION_TYPES.EVENT_USER_JOIN, sender_id:user.id, receiver_type: businessDetails.role_id }),
+							params: JSON.stringify({ notification_type:NOTIFICATION_TYPES.EVENT_USER_JOIN, title: NOTIFICATION_TITLES.EVENT_USER_JOIN(), message: NOTIFICATION_MESSAGE.EVENT_USER_JOIN(eventDetails?.title), event_id: data.event_id, user_id:user.id, business_id: businessDetails.role_id }),
 							title: NOTIFICATION_TITLES.EVENT_USER_JOIN(),
 							message: NOTIFICATION_MESSAGE.EVENT_USER_JOIN(eventDetails?.title),
 							notification_type: NOTIFICATION_TYPES.EVENT_USER_JOIN,
@@ -2542,7 +2542,7 @@ exports.eventUserRegister = async (req, res) => {
 							device_token: uniqueDeviceTokens,
 							title: NOTIFICATION_TITLES.EVENT_USER_JOIN(),
 							message: NOTIFICATION_MESSAGE.EVENT_USER_JOIN(eventDetails?.title),
-							data: { notification_type:NOTIFICATION_TYPES.EVENT_USER_JOIN, sender_id:user.id, receiver_type: businessDetails.role_id }
+							data: { notification_type:NOTIFICATION_TYPES.EVENT_USER_JOIN, title: NOTIFICATION_TITLES.EVENT_USER_JOIN(), message: NOTIFICATION_MESSAGE.EVENT_USER_JOIN(eventDetails?.title), event_id: data.event_id, user_id:user.id, business_id: businessDetails.role_id }
 						};
 						fcmNotification.SendNotification(notificationPayload);
 
@@ -2769,7 +2769,7 @@ exports.eventUserLeave = async (req, res) => {
 							/** Notification object created */
 							const notificationObj = {
 								role_id : user.role_id,
-								params: JSON.stringify({ notification_type:NOTIFICATION_TYPES.EVENT_USER_LEAVE, sender_id:user.id, receiver_type: businessDetails.role_id }),
+								params: JSON.stringify({ notification_type:NOTIFICATION_TYPES.EVENT_USER_LEAVE, title: NOTIFICATION_TITLES.EVENT_USER_LEAVE(),message: NOTIFICATION_MESSAGE.EVENT_USER_LEAVE(eventDetails?.title), event_id: data.event_id, user_id:user.id, business_id: businessDetails.role_id }),
 								title: NOTIFICATION_TITLES.EVENT_USER_LEAVE(),
 								message: NOTIFICATION_MESSAGE.EVENT_USER_LEAVE(eventDetails?.title),
 								notification_type: NOTIFICATION_TYPES.EVENT_USER_LEAVE,
@@ -2792,7 +2792,7 @@ exports.eventUserLeave = async (req, res) => {
 								device_token: uniqueDeviceTokens,
 								title: NOTIFICATION_TITLES.EVENT_USER_LEAVE(),
 								message: NOTIFICATION_MESSAGE.EVENT_USER_LEAVE(eventDetails?.title),
-								data: { notification_type:NOTIFICATION_TYPES.EVENT_USER_LEAVE, sender_id:user.id, receiver_type: businessDetails.role_id }
+								data: { notification_type:NOTIFICATION_TYPES.EVENT_USER_LEAVE, title: NOTIFICATION_TITLES.EVENT_USER_LEAVE(),message: NOTIFICATION_MESSAGE.EVENT_USER_LEAVE(eventDetails?.title), event_id: data.event_id, user_id:user.id, business_id: businessDetails.role_id }
 							};
 							fcmNotification.SendNotification(notificationPayload);
 							await eventUserModel.findOne({
@@ -2828,6 +2828,10 @@ exports.userGiftCardPurchase = async (req, res) => {
 		const userEmail = req.userEmail;
 		const user = req?.user;
 		const rewardHistoryModel = models.reward_history;
+		const notificationModel = models.notifications ;
+		const notificationReceiverModel = models.notification_receivers;
+		const deviceModel = models.device_tokens;
+
 		const currentDate = moment().format('YYYY-MM-DD')
 		var requiredFields = _.reject(["gift_card_id","payment_status", "amount", "qty"], (o) => {
 			return _.has(data, o);
@@ -2849,7 +2853,8 @@ exports.userGiftCardPurchase = async (req, res) => {
 							user_id:  userDetails.id,
 							to_email: {
 								[Op.eq]: null
-							}
+							},
+							is_deleted: false
 				}
 			})
 			if (isGiftCardPurchased.length > 0) {
@@ -2884,6 +2889,7 @@ exports.userGiftCardPurchase = async (req, res) => {
 							reference_reward_type: 'gift_cards'
 						});
 						createdGiftCards.push(gCard);
+						/** Send Email Notification to user */
 						const transporter = nodemailer.createTransport({
 							host: mailConfig.host,
 							port: mailConfig.port,
@@ -2931,6 +2937,38 @@ exports.userGiftCardPurchase = async (req, res) => {
 								}
 							);
 						});
+					/** END Send Email Notification to user */
+
+					/** Send Puch Notification */
+						const notificationObj = {
+							role_id : user.role_id,
+							params: JSON.stringify({ notification_type:NOTIFICATION_TYPES.GIFT_CARD_PURCHASE, title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(),message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(giftCardDetails?.name), gift_card_id: data.gift_card_id, user_id:user.id, business_id: giftCardDetails.business_id }),
+							title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(),
+							message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(giftCardDetails?.name),
+							notification_type: NOTIFICATION_TYPES.GIFT_CARD_PURCHASE,
+						}
+						const notification = await notificationModel.create(notificationObj);
+						if (notification && notification.id) {
+							const notificationReceiverObj = {
+								role_id : user.role_id,
+								notification_id : notification.id, 
+								sender_id: user.id, 
+								receiver_id: giftCardDetails.business_id,
+							}
+							const notificationReceiver = await notificationReceiverModel.create(notificationReceiverObj);
+						}
+						/** FCM push noifiation */
+						const activeReceiverDevices = await deviceModel.findAll({ where: { status: 1, business_id: giftCardDetails.business_id, device_name: 'M33' } },{ attributes: ["device_token"] });
+						const deviceTokensList = activeReceiverDevices.map((device) => device.device_token);
+						const uniqueDeviceTokens = Array.from(new Set(deviceTokensList))
+						const notificationPayload = {
+							device_token: uniqueDeviceTokens,
+							title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(),
+							message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(giftCardDetails?.name),
+							data: { notification_type:NOTIFICATION_TYPES.GIFT_CARD_PURCHASE, title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(),message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(giftCardDetails?.name), gift_card_id: data.gift_card_id, user_id:user.id, business_id: giftCardDetails.business_id }
+						};
+						fcmNotification.SendNotification(notificationPayload);
+					/** END Puch Notification */
 					// }
 					res.send(setRes(resCode.OK, true, "Gift Card Purchased successfully!", createdGiftCards))
 				} else {
@@ -2958,8 +2996,13 @@ exports.userGiftCardShare = async (req, res) => {
 		const userGiftCardModel = models.user_giftcards;
 		const giftCardTemplateModel = models.gift_card_template;
 		const userEmail = req.userEmail;
+		const user = req?.user;
+		const notificationModel = models.notifications;
+		const notificationReceiverModel = models.notification_receivers;
+		const deviceModel = models.device_tokens;
 		const rewardHistoryModel = models.reward_history;
 		const currentDate = (moment().format('YYYY-MM-DD'))
+		const bussinessModel = models.business;
 		var requiredFields = _.reject(["gift_card_id", "gift_card_template_id", "gift_for", "from", "note", "to_email", "payment_status", "amount", "qty"], (o) => {
 			return _.has(data, o);
 		});
@@ -2997,6 +3040,7 @@ exports.userGiftCardShare = async (req, res) => {
 			const imgGiftTemplate = await awsConfig.getSignUrl(giftCardTemplate.template_image).then(function(res) {
 				giftCardTemplateUrl = res;
 			})
+			const businessDetails = await bussinessModel.findOne({ where : { id: giftCardDetails.business_id } });
 			if (giftCardDetails) {
 				const giftCardObj = {
 					gift_card_id: data.gift_card_id,
@@ -3113,6 +3157,75 @@ exports.userGiftCardShare = async (req, res) => {
 								);
 							});
 						}
+
+						/** Send Push Notification */
+							// For share self to purchase
+						if (userDetails.email == data.to_email) {
+							const notificationObj = {
+								role_id : user.role_id,
+								params: JSON.stringify({ notification_type:NOTIFICATION_TYPES.GIFT_CARD_PURCHASE, title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(),message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(giftCardDetails?.name), gift_card_id: data.gift_card_id, user_id:user.id, business_id: giftCardDetails.business_id }),
+								title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(),
+								message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(giftCardDetails?.name),
+								notification_type: NOTIFICATION_TYPES.GIFT_CARD_PURCHASE,
+							}
+							const notification = await notificationModel.create(notificationObj);
+							if (notification && notification.id) {
+								const notificationReceiverObj = {
+									role_id : businessDetails?.role_id,
+									notification_id : notification.id, 
+									sender_id: user.id, 
+									receiver_id: giftCardDetails.business_id,
+								}
+								const notificationReceiver = await notificationReceiverModel.create(notificationReceiverObj);
+							}
+							/** FCM push noifiation */
+							const activeReceiverDevices = await deviceModel.findAll({ where: { status: 1, business_id: giftCardDetails.business_id, device_name: 'M33' } },{ attributes: ["device_token"] });
+							const deviceTokensList = activeReceiverDevices.map((device) => device.device_token);
+							const uniqueDeviceTokens = Array.from(new Set(deviceTokensList))
+							const notificationPayload = {
+								device_token: uniqueDeviceTokens,
+								title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(),
+								message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(giftCardDetails?.name),
+								data: { notification_type:NOTIFICATION_TYPES.GIFT_CARD_PURCHASE, title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(),message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(giftCardDetails?.name), gift_card_id: data.gift_card_id, user_id:user.id, business_id: giftCardDetails.business_id }
+							};
+							fcmNotification.SendNotification(notificationPayload);
+						}
+							// For share to user
+						if (userDetails.email != data.to_email && !data?.schedule_datetime) {
+							const toEmailUserExists = await userModel.findOne({ where: { email: data.to_email, is_active: true, is_deleted: false } });
+							if (toEmailUserExists) {
+
+								const notificationObj = {
+									role_id : user.role_id,
+									params: JSON.stringify({ notification_type:NOTIFICATION_TYPES.GIFT_CARD_SHARE, title: NOTIFICATION_TITLES.GIFT_CARD_SHARE(userDetails.username),message: NOTIFICATION_MESSAGE.GIFT_CARD_SHARE(giftCardDetails?.name), gift_card_id: data.gift_card_id, user_id:user.id, business_id: giftCardDetails.business_id }),
+									title: NOTIFICATION_TITLES.GIFT_CARD_SHARE(toEmailUserExists.username),
+									message: NOTIFICATION_MESSAGE.GIFT_CARD_SHARE(giftCardDetails?.name),
+									notification_type: NOTIFICATION_TYPES.GIFT_CARD_SHARE,
+								}
+								const notification = await notificationModel.create(notificationObj);
+								if (notification && notification.id) {
+									const notificationReceiverObj = {
+										role_id : toEmailUserExists.role_id,
+										notification_id : notification.id, 
+										sender_id: user.id, 
+										receiver_id: toEmailUserExists.id,
+									}
+									const notificationReceiver = await notificationReceiverModel.create(notificationReceiverObj);
+								}
+								/** FCM push noifiation */
+								const activeReceiverDevices = await deviceModel.findAll({ where: { status: 1, user_id: toEmailUserExists.id, device_name: 'M33' } },{ attributes: ["device_token"] });
+								const deviceTokensList = activeReceiverDevices.map((device) => device.device_token);
+								const uniqueDeviceTokens = Array.from(new Set(deviceTokensList))
+								const notificationPayload = {
+									device_token: uniqueDeviceTokens,
+									title: NOTIFICATION_TITLES.GIFT_CARD_SHARE(userDetails.username),
+									message: NOTIFICATION_MESSAGE.GIFT_CARD_SHARE(giftCardDetails?.name),
+									data: { notification_type:NOTIFICATION_TYPES.GIFT_CARD_PURCHASE, title: NOTIFICATION_TITLES.GIFT_CARD_SHARE(userDetails.username),message: NOTIFICATION_MESSAGE.GIFT_CARD_SHARE(giftCardDetails?.name), gift_card_id: data.gift_card_id, user_id:user.id, business_id: giftCardDetails.business_id }
+								};
+								fcmNotification.SendNotification(notificationPayload);
+							}
+						}
+						/** END Send Push Notification */
 					// }
 					res.send(setRes(resCode.OK, true, "Gift Card Shared successfully!", createdSharedGiftCards))
 				} else {
