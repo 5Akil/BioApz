@@ -14,11 +14,15 @@ const NOTIFICATION_TYPES = {
 const NOTIFICATION_TITLES = {
     EVENT_USER_JOIN : () => `User Joined Event`,
     EVENT_USER_LEAVE: () => `User Leaved Event`,
+    GIFT_CARD_PURCHASE: () => `User Purchased GiftCard`,
+    GIFT_CARD_SHARE: (username='') => `${username} Sent you B.a.s.e Gift card !`
 }
 
 const NOTIFICATION_MESSAGE = {
     EVENT_USER_JOIN : (eventName='') => `User joined event: ${eventName || ''}`,
     EVENT_USER_LEAVE: (eventName='') => `User leave event: ${eventName || ''}`,
+    GIFT_CARD_PURCHASE: (giftCardName='') => `User Purchased GiftCard : ${giftCardName}`,
+    GIFT_CARD_SHARE: (giftCardName='') => `You've received a Gift card : ${giftCardName}`
 }
 
 module.exports = {
