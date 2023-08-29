@@ -850,7 +850,8 @@ exports.GetProductById = async (req, res) => {
 			await wishlistModel.findOne({
 				where: {
 					product_id: product.id,
-					is_deleted: false
+					is_deleted: false,
+					user_id: auth_id
 				},
 			}).then(async fav => {
 				if (fav) {
