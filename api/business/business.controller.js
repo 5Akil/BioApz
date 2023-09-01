@@ -1142,158 +1142,154 @@ exports.ChatInitialize = async (req, res) => {
 	var db = admin.database()
 
 	var data = req.body
-	var ProductInqModel = models.product_inquiry
 	var userModel = models.user;
 	var businessModel = models.business;
 
-	var requiredFields = _.reject(['inquiry'], (o) => { return _.has(data, o) })
+	var requiredFields = _.reject(['business_id', 'user_id', 'message'], (o) => { return _.has(data, o) })
 
 	if (requiredFields == '') {
 
-		ProductInqModel.findOne({
-			where: {
-				id: data.inquiry,
-				is_deleted: false
-			},
-			include: [{ all: true, nested: true }]
-		}).then(proInquery => {
+		const businessDetails = await businessModel.findOne({ where: data.business_id });
+		if (!businessDetails || !businessDetails?.id) {
+			return res.send(setRes(resCode.BadRequest, false, null, "Business not found."))
+		}
+		const userDetails = await userModel.findOne({ where: data.user_id });
+		if (!userDetails || !userDetails?.id) {
+			return res.send(setRes(resCode.BadRequest, false, null, "User not found."))
+		}
 
-			if (proInquery != null) {
+		const businessName = businessDetails?.business_name;
+		const userName = userDetails?.username;
 
-				var businessRef = db.ref(`businesses/${proInquery.business_id}/customer_ids`)
-				var customerRef = db.ref(`customers/${proInquery.user_id}/business_ids`)
-				var MessageChatRef = db.ref(`messages/business_${proInquery.business_id}_customer_${proInquery.user_id}/chat/${moment().unix()}_customer`)
-				var MessageDetailRef = db.ref(`messages/business_${proInquery.business_id}_customer_${proInquery.user_id}/details`)
+		var businessRef = db.ref(`businesses/${data.business_id}/customer_ids`)
+		var customerRef = db.ref(`customers/${data.user_id}/business_ids`)
+		var MessageChatRef = db.ref(`messages/business_${data.business_id}_customer_${data.user_id}/chat/${moment().unix()}_customer`)
+		var MessageDetailRef = db.ref(`messages/business_${data.business_id}_customer_${data.user_id}/details`)
 
-				businessRef.once('value', (fireBusinessData) => {
-					fireBusinessData = JSON.parse(JSON.stringify(fireBusinessData))
+		businessRef.once('value', (fireBusinessData) => {
+			fireBusinessData = JSON.parse(JSON.stringify(fireBusinessData))
 
-					if (fireBusinessData != null) {
-						var nextKey = parseInt(_.last(_.keys(fireBusinessData))) + 1
+			if (fireBusinessData != null) {
+				var nextKey = parseInt(_.last(_.keys(fireBusinessData))) + 1
 
-						//add user id in business array
-						_.contains(fireBusinessData, proInquery.user_id) ? '' : businessRef.child(nextKey).set(proInquery.user_id)
+				//add user id in business array
+				_.contains(fireBusinessData, data.user_id) ? '' : businessRef.child(nextKey).set(data.user_id)
 
-						customerRef.once('value', async (fireCustomerData) => {
-							fireCustomerData = JSON.parse(JSON.stringify(fireCustomerData))
+				customerRef.once('value', async (fireCustomerData) => {
+					fireCustomerData = JSON.parse(JSON.stringify(fireCustomerData))
 
-							if (fireCustomerData != null) {
-								var nextKey = parseInt(_.last(_.keys(fireCustomerData))) + 1
+					if (fireCustomerData != null) {
+						var nextKey = parseInt(_.last(_.keys(fireCustomerData))) + 1
 
-								//add business id in user array
-								_.contains(fireCustomerData, proInquery.business_id) ? '' : customerRef.child(nextKey).set(proInquery.business_id)
+						//add business id in user array
+						_.contains(fireCustomerData, data.business_id) ? '' : customerRef.child(nextKey).set(data.business_id)
 
-								//add chat message in firebase database
-								MessageChatRef.child('date').set(moment().toISOString())
-								MessageChatRef.child('role').set('customer')
-								MessageChatRef.child('sender_id').set(proInquery.user_id)
-								MessageChatRef.child('text').set(proInquery.message)
+						//add chat message in firebase database
+						MessageChatRef.child('date').set(moment().toISOString())
+						MessageChatRef.child('role').set('customer')
+						MessageChatRef.child('sender_id').set(data.user_id)
+						MessageChatRef.child('text').set(data.message)
 
-								//update message detail in firebase database
-								MessageDetailRef.child('date').set(moment().toISOString())
-								MessageDetailRef.child('last_message').set(proInquery.message)
+						//update message detail in firebase database
+						MessageDetailRef.child('date').set(moment().toISOString())
+						MessageDetailRef.child('last_message').set(data.message)
 
-								//set chatInit in local database
-								var InquiryDetailRes = await UpdateProInquiry
-									(proInquery.id)
+						//set chatInit in local database
+						// var InquiryDetailRes = await UpdateProInquiry
+						// 	(proInquery.id)
 
-								InquiryDetailRes != null ? res.send(setRes(resCode.OK, InquiryDetailRes, true, "Chat Initialize Successfully..")) : res.send(setRes(resCode.InternalServer, null, false, "Fail to initialize chat."))
-							}
-							else {
-								var setBusiness_ids = db.ref(`customers/${proInquery.user_id}`)
-
-								//create new customer & add business id (for first time only)
-								setBusiness_ids.child('business_ids').set({ 0: proInquery.business_id })
-								setBusiness_ids.child('name').set(proInquery.user.username)
-
-								//add chat message in firebase database
-								MessageChatRef.child('date').set(moment().toISOString())
-								MessageChatRef.child('role').set('customer')
-								MessageChatRef.child('sender_id').set(proInquery.user_id)
-								MessageChatRef.child('text').set(proInquery.message)
-
-								//update message detail in firebase database
-								MessageDetailRef.child('date').set(moment().toISOString())
-								MessageDetailRef.child('last_message').set(proInquery.message)
-
-								//set chatInit in local database
-								var InquiryDetailRes = await UpdateProInquiry
-									(proInquery.id)
-
-								InquiryDetailRes != null ? res.send(setRes(resCode.OK, InquiryDetailRes, true, "Chat Initialize Successfully..")) : res.send(setRes(resCode.InternalServer, null, true, "Fail to initialize chat."))
-							}
-
-						})
+						// InquiryDetailRes != null ? res.send(setRes(resCode.OK, InquiryDetailRes, true, "Chat Initialize Successfully..")) : res.send(setRes(resCode.InternalServer, null, false, "Fail to initialize chat."))
+						return res.send(setRes(resCode.OK, true, null, "Chat Initialize Successfully."));
 					}
 					else {
-						var setCustomer_ids = db.ref(`businesses/${proInquery.business_id}`)
+						var setBusiness_ids = db.ref(`customers/${data.user_id}`)
 
-						//create new business & add user id (for first time only)
-						setCustomer_ids.child('customer_ids').set({ 0: proInquery.user_id })
-						setCustomer_ids.child('name').set(proInquery.business.business_name)
+						//create new customer & add business id (for first time only)
+						setBusiness_ids.child('business_ids').set({ 0: data.business_id })
+						setBusiness_ids.child('name').set(userName)
 
-						customerRef.once('value', async (fireCustomerData) => {
-							fireCustomerData = JSON.parse(JSON.stringify(fireCustomerData))
+						//add chat message in firebase database
+						MessageChatRef.child('date').set(moment().toISOString())
+						MessageChatRef.child('role').set('customer')
+						MessageChatRef.child('sender_id').set(data.user_id)
+						MessageChatRef.child('text').set(data.message)
 
-							if (fireCustomerData != null) {
-								var nextKey = parseInt(_.last(_.keys(fireCustomerData))) + 1
+						//update message detail in firebase database
+						MessageDetailRef.child('date').set(moment().toISOString())
+						MessageDetailRef.child('last_message').set(data.message)
 
-								//add business id in user array
-								_.contains(fireCustomerData, proInquery.business_id) ? '' : customerRef.child(nextKey).set(proInquery.business_id)
+						//set chatInit in local database
+						// var InquiryDetailRes = await UpdateProInquiry
+						// 	(proInquery.id)
 
-								//add chat message in firebase database
-								MessageChatRef.child('date').set(moment().toISOString())
-								MessageChatRef.child('role').set('customer')
-								MessageChatRef.child('sender_id').set(proInquery.user_id)
-								MessageChatRef.child('text').set(proInquery.message)
+						// InquiryDetailRes != null ? res.send(setRes(resCode.OK, InquiryDetailRes, true, "Chat Initialize Successfully..")) : res.send(setRes(resCode.InternalServer, null, true, "Fail to initialize chat."))
+						return res.send(setRes(resCode.OK, true, null, "Chat Initialize Successfully."))
+					}
 
-								//update message detail in firebase database
-								MessageDetailRef.child('date').set(moment().toISOString())
-								MessageDetailRef.child('last_message').set(proInquery.message)
+				})
+			}
+			else {
+				var setCustomer_ids = db.ref(`businesses/${data.business_id}`)
 
-								//set chatInit in local database
-								var InquiryDetailRes = await UpdateProInquiry
-									(proInquery.id)
+				//create new business & add user id (for first time only)
+				setCustomer_ids.child('customer_ids').set({ 0: data.user_id })
+				setCustomer_ids.child('name').set(businessName)
 
-								InquiryDetailRes != null ? res.send(setRes(resCode.OK, InquiryDetailRes, true, "Chat Initialize Successfully..")) : res.send(setRes(resCode.InternalServer, null, true, "Fail to initialize chat."))
-							}
-							else {
-								var setBusiness_ids = db.ref(`customers/${proInquery.user_id}`)
+				customerRef.once('value', async (fireCustomerData) => {
+					fireCustomerData = JSON.parse(JSON.stringify(fireCustomerData))
 
-								//create new customer & add business id (for first time only)
-								setBusiness_ids.child('business_ids').set({ 0: proInquery.business_id })
-								setBusiness_ids.child('name').set(proInquery.user.username)
+					if (fireCustomerData != null) {
+						var nextKey = parseInt(_.last(_.keys(fireCustomerData))) + 1
 
-								//add chat message in firebase database
-								MessageChatRef.child('date').set(moment().toISOString())
-								MessageChatRef.child('role').set('customer')
-								MessageChatRef.child('sender_id').set(proInquery.user_id)
-								MessageChatRef.child('text').set(proInquery.message)
+						//add business id in user array
+						_.contains(fireCustomerData, data.business_id) ? '' : customerRef.child(nextKey).set(data.business_id)
 
-								//update message detail in firebase database
-								MessageDetailRef.child('date').set(moment().toISOString())
-								MessageDetailRef.child('last_message').set(proInquery.message)
+						//add chat message in firebase database
+						MessageChatRef.child('date').set(moment().toISOString())
+						MessageChatRef.child('role').set('customer')
+						MessageChatRef.child('sender_id').set(data.user_id)
+						MessageChatRef.child('text').set(data.message)
 
-								//set chatInit in local database
-								var InquiryDetailRes = await UpdateProInquiry
-									(proInquery.id)
+						//update message detail in firebase database
+						MessageDetailRef.child('date').set(moment().toISOString())
+						MessageDetailRef.child('last_message').set(data.message)
 
-								InquiryDetailRes != null ? res.send(setRes(resCode.OK, InquiryDetailRes, true, "Chat Initialize Successfully..")) : res.send(setRes(resCode.InternalServer, null, true, "Fail to initialize chat."))
-							}
+						//set chatInit in local database
+						// var InquiryDetailRes = await UpdateProInquiry
+						// 	(proInquery.id)
 
-						})
+						// InquiryDetailRes != null ? res.send(setRes(resCode.OK, InquiryDetailRes, true, "Chat Initialize Successfully..")) : res.send(setRes(resCode.InternalServer, null, true, "Fail to initialize chat."))
+						return res.send(setRes(resCode.OK, true, null, "Chat Initialize Successfully."))
+					}
+					else {
+						var setBusiness_ids = db.ref(`customers/${data.user_id}`)
 
+						//create new customer & add business id (for first time only)
+						setBusiness_ids.child('business_ids').set({ 0: data.business_id })
+						setBusiness_ids.child('name').set(userName)
+
+						//add chat message in firebase database
+						MessageChatRef.child('date').set(moment().toISOString())
+						MessageChatRef.child('role').set('customer')
+						MessageChatRef.child('sender_id').set(data.user_id)
+						MessageChatRef.child('text').set(data.message)
+
+						//update message detail in firebase database
+						MessageDetailRef.child('date').set(moment().toISOString())
+						MessageDetailRef.child('last_message').set(data.message)
+
+						//set chatInit in local database
+						// var InquiryDetailRes = await UpdateProInquiry
+						// 	(proInquery.id)
+
+						// InquiryDetailRes != null ? res.send(setRes(resCode.OK, InquiryDetailRes, true, "Chat Initialize Successfully..")) : res.send(setRes(resCode.InternalServer, null, true, "Fail to initialize chat."))
+						return res.send(setRes(resCode.OK, true, null, "Chat Initialize Successfully."))
 					}
 
 				})
 
 			}
-			else {
-				res.send(setRes(resCode.BadRequest, false, "Inquiry not found.", null))
-			}
 
-		}).catch(getProductInqError => {
-			res.send(setRes(resCode.InternalServer, false, getProductInqError.message, null))
 		})
 
 	} else {

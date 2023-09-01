@@ -2542,7 +2542,7 @@ exports.eventUserRegister = async (req, res) => {
 							device_token: uniqueDeviceTokens,
 							title: NOTIFICATION_TITLES.EVENT_USER_JOIN(),
 							message: NOTIFICATION_MESSAGE.EVENT_USER_JOIN(eventDetails?.title),
-							data: { notification_type:NOTIFICATION_TYPES.EVENT_USER_JOIN, title: NOTIFICATION_TITLES.EVENT_USER_JOIN(), message: NOTIFICATION_MESSAGE.EVENT_USER_JOIN(eventDetails?.title), event_id: data.event_id, user_id:user.id, business_id: businessDetails.role_id }
+							content: { notification_type:NOTIFICATION_TYPES.EVENT_USER_JOIN, title: NOTIFICATION_TITLES.EVENT_USER_JOIN(), message: NOTIFICATION_MESSAGE.EVENT_USER_JOIN(eventDetails?.title), event_id: data.event_id, user_id:user.id, business_id: businessDetails.role_id }
 						};
 						fcmNotification.SendNotification(notificationPayload);
 
@@ -2792,7 +2792,7 @@ exports.eventUserLeave = async (req, res) => {
 								device_token: uniqueDeviceTokens,
 								title: NOTIFICATION_TITLES.EVENT_USER_LEAVE(),
 								message: NOTIFICATION_MESSAGE.EVENT_USER_LEAVE(eventDetails?.title),
-								data: { notification_type:NOTIFICATION_TYPES.EVENT_USER_LEAVE, title: NOTIFICATION_TITLES.EVENT_USER_LEAVE(),message: NOTIFICATION_MESSAGE.EVENT_USER_LEAVE(eventDetails?.title), event_id: data.event_id, user_id:user.id, business_id: businessDetails.role_id }
+								content: { notification_type:NOTIFICATION_TYPES.EVENT_USER_LEAVE, title: NOTIFICATION_TITLES.EVENT_USER_LEAVE(),message: NOTIFICATION_MESSAGE.EVENT_USER_LEAVE(eventDetails?.title), event_id: data.event_id, user_id:user.id, business_id: businessDetails.role_id }
 							};
 							fcmNotification.SendNotification(notificationPayload);
 							await eventUserModel.findOne({
@@ -2965,7 +2965,7 @@ exports.userGiftCardPurchase = async (req, res) => {
 							device_token: uniqueDeviceTokens,
 							title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(),
 							message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(giftCardDetails?.name),
-							data: { notification_type:NOTIFICATION_TYPES.GIFT_CARD_PURCHASE, title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(),message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(giftCardDetails?.name), gift_card_id: data.gift_card_id, user_id:user.id, business_id: giftCardDetails.business_id }
+							content: { notification_type:NOTIFICATION_TYPES.GIFT_CARD_PURCHASE, title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(),message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(giftCardDetails?.name), gift_card_id: data.gift_card_id, user_id:user.id, business_id: giftCardDetails.business_id }
 						};
 						fcmNotification.SendNotification(notificationPayload);
 					/** END Puch Notification */
@@ -3186,7 +3186,7 @@ exports.userGiftCardShare = async (req, res) => {
 								device_token: uniqueDeviceTokens,
 								title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(),
 								message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(giftCardDetails?.name),
-								data: { notification_type:NOTIFICATION_TYPES.GIFT_CARD_PURCHASE, title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(),message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(giftCardDetails?.name), gift_card_id: data.gift_card_id, user_id:user.id, business_id: giftCardDetails.business_id }
+								content: { notification_type:NOTIFICATION_TYPES.GIFT_CARD_PURCHASE, title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(),message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(giftCardDetails?.name), gift_card_id: data.gift_card_id, user_id:user.id, business_id: giftCardDetails.business_id }
 							};
 							fcmNotification.SendNotification(notificationPayload);
 						}
@@ -3220,7 +3220,7 @@ exports.userGiftCardShare = async (req, res) => {
 									device_token: uniqueDeviceTokens,
 									title: NOTIFICATION_TITLES.GIFT_CARD_SHARE(userDetails.username),
 									message: NOTIFICATION_MESSAGE.GIFT_CARD_SHARE(giftCardDetails?.name),
-									data: { notification_type:NOTIFICATION_TYPES.GIFT_CARD_PURCHASE, title: NOTIFICATION_TITLES.GIFT_CARD_SHARE(userDetails.username),message: NOTIFICATION_MESSAGE.GIFT_CARD_SHARE(giftCardDetails?.name), gift_card_id: data.gift_card_id, user_id:user.id, business_id: giftCardDetails.business_id }
+									content: { notification_type:NOTIFICATION_TYPES.GIFT_CARD_PURCHASE, title: NOTIFICATION_TITLES.GIFT_CARD_SHARE(userDetails.username),message: NOTIFICATION_MESSAGE.GIFT_CARD_SHARE(giftCardDetails?.name), gift_card_id: data.gift_card_id, user_id:user.id, business_id: giftCardDetails.business_id }
 								};
 								fcmNotification.SendNotification(notificationPayload);
 							}
