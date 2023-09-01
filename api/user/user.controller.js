@@ -3220,7 +3220,7 @@ exports.userGiftCardShare = async (req, res) => {
 									device_token: uniqueDeviceTokens,
 									title: NOTIFICATION_TITLES.GIFT_CARD_SHARE(userDetails.username),
 									message: NOTIFICATION_MESSAGE.GIFT_CARD_SHARE(giftCardDetails?.name),
-									content: { notification_type:NOTIFICATION_TYPES.GIFT_CARD_PURCHASE, title: NOTIFICATION_TITLES.GIFT_CARD_SHARE(userDetails.username),message: NOTIFICATION_MESSAGE.GIFT_CARD_SHARE(giftCardDetails?.name), gift_card_id: data.gift_card_id, user_id:user.id, business_id: giftCardDetails.business_id }
+									content: { notification_type:NOTIFICATION_TYPES.GIFT_CARD_SHARE, title: NOTIFICATION_TITLES.GIFT_CARD_SHARE(userDetails.username),message: NOTIFICATION_MESSAGE.GIFT_CARD_SHARE(giftCardDetails?.name), gift_card_id: data.gift_card_id, user_id:user.id, business_id: giftCardDetails.business_id }
 								};
 								fcmNotification.SendNotification(notificationPayload);
 							}

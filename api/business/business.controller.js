@@ -1149,11 +1149,11 @@ exports.ChatInitialize = async (req, res) => {
 
 	if (requiredFields == '') {
 
-		const businessDetails = await businessModel.findOne({ where: data.business_id });
+		const businessDetails = await businessModel.findOne({ where: { id: data.business_id } });
 		if (!businessDetails || !businessDetails?.id) {
 			return res.send(setRes(resCode.BadRequest, false, null, "Business not found."))
 		}
-		const userDetails = await userModel.findOne({ where: data.user_id });
+		const userDetails = await userModel.findOne({ where: { id: data.user_id } });
 		if (!userDetails || !userDetails?.id) {
 			return res.send(setRes(resCode.BadRequest, false, null, "User not found."))
 		}
