@@ -73,7 +73,7 @@ router.post('/logout', verifyToken ,controller.Logout)
 router.get('/home', verifyToken, controller.homeList)
 // business routes
 router.post('/rewards/list', verifyToken, controller.rewardsList)
-router.post('/rewards/view/:id', verifyToken, controller.rewardsView)
+router.post('/rewards/view/:id', verifyToken, authorize([2,3]), controller.rewardsView)
 router.post('/loyalty/list', verifyToken, controller.loyaltyList)
 router.get('/loyalty/view/:id', verifyToken, controller.loyaltyView)
 router.get('/business/bio', verifyToken, controller.businessBIO)
@@ -83,6 +83,7 @@ router.post('/giftcards/share', verifyToken, authorize([2]), controller.userGift
 router.post('/giftcards/list', verifyToken, controller.userGiftCardList)
 router.post('/giftcards/redeem', verifyToken, authorize([2]), controller.redeemGiftCard)
 router.post('/giftcards/recommeded', verifyToken, authorize([2]), controller.recommendedGiftCard)
+router.get('/giftcards/details/:id', verifyToken, authorize([2]), controller.userGiftCardDetails)
 // Event routes
 router.post('/business/event/list', verifyToken,authorize([2]), controller.businessEventList)
 router.post('/event/list', verifyToken,authorize([2]), controller.userEventList)

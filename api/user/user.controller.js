@@ -3197,7 +3197,7 @@ exports.userGiftCardShare = async (req, res) => {
 
 								const notificationObj = {
 									role_id : user.role_id,
-									params: JSON.stringify({ notification_type:NOTIFICATION_TYPES.GIFT_CARD_SHARE, title: NOTIFICATION_TITLES.GIFT_CARD_SHARE(userDetails.username),message: NOTIFICATION_MESSAGE.GIFT_CARD_SHARE(giftCardDetails?.name), gift_card_id: data.gift_card_id, user_id:user.id, business_id: giftCardDetails.business_id }),
+									params: JSON.stringify({ notification_type:NOTIFICATION_TYPES.GIFT_CARD_SHARE, title: NOTIFICATION_TITLES.GIFT_CARD_SHARE(userDetails.username),message: NOTIFICATION_MESSAGE.GIFT_CARD_SHARE(giftCardDetails?.name), gift_card_id: gCard.id, user_id:user.id, business_id: giftCardDetails.business_id }),
 									title: NOTIFICATION_TITLES.GIFT_CARD_SHARE(toEmailUserExists.username),
 									message: NOTIFICATION_MESSAGE.GIFT_CARD_SHARE(giftCardDetails?.name),
 									notification_type: NOTIFICATION_TYPES.GIFT_CARD_SHARE,
@@ -3220,7 +3220,7 @@ exports.userGiftCardShare = async (req, res) => {
 									device_token: uniqueDeviceTokens,
 									title: NOTIFICATION_TITLES.GIFT_CARD_SHARE(userDetails.username),
 									message: NOTIFICATION_MESSAGE.GIFT_CARD_SHARE(giftCardDetails?.name),
-									content: { notification_type:NOTIFICATION_TYPES.GIFT_CARD_SHARE, title: NOTIFICATION_TITLES.GIFT_CARD_SHARE(userDetails.username),message: NOTIFICATION_MESSAGE.GIFT_CARD_SHARE(giftCardDetails?.name), gift_card_id: data.gift_card_id, user_id:user.id, business_id: giftCardDetails.business_id }
+									content: { notification_type:NOTIFICATION_TYPES.GIFT_CARD_SHARE, title: NOTIFICATION_TITLES.GIFT_CARD_SHARE(userDetails.username),message: NOTIFICATION_MESSAGE.GIFT_CARD_SHARE(giftCardDetails?.name), gift_card_id: gCard.id, user_id:user.id, business_id: giftCardDetails.business_id }
 								};
 								fcmNotification.SendNotification(notificationPayload);
 							}
@@ -3617,6 +3617,63 @@ exports.priceFilterForWallet =async(req,res) => {
 		}
 	}catch(error){
 		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
+	}
+}
+
+exports.userGiftCardDetails = async (req, res) => {
+	try {
+		const data = req.params
+		const giftCardId = data.id;
+		const user = req.user;
+		
+		const giftCardModel = models.gift_cards
+		const userGiftCardModel = models.user_giftcards;
+		const loyaltyPointModel = models.loyalty_points
+		const Op = models.Op;
+		
+		const userGiftCard = await userGiftCardModel.findOne({
+			where: {
+				id: giftCardId,
+			},
+			include: [
+				{
+					model: giftCardModel,
+					attributes: { include: [[models.sequelize.literal("'gift_cards'"),"type"]] }
+				}
+			]
+		})
+		const giftCardDetail = userGiftCard.gift_card;
+
+		const totalPurchasedGiftcard = await userGiftCardModel.findAll({ 
+			where: {
+				gift_card_id: giftCardDetail.id,
+				payment_status: 1,
+				is_deleted: false
+			}
+		})		
+		if (userGiftCard.payment_status == 1) {
+			const purchase_for = userGiftCard?.to_email ?  (user?.user == userGiftCard?.to_email ? 'Self' :  userGiftCard?.to_email ) : 'Self';
+			giftCardDetail.dataValues.purchase_for = purchase_for;
+			giftCardDetail.dataValues.purchase_date = userGiftCard?.purchase_date || "";
+			giftCardDetail.dataValues.redeemed_amount = userGiftCard?.redeemed_amount || "";
+		}
+
+		let giftcardLoyalty = await loyaltyPointModel.findOne({
+			where:{
+				gift_card_id: {
+					[Op.regexp]: `(^|,)${giftCardDetail.id}(,|$)`,
+				},
+				points_redeemed:true,
+			}
+		})
+		giftCardDetail.dataValues.points_earned = giftcardLoyalty?.points_earned;
+		giftCardDetail.dataValues.points_redeemed = giftcardLoyalty?.amount;
+
+		giftCardDetail.dataValues.totalPurchase = totalPurchasedGiftcard?.length  || 0; 
+
+		return res.send(setRes(resCode.OK, true, "User Gift card details!", giftCardDetail))
+	} catch (error) {
+		return res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
 	}
 }
 // Function to generate filters

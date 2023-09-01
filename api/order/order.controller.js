@@ -159,12 +159,17 @@ exports.OrderDetail = async (req,res) => {
 		  ],
 		  attributes: { exclude: ['is_deleted', 'updatedAt','price','business_id','product_id'] }
 		}).then(async orderDetails => {
+			let businesssBanner = '';
+			const bannerurl = await awsConfig.getSignUrl(orderDetails[0]?.order?.business?.banner).then(function(res){
+				businesssBanner = res
+			})
 			const orderdata = {
 				amount: orderDetails[0]?.order?.amount || '',
 				business_id: orderDetails[0]?.order?.business_id || '',
 				invoice_date:  orderDetails[0]?.order?.createdAt || '',
 				invoice_no:  orderDetails[0]?.order?.order_no || '',
-				business_name:  orderDetails[0]?.order?.business?.business_name || '',
+				business_name: orderDetails[0]?.order?.business?.business_name || '',
+				banner_image: businesssBanner
 			}
 			for (let data of orderDetails) {
 				data.dataValues.category_name = data?.product?.product_categorys?.name
