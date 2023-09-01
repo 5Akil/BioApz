@@ -127,21 +127,18 @@ exports.viewCMS = async (req , res) => {
 				condition.where = {...condition.where,...{page_key:data.page_key}}
 			}
 			await cmsModel.findAll(condition).then(async pageData => {
-				var page_details = {};
 				if(pageData != null){
 					for(const data of pageData){
 						if(type == 'admin'){
 							data.dataValues.page_url = commonConfig.admin_url + data.page_key;
 						}
-						page_details[data.page_key] = data;
 					}
-					pageData = page_details
 					res.send(setRes(resCode.OK,true,`Cms page get successfully`,pageData))
 				}else{
 					res.send(setRes(resCode.ResourceNotFound,false,'Cms page not found',null))
 				}
 			}).catch(error => {
-				console.log(error)
+				console.log(error);
 				res.send(setRes(resCode.BadRequest,false,"Fail to get page details",true))
 			})
 		}else{

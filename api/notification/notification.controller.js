@@ -10,7 +10,7 @@ const notificationReceiverModel = models.notification_receivers;
 
 exports.list = async (req,res) =>{
 	try{
-		const data = req.query;
+		const data = req.body;
 		const authUser = req.user;
 		const Op = models.Op;
 		
@@ -51,6 +51,8 @@ exports.list = async (req,res) =>{
 
 			const notificationList = await notificationModel.findAll(condition);
 			for(const data of notificationList){
+				let result = JSON.parse(JSON.stringify(data));
+				data.dataValues.is_read = result.notification_receivers[0].is_read;
 				delete data.dataValues.notification_receivers;
 			}
 			const response = new pagination(notificationList, parseInt(totalRecords), parseInt(data.page), parseInt(data.page_size));
@@ -59,6 +61,7 @@ exports.list = async (req,res) =>{
 			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), true))
 		}
 	}catch(error){
+		console.log(error)
 		res.send(setRes(resCode.BadRequest,false,"An error occurred.",null))
 	}
 }
