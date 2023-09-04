@@ -1089,7 +1089,17 @@ exports.commonRewardsList =async(req,res) => {
 								const userGiftCard = await userGiftCardList.findOne({
 									where: {
 										gift_card_id: rew.id,
-										user_id: user.id,
+										[Op.or] : [
+											{
+												[Op.and] : [
+													{ user_id: user.id },
+													{ to_email: null }
+												]
+											},
+											{
+												to_email: user?.user
+											}
+										],
 										is_deleted: false,
 										status: true,
 									}
@@ -1103,11 +1113,15 @@ exports.commonRewardsList =async(req,res) => {
 										is_active: true
 									}
 								 });
-								 if (userGiftCard.payment_status == true) {
+								 if (userGiftCard.payment_status == 1) {
 									 const purchase_for = userGiftCard?.to_email ?  (userDetails?.email == userGiftCard?.to_email ? 'Self' : (userDetails?.username ? userDetails?.username : userGiftCard?.to_email) ) : 'Self';
 									 gCard['purchase_for'] = purchase_for;
 									 gCard['purchase_date'] = userGiftCard?.purchase_date || "";
 									 gCard['redeemed_amount'] = userGiftCard?.amount || "";
+									 if (userGiftCard?.from) {
+										 gCard['from'] = userGiftCard?.from || "";
+										 gCard['note'] = userGiftCard?.note || "";
+									 }
 								 }
 							}
 							let giftcardLoyalty = await loyaltyPointModel.findOne({

@@ -3656,6 +3656,10 @@ exports.userGiftCardDetails = async (req, res) => {
 			giftCardDetail.dataValues.purchase_for = purchase_for;
 			giftCardDetail.dataValues.purchase_date = userGiftCard?.purchase_date || "";
 			giftCardDetail.dataValues.redeemed_amount = userGiftCard?.redeemed_amount || "";
+			if (userGiftCard?.from) {
+				giftCardDetail.dataValues.from = userGiftCard?.from || "";
+				giftCardDetail.dataValues.note = userGiftCard?.note || "";
+			}
 		}
 
 		let giftcardLoyalty = await loyaltyPointModel.findOne({
