@@ -187,7 +187,7 @@ exports.GetAllProducts = async (req, res) => {
 						} else {
 							discountString += `$${data.discount_value} Discount`
 						}
-						rewards.push({type: 'discounts',title: discountString,business_id:data.business_id,discount_type:data.discount_type,discount_value:data.discount_value,product_category_id:data.product_category_id,product_id:data.product_id,validity_for:data.validity_for,status:data.status,
+						rewards.push({type: 'discounts',title: discountString,id: data.id,business_id:data.business_id,discount_type:data.discount_type,discount_value:data.discount_value,product_category_id:data.product_category_id,product_id:data.product_id,validity_for:data.validity_for,status:data.status,
 						});
 					}
 
@@ -879,7 +879,7 @@ exports.GetProductById = async (req, res) => {
 				} else {
 					discountString += `$${data.discount_value} Discount`
 				}
-				rewards.push({type: 'discounts',title: discountString,business_id:data.business_id,discount_type:data.discount_type,discount_value:data.discount_value,product_category_id:data.product_category_id,product_id:data.product_id,validity_for:data.validity_for,status:data.status,
+				rewards.push({type: 'discounts',title: discountString,id: data.id, business_id:data.business_id,discount_type:data.discount_type,discount_value:data.discount_value,product_category_id:data.product_category_id,product_id:data.product_id,validity_for:data.validity_for,status:data.status,
 				});
 			}
 
@@ -923,7 +923,7 @@ exports.GetProductById = async (req, res) => {
 					} else {
 						discountString += `$${data.cashback_value} cashback`;
 					}
-					rewards.push({ type: 'discounts', title: discountString});
+					rewards.push({ type: 'cashbacks', title: discountString});
 				}
 			}
 
@@ -941,7 +941,7 @@ exports.GetProductById = async (req, res) => {
 				let loyaltyString = '';
 				if (data.loyalty_type == 1) {
 					loyaltyString += `Earn ${data.points_earned} points`
-					rewards.push({ type: 'loyalty_points', title: loyaltyString});
+					rewards.push({ type: 'loyalty_points', title: loyaltyString, loyalty_id: data.id});
 				}
 			}
 
@@ -949,12 +949,19 @@ exports.GetProductById = async (req, res) => {
 				product_id: {
 					[Op.regexp]: `(^|,)${product.id}(,|$)`,
 			  	},}});
+			const couponsAvailableData = await couponModel.findOne({
+				where: {
+					isDeleted:false,
+					status:true,
+					business_id : product.business_id
+				}
+			});
 			var is_coupon_available = false;
 
-			if (couponData) {
+			if (couponData || couponsAvailableData) {
 				const productIds = couponData.product_id; // Retrieve the hobbies column value from the data object
 				const ids = productIds?.split(',')?.includes(`${product.id}`);
-				if(ids){
+				if(ids || couponsAvailableData){
 					is_coupon_available = true;
 				}
 			} 

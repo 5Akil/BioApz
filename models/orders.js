@@ -10,6 +10,7 @@ module.exports = (sequelize, DataTypes) => {
     business_id : DataTypes.INTEGER,
     order_no : DataTypes.STRING,
     amount : DataTypes.DOUBLE(11, 2),
+    payment_id : DataTypes.STRING,
     payment_status : DataTypes.STRING,
     payment_response : DataTypes.TEXT,
     delivery_status : DataTypes.INTEGER, 
@@ -20,6 +21,18 @@ module.exports = (sequelize, DataTypes) => {
     },
   }, {
     // timestamps: false
+  });
+  Orders.beforeCreate(async (order, options) => {
+    function generateCouponCode(length) {
+      const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      let orderNo = '';
+      for (let i = 0; i < length; i++) {
+        const randomIndex = Math.floor(Math.random() * characters.length);
+        orderNo += characters.charAt(randomIndex);
+      }
+      return orderNo;
+    }
+    order.order_no = generateCouponCode(10);
   });
   Orders.associate = function(models) {
     // associations can be defined here

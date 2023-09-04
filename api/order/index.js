@@ -13,4 +13,6 @@ router.post('/business/order_history', verifyToken, controller.BusinessOrderHist
 router.get('/business/order_details/:id', verifyToken, controller.BusinessOrderDetail)
 router.post('/user/transaction', authorize([2]), controller.transactionDetails);
 router.post('/business/transaction', authorize([3]), controller.businessTransactionDetails);
+router.post('/create', authorize([2]), controller.orderCreate);
+router.post('/update-status', authorize([3]), controller.updateOrderStatus);
 module.exports = router;
