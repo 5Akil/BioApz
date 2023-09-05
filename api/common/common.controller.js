@@ -252,7 +252,7 @@ exports.ChatNotification = async (req, res) => {
 	// 	})
 
 	// })
-
+	return res.send(setRes(resCode.OK, true, null, "Listing notification."))
 }
 
 exports.FilterProducts = (req, res) => {
