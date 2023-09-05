@@ -8,6 +8,7 @@ var models = require('../../models')
 const Sequelize = require('sequelize');
 var fs = require('fs')
 var awsConfig = require('../../config/aws_S3_config');
+const notification = require('../../push_notification');
 
 exports.ProductTableSearch = function (req, res) {
 
@@ -134,44 +135,66 @@ exports.RecommendedBusinessSearch = (req, res) => {
 
 }
 
-
-exports.ChatNotification = (req, res) => {
+exports.ChatNotification = async (req, res) => {
+	const admin = require("firebase-admin");
 	var Queue = require('better-queue');
+
+	var serviceAccount = require("../../bioapz-372208-4929769f6e43.json");
+
+	!admin.apps.length ? admin.initializeApp({
+		credential: admin.credential.cert(serviceAccount),
+		//databaseURL: "https://bioapz-106c0-default-rtdb.firebaseio.com"
+		databaseURL: "https://bioapz-372208-default-rtdb.firebaseio.com"
+	}).firestore()
+		: admin.app().firestore();
 
 	var db = admin.database()
 
 	var userModel = models.user;
 	var businessModel = models.business;
+	const deviceModel = models.device_tokens;
 
 	var NotificationData = {};
 
 	var NotificationRef = db.ref(`notifications`)
 
-	var NotificationQueue = new Queue(function (task, cb) {
+	var NotificationQueue = new Queue(async(task, cb) => {
 		if (task.role == 'customer'){
 			userModel.findOne({
 				where: {
-					id: task.id,
+					id: task?.id,
 					is_deleted: false
 				}
 			}).then(user => {
 				if (user != null){
-					NotificationData.device_token = user.device_token
-					NotificationData.message = task.text
-					notification.SendNotification(NotificationData)
+					deviceModel.findAll({ where: { status: 1, user_id: task?.id } },{ attributes: ["device_token"] }).then(tokens => {
+					const deviceTokensList = tokens.map((device) => device.device_token);
+					const uniqueDeviceTokens = Array.from(new Set(deviceTokensList))
+						if (uniqueDeviceTokens?.length > 0) {
+							NotificationData.device_token = uniqueDeviceTokens
+							NotificationData.message = task?.text
+							notification.SendNotification(NotificationData)
+						}
+					});
 				}
 			})
 		}else{
 			businessModel.findOne({
 				where: {
-					id: task.id,
+					id: task?.id,
 					is_deleted: false
 				}
 			}).then(business => {
 				if (business != null){
-					NotificationData.device_token = business.device_token
-					NotificationData.message = task.text
-					notification.SendNotification(NotificationData)
+				deviceModel.findAll({ where: { status: 1, business_id: task?.id } },{ attributes: ["device_token"] }).then(tokens => {
+					const deviceTokensList = tokens.map((device) => device.device_token);
+					const uniqueDeviceTokens = Array.from(new Set(deviceTokensList))
+						if (uniqueDeviceTokens?.length > 0) {
+							NotificationData.device_token = uniqueDeviceTokens
+							NotificationData.message = task?.text
+							notification.SendNotification(NotificationData)
+						}
+					});
 				}
 			})
 		}
@@ -185,8 +208,8 @@ exports.ChatNotification = (req, res) => {
 
 	NotificationRef.on("child_added", function(snapshot) {
 
-		snapshotVal = JSON.parse(JSON.stringify(snapshot.val()))
-		snapshotKey = JSON.parse(JSON.stringify(snapshot.key))
+		let snapshotVal = JSON.parse(JSON.stringify(snapshot.val()))
+		let snapshotKey = JSON.parse(JSON.stringify(snapshot.key))
 		NotificationQueue.push(snapshotVal);
 		RemoveDataQueue.push(snapshotKey)
 
