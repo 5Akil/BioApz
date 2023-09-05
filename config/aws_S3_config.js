@@ -12,7 +12,7 @@ AWS.config.update({
 const s3 = new AWS.S3();
 const Bucket = 'bioapz';
 
-function getSignUrl (key) {
+function getSignUrl (key, expiryDay=0) {
   return new Promise((resolve, reject) => {
     if(key != null && !_.isEmpty(key)){
       const params = {
@@ -26,11 +26,14 @@ function getSignUrl (key) {
             
             resolve(commonConfig.default_image);
           }  else {
-            const urlParams = {
+            let urlParams = {
               Bucket: Bucket,
               Key: key,
               Expires: 3600
             };
+            if (expiryDay && +(expiryDay) > 0) {
+              urlParams.Expires = 3600 * 24 * expiryDay;
+            }
             const signedUrl = s3.getSignedUrl('getObject', urlParams);
             resolve(signedUrl);
           }

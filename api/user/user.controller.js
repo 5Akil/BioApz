@@ -2865,7 +2865,7 @@ exports.userGiftCardPurchase = async (req, res) => {
 			const giftCardDetails = await giftCardModel.findOne({ where: { id: data.gift_card_id, status: true, isDeleted: false } });
 			if (giftCardDetails) {
 				let giftCardImage = '';
-				const img = await awsConfig.getSignUrl(giftCardDetails.image).then(function(res) {
+				const img = await awsConfig.getSignUrl(giftCardDetails.image, 180).then(function(res) {
 					giftCardImage = res;
 				})
 				const giftCardObj = {
@@ -3034,10 +3034,10 @@ exports.userGiftCardShare = async (req, res) => {
 			const giftCardDetails = await giftCardModel.findOne({ where: { id: data.gift_card_id } });
 			let giftCardImage = '';
 			let giftCardTemplateUrl = '';
-			const img = await awsConfig.getSignUrl(giftCardDetails.image).then(function(res) {
+			const img = await awsConfig.getSignUrl(giftCardDetails.image, 180).then(function(res) {
 				giftCardImage = res;
 			})
-			const imgGiftTemplate = await awsConfig.getSignUrl(giftCardTemplate.template_image).then(function(res) {
+			const imgGiftTemplate = await awsConfig.getSignUrl(giftCardTemplate.template_image, 180).then(function(res) {
 				giftCardTemplateUrl = res;
 			})
 			const businessDetails = await bussinessModel.findOne({ where : { id: giftCardDetails.business_id } });

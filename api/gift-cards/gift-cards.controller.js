@@ -1006,14 +1006,14 @@ exports.commonRewardsList =async(req,res) => {
 				}
 			}
 
-			const userGiftCardQuery = `SELECT user_giftcards.gift_card_id as "id", user_giftcards.createdAt, "gift_cards" as type FROM user_giftcards JOIN gift_cards ON user_giftcards.gift_card_id=gift_cards.id WHERE ((user_id=${user?.id}) OR (to_email = '${user?.user}')) AND user_giftcards.is_deleted=false AND user_giftcards.status=true ${textSearch('gift_cards')}`;
+			const userGiftCardQuery = `SELECT user_giftcards.gift_card_id as "id", user_giftcards.createdAt, "gift_cards" as type, user_giftcards.id as "user_giftcard_id"  FROM user_giftcards JOIN gift_cards ON user_giftcards.gift_card_id=gift_cards.id WHERE ((user_id=${user?.id} and to_email is null) OR (to_email = '${user?.user}')) AND user_giftcards.is_deleted=false AND user_giftcards.status=true ${textSearch('gift_cards')}`;
 			// const userRewardQuery = `SELECT user_earned_rewards.reference_reward_id, createdAt, user_earned_rewards.reference_reward_type as "type"  FROM user_earned_rewards WHERE user_id=${user?.id}`;
 			const productFilter = (tableName) => `JOIN ${tableName} ON user_earned_rewards.reference_reward_id=${tableName}.id ${filteCondition != '' ? `JOIN products ON FIND_IN_SET(products.id, ${tableName}.product_id) > 0` : ''} WHERE ${filteCondition} ${filteCondition !== '' ? 'AND' : ''} user_id=${user?.id} AND reference_reward_type='${tableName}' ${textSearch(tableName)} ${ filteCondition !== '' ? 'GROUP BY user_earned_rewards.id' : ''}`
 
-			const userCashbackRewardQuery = `SELECT user_earned_rewards.reference_reward_id as "id", user_earned_rewards.createdAt, user_earned_rewards.reference_reward_type as "type"  FROM user_earned_rewards ${productFilter('cashbacks')}`;
-			const userDiscountRewardQuery = `SELECT user_earned_rewards.reference_reward_id as "id", user_earned_rewards.createdAt, user_earned_rewards.reference_reward_type as "type"  FROM user_earned_rewards ${productFilter('discounts')}`;
-			const userCouponesRewardQuery = `SELECT user_earned_rewards.reference_reward_id as "id", user_earned_rewards.createdAt, user_earned_rewards.reference_reward_type as "type"  FROM user_earned_rewards ${productFilter('coupones')}`;
-			const userLoyaltyRewardQuery = `SELECT user_earned_rewards.reference_reward_id as "id", user_earned_rewards.createdAt, user_earned_rewards.reference_reward_type as "type"  FROM user_earned_rewards ${productFilter('loyalty_points')}`;
+			const userCashbackRewardQuery = `SELECT user_earned_rewards.reference_reward_id as "id", user_earned_rewards.createdAt, user_earned_rewards.reference_reward_type as "type", null as "user_giftcard_id"  FROM user_earned_rewards ${productFilter('cashbacks')}`;
+			const userDiscountRewardQuery = `SELECT user_earned_rewards.reference_reward_id as "id", user_earned_rewards.createdAt, user_earned_rewards.reference_reward_type as "type", null as "user_giftcard_id"  FROM user_earned_rewards ${productFilter('discounts')}`;
+			const userCouponesRewardQuery = `SELECT user_earned_rewards.reference_reward_id as "id", user_earned_rewards.createdAt, user_earned_rewards.reference_reward_type as "type", null as "user_giftcard_id"  FROM user_earned_rewards ${productFilter('coupones')}`;
+			const userLoyaltyRewardQuery = `SELECT user_earned_rewards.reference_reward_id as "id", user_earned_rewards.createdAt, user_earned_rewards.reference_reward_type as "type", null as "user_giftcard_id"  FROM user_earned_rewards ${productFilter('loyalty_points')}`;
 			
 			let userUnionQuery = '';
 			// const userUnionQuery = `${userGiftCardQuery} UNION ${userRewardQuery}`;
@@ -1048,7 +1048,9 @@ exports.commonRewardsList =async(req,res) => {
 				...rewards.map((rew) => {
 					if (rew.type == 'gift_cards') {
 						return new Promise(async (resolve) => {
-							let gCard = await giftCardModel.findOne({
+						let gCard = {};
+						if (user.role_id == 3) {
+							gCard = await giftCardModel.findOne({
 								include: [
 									{
 										model: userGiftCardList,
@@ -1068,6 +1070,40 @@ exports.commonRewardsList =async(req,res) => {
 									]
 								},
 							});
+						} else {
+							const userGiftCard = await userGiftCardList.findOne({
+								where: {
+									id: rew.user_giftcard_id,
+								},
+								include: [
+									{
+										model: giftCardModel
+									}
+								],
+								raw: true,
+								nest: true,
+							})
+							const userEmail = userGiftCard?.to_email;
+							const userDetails =  await userModel.findOne({
+								where: {
+									email: userEmail,
+									is_deleted: false,
+									is_active: true
+								}
+							});
+							if (userGiftCard.payment_status == 1) {
+								const purchase_for = userGiftCard?.to_email ?  (userDetails?.email == userGiftCard?.to_email ? 'Self' : (userDetails?.username ? userDetails?.username : userGiftCard?.to_email) ) : 'Self';
+								gCard['purchase_for'] = purchase_for;
+								gCard['purchase_date'] = userGiftCard?.purchase_date || "";
+								gCard['redeemed_amount'] = userGiftCard?.amount || "";
+								if (userGiftCard?.from) {
+									gCard['from'] = userGiftCard?.from || "";
+									gCard['note'] = userGiftCard?.note || "";
+								}
+							}
+							console.log('userGiftCard', rew.id, rew.user_giftcard_id);
+							gCard = {...gCard ,...userGiftCard?.gift_card, id: rew.user_giftcard_id};
+						}
 						if (gCard) {
 						gCard = JSON.parse(JSON.stringify(gCard));
 							if(gCard?.image && gCard?.image != null){
@@ -1083,47 +1119,31 @@ exports.commonRewardsList =async(req,res) => {
 							}else{
 								gCard["is_expired"] = false;
 							}
-							gCard.totalPurchase = gCard.user_giftcards.length  || 0; 
-							delete gCard.user_giftcards;
-							if (user.role_id == 2) {
-								const userGiftCard = await userGiftCardList.findOne({
-									where: {
-										gift_card_id: rew.id,
-										[Op.or] : [
-											{
-												[Op.and] : [
-													{ user_id: user.id },
-													{ to_email: null }
-												]
-											},
-											{
-												to_email: user?.user
-											}
-										],
-										is_deleted: false,
-										status: true,
-									}
-								})
-								//console.log('userGiftCard', rew.id, userGiftCard.to_email);
-								const userEmail = userGiftCard?.to_email;
-								const userDetails =  await userModel.findOne({ 
-									where: {
-										email: userEmail,
-										is_deleted: false,
-										is_active: true
-									}
-								 });
-								 if (userGiftCard.payment_status == 1) {
-									 const purchase_for = userGiftCard?.to_email ?  (userDetails?.email == userGiftCard?.to_email ? 'Self' : (userDetails?.username ? userDetails?.username : userGiftCard?.to_email) ) : 'Self';
-									 gCard['purchase_for'] = purchase_for;
-									 gCard['purchase_date'] = userGiftCard?.purchase_date || "";
-									 gCard['redeemed_amount'] = userGiftCard?.amount || "";
-									 if (userGiftCard?.from) {
-										 gCard['from'] = userGiftCard?.from || "";
-										 gCard['note'] = userGiftCard?.note || "";
-									 }
-								 }
+							if (user.role_id == 3 ) {
+								gCard.totalPurchase = gCard.user_giftcards.length  || 0; 
 							}
+							delete gCard.user_giftcards;
+							// if (user.role_id == 2) {
+							// 	const userGiftCard = await userGiftCardList.findOne({
+							// 		where: {
+							// 			gift_card_id: rew.id,
+							// 			[Op.or] : [
+							// 				{
+							// 					[Op.and] : [
+							// 						{ user_id: user.id },
+							// 						{ to_email: null }
+							// 					]
+							// 				},
+							// 				{
+							// 					to_email: user?.user
+							// 				}
+							// 			],
+							// 			is_deleted: false,
+							// 			status: true,
+							// 		}
+							// 	})
+							// 	//console.log('userGiftCard', rew.id, userGiftCard.to_email);
+							// }
 							let giftcardLoyalty = await loyaltyPointModel.findOne({
 								where:{
 									gift_card_id: {
