@@ -2338,14 +2338,15 @@ exports.businessEventList = async (req, res) => {
 		const userEventsModel = models.user_events;
 		const userModel = models.user;
 		const businesModel = models.business
-		const userEmail = req.userEmail;
+		// const userEmail = req.userEmail;
 		var currentDate = moment().format("YYYY-MM-DD");
 		var Op = models.Op;
 		var requiredFields = _.reject(["page", "page_size"], (o) => {
 			return _.has(data, o);
 		});
-		const userDetails = await userModel.findOne({ where: { email: userEmail, is_deleted: false, is_active: true } });
-		const userId = userDetails.id ? userDetails.id : '';
+		// const userDetails = await userModel.findOne({ where: { email: userEmail, is_deleted: false, is_active: true } });
+		const user = req?.user || {};
+		const userId = user?.id ? user.id : '';
 		if (requiredFields == "") {
 			if (data.page < 0 || data.page == 0) {
 				return res.send(
@@ -2825,7 +2826,6 @@ exports.userGiftCardPurchase = async (req, res) => {
 		const userModel = models.user;
 		const giftCardModel = models.gift_cards;
 		const userGiftCardModel = models.user_giftcards;
-		const userEmail = req.userEmail;
 		const user = req?.user;
 		const rewardHistoryModel = models.reward_history;
 		const notificationModel = models.notifications ;
@@ -2995,8 +2995,9 @@ exports.userGiftCardShare = async (req, res) => {
 		const giftCardModel = models.gift_cards;
 		const userGiftCardModel = models.user_giftcards;
 		const giftCardTemplateModel = models.gift_card_template;
-		const userEmail = req.userEmail;
+		// const userEmail = req.userEmail;
 		const user = req?.user;
+		const userEmail = user?.user;
 		const notificationModel = models.notifications;
 		const notificationReceiverModel = models.notification_receivers;
 		const deviceModel = models.device_tokens;
@@ -3248,7 +3249,9 @@ exports.userGiftCardShare = async (req, res) => {
 exports.userGiftCardList = async (req, res) => {
 	try {
 		const data = req.body;
-		const userEmail = req.userEmail;
+		const user = req?.user;
+		// const userEmail = req.userEmail;
+		const userEmail = user?.user;
 		const userModel = models.user;
 		const giftCardsModel = models.gift_cards;
 		const userGiftCardsModel = models.user_giftcards;

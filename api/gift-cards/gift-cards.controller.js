@@ -864,7 +864,8 @@ exports.commonRewardsList =async(req,res) => {
 		
 		const currentDate = (moment().format('YYYY-MM-DD'))
 		const requiredFields = _.reject(['page'], (o) => { return _.has(data, o)  })
-		const businessEmail = req.userEmail;
+		// const businessEmail = req.userEmail;
+		const businessEmail = user?.user;
 		const businessDetails = await businessModel.findOne({ where: { email: businessEmail, is_active: true, is_deleted: false } });
 		const businessId = businessDetails?.id || '';
 

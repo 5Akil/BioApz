@@ -29,7 +29,8 @@ exports.OrderHistory = async(req,res) => {
 	const categoryModel = models.product_categorys
 	const userModel = models.user;
 	var Op = models.Op
-	const userEmail = req.userEmail;
+	const reqUser = req?.user || {};
+	const userEmail = reqUser?.user;
 
 	var requiredFields = _.reject(['page','page_size','order_type'], (o) => { return _.has(data, o)  })
 	const user = await userModel.findOne({ where: {email : userEmail, is_deleted: false} });
@@ -120,8 +121,10 @@ exports.OrderDetail = async (req,res) => {
 	var categoryModel = models.product_categorys
 	const businessModel = models.business
 	const userModel = models.user;
-	const userEmail = req.userEmail;
-
+	const reqUser = req?.user || {};
+	// const userEmail = req.userEmail;
+	const userEmail = reqUser?.user;
+	
 	const user = await  userModel.findOne({  where: { email : userEmail, is_deleted: false } });
 	var Op = models.Op
 
@@ -224,7 +227,8 @@ exports.BusinessOrderHistory = async(req,res) => {
 	const orderDetailsModel = models.order_details;
 	const productModel = models.products;
 	var Op = models.Op
-	const userEmail = req.userEmail;
+	const user = req?.user;
+	const userEmail = user?.user;
 
 	var requiredFields = _.reject(['page','page_size','order_type'], (o) => { return _.has(data, o)  })
 	if(requiredFields == ""){
@@ -314,7 +318,9 @@ exports.BusinessOrderDetail = async (req,res) => {
 	var userModel = models.user
 	var Op = models.Op
 	const businessModel = models.business
-	const userEmail = req.userEmail;
+	const user = req?.user || {};
+	// const userEmail = req.userEmail;
+	const userEmail = user?.user;
 
 	const business = await businessModel.findOne({ where: { email : userEmail, is_deleted: false } });
 	if (business) {
