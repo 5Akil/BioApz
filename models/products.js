@@ -13,7 +13,6 @@ module.exports = (sequelize, DataTypes) => {
     sub_category_id: DataTypes.INTEGER,
     name: DataTypes.STRING,
     price: DataTypes.DOUBLE,
-    description: DataTypes.TEXT,
     product_item: {
       type: DataTypes.STRING,
       get() {
@@ -26,6 +25,10 @@ module.exports = (sequelize, DataTypes) => {
         return this.getDataValue('image') ? this.getDataValue('image').split(';') : ''
       },
     },
+    product_code: DataTypes.STRING,
+    cost_price: DataTypes.DOUBLE,
+    supplier: DataTypes.STRING,
+    description: DataTypes.TEXT,
     is_deleted: {
       type: DataTypes.BOOLEAN,
       defaultValue: false

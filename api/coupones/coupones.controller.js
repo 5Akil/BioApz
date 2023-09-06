@@ -32,7 +32,7 @@ exports.create = async(req,res) =>{
 		var productModel = models.products
 
 		let arrayFields = ['business_id','title','coupon_type','coupon_value','validity_for','expire_at','description'];
-		const result =  data.coupon_type == 0 ? (arrayFields.push('product_category_id','product_id')) : (arrayFields.push('value_type'));
+		const result =  data.coupon_type == 0 ? (arrayFields.push('product_id')) : (arrayFields.push('value_type'));
 		var valueType = (!(_.isEmpty(data.value_type)) && (data.value_type == 0)) ? ((data.coupon_value >= Math.min(1,100)) && (data.coupon_value <= Math.max(1,100))) : null
 
 		var requiredFields = _.reject(arrayFields, (o) => { return _.has(data, o)  })
@@ -97,18 +97,18 @@ exports.create = async(req,res) =>{
 						where: { id: data.business_id, is_deleted: false, is_active: true }
 					}).then(async business => {
 						if (_.isEmpty(business)) {
-							res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
+							return res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
 						} else {
 							await couponeModel.findOne({
 								where: { isDeleted: false, status: true, title: { [Op.eq]: couponTitle } }
 							}).then(async couponSame => {
 								if (couponSame) {
-									res.send(setRes(resCode.BadRequest, false, "Coupon title already taken.!", null))
+									return res.send(setRes(resCode.BadRequest, false, "Coupon title already taken.!", null))
 								} else {
 									if (data?.coupon_type == 0) {
 										data.value_type = true;
 									}
-									couponeModel.create(data
+									await couponeModel.create(data
 										// 	{
 										// 	business_id:!(_.isEmpty(data.business_id) && data.business_id == null) ? data.business_id : null,
 										// 	title:!(_.isEmpty(data.title) && data.title == null) ? data.title : null,
@@ -123,9 +123,9 @@ exports.create = async(req,res) =>{
 										// }
 									).then(async couponeData => {
 										if (couponeData) {
-											res.send(setRes(resCode.OK, true, "Coupon added successfully", couponeData))
+											return res.send(setRes(resCode.OK, true, "Coupon added successfully", couponeData))
 										} else {
-											res.send(setRes(resCode.BadRequest, false, "Fail to create coupon.", null))
+											return res.send(setRes(resCode.BadRequest, false, "Fail to create coupon.", null))
 										}
 									})
 								}
@@ -137,10 +137,10 @@ exports.create = async(req,res) =>{
 			}
 
 		} else {
-			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
+			return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
 		}
 	}catch(error){
-		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
+		return res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
 	}
 }
 // Create Reward coupones END

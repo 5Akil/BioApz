@@ -83,18 +83,22 @@ exports.wishlistData = async (req, res) => {
 	var userModel = models.user
 	var Op = models.Op;
 	var validation = true;
+	var authUser = req.user;
 
 	var requiredFields = _.reject(['page','page_size'], (o) => { return _.has(query, o)  })
 
 	if (requiredFields == ''){
-
+		
 		if(query.page < 0 || query.page === 0) {
 			res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1",null))
 		}
 		var skip = query.page_size * (query.page - 1)
 		var limit = parseInt(query.page_size)
 
-		var userData = await userModel.findOne({where:{id:data.id,
+		var userData = await userModel.findOne({where:{id:authUser.id,
+			role_id:{
+				[Op.ne]:3
+			},
 			is_deleted:false}});
 		if(!userData){
 			validation = false;
@@ -137,7 +141,7 @@ exports.wishlistData = async (req, res) => {
 			condition.limit = limit
 		}
 		condition.where = {
-			user_id: data.id,
+			user_id: authUser.id,
 			is_deleted: false
 		}
 
@@ -159,6 +163,7 @@ exports.wishlistData = async (req, res) => {
 						if(data.product != null){
 							await shoppingCartModel.findAll({
 								where: {
+									user_id:authUser.id,
 									product_id: data.product.id,
 									is_deleted: false
 								},}).then(async addcart => {

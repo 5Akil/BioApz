@@ -948,17 +948,12 @@ exports.GetProductById = async (req, res) => {
 			const couponData = await couponModel.findOne({where:{isDeleted:false,status:true,
 				product_id: {
 					[Op.regexp]: `(^|,)${product.id}(,|$)`,
-			  	},}});
-			const couponsAvailableData = await couponModel.findOne({
-				where: {
-					isDeleted:false,
-					status:true,
-					business_id : product.business_id
-				}
-			});
+			  	},
+				business_id : product.business_id
+			}});
 			var is_coupon_available = false;
 
-			if (couponData || couponsAvailableData) {
+			if (!_.isEmpty(couponData)) {
 				const productIds = couponData.product_id; // Retrieve the hobbies column value from the data object
 				const ids = productIds?.split(',')?.includes(`${product.id}`);
 				if(ids || couponsAvailableData){
@@ -1044,6 +1039,7 @@ exports.GetProductById = async (req, res) => {
 			res.send(setRes(resCode.ResourceNotFound, false, "Product not found.", null))
 		}
 	}).catch(GetProductError => {
+		console.log(GetProductError);
 		res.send(setRes(resCode.InternalServer, false, "Internal server error.", null))
 	})
 }
@@ -1567,7 +1563,7 @@ exports.ProductTypeList = async(req, res) => {
 	var categoryModel = models.product_categorys
 	var Op = models.Op;
 
-	var requiredFields = _.reject(['page','page_size','business_id'], (o) => { return _.has(data, o) })
+	var requiredFields = _.reject(['page','page_size'], (o) => { return _.has(data, o) })
 	if(requiredFields == ""){
 
 		if(data.page < 0 || data.page === 0) {
@@ -1586,14 +1582,25 @@ exports.ProductTypeList = async(req, res) => {
           		attributes: ['id', 'name'],
 			}
 		};
-		condition.where = {business_id:data.business_id,parent_id:{
+		condition.where = {
+			parent_id:{
 				[Op.ne]: 0	
 			},is_deleted:false}
 			condition.attributes =  { exclude: ['is_deleted', 'is_enable','createdAt','updatedAt'] }
 
-		if(data.category_id) {
-			condition.where = { ...condition.where, business_id:data.business_id,parent_id:data.category_id,is_deleted:false}
+		if(data.business_id) {
+			condition.where = { ...condition.where, ...{business_id:data.business_id,type:'business'}}
 		}
+
+		if(data.category_id) {
+			condition.where = { ...condition.where, ...{parent_id:data.category_id}}
+		}
+
+		if(data.type) {
+			const type = (data.type == 0) ? 'admin' : 'business';
+			condition.where = { ...condition.where, ...{type:type}}
+		}
+
 		if(data.search && data.search != null){
 			condition.where = { ...condition.where, [Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],}
 		}

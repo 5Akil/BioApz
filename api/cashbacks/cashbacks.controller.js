@@ -37,7 +37,7 @@ exports.cashbackCreate = async (req, res) => {
 		if (requiredFields == "") {
 			const cashbackTitle = data?.title?.trim() || data?.title;
 			if (!_.isEmpty(data.cashback_on) && data.cashback_on == 0) {
-				const checkForProductFields = _.reject(['product_category_id', 'product_id'], (o) => { return _.has(data, o) });
+				const checkForProductFields = _.reject(['product_id'], (o) => { return _.has(data, o) });
 				if (checkForProductFields != "") {
 					return res.send(setRes(resCode.BadRequest,false,checkForProductFields.toString() + " are required",null));
 				}
@@ -52,46 +52,47 @@ exports.cashbackCreate = async (req, res) => {
 				return res.send(setRes(resCode.BadRequest, false, "You can't select past and current date.!", null))
 			}
 			if (validation) {
-				businessModel.findOne({
+				await businessModel.findOne({
 					where: { id: data.business_id, is_deleted: false, is_active: true }
 				}).then(async business => {
 					if (_.isEmpty(business)) {
 						res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
 					} else {
 						if (!_.isEmpty(data.cashback_on) && data.cashback_on == 0) {
-							categoryModel.findOne({
-								where: {
-									id: data.product_category_id, is_deleted: false, is_enable: true, business_id: data.business_id, parent_id: {
-										[Op.eq]: 0
+							if(data.product_category_id && !_.isEmpty(data.product_category_id)){
+								const productCategory = await categoryModel.findOne({
+									where: {
+										id: data.product_category_id, is_deleted: false, is_enable: true, business_id: data.business_id, parent_id: {
+											[Op.eq]: 0
+										}
 									}
+								});
+
+								if(_.isEmpty(productCategory)){
+									return res.send(setRes(resCode.ResourceNotFound, false, "Product Category not found.", null))
 								}
-							}).then(async productCategory => {
-								if (_.isEmpty(productCategory)) {
-									res.send(setRes(resCode.ResourceNotFound, false, "Product Category not found.", null))
+							}
+							var products = !_.isEmpty(data.product_id) ? data.product_id : '';
+							var proArray = products.split(",");
+							await productModel.findAll({
+								where: { id: { [Op.in]: proArray }, is_deleted: false, business_id: data.business_id }
+							}).then(async products => {
+								if (_.isEmpty(products) || (products.length != proArray.length)) {
+									return res.send(setRes(resCode.ResourceNotFound, false, "Product not found.", null))
 								} else {
-									var products = !_.isEmpty(data.product_id) ? data.product_id : '';
-									var proArray = products.split(",");
-									await productModel.findAll({
-										where: { id: { [Op.in]: proArray }, is_deleted: false, business_id: data.business_id, category_id: productCategory.id }
-									}).then(async products => {
-										if (_.isEmpty(products) || (products.length != proArray.length)) {
-											res.send(setRes(resCode.ResourceNotFound, false, "Product not found.", null))
+									await cashbackModel.findOne({
+										where: {
+											isDeleted: false, status: true, title: { [Op.eq]: cashbackTitle }
+										}
+									}).then(async cashbackData => {
+										if (cashbackData) {
+											return res.send(setRes(resCode.BadRequest, false, "Cashback title already taken.!", null))
 										} else {
-											await cashbackModel.findOne({
-												where: {
-													isDeleted: false, status: true, title: { [Op.eq]: cashbackTitle }
-												}
-											}).then(async cashbackData => {
-												if (cashbackData) {
-													res.send(setRes(resCode.BadRequest, false, "Cashback title already taken.!", null))
+											await cashbackModel.create(data).then(async responseData => {
+												if (responseData) {
+													return res.send(setRes(resCode.OK, true, "Cashback added successfully", responseData))
 												} else {
-													cashbackModel.create(data).then(async responseData => {
-														if (responseData) {
-															res.send(setRes(resCode.OK, true, "Cashback added successfully", responseData))
-														} else {
-															res.send(setRes(resCode.InternalServer, false, "Internal server error", null))
-														}
-													})
+													return res.send(setRes(resCode.InternalServer, false, "Internal server error", null))
 												}
 											})
 										}
