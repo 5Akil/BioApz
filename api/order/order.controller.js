@@ -1101,7 +1101,7 @@ exports.orderCreate = async (req, res) => {
 				device_token: userUniqueDeviceTokens,
 				title: NOTIFICATION_TITLES.PLACE_ORDER_USER(),
 				message: NOTIFICATION_MESSAGE.PLACE_ORDER_USER(createdOrder?.order_no),
-				content: { notification_type:NOTIFICATION_TYPES.PLACE_ORDER, title: NOTIFICATION_TITLES.PLACE_ORDER_USER(),message: NOTIFICATION_MESSAGE.PLACE_ORDER_USER(createdOrder?.order_no), order_id: createdOrder.id, user_id:user.id, business_id: businessDetails.id }
+				content: { notification_type:NOTIFICATION_TYPES.PLACE_ORDER , notification_id: notificationUser?.id, title: NOTIFICATION_TITLES.PLACE_ORDER_USER(),message: NOTIFICATION_MESSAGE.PLACE_ORDER_USER(createdOrder?.order_no), order_id: createdOrder.id, user_id:user.id, business_id: businessDetails.id }
 			};
 			fcmNotification.SendNotification(userNotificationPayload);
 
@@ -1131,7 +1131,7 @@ exports.orderCreate = async (req, res) => {
 				device_token: uniqueDeviceTokens,
 				title: NOTIFICATION_TITLES.PLACE_ORDER_BUSINESS(),
 				message: NOTIFICATION_MESSAGE.PLACE_ORDER_BUSINESS(createdOrder?.order_no),
-				content: { notification_type:NOTIFICATION_TYPES.PLACE_ORDER, title: NOTIFICATION_TITLES.PLACE_ORDER_BUSINESS(),message: NOTIFICATION_MESSAGE.PLACE_ORDER_BUSINESS(createdOrder?.order_no), order_id: createdOrder.id, user_id:user.id, business_id: businessDetails.id }
+				content: { notification_type:NOTIFICATION_TYPES.PLACE_ORDER, notification_id: notificationBusiness?.id, title: NOTIFICATION_TITLES.PLACE_ORDER_BUSINESS(),message: NOTIFICATION_MESSAGE.PLACE_ORDER_BUSINESS(createdOrder?.order_no), order_id: createdOrder.id, user_id:user.id, business_id: businessDetails.id }
 			};
 			fcmNotification.SendNotification(businessNotificationPayload);
 
@@ -1163,7 +1163,7 @@ exports.orderCreate = async (req, res) => {
 					device_token: uniqueDeviceTokens,
 					title: NOTIFICATION_TITLES.GET_DISCOUNT_ORDER(),
 					message: NOTIFICATION_MESSAGE.GET_DISCOUNT_ORDER(createdOrder?.order_no),
-					content: { notification_type:NOTIFICATION_TYPES.DISCOUNT_USE, title: NOTIFICATION_TITLES.GET_DISCOUNT_ORDER(),message: NOTIFICATION_MESSAGE.GET_DISCOUNT_ORDER(createdOrder?.order_no), discount_id: data?.applied_discount?.discount_id, business_id: businessDetails.id }
+					content: { notification_type:NOTIFICATION_TYPES.DISCOUNT_USE, notification_id: notificationDiscount?.id, title: NOTIFICATION_TITLES.GET_DISCOUNT_ORDER(),message: NOTIFICATION_MESSAGE.GET_DISCOUNT_ORDER(createdOrder?.order_no), discount_id: data?.applied_discount?.discount_id, business_id: businessDetails.id }
 				};
 				fcmNotification.SendNotification(discountNotificationPayload);
 			}
@@ -1196,7 +1196,7 @@ exports.orderCreate = async (req, res) => {
 					device_token: userUniqueDeviceTokens,
 					title: NOTIFICATION_TITLES.GET_LOYALTY_POINT_USER(),
 					message: NOTIFICATION_MESSAGE.GET_LOYALTY_POINT_USER(createdOrder?.order_no),
-					content: { notification_type:NOTIFICATION_TYPES.LOYALTY_USE, title: NOTIFICATION_TITLES.GET_LOYALTY_POINT_USER(),message: NOTIFICATION_MESSAGE.GET_LOYALTY_POINT_USER(createdOrder?.order_no), loyalty_id: data?.applied_loyalty_points?.loyalty_id, business_id: businessDetails.id }
+					content: { notification_type:NOTIFICATION_TYPES.LOYALTY_USE, notification_id: notificationLoyaltyUser?.id, title: NOTIFICATION_TITLES.GET_LOYALTY_POINT_USER(),message: NOTIFICATION_MESSAGE.GET_LOYALTY_POINT_USER(createdOrder?.order_no), loyalty_id: data?.applied_loyalty_points?.loyalty_id, business_id: businessDetails.id }
 				};
 				fcmNotification.SendNotification(userLoyaltyNotificationPayload);
 
@@ -1226,7 +1226,7 @@ exports.orderCreate = async (req, res) => {
 					device_token: uniqueDeviceTokens,
 					title: NOTIFICATION_TITLES.GET_LOYALTY_POINT_BUSINESS(),
 					message: NOTIFICATION_MESSAGE.GET_LOYALTY_POINT_BUSINESS(createdOrder?.order_no),
-					content: { notification_type:NOTIFICATION_TYPES.LOYALTY_USE, title: NOTIFICATION_TITLES.GET_LOYALTY_POINT_BUSINESS(),message: NOTIFICATION_MESSAGE.GET_LOYALTY_POINT_BUSINESS(createdOrder?.order_no), loyalty_id: data?.applied_loyalty_points?.loyalty_id, business_id: businessDetails.id }
+					content: { notification_type:NOTIFICATION_TYPES.LOYALTY_USE, notification_id: notificationLoyaltyBusiness?.id, title: NOTIFICATION_TITLES.GET_LOYALTY_POINT_BUSINESS(),message: NOTIFICATION_MESSAGE.GET_LOYALTY_POINT_BUSINESS(createdOrder?.order_no), loyalty_id: data?.applied_loyalty_points?.loyalty_id, business_id: businessDetails.id }
 				};
 				fcmNotification.SendNotification(discountNotificationPayload);
 			}
@@ -1328,7 +1328,7 @@ exports.updateOrderStatus = async (req, res) => {
 					device_token: userUniqueDeviceTokens,
 					title: NOTIFICATION_TITLES.ORDER_DELIVERED_USER(),
 					message: NOTIFICATION_MESSAGE.ORDER_DELIVERED_USER(orderDetails?.order_no),
-					content: { notification_type:NOTIFICATION_TYPES.ORDER_DELIVERED, title: NOTIFICATION_TITLES.ORDER_DELIVERED_USER(),message: NOTIFICATION_MESSAGE.ORDER_DELIVERED_USER(orderDetails?.order_no), order_id: orderDetails.id, user_id:orderDetails.user_id, business_id: businessUser.id }
+					content: { notification_type:NOTIFICATION_TYPES.ORDER_DELIVERED, notification_id: notificationUser?.id , title: NOTIFICATION_TITLES.ORDER_DELIVERED_USER(),message: NOTIFICATION_MESSAGE.ORDER_DELIVERED_USER(orderDetails?.order_no), order_id: orderDetails.id, user_id:orderDetails.user_id, business_id: businessUser.id }
 				};
 				fcmNotification.SendNotification(userNotificationPayload);
 				
@@ -1358,7 +1358,7 @@ exports.updateOrderStatus = async (req, res) => {
 					device_token: uniqueDeviceTokens,
 					title: NOTIFICATION_TITLES.ORDER_DELIVERED_BUSINESS(),
 					message: NOTIFICATION_MESSAGE.ORDER_DELIVERED_BUSINESS(orderDetails?.order_no),
-					content: { notification_type:NOTIFICATION_TYPES.ORDER_DELIVERED, title: NOTIFICATION_TITLES.ORDER_DELIVERED_BUSINESS(),message: NOTIFICATION_MESSAGE.ORDER_DELIVERED_BUSINESS(orderDetails?.order_no), order_id: orderDetails.id, user_id: orderDetails.user_id, business_id: businessUser.id }
+					content: { notification_type:NOTIFICATION_TYPES.ORDER_DELIVERED, notification_id: notificationBusiness?.id, title: NOTIFICATION_TITLES.ORDER_DELIVERED_BUSINESS(),message: NOTIFICATION_MESSAGE.ORDER_DELIVERED_BUSINESS(orderDetails?.order_no), order_id: orderDetails.id, user_id: orderDetails.user_id, business_id: businessUser.id }
 				};
 				fcmNotification.SendNotification(businessNotificationPayload);
 			}
