@@ -38,8 +38,8 @@ router.delete('/delete/:id', verifyToken,controller.delete)
 router.post('/update',verifyToken,controller.update)
 router.post('/user/apply',verifyToken, authorize([2]),controller.applyCoupon)
 router.post('/user/list',verifyToken,authorize([2]),controller.getUserCouponList);
-router.post('/business/list',verifyToken,controller.getBusinessCouponList);
-router.delete('/user/remove/:id',verifyToken,controller.removeUserCoupon)
+router.post('/business/list',verifyToken, authorize([3]),controller.getBusinessCouponList);
+router.delete('/user/remove/:id',verifyToken, authorize([2]) ,controller.removeUserCoupon)
 // Coupones Section END
 
 module.exports = router;

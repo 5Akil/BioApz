@@ -507,7 +507,9 @@ exports.getBusinessCouponList =  async (req, res) => {
 		const requiredFields = _.reject(arrayFields, (o) => { return _.has(data, o); })
 		const couponeModel = models.coupones;
 		const businessModel = models.business
-		const userEmail = req.userEmail;
+		// const userEmail = req.userEmail;
+		const user = req?.user || {};
+		const userEmail = user?.user;
 
 		const skip = data.page_size * (data.page - 1)
 		const limit = parseInt(data.page_size)
@@ -562,7 +564,9 @@ exports.removeUserCoupon = async (req, res) => {
 		const data = req.params
 		const userModel = models.user;
 		const userCouponModel = models.user_coupons;
-		const userEmail = req.userEmail;
+		// const userEmail = req.userEmail;
+		const user = req?.user || {};
+		const userEmail = user?.user;
 
 		const requiredFields = _.reject(['id'], (o) => { return _.has(data, o)  })
 		if(requiredFields == ""){
