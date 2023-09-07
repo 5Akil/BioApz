@@ -3645,11 +3645,14 @@ exports.userGiftCardDetails = async (req, res) => {
 				}
 			]
 		})
+		if (!userGiftCard) {
+			return res.send(setRes(resCode.ResourceNotFound,false, "User giftcard not found",null))
+		}
 		const giftCardDetail = userGiftCard.gift_card;
 
 		const totalPurchasedGiftcard = await userGiftCardModel.findAll({ 
 			where: {
-				gift_card_id: giftCardDetail.id,
+				gift_card_id: giftCardDetail?.id,
 				payment_status: 1,
 				is_deleted: false
 			}
