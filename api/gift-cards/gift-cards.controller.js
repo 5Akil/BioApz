@@ -884,7 +884,9 @@ exports.commonRewardsList =async(req,res) => {
 			total_loyalty_points = total_loyalty;
 		}
 		if (user.role_id == '3') {
+			
 			const businessRewardsDetails = await rewardHistoryModel.findAll({
+				attributes: [[models.sequelize.fn('sum', models.sequelize.col('reward_history.amount')), 'total_rewards']],
 				include: [
 					{
 						model: orderModel,
@@ -895,12 +897,13 @@ exports.commonRewardsList =async(req,res) => {
 						required: true
 					}
 				],
-				attributes: [[models.sequelize.fn('sum', models.sequelize.col('reward_history.amount')), 'total_rewards']],
 				where: {
 					reference_reward_type: { [Op.ne] : 'loyalty_points' }
-				}
+				},
+				group: ['reward_history.id']
 			});
 			const businessLoyaltyDetails = await rewardHistoryModel.findAll({
+				attributes: [[models.sequelize.fn('sum', models.sequelize.col('reward_history.amount')), 'total_loyalty']],
 				include: [
 					{
 						model: orderModel,
@@ -910,10 +913,10 @@ exports.commonRewardsList =async(req,res) => {
 						required: true
 					}
 				],
-				attributes: [[models.sequelize.fn('sum', models.sequelize.col('reward_history.amount')), 'total_loyalty']],
 				where: {
 					reference_reward_type: { [Op.eq] : 'loyalty_points' }
-				}
+				},
+				group: ['reward_history.id']
 			});
 			total_rewards_purchase = businessRewardsDetails[0]?.dataValues?.total_rewards ? businessRewardsDetails[0].dataValues.total_rewards : "0";
 			total_loyalty_purchase = businessLoyaltyDetails[0]?.dataValues?.total_loyalty ? businessLoyaltyDetails[0].dataValues.total_loyalty : "0";
@@ -989,12 +992,23 @@ exports.commonRewardsList =async(req,res) => {
 			let rewards = [];
 			let rewardsCounts = [];
 			if (user.role_id == 3) {
-			rewards = await models.sequelize.query(`SELECT * FROM (${unionQuery}) Rewards ${filteCondition != '' ? 'GROUP BY id' : ''} ORDER BY createdAt desc LIMIT ${offset}, ${limit}`,{
-				type: models.sequelize.QueryTypes.SELECT
-			});
-			rewardsCounts = await models.sequelize.query(`SELECT * FROM (${unionQuery}) Rewards ${filteCondition != '' ? 'GROUP BY id' : ''}`,{
-				type: models.sequelize.QueryTypes.SELECT
-			})
+				rewards = await models.sequelize.query(
+					`SELECT id, MAX(createdAt) AS createdAt, type FROM (${unionQuery}) Rewards ${
+					  filteCondition != '' ? 'GROUP BY id, type' : ''
+					} ORDER BY createdAt DESC LIMIT ${offset}, ${limit}`,
+					{
+					  type: models.sequelize.QueryTypes.SELECT,
+					}
+				  );
+				  
+				  rewardsCounts = await models.sequelize.query(
+					`SELECT COUNT(DISTINCT id) AS count FROM (${unionQuery}) Rewards ${
+					  filteCondition != '' ? 'GROUP BY type' : ''
+					}`,
+					{
+					  type: models.sequelize.QueryTypes.SELECT,
+					}
+				  );
 			} // for user's rewards
 			else {
 			const textSearch = (tableName) =>  {
@@ -1315,6 +1329,7 @@ exports.commonRewardsList =async(req,res) => {
 			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 		}
 	} catch (error) {
+		console.log(error)
 		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
 	}
 }
@@ -1348,6 +1363,9 @@ exports.commonRewardsView =async(req,res) => {
 		var discountModel = models.discounts
 		var couponeModel = models.coupones
 		var loyaltyPointModel = models.loyalty_points
+		var productCategoryModel = models.product_categorys;
+		const userGiftCardList = models.user_giftcards;
+		const productModel = models.products;
 		var Op = models.Op
 		var currentDate = (moment().format('YYYY-MM-DD'))
 
@@ -1356,14 +1374,25 @@ exports.commonRewardsView =async(req,res) => {
 			return res.send(setRes(resCode.BadRequest, null, false, "Please select valid type."))
 		}else{
 			if(paramType == 'gift_cards') {
-				giftCardModel.findOne({
+				await giftCardModel.findOne({
 					where:{
 						id:data.id,
 						status:true,
 						isDeleted:false,
-					}
+					},
+					include: [
+						{
+							model: userGiftCardList,
+							attributes: ['id'],
+							where: {
+								payment_status: 1
+							},
+							required: false
+						}
+					],
 				}).then(async giftCardData => {
 					if (giftCardData != null){
+						console.log(giftCardData.user_giftcards);
 						if(giftCardData.image != null){
 							var giftCardData_image = await awsConfig.getSignUrl(giftCardData.image).then(function(res){
 								giftCardData.image = res;
@@ -1371,64 +1400,144 @@ exports.commonRewardsView =async(req,res) => {
 						}else{
 							giftCardData.image = commonConfig.default_image;
 						}
-						res.send(setRes(resCode.OK, true, "Get gift card detail successfully.",giftCardData))
+						if(giftCardData.expire_at < currentDate){
+							giftCardData.dataValues.is_expired = true;
+						}else{
+							giftCardData.dataValues.is_expired = false;
+						}
+						giftCardData.dataValues.type = 'gift_cards';
+						giftCardData.dataValues.totalPurchase = giftCardData.user_giftcards.length  || 0;
+						delete giftCardData.dataValues.user_giftcards;
+						return res.send(setRes(resCode.OK, true, "Get gift card detail successfully.",giftCardData))
 					}
 					else{
-						res.send(setRes(resCode.ResourceNotFound,false, "Gift card not found.",null))
+						return res.send(setRes(resCode.ResourceNotFound,false, "Gift card not found.",null))
 					}
 				}).catch(error2 => {
 					res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
 				})
 			
 			}else if(paramType == 'cashbacks') {
-				cashbackModel.findOne({
-					where:{id:data.id,status:true,isDeleted:false}
+				await cashbackModel.findOne({
+					where:{id:data.id,status:true,isDeleted:false},
+					include: [
+						{
+							model: productCategoryModel,
+							attributes: ['id', 'name']
+						}
+					],
 				}).then(async cashbackData => {
 					if (cashbackData != null){
-						res.send(setRes(resCode.OK, true, "Get cashbacks detail successfully.",cashbackData))
+						cashbackData.dataValues.type = 'cashbacks';
+						if(cashbackData.validity_for < currentDate){
+							cashbackData.dataValues.is_expired = true;
+						}else{
+							cashbackData.dataValues.is_expired = false;
+						}
+						const products = await productModel.findAll({ where: { id: { [Op.in] : cashbackData.product_id?.split(',') || [] } } ,attributes: ["name"], raw: true});
+						const product_name_arr = products?.map(val => val.name);
+						const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
+						cashbackData.dataValues.product_name = product_name;
+						cashbackData.dataValues.product_category_name = cashbackData?.product_category?.name || ''
+						cashbackData.dataValues.amount = cashbackData.cashback_value;
+						delete cashbackData.dataValues.product_category;
+						return res.send(setRes(resCode.OK, true, "Get cashbacks detail successfully.",cashbackData))
 					}
 					else{
-						res.send(setRes(resCode.ResourceNotFound,false, "Cashback not found.",null))
+						return res.send(setRes(resCode.ResourceNotFound,false, "Cashback not found.",null))
 					}
 				}).catch(error3 => {
 					res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
 				})
 			}else if(paramType == 'discounts'){
-				discountModel.findOne({
+				await discountModel.findOne({
 					where:{id:data.id,status:true,isDeleted:false,deleted_at:null,}
 				}).then(async discountData => {
 					if (discountData != null){
-						res.send(setRes(resCode.OK, true, "Get Discount detail successfully.",discountData))
+						const products = await productModel.findAll({ where: { id: { [Op.in] : discountData.product_id?.split(',') || [] } } ,attributes: ["name"], raw: true});
+						const product_name_arr = products?.map(val => val.name);
+						const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
+						discountData.dataValues.product_name = product_name;
+						discountData.dataValues.product_category_name = discountData?.product_category?.name || ''
+						discountData.dataValues.value_type = discountData.discount_type;
+						discountData.dataValues.amount = discountData.discount_value;
+						discountData.dataValues.type = 'discounts';
+						delete discountData.product_category;
+						if(discountData.validity_for < currentDate){
+							discountData.dataValues.is_expired = true;
+						}else{
+							discountData.dataValues.is_expired = false;
+						}
+						return res.send(setRes(resCode.OK, true, "Get Discount detail successfully.",discountData))
 					}
 					else{
-						res.send(setRes(resCode.ResourceNotFound,false, "Discount not found.",null))
+						return res.send(setRes(resCode.ResourceNotFound,false, "Discount not found.",null))
 					}
 				}).catch(error4 => {
+					console.log(error4)
 					res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
 				})
 			}else if(paramType == 'coupones'){
-				couponeModel.findOne({
-					where:{id:data.id,status:true,isDeleted:false,deleted_at:null}
+				await couponeModel.findOne({
+					where:{id:data.id,status:true,isDeleted:false,deleted_at:null},
+					include: [
+						{
+							model: productCategoryModel,
+							attributes: ['id', 'name']
+						}
+					],
 				}).then(async couponeData => {
 					if (couponeData != null){
-						res.send(setRes(resCode.OK, true, "Get Coupones detail successfully.",couponeData))
+						if(couponeData.expire_at < currentDate){
+							couponeData.dataValues.is_expired = true;
+						}else{
+							couponeData.dataValues.is_expired = false;
+						}
+						couponeData.dataValues.type = "coupones";
+						const products = await productModel.findAll({ where: { id: { [Op.in] : couponeData.product_id?.split(',') || [] } } ,attributes: ["name"], raw: true});
+						const product_name_arr = products?.map(val => val.name);
+						const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
+						couponeData.dataValues.product_name = product_name;
+						couponeData.dataValues.product_category_name = couponeData?.product_category?.name || ''
+						couponeData.dataValues.amount = couponeData.coupon_value;
+						delete couponeData.dataValues.product_category;
+						return res.send(setRes(resCode.OK, true, "Get Coupones detail successfully.",couponeData))
 					}
 					else{
-						res.send(setRes(resCode.ResourceNotFound,false, "Coupon not found.",null))
+						return res.send(setRes(resCode.ResourceNotFound,false, "Coupon not found.",null))
 					}
 				}).catch(error5 => {
-					res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
+					return res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
 				})
 			}else if(paramType == 'loyalty_points'){
 				loyaltyPointModel.findOne({
 					where:{id:data.id,status:true,isDeleted:false,deleted_at:null}
 				}).then(async loyaltyPointData => {
 					if (loyaltyPointData != null){
+						loyaltyPointData.dataValues.type = 'loyalty_points';
+						if(loyaltyPointData.validity < currentDate){
+							loyaltyPointData.dataValues.is_expired = true;
+						}else{
+							loyaltyPointData.dataValues.is_expired = false;
+						}
+						const products = await productModel.findAll({ where: { id: { [Op.in] : loyaltyPointData.product_id?.split(',') || [] } } ,attributes: ["name"], raw: true});
+						const product_name_arr = products?.map(val => val.name);
+						const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
+						loyaltyPointData.dataValues.product_name = product_name;
+						loyaltyPointData.dataValues.product_category_name = loyaltyPointData?.product_category?.name || '';
+						
+						const giftCards = await giftCardModel.findAll({ where: { id: { [Op.in] : loyaltyPointData?.dataValues?.gift_card_id?.split(',') || [] } } ,attributes: ["name"] });
+					
+						const giftcards_name_arr = giftCards?.map(val => val.name);
+						const giftcard_name = giftcards_name_arr?.length > 0 ? giftcards_name_arr?.join(',') : '';
+						loyaltyPointData.dataValues.giftcard_name = giftcard_name;
+						
+						delete loyaltyPointData.dataValues.product_category;
 						res.send(setRes(resCode.OK, true, "Get loyalty point detail successfully.",loyaltyPointData))
 					}
 					else{
 						res.send(setRes(resCode.ResourceNotFound,false, "loyalty point not found.",null))
-					}
+					} 
 				}).catch(error2 => {
 					res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
 				})

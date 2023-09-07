@@ -70,7 +70,7 @@ router.post('/logout', verifyToken ,controller.Logout)
 
 
 // Home Screen Route
-router.get('/home', verifyToken, controller.homeList)
+router.get('/home', verifyToken, authorize([2]), controller.homeList)
 // business routes
 router.post('/rewards/list', verifyToken, controller.rewardsList)
 router.post('/rewards/view/:id', verifyToken, authorize([2,3]), controller.rewardsView)

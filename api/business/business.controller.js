@@ -1424,7 +1424,7 @@ exports.RestaurantsBooking = (req, res) => {
 // Home Page API START
 exports.homeList = async (req, res) => {
 	try {
-		var data = req.query
+		var data = {}
 		var giftCardModel = models.gift_cards
 		var cashbackModel = models.cashbacks
 		var discountModel = models.discounts
@@ -1434,11 +1434,36 @@ exports.homeList = async (req, res) => {
 		var productModel = models.products;
 		var productCategoryModel = models.product_categorys;
 		var Op = models.Op;
+		var authUser = req.user
+		data.business_id = authUser.id
 		const promises = [];
 		var eventArray = [];
 		var currentDate = (moment().format('YYYY-MM-DD'));
 		var currentDateTime = moment().format('YYYY-MM-DD HH:mm:ss');
 		const dataLimit = 2
+		const notificationModel = models.notifications;
+		const notificationReceiverModel = models.notification_receivers;
+		const unreadNotification = await notificationModel.findAndCountAll({
+			include: [
+			  {
+				model: notificationReceiverModel,
+				where: {
+					is_deleted:false,
+					role_id:authUser.role_id,
+					receiver_id: authUser.id,
+					is_read:false
+				},
+				attributes: {exclude:['created_at','updated_at','deleted_at']}
+			  },
+			],
+			attributes: {exclude:['role_id','notification_type','status','created_at','updated_at','deleted_at']},
+			where: {
+				notification_type:{
+					[Op.ne]:'global_push_notification'
+				},
+			}
+		});
+
 		promises.push(
 			await giftCardModel.findAll({
 				where: { business_id:data.business_id,isDeleted: false, status: true, deleted_at: null,
@@ -1700,6 +1725,7 @@ exports.homeList = async (req, res) => {
 		});
 
 		let resData = {};
+		resData.unread_notifications = unreadNotification?.count;
 		resData.total_sale = !_.isEmpty(orderCount) ? orderCount[0].total_amount : 0.00;
 		resData.total_ongoing_orders = !_.isEmpty(orderCount) ? orderCount[0].total_orders : 0.00;
 		resData.total_products = totalProducts;

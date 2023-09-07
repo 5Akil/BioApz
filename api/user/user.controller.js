@@ -1319,10 +1319,33 @@ exports.homeList = async (req, res) => {
 		const userModel = models.user;
 		var businessArray = [];
 		var eventArray = [];
+		var authUser = req.user;
 		const promises = [];
+		const notificationModel = models.notifications;
+		const notificationReceiverModel = models.notification_receivers;
+		const unreadNotification = await notificationModel.findAndCountAll({
+			include: [
+			  {
+				model: notificationReceiverModel,
+				where: {
+					is_deleted:false,
+					role_id:authUser.role_id,
+					receiver_id: authUser.id,
+					is_read:false
+				},
+				attributes: {exclude:['created_at','updated_at','deleted_at']}
+			  },
+			],
+			attributes: {exclude:['role_id','notification_type','status','created_at','updated_at','deleted_at']},
+			where: {
+				notification_type:{
+					[Op.ne]:'global_push_notification'
+				},
+			}
+		});
 
 		businessArray.push(
-			businessModel.findAll({
+			await businessModel.findAll({
 				where: { is_deleted: false, is_active: true },
 				attributes: ['id','banner','business_name','address','description'] 
 			}).then(async business => {
@@ -1351,7 +1374,7 @@ exports.homeList = async (req, res) => {
 		const businessDataArray = businessData;
 
 		promises.push(
-			giftCardModel.findAll({
+			await giftCardModel.findAll({
 				where:{isDeleted:false,status:true,deleted_at: null,expire_at: { 
 					[Op.gt]: currentDate
 				  },
@@ -1403,7 +1426,7 @@ exports.homeList = async (req, res) => {
 				}
 				return [];
 			}),
-			cashbackModel.findAll({
+			await cashbackModel.findAll({
 				where:{isDeleted:false,status:true,deleted_at: null,validity_for: { 
 					[Op.gt]: currentDate
 				},
@@ -1433,7 +1456,7 @@ exports.homeList = async (req, res) => {
 				}
 				return [];		
 			}),
-			discountModel.findAll({
+			await discountModel.findAll({
 				where:{isDeleted:false,status:true,deleted_at: null,validity_for: { 
 					[Op.gt]: currentDate
 				},
@@ -1463,7 +1486,7 @@ exports.homeList = async (req, res) => {
 					}
 				return [];
 			}),
-			couponeModel.findAll({
+			await couponeModel.findAll({
 				where:{isDeleted:false,status:true,deleted_at: null,expire_at: { 
 					[Op.gt]: currentDate
 				},
@@ -1493,7 +1516,7 @@ exports.homeList = async (req, res) => {
 				}
 				return [];
 			}),
-			loyaltyPointModel.findAll({
+			await loyaltyPointModel.findAll({
 				where:{isDeleted:false,status:true,deleted_at: null,validity: { 
 					[Op.gt]: currentDate
 				},
@@ -1612,12 +1635,14 @@ exports.homeList = async (req, res) => {
 		const eventDataArray = eventsData;
 
 		let resData = {};
+		resData.unread_notifications = unreadNotification?.count || 0;
 		resData.businesses = businessDataArray;
 		resData.rewards_and_loyalty = result;
 		resData.upcoming_events = eventDataArray;
 
 		res.send(setRes(resCode.OK, true, "Get home page details successfully.",resData))
 	} catch(error){
+		console.log(error)
 		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
 	}
 }

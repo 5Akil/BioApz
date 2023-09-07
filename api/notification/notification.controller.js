@@ -13,6 +13,7 @@ exports.list = async (req,res) =>{
 		const data = req.body;
 		const authUser = req.user;
 		const Op = models.Op;
+		let unreadNotificationCount = 0;
 		
 		var requiredFields = _.reject(['page', 'page_size'], (o) => { return _.has(data, o) })
 		if (_.isEmpty(requiredFields)) {
@@ -49,20 +50,41 @@ exports.list = async (req,res) =>{
 			const recordCount = await notificationModel.findAndCountAll(condition);
 			const totalRecords = recordCount?.count;
 
+			const unreadNotification = await notificationModel.findAndCountAll({
+				include: [
+				  {
+					model: notificationReceiverModel,
+					where: {
+						is_deleted:false,
+						role_id:authUser.role_id,
+						receiver_id: authUser.id,
+						is_read:false
+					},
+					attributes: {exclude:['created_at','updated_at','deleted_at']}
+				  },
+				],
+				attributes: {exclude:['role_id','notification_type','status','created_at','updated_at','deleted_at']},
+				where: condition.where, // Reuse the outer `where` condition
+			});
 			const notificationList = await notificationModel.findAll(condition);
 			for(const data of notificationList){
 				let result = JSON.parse(JSON.stringify(data));
 				data.dataValues.is_read = result.notification_receivers[0].is_read;
+				if (data.dataValues.is_read === false) {
+					unreadNotificationCount++;
+				}
 				delete data.dataValues.notification_receivers;
 			}
-			const response = new pagination(notificationList, parseInt(totalRecords), parseInt(data.page), parseInt(data.page_size));
-			res.send(setRes(resCode.OK, true, "Notifications List.", (response.getPaginationInfo())));
+			const valueData = {}
+			valueData.unread_notifications = unreadNotification?.count || 0;
+			valueData.notificationList = notificationList;
+			const response = new pagination(valueData, parseInt(totalRecords), parseInt(data.page), parseInt(data.page_size));
+			return res.send(setRes(resCode.OK, true, "Notifications List.", (response.getPaginationInfo())));
 		}else {
-			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), true))
+			return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), true))
 		}
 	}catch(error){
-		console.log(error)
-		res.send(setRes(resCode.BadRequest,false,"An error occurred.",null))
+		return res.send(setRes(resCode.BadRequest,false,"An error occurred.",null))
 	}
 }
 
@@ -126,13 +148,13 @@ exports.markAsRead = async (req,res) =>{
 				delete notification.dataValues.id;
 				delete notification.dataValues.notification;
 			}
-			res.send(setRes(resCode.OK, true, "Notifications Mark As Read.", notificationMarkAsRead));
+			return res.send(setRes(resCode.OK, true, "Notifications Mark As Read.", notificationMarkAsRead));
 		}else {
-			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), true))
+			return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), true))
 		}
 	}catch(error){
 		console.log(error)
-		res.send(setRes(resCode.BadRequest,false,"An error occurred.",null))
+		return res.send(setRes(resCode.BadRequest,false,"Something Went Wrong.",null))
 	}
 }
 
@@ -193,11 +215,11 @@ exports.delete = async (req,res) =>{
 			for(const dataVal of notificationDelete){
 				dataVal.destroy();
 			}
-			res.send(setRes(resCode.OK, true, "Notifications deleted successfully.", null));
+			return res.send(setRes(resCode.OK, true, "Notifications deleted successfully.", null));
 		}else {
-			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), true))
+			return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), true))
 		}
 	}catch(error){
-		res.send(setRes(resCode.BadRequest,false,"An error occurred.",null))
+		return res.send(setRes(resCode.BadRequest,false,"An error occurred.",null))
 	}
 }

@@ -175,6 +175,6 @@ router.get('/profile/view/:id',verifyToken,controller.getUserProfile)
 router.post('/profile/update', verifyToken, awsuploadprofile.single('profile_picture'), controller.updateUserDetils)
 
 // Home Page
-router.get('/home', verifyToken, controller.homeList)
+router.get('/home', verifyToken,authorize([3]), controller.homeList)
 
 module.exports = router;
