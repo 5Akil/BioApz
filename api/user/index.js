@@ -80,7 +80,7 @@ router.get('/business/bio', verifyToken, controller.businessBIO)
 
 router.post('/giftcards/purchase', verifyToken, authorize([2]), controller.userGiftCardPurchase)
 router.post('/giftcards/share', verifyToken, authorize([2]), controller.userGiftCardShare)
-router.post('/giftcards/list', verifyToken, controller.userGiftCardList)
+router.post('/giftcards/list', verifyToken, authorize([2]), controller.userGiftCardList)
 router.post('/giftcards/redeem', verifyToken, authorize([2]), controller.redeemGiftCard)
 router.post('/giftcards/recommeded', verifyToken, authorize([2]), controller.recommendedGiftCard)
 router.get('/giftcards/details/:id', verifyToken, authorize([2]), controller.userGiftCardDetails)

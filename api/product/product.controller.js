@@ -805,7 +805,7 @@ exports.GetProductById = async (req, res) => {
 	if (auth.role_id == 2){
 		auth_id = auth.id
 	}
-	const userDetails = await userModel.findOne({ where: { email: req.userEmail, is_deleted: false , is_active: true } });
+	const userDetails = await userModel.findOne({ where: { email: auth?.user, is_deleted: false , is_active: true } });
 	const userId = userDetails?.id || '';
 	const total_loyalty_points = userDetails?.total_loyalty_points ? userDetails?.total_loyalty_points : 0;
 	const total_cashbacks = userDetails?.total_cashbacks ? userDetails?.total_cashbacks : 0;
@@ -1828,7 +1828,6 @@ exports.GetProductRattings = async(req,res)=>{
 	var productModel = models.products
 	var userModel = models.user
 	const businessModel = models.business;
-	const userEmail = req.userEmail;
 	const Op = models.Op
 	var requiredFields = _.reject(['product_id','page','page_size'], (o) => { return _.has(data, o) })
 	let userDetail, userRole;
@@ -1980,7 +1979,9 @@ exports.productRatting = async (req,res) => {
 
 exports.reportCustomerReview = (req, res) => {
 	const data = req.body
-	const userEmail = req.userEmail;
+	const user = req?.user || {};
+	// const userEmail = req.userEmail;
+	const userEmail = user?.user;
 	const businessModel = models.business;
 	const productRattingModel = models.product_ratings
 	const requiredFields = _.reject(['product_rating_id','description'], (o) => { return _.has(data, o) })

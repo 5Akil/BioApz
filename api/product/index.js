@@ -80,7 +80,7 @@ router.post('/add-product-ratings',verifyToken,controller.AddProductRattings)
 router.get('/get_product_ratings/:id',verifyToken, authorize([2,3]),controller.productRatting)
 router.post('/rating/list',verifyToken, authorize([2,3]),controller.GetProductRattings)
 
-router.post('/report_customer_rating',verifyToken,controller.reportCustomerReview)
+router.post('/report_customer_rating',verifyToken, authorize([3]),controller.reportCustomerReview)
 
 router.get('/get-similar-products/:id',verifyToken,controller.simillarProducts)
 module.exports = router;

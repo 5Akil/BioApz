@@ -290,6 +290,33 @@ exports.rewardHistoryBusinessList = async (req, res) => {
     }
 }
 
+const dateListForTimeinterval = async (startObj, endObj, interval='monthly') => {
+    let array = [];
+    if (interval == 'monthly'){
+        let startDate = moment(`${startObj.month}/01/${startObj.year}`);
+        let endDate = moment(`${endObj.month}/01/${endObj.year}`);
+        while (startDate.isBefore(endDate) || startDate.isSame(endDate)) {
+            array.push(moment(startDate));
+            startDate = startDate.add('1','M');
+        }
+    } else if (interval == 'weekly'){
+        let startDate =  moment().day("Monday").week(startObj.week);
+        let endDate = moment().day("Monday").week(endObj.week);
+        while (startDate.isBefore(endDate) || startDate.isSame(endDate)) {
+            array.push(moment(startDate));
+            startDate = startDate.add('1','weeks');
+        }
+    } else if (interval == 'custom') {
+        let startDate = moment(startObj);
+        let endDate = moment(endObj);
+        while (startDate.isBefore(endDate) || startDate.isSame(endDate)) {
+            array.push(moment(startDate));
+            startDate = startDate.add('1','d');
+        }
+    }
+    return array;
+}
+
 exports.rewardPerfomance = async (req, res) => {
     try {
         const data = req.body;
@@ -745,10 +772,18 @@ exports.rewardPerfomance = async (req, res) => {
                     const sortByYearAsc = totalRedeemAmountDataByInterval.sort((objA,objB) => objA.year - objB.year );
                     const startYearObj = sortByYearAsc.length > 0 ? sortByYearAsc[0] : 0;
                     const endYearObj  = sortByYearAsc.length > 0 ? sortByYearAsc[sortByYearAsc.length - 1] : 0;
-                    for (let i = startYearObj?.year; i <= endYearObj?.year; i++) {
+                    // for (let i = startYearObj?.year; i <= endYearObj?.year; i++) {
+                    //     label.push(`${i}`);
+                    //     const index = sortByYearAsc.findIndex((obj) => obj?.year == i);
+                    //     dataSet.push(index >= 0 ? sortByYearAsc[index]?.total_amount : 0);
+                    // }
+                    let i = startYearObj.year;
+
+                    for (ind of Array(endYearObj.year - startYearObj.year + 1).keys()) {
                         label.push(`${i}`);
                         const index = sortByYearAsc.findIndex((obj) => obj?.year == i);
                         dataSet.push(index >= 0 ? sortByYearAsc[index]?.total_amount : 0);
+                        i++;
                     }
                 }
                 if (timeInterval == 'monthly') {
@@ -757,13 +792,23 @@ exports.rewardPerfomance = async (req, res) => {
                     
                     const startMonthObj = sortByYearAsc.length > 0 ? sortByYearAsc[0] : 0;
                     const endMonthObj  = sortByYearAsc.length > 0 ? sortByYearAsc[sortByYearAsc.length - 1] : 0;
-                    for (let j = startMonthObj?.year; j <= endMonthObj?.year; j++) {
-                        for (let i = startMonthObj?.month; i <= endMonthObj?.month; i++) {
-                            label.push(`${i}/${j}`);
-                            const index = sortByYearAsc.findIndex((obj) => obj?.month == i);
-                            dataSet.push(index >= 0 ? sortByYearAsc[index]?.total_amount : 0);
-                        }
+                    
+                    const monthList = await dateListForTimeinterval(startMonthObj, endMonthObj, 'monthly');
+                    for (const date of monthList) {
+                        const monthNo = date.month()+1;
+                        const yearNo = date.year();
+                        const index = sortByYearAsc.findIndex((obj) => obj?.month == monthNo &&  obj?.year == yearNo);
+                        label.push(`${monthNo}/${yearNo}`);
+                        dataSet.push(index >= 0 ? sortByYearAsc[index]?.total_amount : 0);
                     }
+                    // for (let j = startMonthObj?.year; j <= endMonthObj?.year; j++) {
+                    //     for (let i = startMonthObj?.month; i <= endMonthObj?.month; i++) {
+                    //         label.push(`${i}/${j}`);
+                    //         const index = sortByYearAsc.findIndex((obj) => obj?.month == i);
+                    //         dataSet.push(index >= 0 ? sortByYearAsc[index]?.total_amount : 0);
+                    //     }
+                    // }
+                    
                 }
                 if (timeInterval == 'weekly') {
                     const sortByWeekAsc = totalRedeemAmountDataByInterval.sort((objA,objB) => objA.week - objB.week );
@@ -771,12 +816,21 @@ exports.rewardPerfomance = async (req, res) => {
                     
                     const startWeekObj = sortByYearAsc.length > 0 ? sortByYearAsc[0] : 0;
                     const endWeekObj  = sortByYearAsc.length > 0 ? sortByYearAsc[sortByYearAsc.length - 1] : 0;
-                    for (let j = startWeekObj?.year; j <= endWeekObj?.year; j++) {
-                        for (let i = startWeekObj?.week; i <= endWeekObj?.week; i++) {
-                            label.push(`Week ${i}, ${j}`);
-                            const index = sortByYearAsc.findIndex((obj) => obj?.week == i &&  obj?.year == j);
-                            dataSet.push(index >= 0 ? sortByYearAsc[index]?.total_amount : 0);
-                        }
+                    const weeklyList = await dateListForTimeinterval(startWeekObj, endWeekObj, 'weekly');
+                    // for (let j = startWeekObj?.year; j <= endWeekObj?.year; j++) {
+                    //     for (let i = startWeekObj?.week; i <= endWeekObj?.week; i++) {
+                    //         label.push(`Week ${i}, ${j}`);
+                    //         const index = sortByYearAsc.findIndex((obj) => obj?.week == i &&  obj?.year == j);
+                    //         dataSet.push(index >= 0 ? sortByYearAsc[index]?.total_amount : 0);
+                    //     }
+                    // }
+                    for (const date of weeklyList) {
+                        const weekNo = date.week();
+                        const yearNo = date.year();
+                        console.log('weekNo, yearNo', weekNo, yearNo);
+                        const index = sortByYearAsc.findIndex((obj) => obj?.week == weekNo &&  obj?.year == yearNo);
+                        label.push(`Week ${weekNo}, ${yearNo}`);
+                        dataSet.push(index >= 0 ? sortByYearAsc[index]?.total_amount : 0);
                     }
                 }
                 if (timeInterval == 'custom') {
@@ -786,14 +840,24 @@ exports.rewardPerfomance = async (req, res) => {
                     
                     const startDayObj = sortByYearAsc.length > 0 ? sortByYearAsc[0] : 0;
                     const endDayObj  = sortByYearAsc.length > 0 ? sortByYearAsc[sortByYearAsc.length - 1] : 0;
-                    for (let k = startDayObj?.year; k <= endDayObj?.year; k++) {
-                        for (let j = startDayObj?.month; j <= endDayObj?.month; j++) {
-                            for (let i = startDayObj?.day; i <= endDayObj?.day; i++) {
-                                label.push(`${i}/${j}/${k}`);
-                                const index = sortByYearAsc.findIndex((obj) => obj?.day == i && obj?.month == j && obj?.year == k);
-                                dataSet.push(index >= 0 ? sortByYearAsc[index]?.total_amount : 0);
-                            }
-                        }
+                    
+                    const customDateList = await dateListForTimeinterval(data.start_date, data.end_date, 'custom');
+                    // for (let k = startDayObj?.year; k <= endDayObj?.year; k++) {
+                        //     for (let j = startDayObj?.month; j <= endDayObj?.month; j++) {
+                    //         for (let i = startDayObj?.day; i <= endDayObj?.day; i++) {
+                    //             label.push(`${i}/${j}/${k}`);
+                    //             const index = sortByYearAsc.findIndex((obj) => obj?.day == i && obj?.month == j && obj?.year == k);
+                    //             dataSet.push(index >= 0 ? sortByYearAsc[index]?.total_amount : 0);
+                    //         }
+                    //     }
+                    // }
+                    for (const date of customDateList) {
+                        const dayNo = date.date();
+                        const monthNo = date.month()+1;
+                        const yearNo = date.year();
+                        const index = sortByYearAsc.findIndex((obj) =>  obj?.day == dayNo && obj?.month == monthNo &&  obj?.year == yearNo);
+                        label.push(`${dayNo}/${monthNo}/${yearNo}`);
+                        dataSet.push(index >= 0 ? sortByYearAsc[index]?.total_amount : 0);
                     }
                 }
                 responseObject.graphData = {

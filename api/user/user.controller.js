@@ -2363,14 +2363,15 @@ exports.businessEventList = async (req, res) => {
 		const userEventsModel = models.user_events;
 		const userModel = models.user;
 		const businesModel = models.business
-		const userEmail = req.userEmail;
+		// const userEmail = req.userEmail;
 		var currentDate = moment().format("YYYY-MM-DD");
 		var Op = models.Op;
 		var requiredFields = _.reject(["page", "page_size"], (o) => {
 			return _.has(data, o);
 		});
-		const userDetails = await userModel.findOne({ where: { email: userEmail, is_deleted: false, is_active: true } });
-		const userId = userDetails.id ? userDetails.id : '';
+		// const userDetails = await userModel.findOne({ where: { email: userEmail, is_deleted: false, is_active: true } });
+		const user = req?.user || {};
+		const userId = user?.id ? user.id : '';
 		if (requiredFields == "") {
 			if (data.page < 0 || data.page == 0) {
 				return res.send(
@@ -2567,7 +2568,7 @@ exports.eventUserRegister = async (req, res) => {
 							device_token: uniqueDeviceTokens,
 							title: NOTIFICATION_TITLES.EVENT_USER_JOIN(),
 							message: NOTIFICATION_MESSAGE.EVENT_USER_JOIN(eventDetails?.title),
-							content: { notification_type:NOTIFICATION_TYPES.EVENT_USER_JOIN, title: NOTIFICATION_TITLES.EVENT_USER_JOIN(), message: NOTIFICATION_MESSAGE.EVENT_USER_JOIN(eventDetails?.title), event_id: data.event_id, user_id:user.id, business_id: businessDetails.role_id }
+							content: { notification_type:NOTIFICATION_TYPES.EVENT_USER_JOIN, notification_id: notification.id, title: NOTIFICATION_TITLES.EVENT_USER_JOIN(), message: NOTIFICATION_MESSAGE.EVENT_USER_JOIN(eventDetails?.title), event_id: data.event_id, user_id:user.id, business_id: businessDetails.role_id }
 						};
 						fcmNotification.SendNotification(notificationPayload);
 
@@ -2817,7 +2818,7 @@ exports.eventUserLeave = async (req, res) => {
 								device_token: uniqueDeviceTokens,
 								title: NOTIFICATION_TITLES.EVENT_USER_LEAVE(),
 								message: NOTIFICATION_MESSAGE.EVENT_USER_LEAVE(eventDetails?.title),
-								content: { notification_type:NOTIFICATION_TYPES.EVENT_USER_LEAVE, title: NOTIFICATION_TITLES.EVENT_USER_LEAVE(),message: NOTIFICATION_MESSAGE.EVENT_USER_LEAVE(eventDetails?.title), event_id: data.event_id, user_id:user.id, business_id: businessDetails.role_id }
+								content: { notification_type:NOTIFICATION_TYPES.EVENT_USER_LEAVE, notification_id: notification.id, title: NOTIFICATION_TITLES.EVENT_USER_LEAVE(),message: NOTIFICATION_MESSAGE.EVENT_USER_LEAVE(eventDetails?.title), event_id: data.event_id, user_id:user.id, business_id: businessDetails.role_id }
 							};
 							fcmNotification.SendNotification(notificationPayload);
 							await eventUserModel.findOne({
@@ -2850,7 +2851,6 @@ exports.userGiftCardPurchase = async (req, res) => {
 		const userModel = models.user;
 		const giftCardModel = models.gift_cards;
 		const userGiftCardModel = models.user_giftcards;
-		const userEmail = req.userEmail;
 		const user = req?.user;
 		const rewardHistoryModel = models.reward_history;
 		const notificationModel = models.notifications ;
@@ -2890,7 +2890,7 @@ exports.userGiftCardPurchase = async (req, res) => {
 			const giftCardDetails = await giftCardModel.findOne({ where: { id: data.gift_card_id, status: true, isDeleted: false } });
 			if (giftCardDetails) {
 				let giftCardImage = '';
-				const img = await awsConfig.getSignUrl(giftCardDetails.image).then(function(res) {
+				const img = await awsConfig.getSignUrl(giftCardDetails.image, 180).then(function(res) {
 					giftCardImage = res;
 				})
 				const giftCardObj = {
@@ -2990,7 +2990,7 @@ exports.userGiftCardPurchase = async (req, res) => {
 							device_token: uniqueDeviceTokens,
 							title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(),
 							message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(giftCardDetails?.name),
-							content: { notification_type:NOTIFICATION_TYPES.GIFT_CARD_PURCHASE, title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(),message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(giftCardDetails?.name), gift_card_id: data.gift_card_id, user_id:user.id, business_id: giftCardDetails.business_id }
+							content: { notification_type:NOTIFICATION_TYPES.GIFT_CARD_PURCHASE, notification_id: notification.id, title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(),message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(giftCardDetails?.name), gift_card_id: data.gift_card_id, user_id:user.id, business_id: giftCardDetails.business_id }
 						};
 						fcmNotification.SendNotification(notificationPayload);
 					/** END Puch Notification */
@@ -3020,8 +3020,9 @@ exports.userGiftCardShare = async (req, res) => {
 		const giftCardModel = models.gift_cards;
 		const userGiftCardModel = models.user_giftcards;
 		const giftCardTemplateModel = models.gift_card_template;
-		const userEmail = req.userEmail;
+		// const userEmail = req.userEmail;
 		const user = req?.user;
+		const userEmail = user?.user;
 		const notificationModel = models.notifications;
 		const notificationReceiverModel = models.notification_receivers;
 		const deviceModel = models.device_tokens;
@@ -3059,10 +3060,10 @@ exports.userGiftCardShare = async (req, res) => {
 			const giftCardDetails = await giftCardModel.findOne({ where: { id: data.gift_card_id } });
 			let giftCardImage = '';
 			let giftCardTemplateUrl = '';
-			const img = await awsConfig.getSignUrl(giftCardDetails.image).then(function(res) {
+			const img = await awsConfig.getSignUrl(giftCardDetails.image, 180).then(function(res) {
 				giftCardImage = res;
 			})
-			const imgGiftTemplate = await awsConfig.getSignUrl(giftCardTemplate.template_image).then(function(res) {
+			const imgGiftTemplate = await awsConfig.getSignUrl(giftCardTemplate.template_image, 180).then(function(res) {
 				giftCardTemplateUrl = res;
 			})
 			const businessDetails = await bussinessModel.findOne({ where : { id: giftCardDetails.business_id } });
@@ -3211,7 +3212,7 @@ exports.userGiftCardShare = async (req, res) => {
 								device_token: uniqueDeviceTokens,
 								title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(),
 								message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(giftCardDetails?.name),
-								content: { notification_type:NOTIFICATION_TYPES.GIFT_CARD_PURCHASE, title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(),message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(giftCardDetails?.name), gift_card_id: data.gift_card_id, user_id:user.id, business_id: giftCardDetails.business_id }
+								content: { notification_type:NOTIFICATION_TYPES.GIFT_CARD_PURCHASE, notification_id: notification.id, title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(),message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(giftCardDetails?.name), gift_card_id: data.gift_card_id, user_id:user.id, business_id: giftCardDetails.business_id }
 							};
 							fcmNotification.SendNotification(notificationPayload);
 						}
@@ -3245,7 +3246,7 @@ exports.userGiftCardShare = async (req, res) => {
 									device_token: uniqueDeviceTokens,
 									title: NOTIFICATION_TITLES.GIFT_CARD_SHARE(userDetails.username),
 									message: NOTIFICATION_MESSAGE.GIFT_CARD_SHARE(giftCardDetails?.name),
-									content: { notification_type:NOTIFICATION_TYPES.GIFT_CARD_SHARE, title: NOTIFICATION_TITLES.GIFT_CARD_SHARE(userDetails.username),message: NOTIFICATION_MESSAGE.GIFT_CARD_SHARE(giftCardDetails?.name), gift_card_id: gCard.id, user_id:user.id, business_id: giftCardDetails.business_id }
+									content: { notification_type:NOTIFICATION_TYPES.GIFT_CARD_SHARE, notification_id: notification.id, title: NOTIFICATION_TITLES.GIFT_CARD_SHARE(userDetails.username),message: NOTIFICATION_MESSAGE.GIFT_CARD_SHARE(giftCardDetails?.name), gift_card_id: gCard.id, user_id:user.id, business_id: giftCardDetails.business_id }
 								};
 								fcmNotification.SendNotification(notificationPayload);
 							}
@@ -3273,7 +3274,9 @@ exports.userGiftCardShare = async (req, res) => {
 exports.userGiftCardList = async (req, res) => {
 	try {
 		const data = req.body;
-		const userEmail = req.userEmail;
+		const user = req?.user;
+		// const userEmail = req.userEmail;
+		const userEmail = user?.user;
 		const userModel = models.user;
 		const giftCardsModel = models.gift_cards;
 		const userGiftCardsModel = models.user_giftcards;
