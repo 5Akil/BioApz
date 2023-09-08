@@ -26,8 +26,8 @@ const NOTIFICATION_TITLES = {
 }
 
 const NOTIFICATION_MESSAGE = {
-    EVENT_USER_JOIN : (eventName='') => `User joined event: ${eventName || ''}`,
-    EVENT_USER_LEAVE: (eventName='') => `User leave event: ${eventName || ''}`,
+    EVENT_USER_JOIN : (eventName='',userName='') => `${userName || 'User'} joined ${eventName || 'event'}`,
+    EVENT_USER_LEAVE: (eventName='',userName='') => `${userName || 'User'} left ${eventName || 'event'}`,
     GIFT_CARD_PURCHASE: (giftCardName='') => `User Purchased GiftCard : ${giftCardName}`,
     GIFT_CARD_SHARE: (giftCardName='') => `You've received a Gift card : ${giftCardName}`,
     PLACE_ORDER_USER: (orderNo='') => `Your order ${orderNo} is successfully placed!`,

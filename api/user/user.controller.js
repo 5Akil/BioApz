@@ -2491,7 +2491,7 @@ exports.eventUserRegister = async (req, res) => {
 		var requiredFields = _.reject(["business_id","event_id", "user_id"], (o) => {
 			return _.has(data, o);
 		});
-		let businessDetails, eventDetails;
+		let businessDetails, eventDetails, userDetails;
 		if (requiredFields == "") {
 			if(data.business_id){
 				await businessModel.findOne({
@@ -2528,6 +2528,7 @@ exports.eventUserRegister = async (req, res) => {
 						validation = false;
 						return res.send(setRes(resCode.ResourceNotFound, false, "User not found.", null))
 					}
+					userDetails = user;
 				})
 			}
 
@@ -2543,19 +2544,18 @@ exports.eventUserRegister = async (req, res) => {
 				await eventUserModel.create(data).then(async event_user => {
 					if(event_user){
 						/** Notification object created */
+						console.log('userDetails?.username', userDetails?.username);
 						const notificationObj = {
-							role_id : user.role_id,
-							params: JSON.stringify({ notification_type:NOTIFICATION_TYPES.EVENT_USER_JOIN, title: NOTIFICATION_TITLES.EVENT_USER_JOIN(), message: NOTIFICATION_MESSAGE.EVENT_USER_JOIN(eventDetails?.title), event_id: data.event_id, user_id:user.id, business_id: businessDetails.role_id }),
+							params: JSON.stringify({ notification_type:NOTIFICATION_TYPES.EVENT_USER_JOIN, title: NOTIFICATION_TITLES.EVENT_USER_JOIN(), message: NOTIFICATION_MESSAGE.EVENT_USER_JOIN(eventDetails?.title, userDetails?.username), event_id: data.event_id, user_id:user.id, business_id: businessDetails.id }),
 							title: NOTIFICATION_TITLES.EVENT_USER_JOIN(),
-							message: NOTIFICATION_MESSAGE.EVENT_USER_JOIN(eventDetails?.title),
+							message: NOTIFICATION_MESSAGE.EVENT_USER_JOIN(eventDetails?.title, userDetails?.username),
 							notification_type: NOTIFICATION_TYPES.EVENT_USER_JOIN,
 						}
 						const notification = await notificationModel.create(notificationObj);
 						if (notification && notification.id) {
 							const notificationReceiverObj = {
-								role_id : user.role_id,
-								notification_id : notification.id, 
-								sender_id: user.id, 
+								role_id : businessDetails.role_id,
+								notification_id : notification.id,
 								receiver_id: businessDetails.id,
 							}
 							const notificationReceiver = await notificationReceiverModel.create(notificationReceiverObj);
@@ -2567,8 +2567,8 @@ exports.eventUserRegister = async (req, res) => {
 						const notificationPayload = {
 							device_token: uniqueDeviceTokens,
 							title: NOTIFICATION_TITLES.EVENT_USER_JOIN(),
-							message: NOTIFICATION_MESSAGE.EVENT_USER_JOIN(eventDetails?.title),
-							content: { notification_type:NOTIFICATION_TYPES.EVENT_USER_JOIN, notification_id: notification.id, title: NOTIFICATION_TITLES.EVENT_USER_JOIN(), message: NOTIFICATION_MESSAGE.EVENT_USER_JOIN(eventDetails?.title), event_id: data.event_id, user_id:user.id, business_id: businessDetails.role_id }
+							message: NOTIFICATION_MESSAGE.EVENT_USER_JOIN(eventDetails?.title, userDetails?.username),
+							content: { notification_type:NOTIFICATION_TYPES.EVENT_USER_JOIN, notification_id: notification.id, title: NOTIFICATION_TITLES.EVENT_USER_JOIN(), message: NOTIFICATION_MESSAGE.EVENT_USER_JOIN(eventDetails?.title, userDetails?.username), event_id: data.event_id, user_id:user.id, business_id: businessDetails.id }
 						};
 						fcmNotification.SendNotification(notificationPayload);
 
@@ -2723,7 +2723,7 @@ exports.eventUserLeave = async (req, res) => {
 		var requiredFields = _.reject(["id","business_id", "event_id", "user_id"], (o) => {
 			return _.has(data, o);
 		});
-		let businessDetails;
+		let businessDetails, userDetails;
 		if(data){
 			if (requiredFields == "") {
 				const eventDetails = await combocalenderModel.findOne({ where: { id: data.event_id }});
@@ -2773,6 +2773,7 @@ exports.eventUserLeave = async (req, res) => {
 							validation = false
 							return res.send(setRes(resCode.ResourceNotFound, false, "User not found.", null))
 						}
+						userDetails = user;
 					})
 				}
 				
@@ -2793,19 +2794,18 @@ exports.eventUserLeave = async (req, res) => {
 					}).then(async dataVal =>{
 						if(dataVal){
 							/** Notification object created */
+							console.log('userDetails?.username', userDetails?.username);
 							const notificationObj = {
-								role_id : user.role_id,
-								params: JSON.stringify({ notification_type:NOTIFICATION_TYPES.EVENT_USER_LEAVE, title: NOTIFICATION_TITLES.EVENT_USER_LEAVE(),message: NOTIFICATION_MESSAGE.EVENT_USER_LEAVE(eventDetails?.title), event_id: data.event_id, user_id:user.id, business_id: businessDetails.role_id }),
+								params: JSON.stringify({ notification_type:NOTIFICATION_TYPES.EVENT_USER_LEAVE, title: NOTIFICATION_TITLES.EVENT_USER_LEAVE(),message: NOTIFICATION_MESSAGE.EVENT_USER_LEAVE(eventDetails?.title, userDetails?.username), event_id: data.event_id, user_id:user.id, business_id: businessDetails.id }),
 								title: NOTIFICATION_TITLES.EVENT_USER_LEAVE(),
-								message: NOTIFICATION_MESSAGE.EVENT_USER_LEAVE(eventDetails?.title),
+								message: NOTIFICATION_MESSAGE.EVENT_USER_LEAVE(eventDetails?.title, userDetails?.username),
 								notification_type: NOTIFICATION_TYPES.EVENT_USER_LEAVE,
 							}
 							const notification = await notificationModel.create(notificationObj);
 							if (notification && notification.id) {
 								const notificationReceiverObj = {
-									role_id : user.role_id,
-									notification_id : notification.id, 
-									sender_id: user.id, 
+									role_id : businessDetails.role_id,
+									notification_id : notification.id,
 									receiver_id: businessDetails.id,
 								}
 								const notificationReceiver = await notificationReceiverModel.create(notificationReceiverObj);
@@ -2817,8 +2817,8 @@ exports.eventUserLeave = async (req, res) => {
 							const notificationPayload = {
 								device_token: uniqueDeviceTokens,
 								title: NOTIFICATION_TITLES.EVENT_USER_LEAVE(),
-								message: NOTIFICATION_MESSAGE.EVENT_USER_LEAVE(eventDetails?.title),
-								content: { notification_type:NOTIFICATION_TYPES.EVENT_USER_LEAVE, notification_id: notification.id, title: NOTIFICATION_TITLES.EVENT_USER_LEAVE(),message: NOTIFICATION_MESSAGE.EVENT_USER_LEAVE(eventDetails?.title), event_id: data.event_id, user_id:user.id, business_id: businessDetails.role_id }
+								message: NOTIFICATION_MESSAGE.EVENT_USER_LEAVE(eventDetails?.title, userDetails?.username),
+								content: { notification_type:NOTIFICATION_TYPES.EVENT_USER_LEAVE, notification_id: notification.id, title: NOTIFICATION_TITLES.EVENT_USER_LEAVE(),message: NOTIFICATION_MESSAGE.EVENT_USER_LEAVE(eventDetails?.title, userDetails?.username), event_id: data.event_id, user_id:user.id, business_id: businessDetails.id }
 							};
 							fcmNotification.SendNotification(notificationPayload);
 							await eventUserModel.findOne({
@@ -2966,7 +2966,6 @@ exports.userGiftCardPurchase = async (req, res) => {
 
 					/** Send Puch Notification */
 						const notificationObj = {
-							role_id : user.role_id,
 							params: JSON.stringify({ notification_type:NOTIFICATION_TYPES.GIFT_CARD_PURCHASE, title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(),message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(giftCardDetails?.name), gift_card_id: data.gift_card_id, user_id:user.id, business_id: giftCardDetails.business_id }),
 							title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(),
 							message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(giftCardDetails?.name),
@@ -2976,8 +2975,7 @@ exports.userGiftCardPurchase = async (req, res) => {
 						if (notification && notification.id) {
 							const notificationReceiverObj = {
 								role_id : user.role_id,
-								notification_id : notification.id, 
-								sender_id: user.id, 
+								notification_id : notification.id,
 								receiver_id: giftCardDetails.business_id,
 							}
 							const notificationReceiver = await notificationReceiverModel.create(notificationReceiverObj);
@@ -3188,7 +3186,6 @@ exports.userGiftCardShare = async (req, res) => {
 							// For share self to purchase
 						if (userDetails.email == data.to_email) {
 							const notificationObj = {
-								role_id : user.role_id,
 								params: JSON.stringify({ notification_type:NOTIFICATION_TYPES.GIFT_CARD_PURCHASE, title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(),message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(giftCardDetails?.name), gift_card_id: data.gift_card_id, user_id:user.id, business_id: giftCardDetails.business_id }),
 								title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(),
 								message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(giftCardDetails?.name),
@@ -3198,8 +3195,7 @@ exports.userGiftCardShare = async (req, res) => {
 							if (notification && notification.id) {
 								const notificationReceiverObj = {
 									role_id : businessDetails?.role_id,
-									notification_id : notification.id, 
-									sender_id: user.id, 
+									notification_id : notification.id,
 									receiver_id: giftCardDetails.business_id,
 								}
 								const notificationReceiver = await notificationReceiverModel.create(notificationReceiverObj);
@@ -3670,11 +3666,14 @@ exports.userGiftCardDetails = async (req, res) => {
 				}
 			]
 		})
+		if (!userGiftCard) {
+			return res.send(setRes(resCode.ResourceNotFound,false, "User giftcard not found",null))
+		}
 		const giftCardDetail = userGiftCard.gift_card;
 
 		const totalPurchasedGiftcard = await userGiftCardModel.findAll({ 
 			where: {
-				gift_card_id: giftCardDetail.id,
+				gift_card_id: giftCardDetail?.id,
 				payment_status: 1,
 				is_deleted: false
 			}

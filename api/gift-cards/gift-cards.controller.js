@@ -1092,7 +1092,12 @@ exports.commonRewardsList =async(req,res) => {
 								},
 								include: [
 									{
-										model: giftCardModel
+										model: giftCardModel,
+										attributes: {
+											include: [
+												[models.sequelize.literal("'gift_cards'"),"type"],
+											]
+										}
 									}
 								],
 								raw: true,
@@ -1116,7 +1121,6 @@ exports.commonRewardsList =async(req,res) => {
 									gCard['note'] = userGiftCard?.note || "";
 								}
 							}
-							console.log('userGiftCard', rew.id, rew.user_giftcard_id);
 							gCard = {...gCard ,...userGiftCard?.gift_card, id: rew.user_giftcard_id};
 						}
 						if (gCard) {

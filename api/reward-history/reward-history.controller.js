@@ -295,13 +295,13 @@ const dateListForTimeinterval = async (startObj, endObj, interval='monthly') => 
     if (interval == 'monthly'){
         let startDate = moment(`${startObj.month}/01/${startObj.year}`);
         let endDate = moment(`${endObj.month}/01/${endObj.year}`);
-        while (startDate.isBefore(endDate) || startDate.isSame(endDate)) {
+        while (startDate.isValid() && endDate.isValid() && (startDate.isBefore(endDate) || startDate.isSame(endDate))) {
             array.push(moment(startDate));
             startDate = startDate.add('1','M');
         }
     } else if (interval == 'weekly'){
-        let startDate =  moment().day("Monday").week(startObj.week);
-        let endDate = moment().day("Monday").week(endObj.week);
+        let startDate =  moment().day("Monday").week(startObj?.week || moment().week());
+        let endDate = moment().day("Monday").week(endObj?.week || moment().week());
         while (startDate.isBefore(endDate) || startDate.isSame(endDate)) {
             array.push(moment(startDate));
             startDate = startDate.add('1','weeks');
@@ -309,7 +309,7 @@ const dateListForTimeinterval = async (startObj, endObj, interval='monthly') => 
     } else if (interval == 'custom') {
         let startDate = moment(startObj);
         let endDate = moment(endObj);
-        while (startDate.isBefore(endDate) || startDate.isSame(endDate)) {
+        while (startDate.isValid() && endDate.isValid() && startDate.isBefore(endDate) || startDate.isSame(endDate)) {
             array.push(moment(startDate));
             startDate = startDate.add('1','d');
         }
