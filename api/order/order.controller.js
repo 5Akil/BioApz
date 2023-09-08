@@ -1113,7 +1113,6 @@ exports.orderCreate = async (req, res) => {
 
 			/** Send to Business */
 			const notificationBusinessObj = {
-				role_id : user.role_id,
 				params: JSON.stringify({ notification_type:NOTIFICATION_TYPES.PLACE_ORDER, title: NOTIFICATION_TITLES.PLACE_ORDER_BUSINESS(),message: NOTIFICATION_MESSAGE.PLACE_ORDER_BUSINESS(createdOrder?.order_no), order_id: createdOrder.id, user_id:user.id, business_id: businessDetails.id }),
 				title: NOTIFICATION_TITLES.PLACE_ORDER_BUSINESS(),
 				message: NOTIFICATION_MESSAGE.PLACE_ORDER_BUSINESS(createdOrder?.order_no),
@@ -1124,7 +1123,6 @@ exports.orderCreate = async (req, res) => {
 				const notificationReceiverBusinessObj = {
 					role_id : businessDetails.role_id,
 					notification_id : notificationBusiness.id, 
-					sender_id: user.id, 
 					receiver_id: businessDetails.id,
 				}
 				const notificationReceiver = await notificationReceiverModel.create(notificationReceiverBusinessObj ,{ transaction: t });
@@ -1145,7 +1143,6 @@ exports.orderCreate = async (req, res) => {
 			/** Send User get discount Notifcation to Business User */
 			if (sendDiscountNotification) {
 				const notificationDiscountObj = {
-					role_id : user.role_id,
 					params: JSON.stringify({ notification_type:NOTIFICATION_TYPES.DISCOUNT_USE, title: NOTIFICATION_TITLES.GET_DISCOUNT_ORDER(),message: NOTIFICATION_MESSAGE.GET_DISCOUNT_ORDER(createdOrder?.order_no), order_id: createdOrder.id, user_id:user.id, business_id: businessDetails.id }),
 					title: NOTIFICATION_TITLES.GET_DISCOUNT_ORDER(),
 					message: NOTIFICATION_MESSAGE.GET_DISCOUNT_ORDER(createdOrder?.order_no),
@@ -1156,7 +1153,6 @@ exports.orderCreate = async (req, res) => {
 					const notificationReceiverDiscountObj = {
 						role_id : businessDetails.role_id,
 						notification_id : notificationDiscount.id, 
-						sender_id: user.id, 
 						receiver_id: businessDetails.id,
 					}
 					const notificationDiscountReceiver = await notificationReceiverModel.create(notificationReceiverDiscountObj ,{ transaction: t });
@@ -1208,7 +1204,6 @@ exports.orderCreate = async (req, res) => {
 
 				// send to Business
 				const notificationLoyaltyBusinessObj = {
-					role_id : user.role_id,
 					params: JSON.stringify({ notification_type:NOTIFICATION_TYPES.LOYALTY_USE, title: NOTIFICATION_TITLES.GET_LOYALTY_POINT_BUSINESS(),message: NOTIFICATION_MESSAGE.GET_LOYALTY_POINT_BUSINESS(createdOrder?.order_no), loyalty_id: data?.applied_loyalty_points?.loyalty_id, business_id: businessDetails.id }),
 					title: NOTIFICATION_TITLES.GET_LOYALTY_POINT_BUSINESS(),
 					message: NOTIFICATION_MESSAGE.GET_LOYALTY_POINT_BUSINESS(createdOrder?.order_no),
@@ -1219,7 +1214,6 @@ exports.orderCreate = async (req, res) => {
 					const notificationReceiverDiscountObj = {
 						role_id : businessDetails.role_id,
 						notification_id : notificationLoyaltyBusiness.id, 
-						sender_id: user.id, 
 						receiver_id: businessDetails.id,
 					}
 					const notificationLoyaltyReceiver = await notificationReceiverModel.create(notificationReceiverDiscountObj ,{ transaction: t });
@@ -1340,7 +1334,6 @@ exports.updateOrderStatus = async (req, res) => {
 				
 				/** Send to Business */
 				const notificationBusinessObj = {
-					role_id : userDetails.role_id,
 					params: JSON.stringify({ notification_type:NOTIFICATION_TYPES.ORDER_DELIVERED, title: NOTIFICATION_TITLES.ORDER_DELIVERED_BUSINESS(),message: NOTIFICATION_MESSAGE.ORDER_DELIVERED_BUSINESS(orderDetails?.order_no), order_id: orderDetails.id, user_id: orderDetails.user_id, business_id: businessUser.id }),
 					title: NOTIFICATION_TITLES.ORDER_DELIVERED_BUSINESS(),
 					message: NOTIFICATION_MESSAGE.ORDER_DELIVERED_BUSINESS(orderDetails?.order_no),
@@ -1350,8 +1343,7 @@ exports.updateOrderStatus = async (req, res) => {
 				if (notificationBusiness && notificationBusiness.id) {
 					const notificationReceiverBusinessObj = {
 						role_id : businessUser.role_id,
-						notification_id : notificationBusiness.id, 
-						sender_id: userDetails.id, 
+						notification_id : notificationBusiness.id,
 						receiver_id: businessUser.id,
 					}
 					const notificationReceiver = await notificationReceiverModel.create(notificationReceiverBusinessObj);
