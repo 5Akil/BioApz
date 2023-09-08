@@ -1169,6 +1169,9 @@ exports.ChatInitialize = async (req, res) => {
 		const snapshot = await MessageDetailRef.once("value");
 		const lastMessageDetails = snapshot.val();
 
+		const snapshot2 = await MessageDetailRef.once("value");
+		const lastchat = snapshot.val();
+
 		businessRef.once('value', (fireBusinessData) => {
 			fireBusinessData = JSON.parse(JSON.stringify(fireBusinessData))
 			if (fireBusinessData != null) {
@@ -1187,8 +1190,8 @@ exports.ChatInitialize = async (req, res) => {
 						_.contains(fireCustomerData, data.business_id) ? '' : customerRef.child(nextKey).set(data.business_id)
 
 						//add chat message in firebase database
-						var newMessageChatRef = MessageDetailRef.push();
-						MessageDetailRef.set({
+						var newMessageChatRef = MessageChatRef.push();
+						MessageChatRef.set({
 							'_id': newMessageChatRef.key,
 							'role': 'customer',
 							'sender_id': data.user_id,
@@ -1203,6 +1206,8 @@ exports.ChatInitialize = async (req, res) => {
 						MessageDetailRef.set({
 							'_id': newMessageDetailRef.key,
 							'date':moment().toISOString(),
+							'business_counter':1,
+							'customer_counter':0,
 							'last_message':data.message,
 						})
 
@@ -1216,7 +1221,7 @@ exports.ChatInitialize = async (req, res) => {
 						// var InquiryDetailRes = await UpdateProInquiry
 						// 	(proInquery.id)
 						// InquiryDetailRes != null ? res.send(setRes(resCode.OK, InquiryDetailRes, true, "Chat Initialize Successfully..")) : res.send(setRes(resCode.InternalServer, null, false, "Fail to initialize chat."))
-						return res.send(setRes(resCode.OK, true, "Chat Initialize Successfully.",lastMessageDetails));
+						return res.send(setRes(resCode.OK, true, "Chat Initialize Successfully.",null));
 					}
 					else {
 						var setBusiness_ids = db.ref(`customers/${data.user_id}`)
@@ -1226,8 +1231,8 @@ exports.ChatInitialize = async (req, res) => {
 						setBusiness_ids.child('name').set(userName)
 
 						//add chat message in firebase database
-						var newMessageChatRef = MessageDetailRef.push();
-						MessageDetailRef.set({
+						var newMessageChatRef = MessageChatRef.push();
+						MessageChatRef.set({
 							'_id': newMessageChatRef.key,
 							'role': 'customer',
 							'sender_id': data.user_id,
@@ -1238,10 +1243,12 @@ exports.ChatInitialize = async (req, res) => {
 						//MessageDetailRef.remove();
 						
 						//update message detail in firebase database
-						var newMessageDetailRef = MessageDetailRef.push();
-						MessageDetailRef.set({
+						var newMessageDetailRef = MessageChatRef.push();
+						MessageChatRef.set({
 							'_id': newMessageDetailRef.key,
 							'date':moment().toISOString(),
+							'business_counter':1,
+							'customer_counter':0,
 							'last_message':data.message,
 						})
 
@@ -1250,7 +1257,7 @@ exports.ChatInitialize = async (req, res) => {
 						// 	(proInquery.id)
 						
 						// InquiryDetailRes != null ? res.send(setRes(resCode.OK, InquiryDetailRes, true, "Chat Initialize Successfully..")) : res.send(setRes(resCode.InternalServer, null, true, "Fail to initialize chat."))
-						return res.send(setRes(resCode.OK, true, "Chat Initialize Successfully.",lastMessageDetails))
+						return res.send(setRes(resCode.OK, true, "Chat Initialize Successfully.",null))
 					}
 
 				})
@@ -1272,8 +1279,8 @@ exports.ChatInitialize = async (req, res) => {
 						_.contains(fireCustomerData, data.business_id) ? '' : customerRef.child(nextKey).set(data.business_id)
 
 						//add chat message in firebase database
-						var newMessageChatRef = MessageDetailRef.push();
-						MessageDetailRef.set({
+						var newMessageChatRef = MessageChatRef.push();
+						MessageChatRef.set({
 							'_id': newMessageChatRef.key,
 							'role': 'customer',
 							'sender_id': data.user_id,
@@ -1288,6 +1295,8 @@ exports.ChatInitialize = async (req, res) => {
 						MessageDetailRef.set({
 							'_id': newMessageDetailRef.key,
 							'date':moment().toISOString(),
+							'business_counter':1,
+							'customer_counter':0,
 							'last_message':data.message,
 						})
 
@@ -1296,7 +1305,7 @@ exports.ChatInitialize = async (req, res) => {
 						// 	(proInquery.id)
 
 						// InquiryDetailRes != null ? res.send(setRes(resCode.OK, InquiryDetailRes, true, "Chat Initialize Successfully..")) : res.send(setRes(resCode.InternalServer, null, true, "Fail to initialize chat."))
-						return res.send(setRes(resCode.OK, true, "Chat Initialize Successfully.",lastMessageDetails))
+						return res.send(setRes(resCode.OK, true, "Chat Initialize Successfully.",null))
 					}
 					else {
 						var setBusiness_ids = db.ref(`customers/${data.user_id}`)
@@ -1306,8 +1315,8 @@ exports.ChatInitialize = async (req, res) => {
 						setBusiness_ids.child('name').set(userName)
 
 						//add chat message in firebase database
-						var newMessageChatRef = MessageDetailRef.push();
-						MessageDetailRef.set({
+						var newMessageChatRef = MessageChatRef.push();
+						MessageChatRef.set({
 							'_id': newMessageChatRef.key,
 							'role': 'customer',
 							'sender_id': data.user_id,
@@ -1322,6 +1331,8 @@ exports.ChatInitialize = async (req, res) => {
 						MessageDetailRef.set({
 							'_id': newMessageDetailRef.key,
 							'date':moment().toISOString(),
+							'business_counter':1,
+							'customer_counter':0,
 							'last_message':data.message,
 						})
 
@@ -1330,7 +1341,7 @@ exports.ChatInitialize = async (req, res) => {
 						// 	(proInquery.id)
 
 						// InquiryDetailRes != null ? res.send(setRes(resCode.OK, InquiryDetailRes, true, "Chat Initialize Successfully..")) : res.send(setRes(resCode.InternalServer, null, true, "Fail to initialize chat."))
-						return res.send(setRes(resCode.OK, true, "Chat Initialize Successfully.",lastMessageDetails))
+						return res.send(setRes(resCode.OK, true, "Chat Initialize Successfully.",null))
 					}
 
 				})
