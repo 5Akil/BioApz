@@ -1191,11 +1191,14 @@ exports.ChatInitialize = async (req, res) => {
 						MessageChatRef.child('role').set('customer')
 						MessageChatRef.child('sender_id').set(data.user_id)
 						MessageChatRef.child('text').set(data.message)
-
+						
 						//update message detail in firebase database
+						MessageDetailRef.child('_id').set(lastMessageDetails._id)
+						MessageDetailRef.child('business_counter').set(lastMessageDetails.business_counter)
+						MessageDetailRef.child('customer_counter').set(lastMessageDetails.customer_counter)
 						MessageDetailRef.child('date').set(moment().toISOString())
 						MessageDetailRef.child('last_message').set(data.message)
-
+						
 						//set chatInit in local database
 						// var InquiryDetailRes = await UpdateProInquiry
 						// 	(proInquery.id)
@@ -1216,13 +1219,16 @@ exports.ChatInitialize = async (req, res) => {
 						MessageChatRef.child('text').set(data.message)
 
 						//update message detail in firebase database
+						MessageDetailRef.child('_id').set(lastMessageDetails._id)
+						MessageDetailRef.child('business_counter').set(lastMessageDetails.business_counter)
+						MessageDetailRef.child('customer_counter').set(lastMessageDetails.customer_counter)
 						MessageDetailRef.child('date').set(moment().toISOString())
 						MessageDetailRef.child('last_message').set(data.message)
 
 						//set chatInit in local database
 						// var InquiryDetailRes = await UpdateProInquiry
 						// 	(proInquery.id)
-
+						
 						// InquiryDetailRes != null ? res.send(setRes(resCode.OK, InquiryDetailRes, true, "Chat Initialize Successfully..")) : res.send(setRes(resCode.InternalServer, null, true, "Fail to initialize chat."))
 						return res.send(setRes(resCode.OK, true, "Chat Initialize Successfully.",lastMessageDetails))
 					}
@@ -1252,6 +1258,9 @@ exports.ChatInitialize = async (req, res) => {
 						MessageChatRef.child('text').set(data.message)
 
 						//update message detail in firebase database
+						MessageDetailRef.child('_id').set(lastMessageDetails._id)
+						MessageDetailRef.child('business_counter').set(lastMessageDetails.business_counter)
+						MessageDetailRef.child('customer_counter').set(lastMessageDetails.customer_counter)
 						MessageDetailRef.child('date').set(moment().toISOString())
 						MessageDetailRef.child('last_message').set(data.message)
 
@@ -1276,6 +1285,9 @@ exports.ChatInitialize = async (req, res) => {
 						MessageChatRef.child('text').set(data.message)
 
 						//update message detail in firebase database
+						MessageDetailRef.child('_id').set(lastMessageDetails._id)
+						MessageDetailRef.child('business_counter').set(lastMessageDetails.business_counter)
+						MessageDetailRef.child('customer_counter').set(lastMessageDetails.customer_counter)
 						MessageDetailRef.child('date').set(moment().toISOString())
 						MessageDetailRef.child('last_message').set(data.message)
 
