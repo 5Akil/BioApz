@@ -1165,10 +1165,12 @@ exports.ChatInitialize = async (req, res) => {
 		var customerRef = db.ref(`customers/${data.user_id}/business_ids`)
 		var MessageChatRef = db.ref(`messages/business_${data.business_id}_customer_${data.user_id}/chat/${moment().unix()}_customer`)
 		var MessageDetailRef = db.ref(`messages/business_${data.business_id}_customer_${data.user_id}/details`)
+		
+		const snapshot = await MessageDetailRef.once("value");
+		const lastMessageDetails = snapshot.val();
 
 		businessRef.once('value', (fireBusinessData) => {
 			fireBusinessData = JSON.parse(JSON.stringify(fireBusinessData))
-
 			if (fireBusinessData != null) {
 				var nextKey = parseInt(_.last(_.keys(fireBusinessData))) + 1
 
@@ -1197,9 +1199,8 @@ exports.ChatInitialize = async (req, res) => {
 						//set chatInit in local database
 						// var InquiryDetailRes = await UpdateProInquiry
 						// 	(proInquery.id)
-
 						// InquiryDetailRes != null ? res.send(setRes(resCode.OK, InquiryDetailRes, true, "Chat Initialize Successfully..")) : res.send(setRes(resCode.InternalServer, null, false, "Fail to initialize chat."))
-						return res.send(setRes(resCode.OK, true, null, "Chat Initialize Successfully."));
+						return res.send(setRes(resCode.OK, true, "Chat Initialize Successfully.",lastMessageDetails));
 					}
 					else {
 						var setBusiness_ids = db.ref(`customers/${data.user_id}`)
@@ -1223,7 +1224,7 @@ exports.ChatInitialize = async (req, res) => {
 						// 	(proInquery.id)
 
 						// InquiryDetailRes != null ? res.send(setRes(resCode.OK, InquiryDetailRes, true, "Chat Initialize Successfully..")) : res.send(setRes(resCode.InternalServer, null, true, "Fail to initialize chat."))
-						return res.send(setRes(resCode.OK, true, null, "Chat Initialize Successfully."))
+						return res.send(setRes(resCode.OK, true, "Chat Initialize Successfully.",lastMessageDetails))
 					}
 
 				})
@@ -1259,7 +1260,7 @@ exports.ChatInitialize = async (req, res) => {
 						// 	(proInquery.id)
 
 						// InquiryDetailRes != null ? res.send(setRes(resCode.OK, InquiryDetailRes, true, "Chat Initialize Successfully..")) : res.send(setRes(resCode.InternalServer, null, true, "Fail to initialize chat."))
-						return res.send(setRes(resCode.OK, true, null, "Chat Initialize Successfully."))
+						return res.send(setRes(resCode.OK, true, "Chat Initialize Successfully.",lastMessageDetails))
 					}
 					else {
 						var setBusiness_ids = db.ref(`customers/${data.user_id}`)
@@ -1283,7 +1284,7 @@ exports.ChatInitialize = async (req, res) => {
 						// 	(proInquery.id)
 
 						// InquiryDetailRes != null ? res.send(setRes(resCode.OK, InquiryDetailRes, true, "Chat Initialize Successfully..")) : res.send(setRes(resCode.InternalServer, null, true, "Fail to initialize chat."))
-						return res.send(setRes(resCode.OK, true, null, "Chat Initialize Successfully."))
+						return res.send(setRes(resCode.OK, true, "Chat Initialize Successfully.",lastMessageDetails))
 					}
 
 				})

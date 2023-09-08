@@ -1144,7 +1144,7 @@ exports.CreateCategory = async (req, res) => {
 			}
 		}
 
-		businessModel.findOne({
+		await businessModel.findOne({
 			where:{
 				id:data.business_id,
 				is_deleted:false,
@@ -1152,12 +1152,12 @@ exports.CreateCategory = async (req, res) => {
 			}
 		}).then(async business => {
 			if(_.isEmpty(business)){
-				res.send(setRes(resCode.ResourceNotFound, false, "Business not found.",null))
+				return res.send(setRes(resCode.ResourceNotFound, false, "Business not found.",null))
 			}else{
 				if((data.parent_id != 0 && !_.isEmpty(data.parent_id))){
 					const parentCategory = await productCategoryModel.findOne({
 						where:{
-							id:data.parent_id,is_deleted:false,
+							id:data.parent_id,is_deleted:false,type:'business'
 						}
 					});
 					if(!parentCategory){
@@ -1197,6 +1197,7 @@ exports.CreateCategory = async (req, res) => {
 				}
 
 				if(validation){
+					data.type = 'business';
 					await productCategoryModel.create(data).then(async categoryData => {
 
 						if(categoryData){
@@ -1234,7 +1235,7 @@ exports.CategoryList = async(req, res) => {
 	var productCategoryModel = models.product_categorys
 	const Op = models.Op;
 
-	var requiredFields = _.reject(['business_id','page','page_size'], (o) => { return _.has(data, o)  })
+	var requiredFields = _.reject(['page','page_size'], (o) => { return _.has(data, o)  })
 	if(requiredFields == ""){
 		if(data.page < 0 || data.page === 0) {
 			res.send(setRes(resCode.BadRequest, false, "invalid page number, should start with 1",null))
@@ -1242,14 +1243,19 @@ exports.CategoryList = async(req, res) => {
 		var skip = data.page_size * (data.page - 1)
 		var limit = parseInt(data.page_size)
 		var condition = {where:{
-			business_id:data.business_id,
 			is_deleted: false,
 			is_enable: true,
 			parent_id:0
 		},
 		order: [
-			['name', 'ASC']
+			['name', 'ASC'],
 		]}
+		if(data.business_id && !_.isEmpty(data.business_id)){
+			condition.where = {...condition.where,...{business_id:data.business_id}}
+		}
+		if(data.type && !_.isEmpty(data.type)){
+			condition.where = {...condition.where,...{type:data.type}}
+		}
 		if(data.page_size != 0 && !_.isEmpty(data.page_size)){
 			condition.offset = skip,
 			condition.limit = limit
@@ -2083,7 +2089,7 @@ exports.deleteProduct = async(req,res) => {
 	var Op = models.Op
 
 	if (requiredFields == ''){
-		productModel.findOne({
+		await productModel.findOne({
 			where: {
 				id: data.id,
 				is_deleted: false
