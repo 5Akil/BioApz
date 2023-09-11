@@ -993,23 +993,12 @@ exports.commonRewardsList =async(req,res) => {
 			let rewards = [];
 			let rewardsCounts = [];
 			if (user.role_id == 3) {
-				rewards = await models.sequelize.query(
-					`SELECT id, MAX(createdAt) AS createdAt, type FROM (${unionQuery}) Rewards ${
-					  filteCondition != '' ? 'GROUP BY id, type' : ''
-					} ORDER BY createdAt DESC LIMIT ${offset}, ${limit}`,
-					{
-					  type: models.sequelize.QueryTypes.SELECT,
-					}
-				  );
-				  
-				  rewardsCounts = await models.sequelize.query(
-					`SELECT COUNT(DISTINCT id) AS count FROM (${unionQuery}) Rewards ${
-					  filteCondition != '' ? 'GROUP BY type' : ''
-					}`,
-					{
-					  type: models.sequelize.QueryTypes.SELECT,
-					}
-				  );
+			rewards = await models.sequelize.query(`SELECT * FROM (${unionQuery}) Rewards ${filteCondition != '' ? 'GROUP BY id' : ''} ORDER BY createdAt desc LIMIT ${offset}, ${limit}`,{
+				type: models.sequelize.QueryTypes.SELECT
+			});
+			rewardsCounts = await models.sequelize.query(`SELECT * FROM (${unionQuery}) Rewards ${filteCondition != '' ? 'GROUP BY id' : ''}`,{
+				type: models.sequelize.QueryTypes.SELECT
+			});
 			} // for user's rewards
 			else {
 			const textSearch = (tableName) =>  {
@@ -1354,7 +1343,6 @@ exports.commonRewardsList =async(req,res) => {
 			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 		}
 	} catch (error) {
-		console.log(error)
 		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
 	}
 }
