@@ -3249,6 +3249,21 @@ exports.userGiftCardShare = async (req, res) => {
 								};
 								fcmNotification.SendNotification(notificationPayload);
 							}
+							const notificationObj = {
+								params: JSON.stringify({ notification_type:NOTIFICATION_TYPES.GIFT_CARD_SHARE, title: NOTIFICATION_TITLES.GIFT_CARD_SHARE(userDetails.username),message: NOTIFICATION_MESSAGE.GIFT_CARD_SHARE(giftCardDetails?.name), gift_card_id: gCard.id, user_id:user.id, business_id: giftCardDetails.business_id }),
+								title: NOTIFICATION_TITLES.GIFT_CARD_SHARE_BUSINESS(userDetails.username),
+								message: NOTIFICATION_MESSAGE.GIFT_CARD_SHARE_BUSINESS(userDetails?.username ,giftCardDetails?.name),
+								notification_type: NOTIFICATION_TYPES.GIFT_CARD_SHARE,
+							}
+							const notification = await notificationModel.create(notificationObj);
+							if (notification && notification.id) {
+								const notificationReceiverObj = {
+									role_id : businessDetails.role_id,
+									notification_id : notification.id,
+									receiver_id: businessDetails.id,
+								}
+								const notificationReceiver = await notificationReceiverModel.create(notificationReceiverObj);
+							}
 						}
 						/** END Send Push Notification */
 					// }
