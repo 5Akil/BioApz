@@ -173,6 +173,11 @@ exports.ChatNotification = async (req, res) => {
 						if (uniqueDeviceTokens?.length > 0) {
 							NotificationData.device_token = uniqueDeviceTokens
 							NotificationData.message = task?.text
+							NotificationData.content = { 
+								id: task?.id || '',
+								from_name: task?.from_name || '',
+								notification_type: "chat_notification"
+							}
 							notification.SendNotification(NotificationData)
 						}
 					});
@@ -192,6 +197,11 @@ exports.ChatNotification = async (req, res) => {
 						if (uniqueDeviceTokens?.length > 0) {
 							NotificationData.device_token = uniqueDeviceTokens
 							NotificationData.message = task?.text
+							NotificationData.content = { 
+								id: task?.id || '',
+								from_name: task?.from_name || '',
+								notification_type: "chat_notification"
+							}
 							notification.SendNotification(NotificationData)
 						}
 					});
