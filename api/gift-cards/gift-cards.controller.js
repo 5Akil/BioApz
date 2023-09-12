@@ -265,6 +265,7 @@ exports.giftCardLists = async (req, res) => {
 		const query = req.query;
 		const business_id = query?.business_id || '';
 		const giftCardsModel = models.gift_cards;
+		const Op = models.Op;
 
 		const giftCards = await giftCardsModel.findAll({
 			where: {
@@ -279,7 +280,7 @@ exports.giftCardLists = async (req, res) => {
 		});
 		res.send(setRes(resCode.OK, true, "Gift Cards List.", giftCards));
 	} catch (error) {
-		res.send(setRes(resCode.BadRequest, false, null, "Please select valid type."));
+		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
 	}
 }
 
