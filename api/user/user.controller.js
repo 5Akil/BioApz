@@ -2046,10 +2046,10 @@ exports.rewardsView = async (req, res) => {
 						}else{
 							giftCardData.image = commonConfig.default_image;
 						}
-						res.send(setRes(resCode.OK, true, "Get gift card detail successfully.",giftCardData))
+						res.send(setRes(resCode.OK, true, "Get virtual card detail successfully.",giftCardData))
 					}
 					else{
-						res.send(setRes(resCode.ResourceNotFound,false, "Gift card not found.",null))
+						res.send(setRes(resCode.ResourceNotFound,false, "Virtual card not found.",null))
 					}
 				}).catch(error2 => {
 					res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
@@ -2883,7 +2883,7 @@ exports.userGiftCardPurchase = async (req, res) => {
 				}
 			})
 			if (isGiftCardPurchased.length > 0) {
-				return res.send(setRes(resCode.BadRequest, false, "User already purchased Giftcard for day.", null))
+				return res.send(setRes(resCode.BadRequest, false, "User already purchased Virtual card for day.", null))
 			}
 
 			// check gift card expire or not
@@ -2930,7 +2930,7 @@ exports.userGiftCardPurchase = async (req, res) => {
 									}
 								}
 						})
-						const expiryDate = moment(giftCardDetails.expire_at).format('MMM,DD YYYY');
+						const expiryDate = moment(giftCardDetails.expire_at).format('MMM DD,YYYY');
 						const context = {
 							userName : userDetails.username,
 							giftCardName: giftCardDetails.name,
@@ -2952,7 +2952,7 @@ exports.userGiftCardPurchase = async (req, res) => {
 								{
 									from: 'b.a.s.e. <do-not-reply@mail.com>',
 									to: userDetails.email,
-									subject: `B.a.s.e Gift card`,
+									subject: `B.a.s.e Virtual card`,
 									html: html
 								},
 								function (err, result) {
@@ -2993,12 +2993,12 @@ exports.userGiftCardPurchase = async (req, res) => {
 						fcmNotification.SendNotification(notificationPayload);
 					/** END Puch Notification */
 					// }
-					res.send(setRes(resCode.OK, true, "Gift Card Purchased successfully!", createdGiftCards))
+					res.send(setRes(resCode.OK, true, "Virtual Card Purchased successfully!", createdGiftCards))
 				} else {
 					return res.send(setRes(resCode.BadRequest, false, "Invald Qty value.", null))
 				}
 			} else {
-				return res.send(setRes(resCode.ResourceNotFound, false, "Gift card not found.", null))
+				return res.send(setRes(resCode.ResourceNotFound, false, "Virtual card not found.", null))
 			}
 		} else {
 			return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
@@ -3037,14 +3037,18 @@ exports.userGiftCardShare = async (req, res) => {
 		}
 
 
-		// TODO: for scheduled email
-		// const currentDateTime = moment().format('YYYY-MM-DD HH:mm:ss');
-		// const scheduledDateTime = moment(data.schedule_datetime).format("YYYY-MM-DD HH:mm:ss");
-		// console.log('data.schedule_datetime', new Date(data.schedule_datetime), scheduledDateTime);
-		// const isScheduleDateFutureDate = moment(currentDateTime).isBefore(scheduledDateTime);
-		// const isScheduleDatePastDate = moment(scheduledDateTime).isBefore(currentDateTime);
+		//for scheduled email
+		const currentDateTime = moment().format('YYYY-MM-DD HH:mm:ss');
+		const scheduledDateTime = moment(data.schedule_datetime).format("YYYY-MM-DD HH:mm:ss");
+		const isScheduleDateFutureDate = moment(currentDateTime).isBefore(scheduledDateTime);
+		
 
-
+		if (data?.schedule_datetime && data?.schedule_datetime != '' && !moment(data.schedule_datetime).isValid()) {
+			return res.send(setRes(resCode.BadRequest, false, "Invalid Schedule date time.", null));
+		}
+		if (data?.schedule_datetime && !moment(data.schedule_datetime).isValid() && !isScheduleDateFutureDate) {
+			return res.send(setRes(resCode.BadRequest, false, "Schedule date time should be future date time.", null));
+		}
 		if (requiredFields == "") {
 			if (![0, 1].includes(+(data.payment_status))) {
 				return res.send(setRes(resCode.BadRequest, false, "Invalid value for Payment status.", null))
@@ -3052,7 +3056,7 @@ exports.userGiftCardShare = async (req, res) => {
 
 			const giftCardTemplate = await giftCardTemplateModel.findOne({ where: { id: data.gift_card_template_id , is_enable: true, is_deleted: false } })
 			if (!giftCardTemplate) {
-				return res.send(setRes(resCode.ResourceNotFound, false, "Giftcard Template not found.", null))
+				return res.send(setRes(resCode.ResourceNotFound, false, "Virtual card Template not found.", null))
 			}
 			// check gift card expire or not
 			const giftCardDetails = await giftCardModel.findOne({ where: { id: data.gift_card_id } });
@@ -3079,15 +3083,14 @@ exports.userGiftCardShare = async (req, res) => {
 					purchase_date: currentDate,
 					redeemed_amount: 0,
 					payment_status: (data.payment_status == '1') ? true : false,
-					// qty: data.qty
+					qty: data.qty
 				}
-				// TODO:
-				// if (data.schedule_datetime) {
-				// 	giftCardObj.schedule_datetime = data.schedule_datetime;
-				// 	giftCardObj.is_email_sent = false;
-				// }else {
-				// 	giftCardObj.is_email_sent = true;
-				// }
+				if (data?.schedule_datetime && data?.schedule_datetime != '' && moment(data.schedule_datetime).isValid()) {
+					giftCardObj.schedule_datetime = moment(data.schedule_datetime).format('YYYY-MM-DD HH:mm:ss');
+					giftCardObj.is_email_sent = false;
+				}else {
+					giftCardObj.is_email_sent = true;
+				}
 				if (data.qty && +(data.qty) > 0) {
 					const createdSharedGiftCards = [];
 						const gCard = await userGiftCardModel.create(giftCardObj);
@@ -3114,7 +3117,7 @@ exports.userGiftCardShare = async (req, res) => {
 						})
 
 						// If Sharing Giftcard to Self
-						const expireDate = moment(giftCardDetails.expire_at).format('MMM,DD YYYY');
+						const expireDate = moment(giftCardDetails.expire_at).format('MMM DD,YYYY');
 						if (userDetails.email == data.to_email) {
 							const context = {
 								userName : userDetails.username,
@@ -3137,7 +3140,7 @@ exports.userGiftCardShare = async (req, res) => {
 									{
 										from: 'b.a.s.e. <do-not-reply@mail.com>',
 										to: userDetails.email,
-										subject: `B.a.s.e Gift card`,
+										subject: `B.a.s.e Virtual card`,
 										html: html
 									},
 									function (err, result) {
@@ -3170,7 +3173,7 @@ exports.userGiftCardShare = async (req, res) => {
 									{
 										from: 'b.a.s.e. <do-not-reply@mail.com>',
 										to: data.to_email,
-										subject: `${userDetails.username} Sent you  B.a.s.e Gift card !`,
+										subject: `${userDetails.username} Sent you  B.a.s.e Virtual card !`,
 										html: html
 									},
 									function (err, result) {
@@ -3249,12 +3252,12 @@ exports.userGiftCardShare = async (req, res) => {
 						}
 						/** END Send Push Notification */
 					// }
-					res.send(setRes(resCode.OK, true, "Gift Card Shared successfully!", createdSharedGiftCards))
+					res.send(setRes(resCode.OK, true, "Virtual Card Shared successfully!", createdSharedGiftCards))
 				} else {
 					return res.send(setRes(resCode.BadRequest, false, "Invalid value for Qty.", null))
 				}
 			} else {
-				return res.send(setRes(resCode.ResourceNotFound, false, "Gift card not found.", null))
+				return res.send(setRes(resCode.ResourceNotFound, false, "Virtual card not found.", null))
 			}
 		} else {
 			return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
@@ -3336,7 +3339,7 @@ exports.userGiftCardList = async (req, res) => {
 			const userGiftCards = await userGiftCardsModel.findAndCountAll(condition);
 			const totalRecords = userGiftCards?.count || 0;
 			const response = new pagination(userGiftCards.rows, totalRecords, parseInt(data.page), parseInt(data.page_size));
-			res.send(setRes(resCode.OK, true, "User Gifcards List.", (response.getPaginationInfo())));
+			res.send(setRes(resCode.OK, true, "User Virtualcards List.", (response.getPaginationInfo())));
 		} else {
 			return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null));
 		}
@@ -3378,7 +3381,7 @@ exports.redeemGiftCard = async (req, res) => {
 			const expireAt = giftCardDetails?.dataValues?.gift_card.expire_at;
 			const currentDate = (moment().format('YYYY-MM-DD'));
 			if (currentDate > expireAt) {
-				return res.send(setRes(resCode.BadRequest, false, "Giftcard is expired", null));		
+				return res.send(setRes(resCode.BadRequest, false, "Virtaulcard is expired", null));		
 			}
 			
 			// Check for redeem amount request to eligible to deduct from remaining
@@ -3386,7 +3389,7 @@ exports.redeemGiftCard = async (req, res) => {
 			let giftCardRedeemedAmount = Number(giftCardDetails?.dataValues?.redeemed_amount || 0);
 			const giftCardRemainingAmount = giftCardAmount - giftCardRedeemedAmount;
 			if (data.redeem_amount > giftCardRemainingAmount) {
-				return res.send(setRes(resCode.BadRequest, false, "Redeem amount is more than remaining balance for giftcard", null));
+				return res.send(setRes(resCode.BadRequest, false, "Redeem amount is more than remaining balance for virtualcard", null));
 			}
 			
 			giftCardRedeemedAmount += Number(data.redeem_amount || 0);
@@ -3413,9 +3416,9 @@ exports.redeemGiftCard = async (req, res) => {
 						id: data.user_gift_card_id,
 					}
 				})
-				return res.send(setRes(resCode.OK, true, "Giftcard Amount Redeemed Successfully!", updatedUserGiftCard));
+				return res.send(setRes(resCode.OK, true, "Virtual card Amount Redeemed Successfully!", updatedUserGiftCard));
 			} else {
-				return res.send(setRes(resCode.BadRequest, false, "Giftcard Amount Redeeme failed", null));
+				return res.send(setRes(resCode.BadRequest, false, "Virtual card Amount Redeem failed", null));
 			}
 
 		} else {
@@ -3452,7 +3455,7 @@ exports.recommendedGiftCard = async (req, res) => {
 				}
 			});
 			if (!giftCardExists) {
-				return res.send(setRes(resCode.BadRequest, false, "User Giftcard not found.", null));	
+				return res.send(setRes(resCode.BadRequest, false, "User Virtual card not found.", null));	
 			}
 
 			const giftCards = await giftCardsModel.findAndCountAll({
@@ -3486,7 +3489,7 @@ exports.recommendedGiftCard = async (req, res) => {
 
 			const response = new pagination(giftCards.rows, +(totalRecords), parseInt(data.page), parseInt(data.page_size))
 
-			return res.send(setRes(resCode.OK, true, "Gift cards reccomended list.", (response.getPaginationInfo())));
+			return res.send(setRes(resCode.OK, true, "Virtual cards reccomended list.", (response.getPaginationInfo())));
 
 		} else {
 			return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null));
@@ -3702,7 +3705,7 @@ exports.userGiftCardDetails = async (req, res) => {
 
 		giftCardDetail.dataValues.totalPurchase = totalPurchasedGiftcard?.length  || 0; 
 
-		return res.send(setRes(resCode.OK, true, "User Gift card details!", giftCardDetail))
+		return res.send(setRes(resCode.OK, true, "User Virtual card details!", giftCardDetail))
 	} catch (error) {
 		return res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
 	}
