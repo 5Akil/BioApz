@@ -33,7 +33,8 @@ exports.list = async (req,res) =>{
 					},
 					attributes: {exclude:['created_at','updated_at','deleted_at']}
 				}],
-				attributes: {exclude:['role_id','notification_type','status','created_at','updated_at','deleted_at']}
+				attributes: {exclude:['role_id','notification_type','status','updated_at','deleted_at']},
+				order: [['created_at', 'DESC']],
 			};
 			
 			condition.where = {
@@ -74,6 +75,7 @@ exports.list = async (req,res) =>{
 					unreadNotificationCount++;
 				}
 				delete data.dataValues.notification_receivers;
+				delete data?.dataValues?.created_at;
 			}
 			const valueData = {}
 			valueData.unread_notifications = unreadNotification?.count || 0;
