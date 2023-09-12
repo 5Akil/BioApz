@@ -2369,6 +2369,7 @@ exports.businessEventList = async (req, res) => {
 		var requiredFields = _.reject(["page", "page_size"], (o) => {
 			return _.has(data, o);
 		});
+		var currentDateTime = moment().format('YYYY-MM-DD HH:mm:ss');
 		// const userDetails = await userModel.findOne({ where: { email: userEmail, is_deleted: false, is_active: true } });
 		const user = req?.user || {};
 		const userId = user?.id ? user.id : '';
@@ -2405,14 +2406,17 @@ exports.businessEventList = async (req, res) => {
 						required: true
 					}
 				],
-				order: [
-					['start_date', 'ASC'],
-					['start_time', 'ASC'],
+				order: Sequelize.literal("trim(concat(start_date,' ', start_time)) ASC"),
+			}
+			condition.where = {
+				is_deleted: false,
+				end_date: {
+					[Op.gte]: currentDate
+				},
+				[Op.and]: [
+					Sequelize.literal(`CONCAT(start_date, ' ', start_time) >= '${currentDateTime}'`),
 				],
 			}
-			condition.where = {is_deleted: false,end_date: {
-				[Op.gt]: currentDate
-			},}
 			if(data.search){
 				condition.where = {...condition.where,...{[Op.or]: [{title: {[Op.like]: "%" + data.search + "%",}}]}}
 			}
@@ -2423,7 +2427,7 @@ exports.businessEventList = async (req, res) => {
 				condition.offset = skip,
 				condition.limit = limit
 			}
-			combocalenderModel.findAll(condition).then(async event => {
+			await combocalenderModel.findAll(condition).then(async event => {
 					const dataArray = [];	
 					for (const data of event) {
 						var event_images = data.images
@@ -2468,6 +2472,7 @@ exports.businessEventList = async (req, res) => {
 			);
 		}
 	} catch (error) {
+		console.log(error)
 		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null));
 	}
 }

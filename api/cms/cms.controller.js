@@ -104,7 +104,7 @@ exports.viewCMS = async (req , res) => {
 		//}
 		if(requiredFields == ""){
 			var condition = {
-				attributes: { exclude: ['is_deleted', 'is_enable','createdAt','updatedAt','type'] }
+				attributes: { exclude: ['createdAt','updatedAt'] }
 			}
 			condition.where = {
 				//page_key:{
@@ -126,6 +126,10 @@ exports.viewCMS = async (req , res) => {
 			if(!_.isEmpty(data.page_key)){
 				condition.where = {...condition.where,...{page_key:data.page_key}}
 			}
+			if(!_.isEmpty(data.id)){
+				condition.where = {...condition.where,...{id:data.id}}
+			}
+			
 			await cmsModel.findAll(condition).then(async pageData => {
 				if(pageData != null){
 					for(const data of pageData){
@@ -133,20 +137,18 @@ exports.viewCMS = async (req , res) => {
 							data.dataValues.page_url = commonConfig.admin_url + data.page_key;
 						}
 					}
-					res.send(setRes(resCode.OK,true,`Cms page get successfully`,pageData))
+					return res.send(setRes(resCode.OK,true,`Cms page get successfully`,pageData))
 				}else{
-					res.send(setRes(resCode.ResourceNotFound,false,'Cms page not found',null))
+					return res.send(setRes(resCode.ResourceNotFound,false,'Cms page not found',null))
 				}
 			}).catch(error => {
-				console.log(error);
-				res.send(setRes(resCode.BadRequest,false,"Fail to get page details",true))
+				return res.send(setRes(resCode.BadRequest,false,"Fail to get page details",true))
 			})
 		}else{
-			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
+			return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
 		}
 	} catch (error) {
-		console.log(error)
-		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
+		return res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
 	}
 }
 
