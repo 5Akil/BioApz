@@ -173,7 +173,7 @@ exports.Login = async (req, res) => {
         //user login
         if (data.role == 2) {
 
-            userModel.findOne({
+            await userModel.findOne({
                 where: {
                     email: data.email,
                     // is_active: 1,
@@ -183,7 +183,7 @@ exports.Login = async (req, res) => {
                     model: models.countries,
                     attributes: ['id', 'country_code', 'phone_code', 'currency', 'currency_symbol']
                 }]
-            }).then(function(user) {
+            }).then(async function(user) {
                 if (!user) {
                     res.send(setRes(resCode.ResourceNotFound, false, 'User not found.', null))
                 } else {
@@ -213,7 +213,7 @@ exports.Login = async (req, res) => {
                                         auth_token: token,
                                     }, {
                                         where: {
-                                            user_id: user.id
+                                            id: user.id
                                         }
                                     })
                                     .then(async function(newUser) {
