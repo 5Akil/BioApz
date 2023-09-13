@@ -12,8 +12,8 @@ exports.deviceToken = async (req, res) => {
 		var device_version = (data.api_version == 1) ? 'production' : 'testing';
 		var device_data = (data.device_type == 1) ? 'ios' : 'android';
 		var authModel = (authData.role_id == 3 && authData.role_id != 2) ? models.business : models.user;
-		//var requiredFields = _.reject(['device_id','device_type','device_token'], (o) => { return _.has(data, o) })
-		//if (requiredFields == '') {
+		var requiredFields = _.reject(['device_id','device_type','device_token'], (o) => { return _.has(data, o) })
+		if (requiredFields == '') {
 			var condition = {};
 			
 			condition.where = {status:{
@@ -25,12 +25,16 @@ exports.deviceToken = async (req, res) => {
 			if(authData.role_id == 2){
 				condition.where = {...condition.where,...{user_id:authData.id}}
 			}
-			const alreadyLoggedInUser = await device.findOne(condition);
-			if(alreadyLoggedInUser){
-				alreadyLoggedInUser.update(data);
-				return res.send(setRes(resCode.OK, true, "Device Token Updated Successfully", alreadyLoggedInUser))
+			const alreadyLoggedInUser = await device.findAll(condition);
+			for(const loguser of alreadyLoggedInUser){
+				loguser.destroy();
+				loguser.update({status:9});
 			}
-			else{
+			//if(alreadyLoggedInUser){
+			//	alreadyLoggedInUser.update(data);
+			//	return res.send(setRes(resCode.OK, true, "Device Token Updated Successfully", alreadyLoggedInUser))
+			//}
+			//else{
 				const deviceData = {
 					device_id: data.device_id,
 					device_type: device_data,
@@ -50,10 +54,10 @@ exports.deviceToken = async (req, res) => {
 				if(storedevicetToken){
 					return res.send(setRes(resCode.OK, true, "Device Registered Successfully", storedevicetToken))
 				}
-			}
-		//} else {
-		//	res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
-		//}
+			//}
+		} else {
+			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
+		}
 	}catch(error){
 		return res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
 	}
