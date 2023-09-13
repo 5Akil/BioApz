@@ -54,6 +54,15 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.BOOLEAN,
         defaultValue: false
     },
+    qty: {
+        type: DataTypes.INTEGER
+    },
+    is_email_sent: {
+        type: DataTypes.BOOLEAN,
+    },
+    schedule_datetime: {
+        type: DataTypes.DATE,
+    }
   },{});
 
   UserGiftCards.associate = function(models) {
