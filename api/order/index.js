@@ -7,7 +7,7 @@ var controller = require('./order.controller')
 const {verifyToken} = require('../../config/token');
 const { authorize } = require('../../helpers/authorize');
 
-router.post('/user/order_history', verifyToken, controller.OrderHistory)
+router.post('/user/order_history', verifyToken, authorize([2]), controller.OrderHistory)
 router.get('/user/order_details/:id', verifyToken, authorize([2]), controller.OrderDetail)
 router.post('/business/order_history', verifyToken, controller.BusinessOrderHistory)
 router.get('/business/order_details/:id', verifyToken, authorize([3]), controller.BusinessOrderDetail)
