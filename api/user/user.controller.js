@@ -2657,9 +2657,25 @@ exports.userEventList = async (req, res) => {
 			var startDate = moment(data.from_date).format('YYYY-MM-DD')
 			var endDate = moment(data.to_date).format('YYYY-MM-DD')
 			condition.where = {...condition.where, ...{
-					start_date: {
-						[Op.between]: [startDate,endDate]
-					}
+					[Op.or] : [{
+						start_date: {
+							[Op.between]: [startDate,endDate]
+						}
+					},
+					{
+						[Op.and] : [
+							{
+								start_date: {
+									[Op.lte]: currentDate
+								}
+							},
+							{
+								end_date: {
+									[Op.gte]: currentDate
+								}
+							}
+						]
+					}]
 				}
 			}
 		}
