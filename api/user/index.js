@@ -66,7 +66,7 @@ router.post('/update-profile', verifyToken, awsupload.single('profile_picture'),
 router.post('/change-password', verifyToken, controller.ChangePassword)
 router.post('/feedback', verifyToken, controller.SendFeedback)
 router.post('/all-business',verifyToken,authorize([2]),controller.GetAllBusiness)
-router.post('/logout', verifyToken ,controller.Logout)
+router.post('/logout', verifyToken, authorize([2,3]) ,controller.Logout)
 
 
 // Home Screen Route
