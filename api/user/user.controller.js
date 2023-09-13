@@ -2888,19 +2888,19 @@ exports.userGiftCardPurchase = async (req, res) => {
 			}
 
 			// Gift card purchased in any 
-			const isGiftCardPurchased = await userGiftCardModel.findAll({
-				where: {						
-							purchase_date: { [Op.eq] : new Date(currentDate) },
-							user_id:  userDetails.id,
-							to_email: {
-								[Op.eq]: null
-							},
-							is_deleted: false
-				}
-			})
-			if (isGiftCardPurchased.length > 0) {
-				return res.send(setRes(resCode.BadRequest, false, "User already purchased Virtual card for day.", null))
-			}
+			// const isGiftCardPurchased = await userGiftCardModel.findAll({
+			// 	where: {						
+			// 				purchase_date: { [Op.eq] : new Date(currentDate) },
+			// 				user_id:  userDetails.id,
+			// 				to_email: {
+			// 					[Op.eq]: null
+			// 				},
+			// 				is_deleted: false
+			// 	}
+			// })
+			// if (isGiftCardPurchased.length > 0) {
+			// 	return res.send(setRes(resCode.BadRequest, false, "User already purchased Virtual card for day.", null))
+			// }
 
 			// check gift card expire or not
 			const giftCardDetails = await giftCardModel.findOne({ where: { id: data.gift_card_id, status: true, isDeleted: false } });
@@ -3168,8 +3168,10 @@ exports.userGiftCardShare = async (req, res) => {
 							});
 						}
 						if (userDetails.email != data.to_email && !data?.schedule_datetime) {
+							const toUser = await userModel.findOne({ where: { email: data.to_email, is_active: true, is_deleted: false } })
+							const ToUsename = toUser ? toUser?.username : '';
 							const context = {
-								userName : userDetails.username,
+								userName : ToUsename,
 								giftCardName: giftCardDetails.name,
 								giftCardAmount: giftCardDetails.amount,
 								giftCardUrl: `${giftCardImage}`,
@@ -3294,6 +3296,7 @@ exports.userGiftCardShare = async (req, res) => {
 			return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
 		}
 	} catch (error) {
+		console.log(error);
 		return res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
 	}
 }
