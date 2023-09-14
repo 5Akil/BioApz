@@ -162,6 +162,7 @@ exports.Login = async (req, res) => {
     var countryModel = models.countries
     var templateModel = models.templates
     var categoryModel = models.business_categorys
+	var deviceModel = models.device_tokens;
 
     var requiredFields = _.reject(['email', 'password', 'role'], (o) => {
         return _.has(data, o)
@@ -172,7 +173,7 @@ exports.Login = async (req, res) => {
         //user login
         if (data.role == 2) {
 
-            userModel.findOne({
+            await userModel.findOne({
                 where: {
                     email: data.email,
                     // is_active: 1,
@@ -182,7 +183,7 @@ exports.Login = async (req, res) => {
                     model: models.countries,
                     attributes: ['id', 'country_code', 'phone_code', 'currency', 'currency_symbol']
                 }]
-            }).then(function(user) {
+            }).then(async function(user) {
                 if (!user) {
                     res.send(setRes(resCode.ResourceNotFound, false, 'User not found.', null))
                 } else {
@@ -201,10 +202,15 @@ exports.Login = async (req, res) => {
                                 })
                                 delete user.dataValues.auth_token
                                 user.dataValues.auth_token = token
-
-                                userModel.update({
+								//await deviceModel.update({
+								//	device_token:device_token
+								//}, {
+								//	where: {
+								//		id: user.id
+								//	}
+								//});
+                                await userModel.update({
                                         auth_token: token,
-                                        device_token: data.device_token,
                                     }, {
                                         where: {
                                             id: user.id
@@ -236,7 +242,7 @@ exports.Login = async (req, res) => {
         //business login 
         else if (data.role == 3) {
 
-            businessModel.findOne({
+            await businessModel.findOne({
                 where: {
                     email: data.email,
                     // is_active: true,
@@ -269,11 +275,18 @@ exports.Login = async (req, res) => {
                                 })
                                 delete business.dataValues.auth_token
                                 business.dataValues.auth_token = token
-
-                                businessModel.update({
+								
+								//await deviceModel.update({
+								//	device_token:device_token
+								//}, {
+								//	where: {
+								//		business_id: business.id
+								//	}
+								//});
+                                await businessModel.update({
                                         auth_token: token,
                                         // device_type: data.device_type,
-                                        device_token: data.device_token,
+                                        //device_token: data.device_token,
                                         // device_id: data.device_id
                                     }, {
                                         where: {
@@ -1236,40 +1249,44 @@ exports.GetAllBusiness = async (req, res) => {
 exports.Logout = async (req, res) => {
 	try{
 		const data = req.body;
+		var authData = req.user;
+		var authModel = (authData.role_id == 3 && authData.role_id != 2) ? models.business : models.user; 
 		var Op = models.Op
 		var requiredFields = _.reject(['device_id', 'device_type'], (o) => { return _.has(data, o)  })
 
 		if(requiredFields == ""){
-			const authHeader = req.headers["authorization"];
-			const TokenData =  jwt.verify(authHeader, 'secret', {expiresIn: 480 * 480})
-			var roleId = TokenData.role_id
-
-			const authModel = (roleId == 2 && roleId != 3) ? models.user : models.business;
+			//const authHeader = req.headers["authorization"];
+			//const TokenData =  jwt.verify(authHeader, 'secret', {expiresIn: 480 * 480})
+			//var roleId = TokenData.role_id
+			
+			//const authModel = (roleId == 2 && roleId != 3) ? models.user : models.business;
 			const user = await authModel.findOne({
-				where:{id : TokenData.id, is_deleted:false,is_active:true}
+				where:{id : authData.id, is_deleted:false,is_active:true}
 			});
 			if(user){
 				const token =  jwt.sign({id:user.id,user: user.email,role_id:user.role_id}, 'secret', {expiresIn: 480 * 480})
 				delete user.dataValues.auth_token
 				user.dataValues.auth_token = token
-				authModel.update(
+				await authModel.update(
 					{auth_token: token,},
 					{where: {id: user.id}
 				}).then(async function (newUser) {
 					if(newUser){
 						const deviceModel = models.device_tokens;
 						const condition = {};
-						if(roleId == 2 && roleId != 3){
+						if( authData.role_id == 2 &&  authData.role_id != 3){
 							condition.where = {user_id:user.id}
 						}else{
 							condition.where = {business_id:user.id}
 						}
-						if(data.device_type == 1 && data.device_type != 2){
-							condition.where = {...condition.where,...{device_type:'ios'}}
-						}else{
-							condition.where = {...condition.where,...{device_type:'android'}}
-						}
-						condition.where = {...condition.where,...{device_id:data.device_id,status:1}}
+						//if(data.device_type == 1 && data.device_type != 2){
+						//	condition.where = {...condition.where,...{device_type:'ios'}}
+						//}else{
+						//	condition.where = {...condition.where,...{device_type:'android'}}
+						//}
+						condition.where = {...condition.where,...{
+							//device_id:data.device_id,
+							status:1}}
 						const loginUserDevices = await deviceModel.findOne(condition);
 						if(loginUserDevices){
 							await deviceModel.findOne(condition).then(async Data => {
@@ -2369,6 +2386,7 @@ exports.businessEventList = async (req, res) => {
 		var requiredFields = _.reject(["page", "page_size"], (o) => {
 			return _.has(data, o);
 		});
+		var currentDateTime = moment().format('YYYY-MM-DD HH:mm:ss');
 		// const userDetails = await userModel.findOne({ where: { email: userEmail, is_deleted: false, is_active: true } });
 		const user = req?.user || {};
 		const userId = user?.id ? user.id : '';
@@ -2405,14 +2423,17 @@ exports.businessEventList = async (req, res) => {
 						required: true
 					}
 				],
-				order: [
-					['start_date', 'ASC'],
-					['start_time', 'ASC'],
+				order: Sequelize.literal("trim(concat(start_date,' ', start_time)) ASC"),
+			}
+			condition.where = {
+				is_deleted: false,
+				end_date: {
+					[Op.gte]: currentDate
+				},
+				[Op.and]: [
+					Sequelize.literal(`CONCAT(start_date, ' ', start_time) >= '${currentDateTime}'`),
 				],
 			}
-			condition.where = {is_deleted: false,end_date: {
-				[Op.gt]: currentDate
-			},}
 			if(data.search){
 				condition.where = {...condition.where,...{[Op.or]: [{title: {[Op.like]: "%" + data.search + "%",}}]}}
 			}
@@ -2423,7 +2444,7 @@ exports.businessEventList = async (req, res) => {
 				condition.offset = skip,
 				condition.limit = limit
 			}
-			combocalenderModel.findAll(condition).then(async event => {
+			await combocalenderModel.findAll(condition).then(async event => {
 					const dataArray = [];	
 					for (const data of event) {
 						var event_images = data.images
@@ -2468,6 +2489,7 @@ exports.businessEventList = async (req, res) => {
 			);
 		}
 	} catch (error) {
+		console.log(error)
 		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null));
 	}
 }
