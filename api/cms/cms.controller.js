@@ -56,6 +56,7 @@ exports.createCMS = async (req, res) => {
 						}else{
 							data.type = 'business';
 							data.business_id = authUser.id;
+							data.page_key = data.page_key.toLowerCase();
 							await cmsModel.create(data).then(async cmsData => {
 								res.send(setRes(resCode.OK,true,`${cmsData.page_key} page added successfully`,cmsData))
 							}).catch(error => {
@@ -114,7 +115,7 @@ exports.viewCMS = async (req , res) => {
 				is_enable:true,
 				is_deleted:false,
 			}
-			if(type == 0){
+			if(type == 'admin'){
 				condition.where = {...condition.where,...{business_id:null}}
 			}
 			if(!_.isEmpty(data.type)){
@@ -129,7 +130,6 @@ exports.viewCMS = async (req , res) => {
 			if(!_.isEmpty(data.id)){
 				condition.where = {...condition.where,...{id:data.id}}
 			}
-			
 			await cmsModel.findAll(condition).then(async pageData => {
 				if(pageData != null){
 					for(const data of pageData){
@@ -180,7 +180,9 @@ exports.updateCMS = async (req, res) => {
 			}).then(async pageData => {
 
 				if(pageData != null ){
-
+					if(data.page_key){
+						data.page_key = data.page_key.toLowerCase();
+					}
 					await cmsModel.update(data,{
 						where:{
 							id:data.id,
@@ -189,7 +191,7 @@ exports.updateCMS = async (req, res) => {
 					}).then(async updateData => {
 
 						if(updateData == 1) {
-
+							
 							await cmsModel.findOne({
 								where:{
 									id:data.id,

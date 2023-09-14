@@ -1524,7 +1524,7 @@ exports.commonRewardsView =async(req,res) => {
 					return res.send(setRes(resCode.InternalServer, false, "Internal server error.",null))
 				})
 			}else if(paramType == 'loyalty_points'){
-				loyaltyPointModel.findOne({
+				await loyaltyPointModel.findOne({
 					where:{id:data.id,status:true,isDeleted:false,deleted_at:null}
 				}).then(async loyaltyPointData => {
 					if (loyaltyPointData != null){
