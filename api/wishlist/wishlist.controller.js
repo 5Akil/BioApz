@@ -242,7 +242,7 @@ exports.wishlistData = async (req, res) => {
 										} else {
 											discountString += `$${data.cashback_value} cashback`;
 										}
-										rewards.push({ type: 'discounts', title: discountString});
+										rewards.push({ type: 'cashback', title: discountString});
 									}
 								}
 		

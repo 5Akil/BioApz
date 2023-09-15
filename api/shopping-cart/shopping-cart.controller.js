@@ -226,7 +226,7 @@ exports.CartList = async(req,res) => {
 								} else {
 									discountString += `$${data.cashback_value} cashback`;
 								}
-								rewards.push({ type: 'discounts', title: discountString});
+								rewards.push({ type: 'cashbacks', title: discountString});
 							}
 						}
 

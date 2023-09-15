@@ -2975,14 +2975,17 @@ exports.userGiftCardPurchase = async (req, res) => {
 								isDeleted: false
 							}
 						});
-						if(loyalty.points_redeemed == true){
-							const giftcardloyaltyamount = loyalty.points_earned;
-							const userloyalty = userCashbackLoyalty.total_loyalty_points || 0.00;
-							const usertotalLoyalty = parseFloat(userloyalty) + parseFloat(giftcardloyaltyamount);
-							const updateCashback = userCashbackLoyalty.update({
-								total_loyalty_points:usertotalLoyalty
-							})
+						if(loyalty != null){
+							if(loyalty.points_redeemed == true && loyalty){
+								const giftcardloyaltyamount = loyalty.points_earned || 0.00;
+								const userloyalty = userCashbackLoyalty.total_loyalty_points || 0.00;
+								const usertotalLoyalty = parseFloat(userloyalty) + parseFloat(giftcardloyaltyamount);
+								const updateCashback = userCashbackLoyalty.update({
+									total_loyalty_points:usertotalLoyalty
+								})
+							}
 						}
+						
 						const createRewardHistory = await rewardHistoryModel.create({ 
 							amount: data.amount,
 							reference_reward_id: gCard.id,
@@ -3041,9 +3044,9 @@ exports.userGiftCardPurchase = async (req, res) => {
 
 					/** Send Puch Notification */
 						const notificationObj = {
-							params: JSON.stringify({ notification_type:NOTIFICATION_TYPES.GIFT_CARD_PURCHASE, title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(),message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(giftCardDetails?.name), giftcard_id: data.gift_card_id, user_id:user.id, business_id: giftCardDetails.business_id }),
-							title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(),
-							message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(giftCardDetails?.name),
+							params: JSON.stringify({ notification_type:NOTIFICATION_TYPES.GIFT_CARD_PURCHASE, title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(userDetails?.username),message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(userDetails?.username,giftCardDetails?.name), giftcard_id: data.gift_card_id, user_id:user.id, business_id: giftCardDetails.business_id }),
+							title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(userDetails?.username),
+							message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(userDetails?.username,giftCardDetails?.name),
 							notification_type: NOTIFICATION_TYPES.GIFT_CARD_PURCHASE,
 						}
 						const notification = await notificationModel.create(notificationObj);
@@ -3061,9 +3064,17 @@ exports.userGiftCardPurchase = async (req, res) => {
 						const uniqueDeviceTokens = Array.from(new Set(deviceTokensList))
 						const notificationPayload = {
 							device_token: uniqueDeviceTokens,
-							title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(),
-							message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(giftCardDetails?.name),
-							content: { notification_type:NOTIFICATION_TYPES.GIFT_CARD_PURCHASE, notification_id: notification.id, title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(),message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(giftCardDetails?.name), giftcard_id: data.gift_card_id, user_id:user.id, business_id: giftCardDetails.business_id }
+							title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(userDetails?.username),
+							message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(userDetails?.username,giftCardDetails?.name),
+							content: { 
+								notification_type:NOTIFICATION_TYPES.GIFT_CARD_PURCHASE, 
+								notification_id: notification.id, 
+								title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(userDetails?.username),
+								message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(userDetails?.username,giftCardDetails?.name), 
+								giftcard_id: data.gift_card_id, 
+								user_id:user.id, 
+								business_id: giftCardDetails.business_id 
+							}
 						};
 						fcmNotification.SendNotification(notificationPayload);
 					/** END Puch Notification */
@@ -3079,6 +3090,7 @@ exports.userGiftCardPurchase = async (req, res) => {
 			return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
 		}
 	} catch (error) {
+		console.log(error)
 		return res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
 	}
 }
@@ -3271,9 +3283,9 @@ exports.userGiftCardShare = async (req, res) => {
 							// For share self to purchase
 						if (userDetails.email == data.to_email) {
 							const notificationObj = {
-								params: JSON.stringify({ notification_type:NOTIFICATION_TYPES.GIFT_CARD_PURCHASE, title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(),message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(giftCardDetails?.name), giftcard_id: data.gift_card_id, user_id:user.id, business_id: giftCardDetails.business_id }),
-								title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(),
-								message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(giftCardDetails?.name),
+								params: JSON.stringify({ notification_type:NOTIFICATION_TYPES.GIFT_CARD_PURCHASE, title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(userDetails?.username),message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(userDetails?.username,giftCardDetails?.name), giftcard_id: data.gift_card_id, user_id:user.id, business_id: giftCardDetails.business_id }),
+								title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(userDetails?.username),
+								message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(userDetails?.username,giftCardDetails?.name),
 								notification_type: NOTIFICATION_TYPES.GIFT_CARD_PURCHASE,
 							}
 							const notification = await notificationModel.create(notificationObj);
@@ -3291,9 +3303,16 @@ exports.userGiftCardShare = async (req, res) => {
 							const uniqueDeviceTokens = Array.from(new Set(deviceTokensList))
 							const notificationPayload = {
 								device_token: uniqueDeviceTokens,
-								title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(),
-								message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(giftCardDetails?.name),
-								content: { notification_type:NOTIFICATION_TYPES.GIFT_CARD_PURCHASE, notification_id: notification.id, title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(),message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(giftCardDetails?.name), giftcard_id: data.gift_card_id, user_id:user.id, business_id: giftCardDetails.business_id }
+								title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(userDetails?.username),
+								message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(userDetails?.username,giftCardDetails?.name),
+								content: { 
+									notification_type:NOTIFICATION_TYPES.GIFT_CARD_PURCHASE, 
+									notification_id: notification.id, 
+									title: NOTIFICATION_TITLES.GIFT_CARD_PURCHASE(userDetails?.username),
+									message: NOTIFICATION_MESSAGE.GIFT_CARD_PURCHASE(userDetails?.username,giftCardDetails?.name),
+									giftcard_id: data.gift_card_id, 
+									user_id:user.id, 
+									business_id: giftCardDetails.business_id }
 							};
 							fcmNotification.SendNotification(notificationPayload);
 						}
@@ -3322,15 +3341,17 @@ exports.userGiftCardShare = async (req, res) => {
 										isDeleted: false
 									}
 								});
-								if(loyalty.points_redeemed == true){
-									const giftcardloyaltyamount = loyalty.points_earned;
+							if(loyalty != null){
+
+								if(loyalty.points_redeemed == true && loyalty){
+									const giftcardloyaltyamount = loyalty.points_earned || 0.00;
 									const userloyalty = toEmailUserExists.total_loyalty_points || 0.00;
 									const usertotalLoyalty = parseFloat(userloyalty) + parseFloat(giftcardloyaltyamount);
 									const updateCashback = toEmailUserExists.update({
 										total_loyalty_points:usertotalLoyalty
 									})
 								}
-
+							}
 								const notificationObj = {
 									role_id : user.role_id,
 									params: JSON.stringify({ notification_type:NOTIFICATION_TYPES.GIFT_CARD_SHARE, title: NOTIFICATION_TITLES.GIFT_CARD_SHARE(userDetails.username),message: NOTIFICATION_MESSAGE.GIFT_CARD_SHARE(giftCardDetails?.name), giftcard_id: gCard.id, user_id:user.id, business_id: giftCardDetails.business_id }),
