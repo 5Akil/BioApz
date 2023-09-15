@@ -14,7 +14,7 @@ app.use(morgan('dev'));
 app.use(express.static('./'));
 // initialize body-parser to parse incoming parameters requests to req.body
 app.use(body_parser.urlencoded({
-  extended: true
+	extended: true
 }));
 app.use(body_parser.json());
 
@@ -22,20 +22,20 @@ app.use(body_parser.json());
 
 var models = require('./models');
 models.sequelize.sync().then(function () {
-  console.log('database sync..');
-  })
+	console.log('database sync..');
+})
 
 var router = express.Router();
 
 app.use(function (req, res, next) {
 
-  res.header("Access-Control-Allow-Origin", "*");
+	res.header("Access-Control-Allow-Origin", "*");
 
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Authorization, Content-Type, Accept");
+	res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Authorization, Content-Type, Accept");
 
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+	res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
 
-  next();
+	next();
 
 });
 
@@ -48,7 +48,7 @@ app.use(function (req, res, next) {
 // });
 
 app.get('/', (req, res) => {
-  res.send("server is running...")
+	res.send("server is running...")
 })
 
 app.use(express.static('uploads'));
@@ -58,106 +58,114 @@ app.use('/api', router);
 require('./route')(app);
 
 app.use(function (req, res, next) {
-  res.send(setRes(resCode.ResourceNotFound, null, true, 'Route not found.'));
+	res.send(setRes(resCode.ResourceNotFound, null, true, 'Route not found.'));
 });
 
 app.use(function (err, req, res, next) {
-  console.log('err status...', err.status);
-  res.send(setRes(resCode.InternalServer, null, true, err.message));
+	console.log('err status...', err.status);
+	res.send(setRes(resCode.InternalServer, null, true, err.message));
 });
 
 // Handle 404 - Keep this as a last route
 app.use((req, res) => {
-  res.redirect('/404');
+	res.redirect('/404');
 });
 
 // require('./cron-job')(cron)
 
 // error handler
 app.use(function(err, req, res, next) {
-  // set locals, only providing error in development
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
+	// set locals, only providing error in development
+	res.locals.message = err.message;
+	res.locals.error = req.app.get('env') === 'development' ? err : {};
 
-  // render the error page
-  res.status(err.status || 500);
-  res.render('error');
+	// render the error page
+	res.status(err.status || 500);
+	res.render('error');
 });
 
 
 //firebase initialization
 var admin = require("firebase-admin");
 //	var serviceAccount = require("./bioapz-106c0-firebase-adminsdk-onfga-04682c17d2.json");
-	var serviceAccount = require("./bioapz-372208-4929769f6e43.json");
+var serviceAccount = require("./bioapz-372208-4929769f6e43.json");
 
-	!admin.apps.length ? admin.initializeApp({
+!admin.apps.length ? admin.initializeApp({
 		credential: admin.credential.cert(serviceAccount),
 		//databaseURL: "https://bioapz-56c76.firebaseio.com"
 		//databaseURL: "https://bioapz-106c0-default-rtdb.firebaseio.com"
 		databaseURL: "https://bioapz-372208-default-rtdb.firebaseio.com"
 
 	}).firestore()
-  : admin.app().firestore();
+	: admin.app().firestore();
 
 // firebase initialization over
 
 var Queue = require('better-queue');
 var notification = require('./push_notification')
 
-	var db = admin.database()
+var db = admin.database()
 
-	var userModel = models.user;
-	var businessModel = models.business;
+var userModel = models.user;
+var businessModel = models.business;
+var deviceModel = models.device_tokens;
 
-	var NotificationData = {};
+var NotificationData = {};
 
-	var NotificationRef = db.ref(`notifications`)
+var NotificationRef = db.ref(`notifications`)
 
-	var NotificationQueue = new Queue(function (task, cb) {
-		if (task.role == 'customer'){
-			userModel.findOne({
-				where: {
-					id: task.id,
-					is_deleted: false
-				}
-			}).then(user => {
-				if (user != null){
-					NotificationData.device_token = user.device_token
-					NotificationData.message = task.text
-					NotificationData.title = task.from_name
-					notification.SendNotification(NotificationData)
-				}
-			})
-		}else{
-			businessModel.findOne({
-				where: {
-					id: task.id,
-					is_deleted: false
-				}
-			}).then(business => {
-				if (business != null){
-					NotificationData.device_token = business.device_token
-					NotificationData.message = task.text
-					NotificationData.title = task.from_name
-					notification.SendNotification(NotificationData)
-				}
-			})
-		}
-		cb();
-	})
+var NotificationQueue = new Queue(async function (task, cb) {
+	console.log(task);
+	if (task.role == 'customer'){
+		await userModel.findOne({
+			where: {
+				id: task.id,
+				is_deleted: false,
+				is_active: true,
+			}
+		}).then(async user => {
+			if (user != null){
+				const deviceToken = await deviceModel.findOne({ where: { status: 1, user_id: user.id } },{ attributes: ["device_token"] });
+				NotificationData.device_token = deviceToken.device_token;
+				NotificationData.message = task.text
+				NotificationData.title = task.from_name
+				NotificationData.content = { "notification_type": "chat_notification" }
+				notification.SendNotification(NotificationData)
+			}
+		})
+	}else{
+		await businessModel.findOne({
+			where: {
+				id: task.id,
+				is_deleted: false,
+				is_active: true,
+			}
+		}).then(async business => {
+			if (business != null){
+				const deviceToken = await deviceModel.findOne({ where: { status: 1, business_id: business.id } },{ attributes: ["device_token"] });
+				NotificationData.device_token = deviceToken.device_token
+				NotificationData.message = task.text
+				NotificationData.title = task.from_name
+				NotificationData.content = { "notification_type": "chat_notification" }
+				notification.SendNotification(NotificationData)
+			}
+		})
+	}
+	cb();
+})
 
-	var RemoveDataQueue = new Queue(function (task, cb) {
-		NotificationRef.child(task).remove();
-		cb();
-	})
+var RemoveDataQueue = new Queue(function (task, cb) {
+	NotificationRef.child(task).remove();
+	cb();
+})
 
-	NotificationRef.on("child_added", function(snapshot) {
+NotificationRef.on("child_added", function(snapshot) {
 
-		snapshotVal = JSON.parse(JSON.stringify(snapshot.val()))
-		snapshotKey = JSON.parse(JSON.stringify(snapshot.key))
-		NotificationQueue.push(snapshotVal);
-		RemoveDataQueue.push(snapshotKey)
+	snapshotVal = JSON.parse(JSON.stringify(snapshot.val()))
+	snapshotKey = JSON.parse(JSON.stringify(snapshot.key))
+	NotificationQueue.push(snapshotVal);
+	RemoveDataQueue.push(snapshotKey)
 
-	})
+})
 
 module.exports = app;
