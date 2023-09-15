@@ -9,6 +9,7 @@ const NOTIFICATION_TYPES = {
     ORDER_DELIVERED: "order_delivered",
     DISCOUNT_USE: "discount_use",
     LOYALTY_USE: "loyalty_point_use",
+    CHAT_NOTIFICATION: "chat_notification",
 };
 
 const NOTIFICATION_TITLES = {

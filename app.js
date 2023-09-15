@@ -8,6 +8,7 @@ var body_parser = require('body-parser');
 var cookieParser = require('cookie-parser');
 var session = require('express-session');
 var morgan = require('morgan');
+const { NOTIFICATION_TYPES } = require('./config/notificationTypes')
 
 // set morgan to log info about our requests for development use.
 app.use(morgan('dev'));
@@ -115,7 +116,6 @@ var NotificationData = {};
 var NotificationRef = db.ref(`notifications`)
 
 var NotificationQueue = new Queue(async function (task, cb) {
-	console.log(task);
 	if (task.role == 'customer'){
 		await userModel.findOne({
 			where: {
@@ -129,7 +129,7 @@ var NotificationQueue = new Queue(async function (task, cb) {
 				NotificationData.device_token = deviceToken.device_token;
 				NotificationData.message = task.text
 				NotificationData.title = task.from_name
-				NotificationData.content = { "notification_type": "chat_notification" }
+				NotificationData.content = { notification_type: NOTIFICATION_TYPES.CHAT_NOTIFICATION, user_id: user.id}
 				notification.SendNotification(NotificationData)
 			}
 		})
@@ -146,7 +146,7 @@ var NotificationQueue = new Queue(async function (task, cb) {
 				NotificationData.device_token = deviceToken.device_token
 				NotificationData.message = task.text
 				NotificationData.title = task.from_name
-				NotificationData.content = { "notification_type": "chat_notification" }
+				NotificationData.content = { notification_type: NOTIFICATION_TYPES.CHAT_NOTIFICATION, user_id: business.id}
 				notification.SendNotification(NotificationData)
 			}
 		})
