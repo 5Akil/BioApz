@@ -181,6 +181,7 @@ exports.ChatNotification = async (req, res) => {
 								from_name: task?.from_name || '',
 								notification_type: "chat_notification"
 							}
+							console.log(NotificationData);
 							notification.SendNotification(NotificationData)
 						}
 					});
@@ -205,6 +206,7 @@ exports.ChatNotification = async (req, res) => {
 								from_name: task?.from_name || '',
 								notification_type: "chat_notification"
 							}
+							console.log(NotificationData);
 							notification.SendNotification(NotificationData)
 						}
 					});

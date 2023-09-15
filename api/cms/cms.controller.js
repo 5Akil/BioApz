@@ -112,7 +112,7 @@ exports.viewCMS = async (req , res) => {
 				//	[Op.in]:page_keys
 				//},
 				//id:data.id,
-				//is_enable:true,
+				is_enable:true,
 				is_deleted:false,
 			}
 			if(type == 'admin'){
@@ -137,7 +137,11 @@ exports.viewCMS = async (req , res) => {
 							data.dataValues.page_url = commonConfig.admin_url + data.page_key;
 						}
 					}
-					return res.send(setRes(resCode.OK,true,`Cms page get successfully`,pageData))
+					if(pageData.length == 0){
+						return res.send(setRes(resCode.ResourceNotFound,true,`Cms page Not Found`,null))
+					}else{
+						return res.send(setRes(resCode.OK,true,`Cms page get successfully`,pageData))
+					}
 				}else{
 					return res.send(setRes(resCode.ResourceNotFound,false,'Cms page not found',null))
 				}
@@ -175,7 +179,7 @@ exports.updateCMS = async (req, res) => {
 					id:data.id,
 					page_key:data.page_key,
 					is_deleted:false,
-					//is_enable:true
+					is_enable:true
 				}
 			}).then(async pageData => {
 
