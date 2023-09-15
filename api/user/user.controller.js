@@ -2422,17 +2422,19 @@ exports.businessEventList = async (req, res) => {
 						required: true
 					}
 				],
-				order: Sequelize.literal("trim(concat(start_date,' ', start_time)) ASC"),
+				order: [
+					Sequelize.literal("trim(concat(start_date,' ', start_time)) ASC")
+				],	
 			}
 			condition.where = {
 				is_deleted: false,
 				end_date: {
-					[Op.gte]: currentDate
+				[Op.gte]: currentDate
 				},
 				[Op.and]: [
 					Sequelize.literal(`CONCAT(start_date, ' ', start_time) >= '${currentDateTime}'`),
 				],
-			}
+							}
 			if(data.search){
 				condition.where = {...condition.where,...{[Op.or]: [{title: {[Op.like]: "%" + data.search + "%",}}]}}
 			}
@@ -2648,6 +2650,7 @@ exports.userEventList = async (req, res) => {
 				}
 			],
 			order: [
+				['status', 'ASC'],
 				['start_date', 'ASC'],
 				['start_time', 'ASC'],
 			],
@@ -2907,21 +2910,21 @@ exports.userGiftCardPurchase = async (req, res) => {
 				return res.send(setRes(resCode.BadRequest, false, "Invalid value for Payment status.", null))
 			}
 
-			// Gift card purchased in any 
-			const isGiftCardPurchased = await userGiftCardModel.findAll({
-				where: {						
-							purchase_date: { [Op.eq] : new Date(currentDate) },
-							gift_card_id: data.gift_card_id,
-							user_id:  userDetails.id,
-							to_email: {
-								[Op.eq]: null
-							},
-							is_deleted: false
-				}
-			})
-			if (isGiftCardPurchased.length > 0) {
-				return res.send(setRes(resCode.BadRequest, false, "User already purchased Virtual card for day.", null))
-			}
+			//// Gift card purchased in any 
+			//const isGiftCardPurchased = await userGiftCardModel.findAll({
+			//	where: {						
+			//				purchase_date: { [Op.eq] : new Date(currentDate) },
+			//				gift_card_id: data.gift_card_id,
+			//				user_id:  userDetails.id,
+			//				to_email: {
+			//					[Op.eq]: null
+			//				},
+			//				is_deleted: false
+			//	}
+			//})
+			//if (isGiftCardPurchased.length > 0) {
+			//	return res.send(setRes(resCode.BadRequest, false, "User already purchased Virtual card for day.", null))
+			//}
 
 			// check gift card expire or not
 			const giftCardDetails = await giftCardModel.findOne({ where: { id: data.gift_card_id, status: true, isDeleted: false } });
