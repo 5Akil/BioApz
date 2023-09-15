@@ -154,7 +154,7 @@ exports.CartList = async(req,res) => {
 		const recordCount = await shoppingCartModel.findAndCountAll(condition);
 		const totalRecords = recordCount?.count;
 
-		shoppingCartModel.findAll(condition).then(async cartData => {
+		await shoppingCartModel.findAll(condition).then(async cartData => {
 
 			if(cartData != null && cartData != ""){
 				for(dataVal of cartData){

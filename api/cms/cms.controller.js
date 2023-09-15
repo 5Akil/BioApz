@@ -112,7 +112,7 @@ exports.viewCMS = async (req , res) => {
 				//	[Op.in]:page_keys
 				//},
 				//id:data.id,
-				is_enable:true,
+				//is_enable:true,
 				is_deleted:false,
 			}
 			if(type == 'admin'){
@@ -175,7 +175,7 @@ exports.updateCMS = async (req, res) => {
 					id:data.id,
 					page_key:data.page_key,
 					is_deleted:false,
-					is_enable:true
+					//is_enable:true
 				}
 			}).then(async pageData => {
 

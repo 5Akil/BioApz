@@ -318,7 +318,7 @@ exports.commonRewardsListOlder =async(req,res) => {
 			let limit = parseInt(data.page_size);
 
 			promises.push(
-				giftCardModel.findAll({
+				await giftCardModel.findAll({
 					where:{isDeleted:false,status:true,business_id:data.business_id,deleted_at: null,[Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],}
 				}).then(async giftCardData => {
 					if (giftCardData.length > 0){
@@ -346,7 +346,7 @@ exports.commonRewardsListOlder =async(req,res) => {
 					}
 					return [];
 				}),
-				cashbackModel.findAll({
+				await cashbackModel.findAll({
 					where:{isDeleted:false,status:true,business_id:data.business_id,deleted_at: null,[Op.or]: [{title: {[Op.like]: "%" + data.search + "%",}}],}
 				}).then(async CashbackData => {
 					if (CashbackData.length > 0){
@@ -365,7 +365,7 @@ exports.commonRewardsListOlder =async(req,res) => {
 					}
 					return [];		
 				}),
-				discountModel.findAll({
+				await discountModel.findAll({
 					where:{isDeleted:false,status:true,business_id:data.business_id,deleted_at: null,[Op.or]: [{title: {[Op.like]: "%" + data.search + "%",}}],}
 				}).then(async DiscountData => {
 						if (DiscountData.length > 0){
@@ -384,7 +384,7 @@ exports.commonRewardsListOlder =async(req,res) => {
 						}
 					return [];
 				}),
-				couponeModel.findAll({
+				await couponeModel.findAll({
 					where:{isDeleted:false,status:true,business_id:data.business_id,deleted_at: null,[Op.or]: [{title: {[Op.like]: "%" + data.search + "%",}}],}
 				}).then(async CouponeData => {
 					if (CouponeData.length > 0){
@@ -404,7 +404,7 @@ exports.commonRewardsListOlder =async(req,res) => {
 					}
 					return [];
 				}),
-				loyaltyPointModel.findAll({
+				await loyaltyPointModel.findAll({
 					where:{isDeleted:false,status:true,business_id:data.business_id,deleted_at: null,[Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],}
 					}).then(async LoyaltyPointData => {
 						if(LoyaltyPointData.length  > 0){

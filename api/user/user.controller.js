@@ -1659,7 +1659,6 @@ exports.homeList = async (req, res) => {
 
 		res.send(setRes(resCode.OK, true, "Get home page details successfully.",resData))
 	} catch(error){
-		console.log(error)
 		res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
 	}
 }
@@ -2489,7 +2488,6 @@ exports.businessEventList = async (req, res) => {
 			);
 		}
 	} catch (error) {
-		console.log(error)
 		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null));
 	}
 }
@@ -2913,7 +2911,7 @@ exports.userGiftCardPurchase = async (req, res) => {
 			const isGiftCardPurchased = await userGiftCardModel.findAll({
 				where: {						
 							purchase_date: { [Op.eq] : new Date(currentDate) },
-							gift_card_id: datagift_card_id,
+							gift_card_id: data.gift_card_id,
 							user_id:  userDetails.id,
 							to_email: {
 								[Op.eq]: null
@@ -2946,7 +2944,42 @@ exports.userGiftCardPurchase = async (req, res) => {
 				if (data.qty && +(data.qty) > 0) {
 					const createdGiftCards = [];
 					// for(let i = 0; i < +(data.qty); i++){
-						const gCard = await userGiftCardModel.create(giftCardObj);
+						const userCashbackLoyalty = await userModel.findOne({
+							where:{
+								id:userDetails.id,
+								is_deleted:false,
+							}
+						});
+						const gCard = await userGiftCardModel.create(giftCardObj)
+						if(giftCardDetails.is_cashback == true){
+							const giftcardcashbackamount = ((giftCardDetails.amount * giftCardDetails.cashback_percentage)/100).toFixed(2);
+							const usercashback = userCashbackLoyalty.total_cashbacks || 0.00;
+							const usertotalCashback = parseFloat(usercashback) + parseFloat(giftcardcashbackamount);
+
+							const updateCashback = userCashbackLoyalty.update({
+								total_cashbacks:usertotalCashback
+							})
+						}
+
+						const loyaltyPointModel = models.loyalty_points
+						const loyalty = await loyaltyPointModel.findOne({
+							attributes: {exclude:['createdAt','updatedAt', 'deleted_at', 'isDeleted']},
+							where: {
+								gift_card_id: {
+									[Op.regexp]: `(^|,)${giftCardDetails.id}(,|$)`,
+								},
+								status: true,
+								isDeleted: false
+							}
+						});
+						if(loyalty.points_redeemed == true){
+							const giftcardloyaltyamount = loyalty.points_earned;
+							const userloyalty = userCashbackLoyalty.total_loyalty_points || 0.00;
+							const usertotalLoyalty = parseFloat(userloyalty) + parseFloat(giftcardloyaltyamount);
+							const updateCashback = userCashbackLoyalty.update({
+								total_loyalty_points:usertotalLoyalty
+							})
+						}
 						const createRewardHistory = await rewardHistoryModel.create({ 
 							amount: data.amount,
 							reference_reward_id: gCard.id,
@@ -3058,6 +3091,7 @@ exports.userGiftCardShare = async (req, res) => {
 		const userGiftCardModel = models.user_giftcards;
 		const giftCardTemplateModel = models.gift_card_template;
 		// const userEmail = req.userEmail;
+		const Op = models.Op;
 		const user = req?.user;
 		const userEmail = user?.user;
 		const notificationModel = models.notifications;
@@ -3160,7 +3194,7 @@ exports.userGiftCardShare = async (req, res) => {
 						})
 
 						// If Sharing Giftcard to Self
-						const expireDate = moment(giftCardDetails.expire_at).format('MMM DD,YYYY');
+						const expireDate = moment(giftCardDetails.expire_at).format('YYYY-MM-DD');
 						if (userDetails.email == data.to_email) {
 							const context = {
 								userName : userDetails.username,
@@ -3203,7 +3237,7 @@ exports.userGiftCardShare = async (req, res) => {
 								giftCardTemplateUrl: `${giftCardTemplateUrl}`,
 								expireDate: expireDate,
 								giftCardQty: data.qty || 1,
-
+								note: data.note,
 							}
 							templates.render(path.join(__dirname, '../../', 'template', 'gift-card-shared.html'), context,
 							(
@@ -3262,6 +3296,35 @@ exports.userGiftCardShare = async (req, res) => {
 						if (userDetails.email != data.to_email && !data?.schedule_datetime) {
 							const toEmailUserExists = await userModel.findOne({ where: { email: data.to_email, is_active: true, is_deleted: false } });
 							if (toEmailUserExists) {
+								if(giftCardDetails.is_cashback == true){
+									const giftcardcashbackamount = ((giftCardDetails.amount * giftCardDetails.cashback_percentage)/100).toFixed(2);
+									const usercashback = toEmailUserExists.total_cashbacks || 0.00;
+									const usertotalCashback = parseFloat(usercashback) + parseFloat(giftcardcashbackamount);
+		
+									const updateCashback = toEmailUserExists.update({
+										total_cashbacks:usertotalCashback
+									})
+								}
+		
+								const loyaltyPointModel = models.loyalty_points
+								const loyalty = await loyaltyPointModel.findOne({
+									attributes: {exclude:['createdAt','updatedAt', 'deleted_at', 'isDeleted']},
+									where: {
+										gift_card_id: {
+											[Op.regexp]: `(^|,)${giftCardDetails.id}(,|$)`,
+										},
+										status: true,
+										isDeleted: false
+									}
+								});
+								if(loyalty.points_redeemed == true){
+									const giftcardloyaltyamount = loyalty.points_earned;
+									const userloyalty = toEmailUserExists.total_loyalty_points || 0.00;
+									const usertotalLoyalty = parseFloat(userloyalty) + parseFloat(giftcardloyaltyamount);
+									const updateCashback = toEmailUserExists.update({
+										total_loyalty_points:usertotalLoyalty
+									})
+								}
 
 								const notificationObj = {
 									role_id : user.role_id,
@@ -3321,6 +3384,7 @@ exports.userGiftCardShare = async (req, res) => {
 			return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
 		}
 	} catch (error) {
+		console.log(error)
 		return res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
 	}
 }

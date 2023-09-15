@@ -14,7 +14,7 @@ const NOTIFICATION_TYPES = {
 const NOTIFICATION_TITLES = {
     EVENT_USER_JOIN : () => `User Joined Event`,
     EVENT_USER_LEAVE: () => `User Leaved Event`,
-    GIFT_CARD_PURCHASE: () => `User Purchased Virtual Card`,
+    GIFT_CARD_PURCHASE: () => `You've Purchased Virtual Card`,
     GIFT_CARD_SHARE: (username='') => `${username} Sent you B.a.s.e Virtual card !`,
     GIFT_CARD_SHARE_BUSINESS: (username='') => `${username} shared B.a.s.e Virtual card !`,
     PLACE_ORDER_USER: () => `Order Placed`,
@@ -29,7 +29,7 @@ const NOTIFICATION_TITLES = {
 const NOTIFICATION_MESSAGE = {
     EVENT_USER_JOIN : (eventName='',userName='') => `${userName || 'User'} joined ${eventName || 'event'}`,
     EVENT_USER_LEAVE: (eventName='',userName='') => `${userName || 'User'} left ${eventName || 'event'}`,
-    GIFT_CARD_PURCHASE: (giftCardName='') => `User Purchased Virtual card : ${giftCardName}`,
+    GIFT_CARD_PURCHASE: (giftCardName='') => `You've Purchased Virtual card : ${giftCardName}`,
     GIFT_CARD_SHARE: (giftCardName='') => `You've received a Virtual card : ${giftCardName}`,
     GIFT_CARD_SHARE_BUSINESS: (userName='',giftCardName='') => `${userName || 'User'} shared a Virtual card : ${giftCardName}`,
     PLACE_ORDER_USER: (orderNo='') => `Your order ${orderNo} is successfully placed!`,
