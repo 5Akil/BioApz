@@ -173,14 +173,15 @@ exports.ChatNotification = async (req, res) => {
 					await deviceModel.findAll({ where: { status: 1, user_id: task?.id } },{ attributes: ["device_token"] }).then(async tokens => {
 					const deviceTokensList = tokens.map((device) => device.device_token);
 					const uniqueDeviceTokens = Array.from(new Set(deviceTokensList))
+					const notificationContext = { 
+						id: task?.id || '',
+						from_name: task?.from_name || '',
+						notification_type: "chat_notification"
+					};
 						if (uniqueDeviceTokens?.length > 0) {
 							NotificationData.device_token = uniqueDeviceTokens
 							NotificationData.message = task?.text
-							NotificationData.content = { 
-								id: task?.id || '',
-								from_name: task?.from_name || '',
-								notification_type: "chat_notification"
-							}
+							NotificationData.content = notificationContext
 							console.log(NotificationData);
 							notification.SendNotification(NotificationData)
 						}
@@ -198,14 +199,15 @@ exports.ChatNotification = async (req, res) => {
 				await deviceModel.findAll({ where: { status: 1, business_id: task?.id } },{ attributes: ["device_token"] }).then(async tokens => {
 					const deviceTokensList = tokens.map((device) => device.device_token);
 					const uniqueDeviceTokens = Array.from(new Set(deviceTokensList))
+					const notificationContext = { 
+						id: task?.id || '',
+						from_name: task?.from_name || '',
+						notification_type: "chat_notification"
+					};
 						if (uniqueDeviceTokens?.length > 0) {
 							NotificationData.device_token = uniqueDeviceTokens
 							NotificationData.message = task?.text
-							NotificationData.content = { 
-								id: task?.id || '',
-								from_name: task?.from_name || '',
-								notification_type: "chat_notification"
-							}
+							NotificationData.content = notificationContext
 							console.log(NotificationData);
 							notification.SendNotification(NotificationData)
 						}
