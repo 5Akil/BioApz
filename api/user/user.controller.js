@@ -3229,8 +3229,10 @@ exports.userGiftCardShare = async (req, res) => {
 							});
 						}
 						if (userDetails.email != data.to_email && !data?.schedule_datetime) {
+							const toUser = await userModel.findOne({ where: { email: data.to_email, is_active: true, is_deleted: false } })
+							const ToUsename = toUser ? toUser?.username : '';
 							const context = {
-								userName : userDetails.username,
+								userName : ToUsename,
 								giftCardName: giftCardDetails.name,
 								giftCardAmount: giftCardDetails.amount,
 								giftCardUrl: `${giftCardImage}`,
