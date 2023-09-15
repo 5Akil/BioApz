@@ -159,15 +159,18 @@ exports.ChatNotification = async (req, res) => {
 	var NotificationRef = db.ref(`notifications`)
 
 	var NotificationQueue = new Queue(async(task, cb) => {
+		console.log("==============task Details START ==================")
+		console.log(task)
+		console.log("==============task Details END ==================")
 		if (task.role == 'customer'){
-			userModel.findOne({
+			await userModel.findOne({
 				where: {
 					id: task?.id,
 					is_deleted: false
 				}
-			}).then(user => {
+			}).then(async user => {
 				if (user != null){
-					deviceModel.findAll({ where: { status: 1, user_id: task?.id } },{ attributes: ["device_token"] }).then(tokens => {
+					await deviceModel.findAll({ where: { status: 1, user_id: task?.id } },{ attributes: ["device_token"] }).then(async tokens => {
 					const deviceTokensList = tokens.map((device) => device.device_token);
 					const uniqueDeviceTokens = Array.from(new Set(deviceTokensList))
 						if (uniqueDeviceTokens?.length > 0) {
@@ -184,14 +187,14 @@ exports.ChatNotification = async (req, res) => {
 				}
 			})
 		}else{
-			businessModel.findOne({
+			await businessModel.findOne({
 				where: {
 					id: task?.id,
 					is_deleted: false
 				}
-			}).then(business => {
+			}).then(async business => {
 				if (business != null){
-				deviceModel.findAll({ where: { status: 1, business_id: task?.id } },{ attributes: ["device_token"] }).then(tokens => {
+				await deviceModel.findAll({ where: { status: 1, business_id: task?.id } },{ attributes: ["device_token"] }).then(async tokens => {
 					const deviceTokensList = tokens.map((device) => device.device_token);
 					const uniqueDeviceTokens = Array.from(new Set(deviceTokensList))
 						if (uniqueDeviceTokens?.length > 0) {
@@ -217,12 +220,10 @@ exports.ChatNotification = async (req, res) => {
 	})
 
 	NotificationRef.on("child_added", function(snapshot) {
-
 		let snapshotVal = JSON.parse(JSON.stringify(snapshot.val()))
 		let snapshotKey = JSON.parse(JSON.stringify(snapshot.key))
 		NotificationQueue.push(snapshotVal);
 		RemoveDataQueue.push(snapshotKey)
-
 	})
 
 	// NotificationRef.once("value", function(snapshot) {
