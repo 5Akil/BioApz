@@ -21,6 +21,8 @@ const stat = util.promisify(fs.stat);
 var awsConfig = require('../../config/aws_S3_config');
 const { log } = require('console')
 const pagination = require('../../helpers/pagination');
+const { NOTIFICATION_TITLES, NOTIFICATION_TYPES, NOTIFICATION_MESSAGE } = require('../../config/notificationTypes');
+const fcmNotification = require('../../push_notification');
 
 // Create Event
 exports.CreateEvent = async (req, res) => {
@@ -356,6 +358,9 @@ exports.DeleteEvent = async (req, res) => {
 	var comboModel = models.combo_calendar
 	var businessModel = models.business
 	var eventUserModel = models.user_events
+	const notificationModel = models.notifications;
+	const notificationReceiverModel = models.notification_receivers;
+	const deviceModel = models.device_tokens;
 
 	if (data.id) {
 		await comboModel.findOne({
@@ -369,18 +374,54 @@ exports.DeleteEvent = async (req, res) => {
 				res.send(setRes(resCode.BadRequest, false, "You can not delete this event in last 7 days of event start date or current date.", null))
 			}else{
 				await eventUserModel.findAll({
-					where: { event_id: data.id, is_deleted: false, is_available: true }
-				}).then(async eventUsers => {
-					if(eventUsers.length == 0){
-						if (eventData) {
-							await eventData.update({ is_deleted: true,status:4 })
-							res.send(setRes(resCode.OK, true, "Event deleted successfully", null))
-						} else {
-							res.send(setRes(resCode.ResourceNotFound, false, "Event not found", null))
-						}
-					}else{
-						res.send(setRes(resCode.BadRequest, false, "can't delete event because some users registered or active.", null))
+					where: { event_id: data.id, is_deleted: false, is_available: true },include:{
+						model:models.user
 					}
+				}).then(async eventUsers => {
+						if (eventData) {
+							eventData.update({ is_deleted: true,status:4 }).then (async deletedEvent => {
+								/** Send Device notifications for event cancellation to all corresponding users.*/
+								/** Send to user */
+								for await (const eventUser of eventUsers){
+									const notificationUserObj = {
+										role_id : eventUser.user.role_id,
+										params: JSON.stringify({
+											notification_type:NOTIFICATION_TYPES.BUSINESS_EVENT_CANCELLED, 
+											title: NOTIFICATION_TITLES.BUSINESS_EVENT_CANCELLED(),
+											message: NOTIFICATION_MESSAGE.BUSINESS_EVENT_CANCELLED(eventData?.title), 
+											event_id: eventData.id, 
+											user_id:eventUser?.user_id, 
+											business_id: eventData?.business_id }),
+											title: NOTIFICATION_TITLES.BUSINESS_EVENT_CANCELLED(eventData?.title),
+											message: NOTIFICATION_MESSAGE.BUSINESS_EVENT_CANCELLED(eventData?.title),
+											notification_type: NOTIFICATION_TYPES.BUSINESS_EVENT_CANCELLED,
+										}
+		
+										const notificationUser = await notificationModel.create(notificationUserObj);
+										if (notificationUser && notificationUser.id) {
+											const notificationReceiverUserObj = {
+												role_id : eventUser?.user?.role_id,
+												notification_id : notificationUser.id, 
+												sender_id: eventData.business_id, 
+												receiver_id: eventUser?.user_id,
+											}
+											const notificationReceiver = await notificationReceiverModel.create(notificationReceiverUserObj);
+										}
+										/** FCM push noifiation */
+										const activeUserReceiverDevices = await deviceModel.findAll({ where: { status: 1, user_id: eventUser?.user_id } },{ attributes: ["device_token"] });
+										const userDeviceTokensList = activeUserReceiverDevices.map((device) => device.device_token);
+										const userUniqueDeviceTokens = Array.from(new Set(userDeviceTokensList));
+										const userNotificationPayload = {
+											device_token: userUniqueDeviceTokens,
+											title: NOTIFICATION_TITLES.BUSINESS_EVENT_CANCELLED(eventData?.title),
+											message: NOTIFICATION_MESSAGE.BUSINESS_EVENT_CANCELLED(eventData?.title),
+											content: { notification_type:NOTIFICATION_TYPES.BUSINESS_EVENT_CANCELLED, notification_id: notificationUser?.id , title: NOTIFICATION_TITLES.BUSINESS_EVENT_CANCELLED(eventData?.title),message: NOTIFICATION_MESSAGE.BUSINESS_EVENT_CANCELLED(eventData?.title), event_id: eventData.id, user_id:eventUser?.user_id, business_id: eventUser?.business_id }
+										};
+										await fcmNotification.SendNotification(userNotificationPayload);
+								}
+								res.send(setRes(resCode.OK, true, "Event deleted successfully", null))
+							})
+						} 
 				})
 			}
 			
