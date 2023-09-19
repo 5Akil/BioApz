@@ -1,9 +1,9 @@
 {
   "development": {
-    "username": "root",
-    "password": "Root@144",
+    "username": "phstagadmin",
+    "password": "RAJb!J]38%&yRn",
     "database": "bioz_app_db",
-    "host": "localhost",
+    "host": "planetheathstaging.cgqohlhgceaz.us-east-2.rds.amazonaws.com",
     "dialect": "mysql",
     "logging": false
   },

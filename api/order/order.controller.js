@@ -970,8 +970,8 @@ exports.orderCreate = async (req, res) => {
 						reference_reward_id: userGiftCardDetails?.id,
 						reference_reward_type: 'gift_cards'
 					} ,{ transaction: t });
-					if (userGiftCardDetails?.gift_card?.is_cashback) {
-						const cahsbackPercentage = userGiftCardDetails?.gift_card?.cashback_percentage;
+					if (userGiftCardDetails?.gift_cards?.is_cashback) {
+						const cahsbackPercentage = userGiftCardDetails?.gift_cards?.cashback_percentage;
 						const cashbackAmount = Math.floor((redeemAmount * cahsbackPercentage)/100);
 	
 						// If gift card has cashback true
@@ -982,46 +982,6 @@ exports.orderCreate = async (req, res) => {
 							reference_reward_id: userGiftCardDetails?.id,
 							reference_reward_type: 'cashbacks'
 						} ,{ transaction: t });
-
-						/** Send Device notifications for event cancellation to all corresponding users.*/
-						/** Send to user */
-						
-
-						const notificationUserObj = {
-							role_id : user?.role_id,
-							params: JSON.stringify({
-								notification_type:NOTIFICATION_TYPES.CASHBACK_REWARD, 
-								title: NOTIFICATION_TITLES.CASHBACK_REWARD(),
-								message: NOTIFICATION_MESSAGE.CASHBACK_REWARD(createdOrder?.id,cashbackAmount), 
-								cashback_id: cashbackReward.id, 
-								user_id:orderObj?.user_id, 
-								business_id: orderObj?.business_id }),
-								title: NOTIFICATION_TITLES?.CASHBACK_REWARD(),
-								message: NOTIFICATION_MESSAGE?.CASHBACK_REWARD(createdOrder?.id,cashbackAmount),
-								notification_type: NOTIFICATION_TYPES.CASHBACK_REWARD,
-							}
-
-							const notificationUser = await notificationModel.create(notificationUserObj);
-							if (notificationUser && notificationUser.id) {
-								const notificationReceiverUserObj = {
-									role_id : orderObj?.user_id,
-									notification_id : notificationUser.id, 
-									sender_id: orderObj?.business_id, 
-									receiver_id: orderObj?.user_id,
-								}
-								const notificationReceiver = await notificationReceiverModel.create(notificationReceiverUserObj);
-							}
-							/** FCM push noifiation */
-							const activeUserReceiverDevices = await deviceModel.findOne({ where: { status: 1, user_id: orderObj?.user_id } },{ attributes: ["device_token"] });
-							// const userDeviceTokensList = activeUserReceiverDevices.map((device) => device.device_token);
-							// const userUniqueDeviceTokens = Array.from(new Set(userDeviceTokensList));
-							const userNotificationPayload = {
-								device_token: activeUserReceiverDevices?.device_token,
-								title: NOTIFICATION_TITLES.CASHBACK_REWARD(),
-								message: NOTIFICATION_MESSAGE.CASHBACK_REWARD(createdOrder?.id,cashbackAmount),
-								content: { notification_type:NOTIFICATION_TYPES?.CASHBACK_REWARD, notification_id: notificationUser?.id , title: NOTIFICATION_TITLES?.CASHBACK_REWARD(),message: NOTIFICATION_MESSAGE?.CASHBACK_REWARD(createdOrder?.id,cashbackAmount), cashback_id: cashbackReward?.id, user_id:orderObj?.user_id, business_id: orderObj?.business_id }
-							};
-							await fcmNotification.SendNotification(userNotificationPayload);
 					}
 				}
 			}
@@ -1277,7 +1237,6 @@ exports.orderCreate = async (req, res) => {
 			return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null));
 		}
 	} catch (error) {
-		console.log(error);
 		t.rollback();
 		return res.send(setRes(resCode.BadRequest, false, error?.message || "Something went wrong", "", null))
 	}
