@@ -20,8 +20,8 @@ var multer = require('multer');
 const multerS3 = require('multer-s3');
 
 // Create Reward discounts START
-exports.create = async(req,res) =>{
-	try{
+exports.create = async (req,res) => {
+	try {
 		var data = req.body
 		var discountModel = models.discounts
 		var businessModel = models.business
@@ -29,128 +29,137 @@ exports.create = async(req,res) =>{
 		var productModel = models.products
 		var Op = models.Op;
 		var validation = true;
-		
-		var currentDate = (moment().format('YYYY-MM-DD') == moment(data.validity_for).format('YYYY-MM-DD'))
-		var pastDate = moment(data.validity_for, 'YYYY-MM-DD').isBefore(moment());
 
-		if(!_.isEmpty(data.validity_for)){
-			if(currentDate || pastDate){
-				return res.send(setRes(resCode.BadRequest, false, "You can't select past and current date.!", null))
+		var currentDate = (moment().format('YYYY-MM-DD') == moment(data.validity_for).format('YYYY-MM-DD'))
+		var pastDate = moment(data.validity_for,'YYYY-MM-DD').isBefore(moment());
+
+		if(!_.isEmpty(data.validity_for)) {
+			if(currentDate || pastDate) {
+				return res.send(setRes(resCode.BadRequest,false,"You can't select past and current date.!",null))
 			}
 		}
 
-		var requiredFields = _.reject(['business_id','title','discount_type','discount_value','product_id','validity_for'], (o) => { return _.has(data, o)  })
-		const result =  data.discount_type == 0 ? (!((data.discount_value >= Math.min(1,100)) && (data.discount_value <= Math.max(1,100))) ? true : false) : '';
-		if(data.discount_value!== undefined  && (!Number(data.discount_value) || isNaN(data.discount_value)) || data.discount_value <= 0){
+		var requiredFields = _.reject(['business_id','title','discount_type','discount_value','product_id','validity_for'],(o) => {return _.has(data,o)})
+		const result = data.discount_type == 0 ? (!((data.discount_value >= Math.min(1,100)) && (data.discount_value <= Math.max(1,100))) ? true : false) : '';
+		if(data.discount_value !== undefined && (!Number(data.discount_value) || isNaN(data.discount_value)) || data.discount_value <= 0) {
 			validation = false;
-			return res.send(setRes(resCode.BadRequest,false, "Discount value should be greater than 0!",null))
+			return res.send(setRes(resCode.BadRequest,false,"Discount value should be greater than 0!",null))
 		}
-		if(requiredFields == ""){
+		if(requiredFields == "") {
 			const discountTitle = data?.title?.trim() || data.title;
 
-			if(result){
-				return res.send(setRes(resCode.BadRequest,false, "Please select valid discount value in percentage(between 1 to 100)!",null))
-			}else{
-				if(validation){
-					businessModel.findOne({
-						where:{id:data.business_id,is_deleted:false,is_active:true}
+			if(result) {
+				return res.send(setRes(resCode.BadRequest,false,"Please select valid discount value in percentage(between 1 to 100)!",null))
+			} else {
+				if(validation) {
+					await businessModel.findOne({
+						where: {id: data.business_id,is_deleted: false,is_active: true}
 					}).then(async business => {
-						if(_.isEmpty(business)){
-							return res.send(setRes(resCode.ResourceNotFound, false, "Business not found.",null))
-						}else{
-							if(data.product_category_id){
+						if(_.isEmpty(business)) {
+							return res.send(setRes(resCode.ResourceNotFound,false,"Business not found.",null))
+						} else {
+							if(data.product_category_id) {
 								var productCategory = await categoryModel.findOne({
-									where:{id:data.product_category_id,is_deleted:false,is_enable:true,business_id:data.business_id}
+									where: {id: data.product_category_id,is_deleted: false,is_enable: true,business_id: data.business_id}
 								});
-								if(_.isEmpty(productCategory)){
-									return res.send(setRes(resCode.ResourceNotFound, false, "Product Category not found.",null))
+								if(_.isEmpty(productCategory)) {
+									return res.send(setRes(resCode.ResourceNotFound,false,"Product Category not found.",null))
 								}
 							}
-							
-								var products = !_.isEmpty(data.product_id) ? data.product_id : '';
-								var proArray = products.split(",");
-								await productModel.findAll({
-									where: { id: { [Op.in]: proArray }, is_deleted: false, business_id: data.business_id}
-								}).then(async products => {
-									if(_.isEmpty(products) || (products.length != proArray.length)){
-										return res.send(setRes(resCode.ResourceNotFound, false, "Product not found.",null))
-									}else{
+
+							var products = !_.isEmpty(data.product_id) ? data.product_id : '';
+							var proArray = products.split(",");
+							await productModel.findAll({
+								where: {id: {[Op.in]: proArray},is_deleted: false,business_id: data.business_id},
+								order: [['price','ASC']],
+							}).then(async products => {
+								if(_.isEmpty(products) || (products.length != proArray.length)) {
+									return res.send(setRes(resCode.ResourceNotFound,false,"Product not found.",null))
+								} else {
+									var discountAmount = products[0].price * data.discount_value / 100;
+									if((data.discount_type == true && data.discount_value > products[0].price) || (data.discount_type == false && discountAmount > products[0].price)) {
+										return res.send(setRes(resCode.BadRequest,false,"Please enter decount value less then selected products min value!",null))
+									} else {
 										await discountModel.findOne({
-												where: {isDeleted: false,status:true,title: {[Op.eq]: discountTitle}
+											where: {
+												isDeleted: false,status: true,title: {[Op.eq]: discountTitle}
 											}
 										}).then(async cashbackData => {
-											if(cashbackData){
-												return res.send(setRes(resCode.BadRequest,false, "Discount title already taken.!",null))
-											}else{
-												discountModel.create(data).then(async responseData => {
-													if(responseData){
+											if(cashbackData) {
+												return res.send(setRes(resCode.BadRequest,false,"Discount title already taken.!",null))
+											} else {
+												await discountModel.create(data).then(async responseData => {
+													if(responseData) {
 														return res.send(setRes(resCode.OK,true,"Discount added successfully",responseData))
-													}else{
+													} else {
 														return res.send(setRes(resCode.InternalServer,false,"Internal server error",null))
 													}
 												})
 											}
 										})
 									}
-								})
-							
+								}
+							})
+
 						}
 					})
 				}
 			}
-		}else {
-			return res.send(setRes(resCode.BadRequest,false, (requiredFields.toString() + ' are required'),null))
+		} else {
+			return res.send(setRes(resCode.BadRequest,false,(requiredFields.toString() + ' are required'),null))
 		}
-	}catch(error){
-		return res.send(setRes(resCode.BadRequest,false, "Something went wrong!",null))
+	} catch(error) {
+		console.log(error)
+		return res.send(setRes(resCode.BadRequest,false,"Something went wrong!",null))
 	}
 }
 // Create Reward discounts END
 
 // Delete Reward discount START
-exports.delete = async(req,res) => {
-	try{
+exports.delete = async (req,res) => {
+	try {
 		var data = req.params
 		var discountModel = models.discounts
-		var requiredFields = _.reject(['id'], (o) => { return _.has(data, o)  })
-		if(requiredFields == ""){
+		var requiredFields = _.reject(['id'],(o) => {return _.has(data,o)})
+		if(requiredFields == "") {
 			discountModel.findOne(
-				{where: {id: data.id,isDeleted: false,deleted_at:null}
-			}).then(async discountData => {
-				if (discountData) {
-					await discountData.update({ 
-						isDeleted: true,
-						status:false
-					}).then(async deleteData => {
-						if(deleteData){
-							await discountModel.findOne({
-								where: {
-									id: deleteData.id
-								}
+				{
+					where: {id: data.id,isDeleted: false,deleted_at: null}
+				}).then(async discountData => {
+					if(discountData) {
+						await discountData.update({
+							isDeleted: true,
+							status: false
+						}).then(async deleteData => {
+							if(deleteData) {
+								await discountModel.findOne({
+									where: {
+										id: deleteData.id
+									}
 								}).then(async Data => {
 									Data.destroy();
 								});
-						}
-					});
-					return res.send(setRes(resCode.OK, true, "Discount deleted successfully", null))
-				} else {
-					return res.send(setRes(resCode.ResourceNotFound, false, "Discount not found", null))
-				}
-			}).catch(error => {
-				return res.send(setRes(resCode.BadRequest, false, error, null))
-			})
-		}else{
-			return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'),null))
+							}
+						});
+						return res.send(setRes(resCode.OK,true,"Discount deleted successfully",null))
+					} else {
+						return res.send(setRes(resCode.ResourceNotFound,false,"Discount not found",null))
+					}
+				}).catch(error => {
+					return res.send(setRes(resCode.BadRequest,false,error,null))
+				})
+		} else {
+			return res.send(setRes(resCode.BadRequest,false,(requiredFields.toString() + ' are required'),null))
 		}
-	}catch(error){
+	} catch(error) {
 		return res.send(setRes(resCode.BadRequest,false,"Something went wrong!",null))
 	}
 }
 // Delete Reward discount END
 
 // Update Reward discount START
-exports.update =async(req,res) => {
-	try{
+exports.update = async (req,res) => {
+	try {
 		var data = req.body
 		var discountModel = models.discounts
 		var businessModel = models.business
@@ -159,95 +168,105 @@ exports.update =async(req,res) => {
 		var Op = models.Op;
 		var validation = true;
 		var currentDate = (moment().format('YYYY-MM-DD') == moment(data.validity_for).format('YYYY-MM-DD'))
-		var pastDate = moment(data.validity_for, 'YYYY-MM-DD').isBefore(moment());
+		var pastDate = moment(data.validity_for,'YYYY-MM-DD').isBefore(moment());
 
-		if(!_.isEmpty(data.validity_for)){
-			if(currentDate || pastDate){
+		if(!_.isEmpty(data.validity_for)) {
+			if(currentDate || pastDate) {
 				validation = false;
-				return res.send(setRes(resCode.BadRequest, false, "You can't select past and current date.!", null))
+				return res.send(setRes(resCode.BadRequest,false,"You can't select past and current date.!",null))
 			}
 		}
 
-		var requiredFields = _.reject(['id','title','discount_type','discount_value','product_id','validity_for'], (o) => { return _.has(data, o)  })
-		const result =  data.discount_type == 0 ? (!((data.discount_value >= Math.min(1,100)) && (data.discount_value <= Math.max(1,100))) ? true : false) : '';
-		if(requiredFields == ""){
+		var requiredFields = _.reject(['id','title','discount_type','discount_value','product_id','validity_for'],(o) => {return _.has(data,o)})
+		const result = data.discount_type == 0 ? (!((data.discount_value >= Math.min(1,100)) && (data.discount_value <= Math.max(1,100))) ? true : false) : '';
+		if(requiredFields == "") {
 			const discountTitle = data?.title?.trim() || data.title;
-			if(result){
+			if(result) {
 				validation = false;
-				return res.send(setRes(resCode.BadRequest,false, "Please select valid cashback value in percentage(between 1 to 100)!",null))
+				return res.send(setRes(resCode.BadRequest,false,"Please select valid cashback value in percentage(between 1 to 100)!",null))
 			}
-			if(data.discount_value!== undefined  && (!Number(data.discount_value) || isNaN(data.discount_value)) || data.discount_value <= 0){
+			if(data.discount_value !== undefined && (!Number(data.discount_value) || isNaN(data.discount_value)) || data.discount_value <= 0) {
 				validation = false;
-				return res.send(setRes(resCode.BadRequest,false, "Discount value should be greater than 0!",null))
+				return res.send(setRes(resCode.BadRequest,false,"Discount value should be greater than 0!",null))
 			}
-			if(validation){
-				discountModel.findOne({
-					where:{id: data.id,isDeleted: false,status: true,deleted_at:null}
+			if(validation) {
+				await discountModel.findOne({
+					where: {id: data.id,isDeleted: false,status: true,deleted_at: null}
 				}).then(async discountDetails => {
-					if(_.isEmpty(discountDetails)){
-						return res.send(setRes(resCode.ResourceNotFound, false, "Discount not found.",null))
-					}else{
+					if(_.isEmpty(discountDetails)) {
+						return res.send(setRes(resCode.ResourceNotFound,false,"Discount not found.",null))
+					} else {
 						await discountModel.findOne({
-							where:{isDeleted:false,status:true,deleted_at:null,title:{[Op.eq]: discountTitle},id:{[Op.ne]: data.id}}
+							where: {isDeleted: false,status: true,deleted_at: null,title: {[Op.eq]: discountTitle},id: {[Op.ne]: data.id}}
 						}).then(async discountData => {
-							if(discountData == null){
-								if(data.product_category_id){
+							if(discountData == null) {
+								if(data.product_category_id) {
 									var productCategory = await categoryModel.findOne({
-										where:{id:data.product_category_id,is_deleted:false,is_enable:true}
+										where: {id: data.product_category_id,is_deleted: false,is_enable: true}
 									});
-									if(_.isEmpty(productCategory)){
-										return res.send(setRes(resCode.ResourceNotFound, false, "Product Category not found.",null))
+									if(_.isEmpty(productCategory)) {
+										return res.send(setRes(resCode.ResourceNotFound,false,"Product Category not found.",null))
 									}
 								}
 								await productModel.findOne({
-									where:{id:data.product_id,is_deleted:false}
+									where: {id: data.product_id,is_deleted: false}
 								}).then(async products => {
-									if(_.isEmpty(products)){
-										return res.send(setRes(resCode.ResourceNotFound, false, "Product not found.",null))
-									}else{
-										discountModel.update(data,
-											{where: {id:data.id,isDeleted:false,status:true,deleted_at:null}
-										}).then(async updateData => {
-											if(updateData){
-												discountModel.findOne({where:{id:data.id},include: [
-													{
-														model: categoryModel,
-														attributes: ['id', 'name']
+									if(_.isEmpty(products)) {
+										return res.send(setRes(resCode.ResourceNotFound,false,"Product not found.",null))
+									} else {
+										var discountAmount = products.price * data.discount_value / 100;
+										if((data.discount_type == true && data.discount_value > products.price) || (data.discount_type == false && discountAmount > products.price)) {
+											return res.send(setRes(resCode.BadRequest,false,"Please enter decount value less then selected products min value!",null))
+										} else {
+											await discountModel.update(data,
+												{
+													where: {id: data.id,isDeleted: false,status: true,deleted_at: null}
+												}).then(async updateData => {
+													if(updateData) {
+														await discountModel.findOne({
+															where: {id: data.id},include: [
+																{
+																	model: categoryModel,
+																	attributes: ['id','name']
+																}
+															],
+														}).then(async data => {
+															const products = await productModel.findAll({where: {id: {[Op.in]: data.product_id?.split(',') || []}},attributes: ["name"],raw: true});
+															const product_name_arr = products?.map(val => val.name);
+															const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
+															data.dataValues.type = "discounts";
+															data.dataValues.value_type = data.discount_type;
+															data.dataValues.amount = data.discount_value;
+															if(data.validity_for < moment().format('YYYY-MM-DD')) {
+																data.dataValues.is_expired = true;
+															} else {
+																data.dataValues.is_expired = false;
+															}
+															data.dataValues.product_category_name = data?.product_category?.name || '';
+															data.dataValues.product_name = product_name.trim();
+															delete data.dataValues.product_category;
+															return res.send(setRes(resCode.OK,true,'Discount update successfully',data))
+														})
+													} else {
+														return res.send(setRes(resCode.BadRequest,false,"Fail to update discount.",null))
 													}
-												],}).then(async data => {
-													const products = await productModel.findAll({ where: { id: { [Op.in] : data.product_id?.split(',') || [] } } ,attributes: ["name"], raw: true});
-													const product_name_arr = products?.map(val => val.name);
-													const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
-													data.dataValues.type = "discounts";
-													data.dataValues.value_type = data.discount_type;
-													data.dataValues.amount = data.discount_value;
-													if(data.validity_for < moment().format('YYYY-MM-DD')){
-														data.dataValues.is_expired = true;
-													}else{
-														data.dataValues.is_expired = false;
-													}
-													data.dataValues.product_category_name = data?.product_category?.name || '';
-													data.dataValues.product_name = product_name.trim();
-													delete data.dataValues.product_category;
-													return res.send(setRes(resCode.OK,true,'Discount update successfully',data))
 												})
-											}else{
-												return res.send(setRes(resCode.BadRequest, false, "Fail to update discount.",null))
-											}
-										})
+										}
+
 									}
 								})
-							}else{
+							} else {
 								return res.send(setRes(resCode.BadRequest),false,"Discount title already taken.!",null)
 							}
 						})
 					}
 				})
 			}
-		}else {
-			return res.send(setRes(resCode.BadRequest,false, (requiredFields.toString() + ' are required'),null))
+		} else {
+			return res.send(setRes(resCode.BadRequest,false,(requiredFields.toString() + ' are required'),null))
 		}
-	}catch(error){
+	} catch(error) {
+		console.log(error)
 		return res.send(setRes(resCode.BadRequest,false,"Something went wrong!",null))
 	}
 }
