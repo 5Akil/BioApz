@@ -46,6 +46,12 @@ module.exports = (sequelize, DataTypes) => {
     payment_status: {
         type: DataTypes.INTEGER,
     },
+    payment_id:{
+        type: DataTypes.STRING
+    },
+    payment_response:{
+        type: DataTypes.TEXT
+    },
     status: {
         type: DataTypes.BOOLEAN,
         defaultValue: true

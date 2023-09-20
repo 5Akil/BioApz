@@ -11,6 +11,7 @@ const NOTIFICATION_TYPES = {
     DISCOUNT_USE: "discount_use",
     LOYALTY_USE: "loyalty_point_use",
     CHAT_NOTIFICATION: "chat_notification",
+    CASHBACK_REWARD:"cashback_reward",
 };
 
 const NOTIFICATION_TITLES = {
@@ -27,6 +28,7 @@ const NOTIFICATION_TITLES = {
     GET_DISCOUNT_ORDER: () => `User Get Discount`,
     GET_LOYALTY_POINT_USER: () => `Loyalty points on order`,
     GET_LOYALTY_POINT_BUSINESS: () => `Loyalty points on order`,
+    CASHBACK_REWARD: () => `Cashback Reward!`,
 }
 
 const NOTIFICATION_MESSAGE = {
@@ -43,6 +45,7 @@ const NOTIFICATION_MESSAGE = {
     GET_DISCOUNT_ORDER: (orderNo='') => `User get discount on order ${orderNo}`,
     GET_LOYALTY_POINT_USER: (orderNo='') => `You received loyalty points on order ${orderNo}`,
     GET_LOYALTY_POINT_BUSINESS: (orderNo='') => `User received loyalty points on order ${orderNo}`,
+    CASHBACK_REWARD:(orderNo='',amount='') => `Cashback received of amount ${amount} on order ${orderNo}`,
 }
 
 module.exports = {
