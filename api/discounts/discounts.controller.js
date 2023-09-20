@@ -77,8 +77,8 @@ exports.create = async (req,res) => {
 									return res.send(setRes(resCode.ResourceNotFound,false,"Product not found.",null))
 								} else {
 									var discountAmount = products[0].price * data.discount_value / 100;
-									if((data.discount_type == true && data.discount_value > products[0].price) || (data.discount_type == false && discountAmount > products[0].price)) {
-										return res.send(setRes(resCode.BadRequest,false,"Please enter decount value less then selected products min value!",null))
+									if((data.discount_type == true && data.discount_value >= products[0].price) || (data.discount_type == false && discountAmount >= products[0].price)) {
+										return res.send(setRes(resCode.BadRequest,false,"Please enter discount value less then selected products min value!",null))
 									} else {
 										await discountModel.findOne({
 											where: {
@@ -216,7 +216,7 @@ exports.update = async (req,res) => {
 									} else {
 										var discountAmount = products.price * data.discount_value / 100;
 										if((data.discount_type == true && data.discount_value > products.price) || (data.discount_type == false && discountAmount > products.price)) {
-											return res.send(setRes(resCode.BadRequest,false,"Please enter decount value less then selected products min value!",null))
+											return res.send(setRes(resCode.BadRequest,false,"Please enter discount value less then selected products min value!",null))
 										} else {
 											await discountModel.update(data,
 												{
