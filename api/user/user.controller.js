@@ -2662,7 +2662,8 @@ exports.userEventList = async (req,res) => {
 			include: [
 				{
 					model: userEventModel,
-					attributes: ["id","user_id"],
+					attributes: ["id","user_id","createdAt"],
+					as:'user_events',
 					where: {user_id: data.user_id,is_deleted: false},
 					include: [
 						{
@@ -2681,9 +2682,10 @@ exports.userEventList = async (req,res) => {
 				}
 			],
 			order: [
-				['status','ASC'],
-				['start_date','ASC'],
-				['start_time','ASC'],
+				['user_events','createdAt', 'DESC']
+				// ['status','ASC'],
+				// ['start_date','ASC'],
+				// ['start_time','ASC'],
 			],
 		}
 		condition.where = {
