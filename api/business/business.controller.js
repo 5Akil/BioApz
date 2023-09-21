@@ -1195,7 +1195,6 @@ exports.ChatInitialize = async (req,res) => {
 							'_id': newMessageChatRef.key,
 							'role': 'customer',
 							'sender_id': data.user_id,
-							'receiver_id': data.business_id,
 							'date': moment().toISOString(),
 							'text': data.message,
 						})
@@ -1237,7 +1236,6 @@ exports.ChatInitialize = async (req,res) => {
 							'_id': newMessageChatRef.key,
 							'role': 'customer',
 							'sender_id': data.user_id,
-							'receiver_id': data.business_id,
 							'date': moment().toISOString(),
 							'text': data.message,
 						})
@@ -1286,7 +1284,6 @@ exports.ChatInitialize = async (req,res) => {
 							'_id': newMessageChatRef.key,
 							'role': 'customer',
 							'sender_id': data.user_id,
-							'receiver_id': data.business_id,
 							'date': moment().toISOString(),
 							'text': data.message,
 						})
@@ -1323,7 +1320,6 @@ exports.ChatInitialize = async (req,res) => {
 							'_id': newMessageChatRef.key,
 							'role': 'customer',
 							'sender_id': data.user_id,
-							'receiver_id': data.business_id,
 							'date': moment().toISOString(),
 							'text': data.message,
 						})
