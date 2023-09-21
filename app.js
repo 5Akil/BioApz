@@ -130,7 +130,7 @@ var NotificationQueue = new Queue(async function(task,cb) {
 					NotificationData.device_token = deviceToken?.device_token;
 					NotificationData.message = task.text
 					NotificationData.title = task.from_name
-					NotificationData.content = {notification_type: NOTIFICATION_TYPES.CHAT_NOTIFICATION,user_id: user.id,business_id: task?.receiver_id}
+					NotificationData.content = {notification_type: NOTIFICATION_TYPES.CHAT_NOTIFICATION,user_id: user.id,business_id: task?.receiver_id,from_name: task?.from_name}
 					notification.SendNotification(NotificationData)
 				}
 			}
@@ -149,7 +149,7 @@ var NotificationQueue = new Queue(async function(task,cb) {
 					NotificationData.device_token = deviceToken?.device_token
 					NotificationData.message = task.text
 					NotificationData.title = task.from_name
-					NotificationData.content = {notification_type: NOTIFICATION_TYPES.CHAT_NOTIFICATION,user_id: task?.user_id,business_id: business?.id}
+					NotificationData.content = {notification_type: NOTIFICATION_TYPES.CHAT_NOTIFICATION,user_id: task?.sender_id,business_id: business?.id,from_name: task?.from_name}
 					notification.SendNotification(NotificationData)
 				}
 			}
@@ -164,7 +164,6 @@ var RemoveDataQueue = new Queue(function(task,cb) {
 })
 
 NotificationRef.on("child_added",function(snapshot) {
-
 	snapshotVal = JSON.parse(JSON.stringify(snapshot.val()))
 	snapshotKey = JSON.parse(JSON.stringify(snapshot.key))
 	NotificationQueue.push(snapshotVal);
