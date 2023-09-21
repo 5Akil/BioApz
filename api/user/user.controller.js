@@ -4486,7 +4486,7 @@ exports.userGiftCardPurchase = async (req, res) => {
       );
     }
     if (requiredFields == "") {
-      if (![0, 1].includes(+data.payment_status)) {
+      if (![1, 2, 3, 4].includes(+data.payment_status)) {
         return res.send(
           setRes(
             resCode.BadRequest,
@@ -4531,7 +4531,7 @@ exports.userGiftCardPurchase = async (req, res) => {
           business_id: giftCardDetails.business_id,
           purchase_date: currentDate,
           redeemed_amount: 0,
-          payment_status: data.payment_status == 1 ? true : false,
+          payment_status: data.payment_status,
           payment_id: data.payment_id,
           payment_response:
             data.payment_response && typeof data.payment_response != "string"
@@ -4853,7 +4853,7 @@ exports.userGiftCardShare = async (req, res) => {
       );
     }
     if (requiredFields == "") {
-      if (![0, 1].includes(+data.payment_status)) {
+      if (![1, 2, 3, 4].includes(+data.payment_status)) {
         return res.send(
           setRes(
             resCode.BadRequest,
@@ -4914,7 +4914,7 @@ exports.userGiftCardShare = async (req, res) => {
           purchase_date: currentDate,
           redeemed_amount: 0,
 		  payment_id: data.payment_id,
-          payment_status: data.payment_status == "1" ? true : false,
+      payment_status: data.payment_status,
 		  payment_response: data.payment_response && typeof(data.payment_response) != 'string' ? JSON.stringify(data.payment_response): data.payment_response,
           qty: data.qty,
         };
@@ -5947,11 +5947,11 @@ exports.userGiftCardDetails = async (req, res) => {
     const totalPurchasedGiftcard = await userGiftCardModel.findAll({
       where: {
         gift_card_id: giftCardDetail?.id,
-        payment_status: 1,
+        payment_status: 2,
         is_deleted: false,
       },
     });
-    if (userGiftCard.payment_status == 1) {
+    if (userGiftCard.payment_status === 2) {
       const purchase_for = userGiftCard?.to_email
         ? user?.user == userGiftCard?.to_email
           ? "Self"
