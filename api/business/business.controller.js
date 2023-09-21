@@ -1207,6 +1207,7 @@ exports.ChatInitialize = async (req,res) => {
 						MessageDetailRef.set({
 							'_id': newMessageDetailRef.key,
 							'date': moment().toISOString(),
+							'from_name': userName,
 							'business_counter': 1,
 							'customer_counter': 0,
 							'last_message': data.message,
@@ -1249,6 +1250,7 @@ exports.ChatInitialize = async (req,res) => {
 						MessageChatRef.set({
 							'_id': newMessageDetailRef.key,
 							'date': moment().toISOString(),
+							'from_name': userName,
 							'business_counter': 1,
 							'customer_counter': 0,
 							'last_message': data.message,
@@ -1298,6 +1300,7 @@ exports.ChatInitialize = async (req,res) => {
 						MessageDetailRef.set({
 							'_id': newMessageDetailRef.key,
 							'date': moment().toISOString(),
+							'from_name': businessName,
 							'business_counter': 1,
 							'customer_counter': 0,
 							'last_message': data.message,
@@ -1335,6 +1338,7 @@ exports.ChatInitialize = async (req,res) => {
 						MessageDetailRef.set({
 							'_id': newMessageDetailRef.key,
 							'date': moment().toISOString(),
+							'from_name': userName,
 							'business_counter': 1,
 							'customer_counter': 0,
 							'last_message': data.message,
