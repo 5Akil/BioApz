@@ -119,7 +119,7 @@ var NotificationQueue = new Queue(async function(task,cb) {
 	if(task.role == 'customer') {
 		await userModel.findOne({
 			where: {
-				id: task.id,
+				id: task?.id,
 				is_deleted: false,
 				is_active: true,
 			}
@@ -138,7 +138,7 @@ var NotificationQueue = new Queue(async function(task,cb) {
 	} else {
 		await businessModel.findOne({
 			where: {
-				id: task.id,
+				id: task?.id,
 				is_deleted: false,
 				is_active: true,
 			}
