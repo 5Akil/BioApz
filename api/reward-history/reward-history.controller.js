@@ -45,7 +45,7 @@ exports.rewardHistoryList = async (req,res) => {
                         where: {
                             user_id: data.user_id
                         },
-                        required: true,
+                        required: false,
                     }
                 ],
                 attributes: {exclude: ["deleted_at","updatedAt"]},
@@ -68,7 +68,8 @@ exports.rewardHistoryList = async (req,res) => {
 
                         let rewardDetailsObj = await userGiftCardsModel.findOne({
                             where: {
-                                id: rewardHistory?.reference_reward_id || ''
+                                id: rewardHistory?.reference_reward_id || '',
+                                user_id: data.user_id
                             },
                             include: [{
                                 model: giftCardsModel,
@@ -76,11 +77,13 @@ exports.rewardHistoryList = async (req,res) => {
                             }],
                             attributes: {exclude: ["payment_status","status","is_deleted","createdAt","updatedAt","deleted_at"]}
                         });
-                        rewardDetailsObj.dataValues.name = rewardDetailsObj?.dataValues?.gift_card?.dataValues?.name || "";
-                        rewardDetailsObj.dataValues.cashback_percentage = rewardDetailsObj?.dataValues?.gift_card?.dataValues?.cashback_percentage || "";
-                        rewardDetailsObj.dataValues.description = rewardDetailsObj?.dataValues?.gift_card?.dataValues?.description || "";
-                        rewardDetailsObj.dataValues.is_cashback = rewardDetailsObj?.dataValues?.gift_card?.dataValues?.is_cashback;
-                        delete rewardDetailsObj.dataValues.gift_card;
+                        if(!_.isEmpty(rewardDetailsObj)) {
+                            rewardDetailsObj.dataValues.name = rewardDetailsObj?.dataValues?.gift_card?.dataValues?.name || "";
+                            rewardDetailsObj.dataValues.cashback_percentage = rewardDetailsObj?.dataValues?.gift_card?.dataValues?.cashback_percentage || "";
+                            rewardDetailsObj.dataValues.description = rewardDetailsObj?.dataValues?.gift_card?.dataValues?.description || "";
+                            rewardDetailsObj.dataValues.is_cashback = rewardDetailsObj?.dataValues?.gift_card?.dataValues?.is_cashback;
+                            delete rewardDetailsObj.dataValues.gift_card;
+                        }
                         rewardHistory.dataValues.reward_details = rewardDetailsObj;
                         responseArr.push(rewardHistory)
 
@@ -207,21 +210,28 @@ exports.rewardHistoryBusinessList = async (req,res) => {
                 for(let rewardHistory of businessRewardHistoryData?.rows) {
                     if(rewardHistory.reference_reward_type == 'gift_cards') {
 
-                        let rewardDetailsObj = await userGiftCardsModel.findOne({
+                        const rewardDetailsObj = await giftCardsModel.findOne({
                             where: {
                                 id: rewardHistory?.reference_reward_id || ''
                             },
-                            include: [{
-                                model: giftCardsModel,
-                                attributes: ["name","cashback_percentage","description","is_cashback"]
-                            }],
-                            attributes: {exclude: ["payment_status","status","is_deleted","createdAt","updatedAt","deleted_at"]}
+                            attributes: ["id","title","description"]
                         });
-                        rewardDetailsObj.dataValues.name = rewardDetailsObj?.dataValues?.gift_card?.dataValues?.name || "";
-                        rewardDetailsObj.dataValues.cashback_percentage = rewardDetailsObj?.dataValues?.gift_card?.dataValues?.cashback_percentage || "";
-                        rewardDetailsObj.dataValues.description = rewardDetailsObj?.dataValues?.gift_card?.dataValues?.description || "";
-                        rewardDetailsObj.dataValues.is_cashback = rewardDetailsObj?.dataValues?.gift_card?.dataValues?.is_cashback;
-                        delete rewardDetailsObj.dataValues.gift_card;
+
+                        //let rewardDetailsObj = await userGiftCardsModel.findOne({
+                        //    where: {
+                        //        id: rewardHistory?.reference_reward_id || ''
+                        //    },
+                        //    include: [{
+                        //        model: giftCardsModel,
+                        //        attributes: ["name","cashback_percentage","description","is_cashback"]
+                        //    }],
+                        //    attributes: {exclude: ["payment_status","status","is_deleted","createdAt","updatedAt","deleted_at"]}
+                        //});
+                        //rewardDetailsObj.dataValues.name = rewardDetailsObj?.dataValues?.gift_card?.dataValues?.name || "";
+                        //rewardDetailsObj.dataValues.cashback_percentage = rewardDetailsObj?.dataValues?.gift_card?.dataValues?.cashback_percentage || "";
+                        //rewardDetailsObj.dataValues.description = rewardDetailsObj?.dataValues?.gift_card?.dataValues?.description || "";
+                        //rewardDetailsObj.dataValues.is_cashback = rewardDetailsObj?.dataValues?.gift_card?.dataValues?.is_cashback;
+                        //delete rewardDetailsObj.dataValues.gift_card;
                         rewardHistory.dataValues.reward_details = rewardDetailsObj;
                         responseArr.push(rewardHistory)
 
