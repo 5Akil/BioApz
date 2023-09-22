@@ -1900,6 +1900,17 @@ ORDER BY name ASC
 				},
 				type: Sequelize.QueryTypes.SELECT,
 			});
+			for(const data of allCategorys) {
+				if(data.image != null) {
+					const signurl = await awsConfig
+						.getSignUrl(data.image)
+						.then(function(res) {
+							data.image = res;
+						});
+				} else {
+					data.image = commonConfig.default_image;
+				}
+			}
 			const totalRecords = allCategorys[0].total_count;
 			const response = new pagination(
 				allCategorys,
@@ -2413,7 +2424,6 @@ exports.ProductTypeList = async (req,res) => {
 			(type = 'business' ${searchPattern ? `AND name LIKE :searchPattern` : ""} AND (business_id = :business_id))
 		)
 		ORDER BY name ASC
-		LIMIT :limit OFFSET :offset
 		`;
 
 
@@ -2429,6 +2439,17 @@ exports.ProductTypeList = async (req,res) => {
 				},
 				type: Sequelize.QueryTypes.SELECT,
 			});
+			for(const data of allSubCategorys) {
+				if(data.image != null) {
+					const signurl = await awsConfig
+						.getSignUrl(data.image)
+						.then(function(res) {
+							data.image = res;
+						});
+				} else {
+					data.image = commonConfig.default_image;
+				}
+			}
 			const totalRecords = allSubCategorys[0].total_count;
 			const response = new pagination(
 				allSubCategorys,
