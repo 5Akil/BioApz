@@ -700,6 +700,20 @@ exports.createProduct = async (req,res) => {
 				}
 			}
 
+			if(data.cost_price && !_.isEmpty(data.cost_price)) {
+				if(data.cost_price <= 0) {
+					validation = false;
+					return res.send(
+						setRes(
+							resCode.BadRequest,
+							false,
+							"Please enter cost price value more than 0.",
+							null
+						)
+					);
+				}
+			}
+
 			if(data.sub_category_id) {
 				await categoryModel
 					.findOne({
@@ -984,6 +998,21 @@ exports.UpdateProductDetail = async (req,res) => {
 					);
 				}
 			}
+
+			if(data.cost_price && !_.isEmpty(data.cost_price)) {
+				if(data.cost_price <= 0) {
+					validation = false;
+					return res.send(
+						setRes(
+							resCode.BadRequest,
+							false,
+							"Please enter cost price value more than 0.",
+							null
+						)
+					);
+				}
+			}
+
 			if(req.files) {
 				const filesData = req.files;
 				const total_image = image.length + filesData.length;
@@ -1864,27 +1893,36 @@ exports.CategoryList = async (req,res) => {
 			var skip = data.page_size * (data.page - 1);
 			var limit = parseInt(data.page_size);
 			var searchPattern = data?.search ? "%" + data.search + "%" : null;
-			var business_id = data.business_id;
+			var business_id = data.business_id ? data.business_id : null;
 
 			var query = `
-		SELECT * FROM product_categorys
-		WHERE is_deleted = false
-		AND is_enable = true
-		AND parent_id = 0
-		AND (
-			(type = 'admin' ${searchPattern ? `AND name LIKE :searchPattern` : ""})
-			OR
-			(type = 'business' ${searchPattern ? `AND name LIKE :searchPattern` : ""}
-			AND (business_id = :business_id))
-		)
-		ORDER BY name ASC
-		`;
+SELECT *,
+(SELECT COUNT(*) FROM product_categorys
+WHERE is_deleted = false
+AND is_enable = true
+AND parent_id = 0
+AND (
+(type = 'admin' ${searchPattern ? `AND name LIKE :searchPattern` : ""})
+OR
+(type = 'business' ${searchPattern ? `AND name LIKE :searchPattern` : ""} AND (business_id = :business_id))
+)) AS total_count
+FROM product_categorys
+WHERE is_deleted = false
+AND is_enable = true
+AND parent_id = 0
+AND (
+(type = 'admin' ${searchPattern ? `AND name LIKE :searchPattern` : ""})
+OR
+(type = 'business' ${searchPattern ? `AND name LIKE :searchPattern` : ""} AND (business_id = :business_id))
+)
+ORDER BY name ASC
+`;
 
 			// Check if pagination is requested
 			if(data.page_size != 0 && !_.isEmpty(data.page_size)) {
 				query += ` LIMIT ${limit} OFFSET ${skip}`;
 			}
-			const allCategorys = await models.sequelize.query(query,{
+			var allCategorys = await models.sequelize.query(query,{
 				replacements: {
 					searchPattern: searchPattern,
 					business_id: business_id,
@@ -1892,9 +1930,26 @@ exports.CategoryList = async (req,res) => {
 				type: Sequelize.QueryTypes.SELECT,
 			});
 
-			const totalRecords = allCategorys.length;
+			for(const data of allCategorys) {
+				if(data.image != null) {
+					const signurl = await awsConfig
+						.getSignUrl(data.image)
+						.then(function(res) {
+							data.image = res;
+						});
+				} else {
+					data.image = commonConfig.default_image;
+				}
+			}
+
+			const updatedResponse = allCategorys.map(obj => {
+				obj.is_editable_deletable = obj.type == 'admin' ? false : true;
+				return obj;
+			});
+
+			const totalRecords = updatedResponse[0].total_count;
 			const response = new pagination(
-				allCategorys,
+				updatedResponse,
 				totalRecords,
 				parseInt(data.page),
 				parseInt(data.page_size)
@@ -1918,6 +1973,7 @@ exports.CategoryList = async (req,res) => {
 			);
 		}
 	} catch(error) {
+		console.log(error)
 		return res.send(
 			setRes(resCode.BadRequest,false,"Something went wrong!",null)
 		);
@@ -2382,39 +2438,61 @@ exports.ProductTypeList = async (req,res) => {
 			var business_id = data.business_id;
 
 			var query = `
-		SELECT * FROM product_categorys
+		SELECT *,
+			(SELECT COUNT(*) FROM product_categorys
+			WHERE is_deleted = false
+			AND is_enable = true
+			AND parent_id != 0
+			${data.category_id ? `AND parent_id = ${data.category_id}` : ""}
+			AND (
+				(type = 'admin' ${searchPattern ? `AND name LIKE :searchPattern` : ""})
+				OR
+				(type = 'business' ${searchPattern ? `AND name LIKE :searchPattern` : ""} AND (business_id = :business_id))
+			)) AS total_count
+		FROM product_categorys
 		WHERE is_deleted = false
 		AND is_enable = true
-		AND parent_id != 0`;
-
-			if(data.category_id && !_.isEmpty(data.category_id)) {
-				query += ` AND parent_id = ${data.category_id}`;
-			}
-
-			query += ` AND (
+		AND parent_id != 0
+		${data.category_id ? `AND parent_id = ${data.category_id}` : ""}
+		AND (
 			(type = 'admin' ${searchPattern ? `AND name LIKE :searchPattern` : ""})
 			OR
-			(type = 'business' ${searchPattern ? `AND name LIKE :searchPattern` : ""}
-			AND (business_id = :business_id))
+			(type = 'business' ${searchPattern ? `AND name LIKE :searchPattern` : ""} AND (business_id = :business_id))
 		)
 		ORDER BY name ASC
 		`;
+
 
 			// Check if pagination is requested
 			if(data.page_size != 0 && !_.isEmpty(data.page_size)) {
 				query += ` LIMIT ${limit} OFFSET ${skip}`;
 			}
 
-			const allSubCategorys = await models.sequelize.query(query,{
+			var allSubCategorys = await models.sequelize.query(query,{
 				replacements: {
 					searchPattern: searchPattern,
 					business_id: business_id,
 				},
 				type: Sequelize.QueryTypes.SELECT,
 			});
-			const totalRecords = allSubCategorys.length;
+			for(const data of allSubCategorys) {
+				if(data.image != null) {
+					const signurl = await awsConfig
+						.getSignUrl(data.image)
+						.then(function(res) {
+							data.image = res;
+						});
+				} else {
+					data.image = commonConfig.default_image;
+				}
+			}
+			const updatedResponse = allSubCategorys.map(obj => {
+				obj.is_editable_deletable = obj.type == 'admin' ? false : true;
+				return obj;
+			});
+			const totalRecords = updatedResponse[0].total_count;
 			const response = new pagination(
-				allSubCategorys,
+				updatedResponse,
 				parseInt(totalRecords),
 				parseInt(data.page),
 				parseInt(data.page_size)

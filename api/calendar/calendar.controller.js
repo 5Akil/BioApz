@@ -23,7 +23,6 @@ const {log} = require('console')
 const pagination = require('../../helpers/pagination');
 const {NOTIFICATION_TITLES,NOTIFICATION_TYPES,NOTIFICATION_MESSAGE} = require('../../config/notificationTypes');
 const fcmNotification = require('../../push_notification');
-const userEvents = [];
 
 // Create Event
 exports.CreateEvent = async (req,res) => {
@@ -504,8 +503,6 @@ exports.GetAllEvents = async (req,res) => {
 			const recordCount = await comboModel.findAndCountAll(condition);
 			const totalRecords = recordCount?.count;
 			const response = new pagination(combos,parseInt(totalRecords),parseInt(data.page),parseInt(data.page_size));
-			userEvents.push(response)
-
 			res.send(setRes(resCode.OK,true,"Available events list.",(response.getPaginationInfo())))
 		}).catch(error => {
 			res.send(setRes(resCode.InternalServer,false,'Internal server error.',null))
@@ -522,11 +519,31 @@ exports.ViewEvent = async (req,res) => {
 	var comboModel = models.combo_calendar
 	var userEventsModel = models.user_events
 	var usersModel = models.user
+	var businesModel = models.business
 	var currentDate = (moment().format('YYYY-MM-DD'));
 	var beforeSevenDay = (moment().subtract(7,"days").format('YYYY-MM-DD'));
 	var authData = req.user
 
-	comboModel.findOne({
+	var combosevent = await userEventsModel.findAll({
+		attributes: ["id","user_id","event_id"],
+		as: "user_events",
+		where: {
+			user_id: authData.id,business_id: val.business_id,event_id: data.id,is_deleted: false
+		},
+		include: [
+			{
+				model: models.user,
+				attributes: [
+					"id",
+					"username",
+					"email",
+					"mobile",
+					"profile_picture",
+				],
+			},
+		],
+	});
+	await comboModel.findOne({
 		where: {
 			id: data.id,
 			business_id: val.business_id,
@@ -598,7 +615,7 @@ exports.ViewEvent = async (req,res) => {
 			})
 			event = JSON.parse(JSON.stringify(event));
 			event.users = event_users;
-			event.user_events = userEvents;
+			event.user_events = combosevent;
 			res.send(setRes(resCode.OK,true,"Get event detail successfully.",event))
 		} else {
 			res.send(setRes(resCode.ResourceNotFound,false,"Event not found.",null))

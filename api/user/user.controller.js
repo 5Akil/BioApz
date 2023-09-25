@@ -15,10 +15,10 @@ var util = require("util");
 var notification = require("../../push_notification");
 var awsConfig = require("../../config/aws_S3_config");
 var moment = require("moment");
-const { verifyToken } = require("../../config/token");
+const {verifyToken} = require("../../config/token");
 const Sequelize = require("sequelize");
-const { model } = require("mongoose");
-const { error } = require("console");
+const {model} = require("mongoose");
+const {error} = require("console");
 const pagination = require("../../helpers/pagination");
 const {
   NOTIFICATION_TITLES,
@@ -27,7 +27,7 @@ const {
 } = require("../../config/notificationTypes");
 const fcmNotification = require("../../push_notification");
 
-exports.Register = async (req, res) => {
+exports.Register = async (req,res) => {
   var data = req.body;
   req.file ? (data.profile_picture = `${req.file.key}`) : "";
   var dbModel = models.user;
@@ -46,15 +46,15 @@ exports.Register = async (req, res) => {
       "longitude",
     ],
     (o) => {
-      return _.has(data, o);
+      return _.has(data,o);
     }
   );
 
-  if (requiredFields == "") {
+  if(requiredFields == "") {
     var mobilenumber = /^[0-9]+$/;
     var mailId = data.email;
     var emailFormat = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/;
-    if (data.username.length > 100) {
+    if(data.username.length > 100) {
       return res.send(
         setRes(
           resCode.BadRequest,
@@ -64,7 +64,7 @@ exports.Register = async (req, res) => {
         )
       );
     }
-    if (mailId.match(emailFormat) == null) {
+    if(mailId.match(emailFormat) == null) {
       return res.send(
         setRes(
           resCode.BadRequest,
@@ -74,7 +74,7 @@ exports.Register = async (req, res) => {
         )
       );
     }
-    if (
+    if(
       data.mobile.length > 15 ||
       data.mobile.length < 7 ||
       !mobilenumber.test(data.mobile)
@@ -91,10 +91,10 @@ exports.Register = async (req, res) => {
 
     dbModel
       .findOne({
-        where: { email: data.email, is_deleted: false },
+        where: {email: data.email,is_deleted: false},
       })
       .then(async (emailValidation) => {
-        if (emailValidation != null) {
+        if(emailValidation != null) {
           return res.send(
             setRes(
               resCode.BadRequest,
@@ -113,7 +113,7 @@ exports.Register = async (req, res) => {
               },
             })
             .then(async (phoneValidation) => {
-              if (phoneValidation != null) {
+              if(phoneValidation != null) {
                 return res.send(
                   setRes(
                     resCode.BadRequest,
@@ -123,15 +123,15 @@ exports.Register = async (req, res) => {
                   )
                 );
               } else {
-                const token = jwt.sign({ user: data.email }, "secret");
+                const token = jwt.sign({user: data.email},"secret");
                 data.auth_token = token;
                 data.email = data.email.toLowerCase();
                 // data.device_type = data.device_type.toLowerCase();
 
                 dbModel
                   .create(data)
-                  .then(function (users) {
-                    if (users) {
+                  .then(function(users) {
+                    if(users) {
                       var transporter = nodemailer.createTransport({
                         host: mailConfig.host,
                         port: mailConfig.port,
@@ -157,7 +157,7 @@ exports.Register = async (req, res) => {
                           "account-activation.html"
                         ),
                         context,
-                        function (err, html, text, subject) {
+                        function(err,html,text,subject) {
                           //   return
                           transporter.sendMail(
                             {
@@ -169,8 +169,8 @@ exports.Register = async (req, res) => {
                                 "Welcome to b.a.s.e.! Activate our Account",
                               html: html,
                             },
-                            function (err, result) {
-                              if (err) {
+                            function(err,result) {
+                              if(err) {
                                 res.send(
                                   setRes(
                                     resCode.BadRequest,
@@ -239,7 +239,7 @@ exports.Register = async (req, res) => {
   }
 };
 
-exports.AccountActivationByToken = async (req, res) => {
+exports.AccountActivationByToken = async (req,res) => {
   var data = req.params;
   var dbModel = models.user;
 
@@ -249,29 +249,29 @@ exports.AccountActivationByToken = async (req, res) => {
         auth_token: data.token,
       },
     })
-    .then(function (user) {
-      if (user != "") {
+    .then(function(user) {
+      if(user != "") {
         dbModel
-          .update({ is_active: 1 }, { where: { id: user.id } })
-          .then(function (userUpdated) {
-            if (userUpdated) {
+          .update({is_active: 1},{where: {id: user.id}})
+          .then(function(userUpdated) {
+            if(userUpdated) {
               res.sendFile(
-                path.join(__dirname, "../../template", "thank_you.html")
+                path.join(__dirname,"../../template","thank_you.html")
               );
             } else {
-              res.sendFile(path.join(__dirname, "../../template", "404.html"));
+              res.sendFile(path.join(__dirname,"../../template","404.html"));
             }
           });
       } else {
-        res.sendFile(path.join(__dirname, "../../template", "404.html"));
+        res.sendFile(path.join(__dirname,"../../template","404.html"));
       }
     })
     .catch((err) => {
-      res.sendFile(path.join(__dirname, "../../template", "404.html"));
+      res.sendFile(path.join(__dirname,"../../template","404.html"));
     });
 };
 
-exports.Login = async (req, res) => {
+exports.Login = async (req,res) => {
   var data = req.body;
   var userModel = models.user;
   var businessModel = models.business;
@@ -280,13 +280,13 @@ exports.Login = async (req, res) => {
   var categoryModel = models.business_categorys;
   var deviceModel = models.device_tokens;
 
-  var requiredFields = _.reject(["email", "password", "role"], (o) => {
-    return _.has(data, o);
+  var requiredFields = _.reject(["email","password","role"],(o) => {
+    return _.has(data,o);
   });
 
-  if (requiredFields == "") {
+  if(requiredFields == "") {
     //user login
-    if (data.role == 2) {
+    if(data.role == 2) {
       await userModel
         .findOne({
           where: {
@@ -307,13 +307,13 @@ exports.Login = async (req, res) => {
             },
           ],
         })
-        .then(async function (user) {
-          if (!user) {
+        .then(async function(user) {
+          if(!user) {
             res.send(
-              setRes(resCode.ResourceNotFound, false, "User not found.", null)
+              setRes(resCode.ResourceNotFound,false,"User not found.",null)
             );
           } else {
-            if (user.is_active == false) {
+            if(user.is_active == false) {
               res.send(
                 setRes(
                   resCode.Unauthorized,
@@ -326,8 +326,8 @@ exports.Login = async (req, res) => {
               bcrypt.compare(
                 data.password,
                 user.password,
-                async function (err, result) {
-                  if (result == true) {
+                async function(err,result) {
+                  if(result == true) {
                     const token = jwt.sign(
                       {
                         id: user.id,
@@ -359,12 +359,12 @@ exports.Login = async (req, res) => {
                           },
                         }
                       )
-                      .then(async function (newUser) {
-                        if (newUser) {
-                          if (user.profile_picture != null) {
+                      .then(async function(newUser) {
+                        if(newUser) {
+                          if(user.profile_picture != null) {
                             var profile_picture = await awsConfig
                               .getSignUrl(user.profile_picture)
-                              .then(function (res) {
+                              .then(function(res) {
                                 user.profile_picture = res;
                               });
                           } else {
@@ -407,7 +407,7 @@ exports.Login = async (req, res) => {
         });
     }
     //business login
-    else if (data.role == 3) {
+    else if(data.role == 3) {
       await businessModel
         .findOne({
           where: {
@@ -431,8 +431,8 @@ exports.Login = async (req, res) => {
             },
           ],
         })
-        .then(function (business) {
-          if (!business) {
+        .then(function(business) {
+          if(!business) {
             res.send(
               setRes(
                 resCode.ResourceNotFound,
@@ -442,7 +442,7 @@ exports.Login = async (req, res) => {
               )
             );
           } else {
-            if (business.is_active == 0 || business.approve_by == null) {
+            if(business.is_active == 0 || business.approve_by == null) {
               res.send(
                 setRes(
                   resCode.Unauthorized,
@@ -455,8 +455,8 @@ exports.Login = async (req, res) => {
               bcrypt.compare(
                 data.password,
                 business.password,
-                async function (err, result) {
-                  if (result == true) {
+                async function(err,result) {
+                  if(result == true) {
                     const token = jwt.sign(
                       {
                         id: business.id,
@@ -492,26 +492,26 @@ exports.Login = async (req, res) => {
                           },
                         }
                       )
-                      .then(async function (newBusiness) {
-                        if (newBusiness) {
-                          if (business.profile_picture == null) {
+                      .then(async function(newBusiness) {
+                        if(newBusiness) {
+                          if(business.profile_picture == null) {
                             business.profile_picture =
                               commonConfig.default_user_image;
                           }
                           //custome template url
-                          if (business.banner != null) {
+                          if(business.banner != null) {
                             var banner = await awsConfig
                               .getSignUrl(business.banner)
-                              .then(function (res) {
+                              .then(function(res) {
                                 business.banner = res;
                               });
                           } else {
                             business.banner = commonConfig.default_image;
                           }
-                          if (business.profile_picture != null) {
+                          if(business.profile_picture != null) {
                             var profile_picture = await awsConfig
                               .getSignUrl(business.profile_picture)
-                              .then(function (res) {
+                              .then(function(res) {
                                 business.profile_picture = res;
                               });
                           } else {
@@ -571,11 +571,11 @@ exports.Login = async (req, res) => {
         })
         .catch((error) => {
           res.send(
-            setRes(resCode.InternalServer, false, "Internal Server Error", null)
+            setRes(resCode.InternalServer,false,"Internal Server Error",null)
           );
         });
     } else {
-      res.send(setRes(resCode.BadRequest, false, "Invalid role.", null));
+      res.send(setRes(resCode.BadRequest,false,"Invalid role.",null));
     }
   } else {
     res.send(
@@ -589,14 +589,14 @@ exports.Login = async (req, res) => {
   }
 };
 
-exports.GetProfileDetail = async (req, res) => {
+exports.GetProfileDetail = async (req,res) => {
   var data = req.body;
   var userModel = models.user;
-  var requiredFields = _.reject(["id"], (o) => {
-    return _.has(data, o);
+  var requiredFields = _.reject(["id"],(o) => {
+    return _.has(data,o);
   });
 
-  if (requiredFields == "") {
+  if(requiredFields == "") {
     userModel
       .findOne({
         where: {
@@ -617,11 +617,11 @@ exports.GetProfileDetail = async (req, res) => {
         ],
       })
       .then(async (user) => {
-        if (user != null) {
-          if (user.profile_picture != null) {
+        if(user != null) {
+          if(user.profile_picture != null) {
             var profile_picture = await awsConfig
               .getSignUrl(user.profile_picture)
-              .then(function (res) {
+              .then(function(res) {
                 user.profile_picture = res;
               });
           } else {
@@ -629,11 +629,11 @@ exports.GetProfileDetail = async (req, res) => {
           }
           user.dataValues.cashback_earned = 0;
           res.send(
-            setRes(resCode.OK, true, "Get user profile successfully.", user)
+            setRes(resCode.OK,true,"Get user profile successfully.",user)
           );
         } else {
           res.send(
-            setRes(resCode.ResourceNotFound, false, "User not Found.", null)
+            setRes(resCode.ResourceNotFound,false,"User not Found.",null)
           );
         }
       })
@@ -659,21 +659,21 @@ exports.GetProfileDetail = async (req, res) => {
   }
 };
 
-exports.UpdateProfile = async (req, res) => {
+exports.UpdateProfile = async (req,res) => {
   var data = req.body;
   var validation = true;
   req.file ? (data.profile_picture = `${req.file.key}`) : "";
   var userModel = models.user;
   const Op = models.Op;
-  var requiredFields = _.reject(["id"], (o) => {
-    return _.has(data, o);
+  var requiredFields = _.reject(["id"],(o) => {
+    return _.has(data,o);
   });
 
-  if (requiredFields == "") {
+  if(requiredFields == "") {
     var mobilenumber = /^[0-9]+$/;
     var mailId = data.email;
     var emailFormat = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/;
-    if (data["username"] && (!data?.username || data?.username?.length > 100)) {
+    if(data["username"] && (!data?.username || data?.username?.length > 100)) {
       return res.send(
         setRes(
           resCode.BadRequest,
@@ -683,7 +683,7 @@ exports.UpdateProfile = async (req, res) => {
         )
       );
     }
-    if (data["email"] && (!mailId || mailId?.match(emailFormat) == null)) {
+    if(data["email"] && (!mailId || mailId?.match(emailFormat) == null)) {
       return res.send(
         setRes(
           resCode.BadRequest,
@@ -693,7 +693,7 @@ exports.UpdateProfile = async (req, res) => {
         )
       );
     }
-    if (
+    if(
       data["country_id"] &&
       data["mobile"] &&
       (((!data.mobile || _.isEmpty(data.mobile)) && data.country_id) ||
@@ -709,7 +709,7 @@ exports.UpdateProfile = async (req, res) => {
           null
         )
       );
-    } else if (
+    } else if(
       (data.country_id != undefined && _.isEmpty(data.country_id)) ||
       (data.mobile != undefined && _.isEmpty(data.mobile)) ||
       (data["country_id"] && !data["mobile"]) ||
@@ -726,7 +726,7 @@ exports.UpdateProfile = async (req, res) => {
         )
       );
     }
-    if (
+    if(
       data["country_id"] &&
       data["mobile"] &&
       (!data?.mobile ||
@@ -753,12 +753,12 @@ exports.UpdateProfile = async (req, res) => {
         },
       })
       .then(async (user) => {
-        if (_.isEmpty(user)) {
+        if(_.isEmpty(user)) {
           res.send(
-            setRes(resCode.ResourceNotFound, false, "User not found.", null)
+            setRes(resCode.ResourceNotFound,false,"User not found.",null)
           );
         } else {
-          if (data.profile_picture != null) {
+          if(data.profile_picture != null) {
             const params = {
               Bucket: awsConfig.Bucket,
               Key: user.profile_picture,
@@ -768,12 +768,12 @@ exports.UpdateProfile = async (req, res) => {
           const emailData = await userModel.findOne({
             where: {
               is_deleted: false,
-              email: { [Op.eq]: data.email },
-              id: { [Op.ne]: data.id },
+              email: {[Op.eq]: data.email},
+              id: {[Op.ne]: data.id},
             },
           });
 
-          if (data["email"] && emailData != null) {
+          if(data["email"] && emailData != null) {
             validation = false;
             return res.send(
               setRes(
@@ -789,12 +789,12 @@ exports.UpdateProfile = async (req, res) => {
             where: {
               is_deleted: false,
               country_id: data.country_id || "",
-              mobile: { [Op.eq]: data.mobile },
-              id: { [Op.ne]: data.id },
+              mobile: {[Op.eq]: data.mobile},
+              id: {[Op.ne]: data.id},
             },
           });
 
-          if (data["mobile"] && data["country_id"] && phoneData != null) {
+          if(data["mobile"] && data["country_id"] && phoneData != null) {
             validation = false;
             return res.send(
               setRes(
@@ -805,24 +805,24 @@ exports.UpdateProfile = async (req, res) => {
               )
             );
           }
-          if (validation) {
-            if (data.email) {
+          if(validation) {
+            if(data.email) {
               const token = jwt.sign(
-                { id: user.id, user: data.email, role_id: user.role_id },
+                {id: user.id,user: data.email,role_id: user.role_id},
                 "secret",
-                { expiresIn: 480 * 480 }
+                {expiresIn: 480 * 480}
               );
               data.auth_token = token;
             }
 
             userModel
-              .update(data, {
+              .update(data,{
                 where: {
                   id: data.id,
                 },
               })
               .then(async (user) => {
-                if (user == 1) {
+                if(user == 1) {
                   userModel
                     .findOne({
                       where: {
@@ -844,16 +844,16 @@ exports.UpdateProfile = async (req, res) => {
                       ],
                     })
                     .then(async (userData) => {
-                      if (data.profile_picture != null) {
+                      if(data.profile_picture != null) {
                         var updateData_image = await awsConfig
                           .getSignUrl(data.profile_picture)
-                          .then(function (res) {
+                          .then(function(res) {
                             userData.profile_picture = res;
                           });
-                      } else if (userData.profile_picture != null) {
+                      } else if(userData.profile_picture != null) {
                         var old_image = await awsConfig
                           .getSignUrl(userData.profile_picture)
-                          .then(function (res) {
+                          .then(function(res) {
                             userData.profile_picture = res;
                           });
                       } else {
@@ -906,17 +906,17 @@ exports.UpdateProfile = async (req, res) => {
   }
 };
 
-exports.ChangePassword = async (req, res) => {
+exports.ChangePassword = async (req,res) => {
   var data = req.body;
   var userModel = models.user;
   var requiredFields = _.reject(
-    ["id", "old_password", "new_password", "confirm_password"],
+    ["id","old_password","new_password","confirm_password"],
     (o) => {
-      return _.has(data, o);
+      return _.has(data,o);
     }
   );
 
-  if (requiredFields == "") {
+  if(requiredFields == "") {
     userModel
       .findOne({
         where: {
@@ -925,14 +925,14 @@ exports.ChangePassword = async (req, res) => {
         },
       })
       .then((user) => {
-        if (user != null) {
+        if(user != null) {
           bcrypt.compare(
             data.old_password,
             user.password,
-            function (error, isValid) {
-              if (!error && isValid == true) {
-                if (data.new_password == data.confirm_password) {
-                  bcrypt.hash(data.new_password, 10).then((hash) => {
+            function(error,isValid) {
+              if(!error && isValid == true) {
+                if(data.new_password == data.confirm_password) {
+                  bcrypt.hash(data.new_password,10).then((hash) => {
                     userModel
                       .update(
                         {
@@ -945,7 +945,7 @@ exports.ChangePassword = async (req, res) => {
                         }
                       )
                       .then((updated) => {
-                        if (updated == 1) {
+                        if(updated == 1) {
                           res.send(
                             setRes(
                               resCode.OK,
@@ -990,7 +990,7 @@ exports.ChangePassword = async (req, res) => {
           );
         } else {
           res.send(
-            setRes(resCode.ResourceNotFound, false, "User not found.", null)
+            setRes(resCode.ResourceNotFound,false,"User not found.",null)
           );
         }
       });
@@ -1005,15 +1005,15 @@ exports.ChangePassword = async (req, res) => {
     );
   }
 };
-exports.SendOtp = async (req, res) => {
+exports.SendOtp = async (req,res) => {
   var data = req.body;
   var userModel = models.user;
 
-  var requiredFields = _.reject(["email"], (o) => {
-    return _.has(data, o);
+  var requiredFields = _.reject(["email"],(o) => {
+    return _.has(data,o);
   });
 
-  if (requiredFields == "") {
+  if(requiredFields == "") {
     res.send(setRes(resCode.BadRequest));
   } else {
     res.send(
@@ -1026,16 +1026,16 @@ exports.SendOtp = async (req, res) => {
     );
   }
 };
-exports.forgotPassword = async (req, res) => {
+exports.forgotPassword = async (req,res) => {
   var data = req.body;
   var userModel = models.user;
   var businessModel = models.business;
   var emailOtpVerifieModel = models.email_otp_verifies;
-  var requiredFields = _.reject(["email", "role"], (o) => {
-    return _.has(data, o);
+  var requiredFields = _.reject(["email","role"],(o) => {
+    return _.has(data,o);
   });
-  if (requiredFields == "") {
-    if (data.role == 2) {
+  if(requiredFields == "") {
+    if(data.role == 2) {
       await userModel
         .findOne({
           where: {
@@ -1045,8 +1045,8 @@ exports.forgotPassword = async (req, res) => {
           },
         })
         .then(async (user) => {
-          if (user != null) {
-            if (user.is_active == false) {
+          if(user != null) {
+            if(user.is_active == false) {
               return res.send(
                 setRes(
                   resCode.Unauthorized,
@@ -1072,8 +1072,8 @@ exports.forgotPassword = async (req, res) => {
                   role_id: data.role,
                   expire_at: expire_at,
                 })
-                .then(function (OtpData) {
-                  if (OtpData) {
+                .then(function(OtpData) {
+                  if(OtpData) {
                     var transporter = nodemailer.createTransport({
                       host: mailConfig.host,
                       port: mailConfig.port,
@@ -1095,7 +1095,7 @@ exports.forgotPassword = async (req, res) => {
                         "email-otp.html"
                       ),
                       context,
-                      function (err, html, text, subject) {
+                      function(err,html,text,subject) {
                         transporter.sendMail(
                           {
                             from: "b.a.s.e. <do-not-reply@mail.com>",
@@ -1103,8 +1103,8 @@ exports.forgotPassword = async (req, res) => {
                             subject: "Email OTP Verification",
                             html: html,
                           },
-                          function (err, result) {
-                            if (err) {
+                          function(err,result) {
+                            if(err) {
                               return res.send(
                                 setRes(
                                   resCode.BadRequsest,
@@ -1120,7 +1120,7 @@ exports.forgotPassword = async (req, res) => {
                                 .utc(commonConfig.email_otp_expired)
                                 .format("mm:ss");
                               data.expire_at = expire_at;
-                              if (data.otp_flag == 1) {
+                              if(data.otp_flag == 1) {
                                 // Resend otp sent successfully on your email
                                 return res.send(
                                   setRes(
@@ -1160,11 +1160,11 @@ exports.forgotPassword = async (req, res) => {
             }
           } else {
             res.send(
-              setRes(resCode.ResourceNotFound, false, "User not found.", null)
+              setRes(resCode.ResourceNotFound,false,"User not found.",null)
             );
           }
         });
-    } else if (data.role == 3) {
+    } else if(data.role == 3) {
       businessModel
         .findOne({
           where: {
@@ -1174,8 +1174,8 @@ exports.forgotPassword = async (req, res) => {
           },
         })
         .then((user) => {
-          if (user != null) {
-            if (user.is_active == false) {
+          if(user != null) {
+            if(user.is_active == false) {
               res.send(
                 setRes(
                   resCode.Unauthorized,
@@ -1203,8 +1203,8 @@ exports.forgotPassword = async (req, res) => {
                   role_id: data.role,
                   expire_at: expire_at,
                 })
-                .then(function (OtpData) {
-                  if (OtpData) {
+                .then(function(OtpData) {
+                  if(OtpData) {
                     var transporter = nodemailer.createTransport({
                       host: mailConfig.host,
                       port: mailConfig.port,
@@ -1228,7 +1228,7 @@ exports.forgotPassword = async (req, res) => {
                         "email-otp.html"
                       ),
                       context,
-                      function (err, html, text, subject) {
+                      function(err,html,text,subject) {
                         transporter.sendMail(
                           {
                             from: "b.a.s.e. <do-not-reply@mail.com>",
@@ -1236,8 +1236,8 @@ exports.forgotPassword = async (req, res) => {
                             subject: "Email OTP Verification",
                             html: html,
                           },
-                          function (err, result) {
-                            if (err) {
+                          function(err,result) {
+                            if(err) {
                             } else {
                               res.send(
                                 setRes(
@@ -1258,7 +1258,7 @@ exports.forgotPassword = async (req, res) => {
                     .utc(commonConfig.email_otp_expired)
                     .format("mm:ss");
                   data.expire_at = expire_at;
-                  if (data.otp_flag == 1) {
+                  if(data.otp_flag == 1) {
                     // Resend otp sent successfully on your email
                     res.send(
                       setRes(
@@ -1302,7 +1302,7 @@ exports.forgotPassword = async (req, res) => {
           }
         });
     } else {
-      res.send(setRes(resCode.ResourceNotFound, false, "Role Not Found", null));
+      res.send(setRes(resCode.ResourceNotFound,false,"Role Not Found",null));
     }
   } else {
     res.send(
@@ -1316,42 +1316,42 @@ exports.forgotPassword = async (req, res) => {
   }
 };
 
-exports.OtpVerify = async (req, res) => {
+exports.OtpVerify = async (req,res) => {
   var data = req.body;
   var emailOtpVerifieModel = models.email_otp_verifies;
 
-  var requiredFields = _.reject(["role", "otp"], (o) => {
-    return _.has(data, o);
+  var requiredFields = _.reject(["role","otp"],(o) => {
+    return _.has(data,o);
   });
 
-  if (requiredFields == "") {
+  if(requiredFields == "") {
     await emailOtpVerifieModel
-      .findOne({ where: { otp: data.otp, role_id: data.role } })
+      .findOne({where: {otp: data.otp,role_id: data.role}})
       .then(async (otpUser) => {
-        if (otpUser != null) {
+        if(otpUser != null) {
           var now_date_time = new Date()
             .toISOString()
-            .replace(/T/, " ")
-            .replace(/\..+/, "");
+            .replace(/T/," ")
+            .replace(/\..+/,"");
           var expire_time = moment(otpUser.expire_at).format(
             "YYYY-MM-DD HH:mm:ss"
           );
-          if (now_date_time > expire_time) {
+          if(now_date_time > expire_time) {
             // otpUser.destroy();
             return res.send(
-              setRes(resCode.BadRequest, false, "This otp is expired!", null)
+              setRes(resCode.BadRequest,false,"This otp is expired!",null)
             );
           } else {
-            if (data.role == 2 || data.role == 3) {
+            if(data.role == 2 || data.role == 3) {
               var roleModel =
                 data.role == 2 && data.role != 3
                   ? models.user
                   : models.business;
               var user = await roleModel.findOne({
-                where: { email: otpUser.email, is_deleted: false },
+                where: {email: otpUser.email,is_deleted: false},
               });
-              if (user == null) {
-                if (data.role == 2 && data.role != 3) {
+              if(user == null) {
+                if(data.role == 2 && data.role != 3) {
                   return res.send(
                     setRes(
                       resCode.ResourceNotFound,
@@ -1372,7 +1372,7 @@ exports.OtpVerify = async (req, res) => {
                 }
               } else {
                 var response = await sendForgotPasswordMail(user);
-                if (response != null && !_.isUndefined(response)) {
+                if(response != null && !_.isUndefined(response)) {
                   otpUser.destroy();
                   return res.send(
                     setRes(
@@ -1395,13 +1395,13 @@ exports.OtpVerify = async (req, res) => {
               }
             } else {
               return res.send(
-                setRes(resCode.BadRequest, false, "Invalid role.", null)
+                setRes(resCode.BadRequest,false,"Invalid role.",null)
               );
             }
           }
         } else {
           return res.send(
-            setRes(resCode.BadRequest, false, "Please enter valid OTP.", null)
+            setRes(resCode.BadRequest,false,"Please enter valid OTP.",null)
           );
         }
       });
@@ -1419,9 +1419,9 @@ exports.OtpVerify = async (req, res) => {
 
 async function sendForgotPasswordMail(user) {
   try {
-    const token = await new Promise((resolve, reject) => {
-      crypto.randomBytes(20, (err, buf) => {
-        if (err) {
+    const token = await new Promise((resolve,reject) => {
+      crypto.randomBytes(20,(err,buf) => {
+        if(err) {
           reject(err);
         } else {
           resolve(buf.toString("hex"));
@@ -1435,11 +1435,11 @@ async function sendForgotPasswordMail(user) {
         reset_pass_expire: Date.now() + 3600000,
       },
       {
-        where: { id: user.id },
+        where: {id: user.id},
       }
     );
 
-    if (newUser === 0) {
+    if(newUser === 0) {
       throw new Error("Token not updated");
     }
 
@@ -1457,11 +1457,11 @@ async function sendForgotPasswordMail(user) {
       username: user.username,
     };
 
-    const result = await new Promise((resolve, reject) => {
+    const result = await new Promise((resolve,reject) => {
       templates.render(
-        path.join(__dirname, "../../", "template", "forgot-password.html"),
+        path.join(__dirname,"../../","template","forgot-password.html"),
         context,
-        function (err, html, text, subject) {
+        function(err,html,text,subject) {
           transporter.sendMail(
             {
               from: "b.a.s.e. <do-not-reply@mail.com>",
@@ -1469,8 +1469,8 @@ async function sendForgotPasswordMail(user) {
               subject: "Reset Password",
               html: html,
             },
-            function (err, result) {
-              if (err) {
+            function(err,result) {
+              if(err) {
                 reject(err);
               } else {
                 resolve(result);
@@ -1482,13 +1482,13 @@ async function sendForgotPasswordMail(user) {
     });
 
     return result;
-  } catch (error) {
+  } catch(error) {
     // res.send(setRes(resCode.BadRequest, false, "Something went wrong.",null))
     return null;
   }
 }
 
-exports.GetResetPasswordForm = async (req, res) => {
+exports.GetResetPasswordForm = async (req,res) => {
   var token = req.params.token;
   var userModel = models.user;
   var businessModel = models.business;
@@ -1498,43 +1498,43 @@ exports.GetResetPasswordForm = async (req, res) => {
     .findOne({
       where: {
         reset_pass_token: token,
-        reset_pass_expire: { [Op.gt]: Date.now() },
+        reset_pass_expire: {[Op.gt]: Date.now()},
         is_deleted: 0,
       },
     })
     .then((user) => {
-      if (user != null) {
+      if(user != null) {
         res.sendFile(
-          path.join(__dirname, "../../template", "reset-password.html")
+          path.join(__dirname,"../../template","reset-password.html")
         );
       } else {
         businessModel
           .findOne({
             where: {
               reset_pass_token: token,
-              reset_pass_expire: { [Op.gt]: Date.now() },
+              reset_pass_expire: {[Op.gt]: Date.now()},
               is_deleted: 0,
             },
           })
           .then((business) => {
-            if (business != null) {
+            if(business != null) {
               res.sendFile(
-                path.join(__dirname, "../../template", "reset-password.html")
+                path.join(__dirname,"../../template","reset-password.html")
               );
             } else {
               res.sendFile(
-                path.join(__dirname, "../../template", "page-expire.html")
+                path.join(__dirname,"../../template","page-expire.html")
               );
             }
           });
       }
     })
     .catch((GetUserError) => {
-      res.send(setRes(resCode.BadRequest, null, true, GetUserError.message));
+      res.send(setRes(resCode.BadRequest,null,true,GetUserError.message));
     });
 };
 
-exports.UpdatePassword = function (req, res) {
+exports.UpdatePassword = function(req,res) {
   var token = req.params.token;
   var userModel = models.user;
   var businessModel = models.business;
@@ -1544,14 +1544,14 @@ exports.UpdatePassword = function (req, res) {
     .findOne({
       where: {
         reset_pass_token: token,
-        reset_pass_expire: { [Op.gt]: Date.now() },
+        reset_pass_expire: {[Op.gt]: Date.now()},
         is_deleted: 0,
       },
     })
     .then(async (user) => {
-      if (user != null) {
+      if(user != null) {
         var password = await bcrypt
-          .hash(req.body.new_password, 10)
+          .hash(req.body.new_password,10)
           .then((hash) => {
             return hash;
           });
@@ -1570,12 +1570,12 @@ exports.UpdatePassword = function (req, res) {
             }
           )
           .then(async (updateUser) => {
-            if (updateUser == 1) {
+            if(updateUser == 1) {
               res.send(
-                setRes(resCode.OK, true, "Password Updated Successfully.", user)
+                setRes(resCode.OK,true,"Password Updated Successfully.",user)
               );
               res.sendFile(
-                path.join(__dirname, "../../template", "password-update.html")
+                path.join(__dirname,"../../template","password-update.html")
               );
             } else {
               res.send(
@@ -1590,7 +1590,7 @@ exports.UpdatePassword = function (req, res) {
           })
           .catch((UpdateUserError) => {
             res.send(
-              setRes(resCode.BadRequest, false, UpdateUserError.message, null)
+              setRes(resCode.BadRequest,false,UpdateUserError.message,null)
             );
           });
       } else {
@@ -1598,14 +1598,14 @@ exports.UpdatePassword = function (req, res) {
           .findOne({
             where: {
               reset_pass_token: token,
-              reset_pass_expire: { [Op.gt]: Date.now() },
+              reset_pass_expire: {[Op.gt]: Date.now()},
               is_deleted: 0,
             },
           })
           .then(async (business) => {
-            if (business != null) {
+            if(business != null) {
               var password = await bcrypt
-                .hash(req.body.new_password, 10)
+                .hash(req.body.new_password,10)
                 .then((hash) => {
                   return hash;
                 });
@@ -1623,7 +1623,7 @@ exports.UpdatePassword = function (req, res) {
                   }
                 )
                 .then((updateBusiness) => {
-                  if (updateBusiness == 1) {
+                  if(updateBusiness == 1) {
                     res.send(
                       setRes(
                         resCode.OK,
@@ -1666,30 +1666,30 @@ exports.UpdatePassword = function (req, res) {
           })
           .catch((GetBusinessError) => {
             res.send(
-              setRes(resCode.BadRequest, false, GetBusinessError.message, true)
+              setRes(resCode.BadRequest,false,GetBusinessError.message,true)
             );
           });
       }
     })
     .catch((GetUserError) => {
       res.send(
-        setRes(resCode.BadRequest, false, "Internal server error.", null)
+        setRes(resCode.BadRequest,false,"Internal server error.",null)
       );
     });
 };
 
-exports.SendFeedback = async (req, res) => {
+exports.SendFeedback = async (req,res) => {
   var data = req.body;
   var feedbackModel = models.feedback;
   var userModel = models.user;
   var businessModel = models.business;
 
-  var requiredFields = _.reject(["caption", "message"], (o) => {
-    return _.has(data, o);
+  var requiredFields = _.reject(["caption","message"],(o) => {
+    return _.has(data,o);
   });
 
-  if (requiredFields == "") {
-    if (data.user_id) {
+  if(requiredFields == "") {
+    if(data.user_id) {
       userModel
         .findOne({
           where: {
@@ -1698,10 +1698,10 @@ exports.SendFeedback = async (req, res) => {
           },
         })
         .then(async (user) => {
-          if (user != null) {
-            var feedbackRes = await FeedbackMail(user, data);
+          if(user != null) {
+            var feedbackRes = await FeedbackMail(user,data);
 
-            if (feedbackRes == "") {
+            if(feedbackRes == "") {
               res.send(
                 setRes(
                   resCode.BadRequest,
@@ -1722,7 +1722,7 @@ exports.SendFeedback = async (req, res) => {
             }
           } else {
             res.send(
-              setRes(resCode.ResourceNotFound, false, "User not found.", null)
+              setRes(resCode.ResourceNotFound,false,"User not found.",null)
             );
           }
         })
@@ -1736,7 +1736,7 @@ exports.SendFeedback = async (req, res) => {
             )
           );
         });
-    } else if (data.business_id) {
+    } else if(data.business_id) {
       businessModel
         .findOne({
           where: {
@@ -1745,10 +1745,10 @@ exports.SendFeedback = async (req, res) => {
           },
         })
         .then(async (business) => {
-          if (business != null) {
-            var feedbackRes = await FeedbackMail(business, data);
+          if(business != null) {
+            var feedbackRes = await FeedbackMail(business,data);
 
-            if (feedbackRes == "") {
+            if(feedbackRes == "") {
               res.send(
                 setRes(
                   resCode.BadRequest,
@@ -1780,7 +1780,7 @@ exports.SendFeedback = async (req, res) => {
         })
         .catch((getUserError) => {
           res.send(
-            setRes(resCode.InternalServer, false, getUserError.message, null)
+            setRes(resCode.InternalServer,false,getUserError.message,null)
           );
         });
     } else {
@@ -1805,13 +1805,13 @@ exports.SendFeedback = async (req, res) => {
   }
 };
 
-function FeedbackMail(user, data) {
+function FeedbackMail(user,data) {
   var feedbackModel = models.feedback;
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve,reject) => {
     async.waterfall(
       [
-        function (callback) {
+        function(callback) {
           var transporter = nodemailer.createTransport({
             host: mailConfig.host,
             port: mailConfig.port,
@@ -1835,7 +1835,7 @@ function FeedbackMail(user, data) {
               "customer-feedback.html"
             ),
             context,
-            function (err, html, text, subject) {
+            function(err,html,text,subject) {
               transporter.sendMail(
                 {
                   from: "b.a.s.e. <do-not-reply@mail.com>",
@@ -1843,8 +1843,8 @@ function FeedbackMail(user, data) {
                   subject: "Feedback From Customer",
                   html: html,
                 },
-                function (err, result) {
-                  if (err) {
+                function(err,result) {
+                  if(err) {
                     callback(err);
                   } else {
                     callback(result);
@@ -1855,8 +1855,8 @@ function FeedbackMail(user, data) {
           );
         },
       ],
-      function (result) {
-        if (!result) {
+      function(result) {
+        if(!result) {
           resolve("");
           // res.send(setRes(resCode.BadRequest, null, true, "Fail to send feedback email."))
         } else {
@@ -1876,19 +1876,19 @@ function FeedbackMail(user, data) {
   });
 }
 
-exports.GetAllBusiness = async (req, res) => {
+exports.GetAllBusiness = async (req,res) => {
   var data = req.body;
   var businessModel = models.business;
   var Op = models.Op;
   var businesscateogryModel = models.business_categorys;
   var settingModel = models.settings;
 
-  var requiredFields = _.reject(["page", "page_size"], (o) => {
-    return _.has(data, o);
+  var requiredFields = _.reject(["page","page_size"],(o) => {
+    return _.has(data,o);
   });
 
-  if (requiredFields == "") {
-    if (data.page < 0 || data.page === 0) {
+  if(requiredFields == "") {
+    if(data.page < 0 || data.page === 0) {
       res.send(
         setRes(
           resCode.BadRequest,
@@ -1916,7 +1916,7 @@ exports.GetAllBusiness = async (req, res) => {
           required: false,
         },
       ],
-      order: [["createdAt", "DESC"]],
+      order: [["createdAt","DESC"]],
       attributes: {
         exclude: [
           "is_deleted",
@@ -1947,7 +1947,7 @@ exports.GetAllBusiness = async (req, res) => {
       },
     };
 
-    if (data.category_id) {
+    if(data.category_id) {
       condition.where = {
         ...condition.where,
         ...{
@@ -1959,20 +1959,20 @@ exports.GetAllBusiness = async (req, res) => {
     } else {
       condition.where = {
         ...condition.where,
-        ...{ is_deleted: false, is_active: true },
+        ...{is_deleted: false,is_active: true},
       };
     }
-    if (data.search && data.search != null) {
+    if(data.search && data.search != null) {
       condition.where = {
         ...condition.where,
         ...{
-          [Op.or]: [{ business_name: { [Op.like]: "%" + data.search + "%" } }],
+          [Op.or]: [{business_name: {[Op.like]: "%" + data.search + "%"}}],
         },
       };
     }
 
-    if (data.page_size != 0 && !_.isEmpty(data.page_size)) {
-      (condition.offset = skip), (condition.limit = limit);
+    if(data.page_size != 0 && !_.isEmpty(data.page_size)) {
+      (condition.offset = skip),(condition.limit = limit);
     }
 
     var totalRecords = await businessModel.count(condition);
@@ -1980,33 +1980,33 @@ exports.GetAllBusiness = async (req, res) => {
     await businessModel
       .findAll(condition)
       .then(async (businessData) => {
-        if (businessData.length > 0) {
-          for (const data of businessData) {
-            if (data.business_category != null) {
+        if(businessData.length > 0) {
+          for(const data of businessData) {
+            if(data.business_category != null) {
               data.dataValues.category_name = data.business_category.name;
               delete data.dataValues.business_category;
             } else {
               data.dataValues.category_name = "";
             }
-            if (data.banner != null) {
+            if(data.banner != null) {
               const signurl = await awsConfig
                 .getSignUrl(data.banner)
-                .then(function (res) {
+                .then(function(res) {
                   data.banner = res;
                 });
             } else {
               data.banner = commonConfig.default_image;
             }
 
-            if (data.setting != null) {
+            if(data.setting != null && data.setting_key == 'working_hours') {
               var date = data.setting.setting_value;
               var arr1 = date.split("_");
-              var from = moment(arr1[0], "HH:mm").format("hh:mm A");
-              var to = moment(arr1[1], "HH:mm").format("hh:mm A");
+              var from = arr1[0] ? moment(arr1[0],"HH:mm").format("hh:mm A") : null;
+              var to = arr1[1] ? moment(arr1[1],"HH:mm").format("hh:mm A") : null;
               data.dataValues.available = `${from} - ${to}`;
               delete data.dataValues.setting;
             } else {
-              data.dataValues.available = "";
+              data.dataValues.available = null;
             }
           }
           const response = new pagination(
@@ -2025,13 +2025,13 @@ exports.GetAllBusiness = async (req, res) => {
           );
         } else {
           res.send(
-            setRes(resCode.ResourceNotFound, false, "Business not found", null)
+            setRes(resCode.ResourceNotFound,false,"Business not found",null)
           );
         }
       })
       .catch((error) => {
         res.send(
-          setRes(resCode.BadRequest, false, "Fail to get business", null)
+          setRes(resCode.BadRequest,false,"Fail to get business",null)
         );
       });
   } else {
@@ -2046,7 +2046,7 @@ exports.GetAllBusiness = async (req, res) => {
   }
 };
 
-exports.Logout = async (req, res) => {
+exports.Logout = async (req,res) => {
   try {
     const data = req.body;
     var authData = req.user;
@@ -2055,42 +2055,42 @@ exports.Logout = async (req, res) => {
         ? models.business
         : models.user;
     var Op = models.Op;
-    var requiredFields = _.reject(["device_id", "device_type"], (o) => {
-      return _.has(data, o);
+    var requiredFields = _.reject(["device_id","device_type"],(o) => {
+      return _.has(data,o);
     });
 
-    if (requiredFields == "") {
+    if(requiredFields == "") {
       //const authHeader = req.headers["authorization"];
       //const TokenData =  jwt.verify(authHeader, 'secret', {expiresIn: 480 * 480})
       //var roleId = TokenData.role_id
 
       //const authModel = (roleId == 2 && roleId != 3) ? models.user : models.business;
       const user = await authModel.findOne({
-        where: { id: authData.id, is_deleted: false, is_active: true },
+        where: {id: authData.id,is_deleted: false,is_active: true},
       });
-      if (user) {
+      if(user) {
         const token = jwt.sign(
-          { id: user.id, user: user.email, role_id: user.role_id },
+          {id: user.id,user: user.email,role_id: user.role_id},
           "secret",
-          { expiresIn: 480 * 480 }
+          {expiresIn: 480 * 480}
         );
         delete user.dataValues.auth_token;
         user.dataValues.auth_token = token;
         await authModel
           .update(
-            { auth_token: token },
+            {auth_token: token},
             {
-              where: { id: user.id },
+              where: {id: user.id},
             }
           )
-          .then(async function (newUser) {
-            if (newUser) {
+          .then(async function(newUser) {
+            if(newUser) {
               const deviceModel = models.device_tokens;
               const condition = {};
-              if (authData.role_id == 2 && authData.role_id != 3) {
-                condition.where = { user_id: user.id };
+              if(authData.role_id == 2 && authData.role_id != 3) {
+                condition.where = {user_id: user.id};
               } else {
-                condition.where = { business_id: user.id };
+                condition.where = {business_id: user.id};
               }
               //if(data.device_type == 1 && data.device_type != 2){
               //	condition.where = {...condition.where,...{device_type:'ios'}}
@@ -2105,14 +2105,14 @@ exports.Logout = async (req, res) => {
                 },
               };
               const loginUserDevices = await deviceModel.findOne(condition);
-              if (loginUserDevices) {
+              if(loginUserDevices) {
                 await deviceModel.findOne(condition).then(async (Data) => {
                   Data.destroy();
                 });
                 const deleteData = await loginUserDevices.update({
                   status: 9,
                 });
-                res.send(setRes(resCode.OK, true, "Logout successfully", null));
+                res.send(setRes(resCode.OK,true,"Logout successfully",null));
               } else {
                 res.send(
                   setRes(
@@ -2125,13 +2125,13 @@ exports.Logout = async (req, res) => {
               }
             } else {
               res.send(
-                setRes(resCode.BadRequest, false, "Can't logged out.", null)
+                setRes(resCode.BadRequest,false,"Can't logged out.",null)
               );
             }
           });
       } else {
         res.send(
-          setRes(resCode.ResourceNotFound, false, "User not found.", null)
+          setRes(resCode.ResourceNotFound,false,"User not found.",null)
         );
       }
     } else {
@@ -2144,13 +2144,13 @@ exports.Logout = async (req, res) => {
         )
       );
     }
-  } catch (error) {
-    res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null));
+  } catch(error) {
+    res.send(setRes(resCode.BadRequest,false,"Something went wrong!",null));
   }
 };
 
 // Home Screeen Details START
-exports.homeList = async (req, res) => {
+exports.homeList = async (req,res) => {
   try {
     var data = req.body;
     var businessModel = models.business;
@@ -2184,7 +2184,7 @@ exports.homeList = async (req, res) => {
             receiver_id: authUser.id,
             is_read: false,
           },
-          attributes: { exclude: ["created_at", "updated_at", "deleted_at"] },
+          attributes: {exclude: ["created_at","updated_at","deleted_at"]},
         },
       ],
       attributes: {
@@ -2207,7 +2207,7 @@ exports.homeList = async (req, res) => {
     businessArray.push(
       await businessModel
         .findAll({
-          where: { is_deleted: false, is_active: true },
+          where: {is_deleted: false,is_active: true},
           attributes: [
             "id",
             "banner",
@@ -2217,13 +2217,13 @@ exports.homeList = async (req, res) => {
           ],
         })
         .then(async (business) => {
-          if (business.length > 0) {
+          if(business.length > 0) {
             const dataArray = [];
-            for (const data of business) {
-              if (data.banner != null) {
+            for(const data of business) {
+              if(data.banner != null) {
                 const signurl = await awsConfig
                   .getSignUrl(data.banner)
-                  .then(function (res) {
+                  .then(function(res) {
                     data.banner = res;
                   });
               } else {
@@ -2231,7 +2231,7 @@ exports.homeList = async (req, res) => {
               }
             }
             var array = shuffle(business);
-            var slicedArray = array.slice(0, 5);
+            var slicedArray = array.slice(0,5);
             let result = JSON.parse(JSON.stringify(slicedArray));
             dataArray.push(result);
             return result;
@@ -2257,11 +2257,11 @@ exports.homeList = async (req, res) => {
           include: [
             {
               model: businessModel,
-              attributes: ["id", "business_name", "category_id"],
+              attributes: ["id","business_name","category_id"],
               include: [
                 {
                   model: businesscateogryModel,
-                  attributes: ["id", "name"],
+                  attributes: ["id","name"],
                 },
               ],
             },
@@ -2275,18 +2275,18 @@ exports.homeList = async (req, res) => {
             "expire_at",
             "createdAt",
           ],
-          order: [["createdAt", "DESC"]],
+          order: [["createdAt","DESC"]],
         })
         .then(async (giftCardData) => {
-          if (giftCardData.length > 0) {
+          if(giftCardData.length > 0) {
             const dataArray = [];
             // Update Sign URL
-            for (const data of giftCardData) {
-              if (data.image != null) {
+            for(const data of giftCardData) {
+              if(data.image != null) {
                 var images = data.image;
                 const signurl = await awsConfig
                   .getSignUrl(images.toString())
-                  .then(function (res) {
+                  .then(function(res) {
                     data.image = res;
                   });
               } else {
@@ -2294,12 +2294,12 @@ exports.homeList = async (req, res) => {
               }
 
               // Gset businesss name
-              if (data.business != null) {
+              if(data.business != null) {
                 data.dataValues.business_name = data.business.business_name;
               } else {
                 data.dataValues.business_name = "";
               }
-              if (data.business.business_category != null) {
+              if(data.business.business_category != null) {
                 data.dataValues.category_name =
                   data.business.business_category.name;
               } else {
@@ -2327,10 +2327,10 @@ exports.homeList = async (req, res) => {
           include: [
             {
               model: productCategoryModel,
-              attributes: ["id", "name"],
+              attributes: ["id","name"],
             },
           ],
-          order: [["createdAt", "DESC"]],
+          order: [["createdAt","DESC"]],
           attributes: [
             "id",
             "title",
@@ -2343,12 +2343,12 @@ exports.homeList = async (req, res) => {
           ],
         })
         .then(async (CashbackData) => {
-          if (CashbackData.length > 0) {
+          if(CashbackData.length > 0) {
             const dataArray = [];
-            for (const data of CashbackData) {
+            for(const data of CashbackData) {
               let result = JSON.parse(JSON.stringify(data));
               const products = await productModel.findAll({
-                where: { id: { [Op.in]: result.product_id?.split(",") || [] } },
+                where: {id: {[Op.in]: result.product_id?.split(",") || []}},
                 attributes: ["name"],
                 raw: true,
               });
@@ -2379,10 +2379,10 @@ exports.homeList = async (req, res) => {
           include: [
             {
               model: productCategoryModel,
-              attributes: ["id", "name"],
+              attributes: ["id","name"],
             },
           ],
-          order: [["createdAt", "DESC"]],
+          order: [["createdAt","DESC"]],
           attributes: [
             "id",
             "business_id",
@@ -2397,12 +2397,12 @@ exports.homeList = async (req, res) => {
           ],
         })
         .then(async (DiscountData) => {
-          if (DiscountData.length > 0) {
+          if(DiscountData.length > 0) {
             const dataArray = [];
-            for (const data of DiscountData) {
+            for(const data of DiscountData) {
               let result = JSON.parse(JSON.stringify(data));
               const products = await productModel.findAll({
-                where: { id: { [Op.in]: result.product_id?.split(",") || [] } },
+                where: {id: {[Op.in]: result.product_id?.split(",") || []}},
                 attributes: ["name"],
                 raw: true,
               });
@@ -2433,10 +2433,10 @@ exports.homeList = async (req, res) => {
           include: [
             {
               model: productCategoryModel,
-              attributes: ["id", "name"],
+              attributes: ["id","name"],
             },
           ],
-          order: [["createdAt", "DESC"]],
+          order: [["createdAt","DESC"]],
           attributes: [
             "id",
             "business_id",
@@ -2455,12 +2455,12 @@ exports.homeList = async (req, res) => {
           ],
         })
         .then(async (CouponeData) => {
-          if (CouponeData.length > 0) {
+          if(CouponeData.length > 0) {
             const dataArray = [];
-            for (const data of CouponeData) {
+            for(const data of CouponeData) {
               let result = JSON.parse(JSON.stringify(data));
               const products = await productModel.findAll({
-                where: { id: { [Op.in]: result.product_id?.split(",") || [] } },
+                where: {id: {[Op.in]: result.product_id?.split(",") || []}},
                 attributes: ["name"],
                 raw: true,
               });
@@ -2491,17 +2491,17 @@ exports.homeList = async (req, res) => {
           include: [
             {
               model: productModel,
-              attributes: ["id", "name", "category_id"],
+              attributes: ["id","name","category_id"],
               include: [
                 {
                   model: productCategoryModel,
-                  attributes: ["id", "name"],
+                  attributes: ["id","name"],
                   as: "product_categorys",
                 },
               ],
             },
           ],
-          order: [["createdAt", "DESC"]],
+          order: [["createdAt","DESC"]],
           attributes: [
             "id",
             "business_id",
@@ -2518,9 +2518,9 @@ exports.homeList = async (req, res) => {
           ],
         })
         .then(async (LoyaltyPointData) => {
-          if (LoyaltyPointData.length > 0) {
+          if(LoyaltyPointData.length > 0) {
             const dataArray = [];
-            for (const data of LoyaltyPointData) {
+            for(const data of LoyaltyPointData) {
               let result = JSON.parse(JSON.stringify(data));
               result.product_name = result?.product?.name || "";
               result.product_category_name =
@@ -2550,12 +2550,12 @@ exports.homeList = async (req, res) => {
     ];
     // const mergedArray = mergeRandomArrayObjects(rewardsAndLoyaltyArray);
     const sortedArray = rewardsAndLoyaltyArray.sort(
-      (a, b) => new moment(b.createdAt) - new moment(a.createdAt)
+      (a,b) => new moment(b.createdAt) - new moment(a.createdAt)
     );
-    let result = sortedArray.slice(0, 2);
+    let result = sortedArray.slice(0,2);
 
     const userDetails = await userModel.findOne({
-      where: { email: req.userEmail, is_deleted: false, is_active: true },
+      where: {email: req.userEmail,is_deleted: false,is_active: true},
     });
     const userId = userDetails?.id || "";
     eventArray.push(
@@ -2603,16 +2603,16 @@ exports.homeList = async (req, res) => {
           limit: 5,
         })
         .then(async (event) => {
-          if (event.length > 0) {
+          if(event.length > 0) {
             const dataArray = [];
-            for (const data of event) {
+            for(const data of event) {
               var event_images = data.images;
               var image_array = [];
-              if (event_images != null) {
-                for (const data of event_images) {
+              if(event_images != null) {
+                for(const data of event_images) {
                   const signurl = await awsConfig
                     .getSignUrl(data)
-                    .then(function (res) {
+                    .then(function(res) {
                       image_array.push(res);
                     });
                 }
@@ -2622,7 +2622,7 @@ exports.homeList = async (req, res) => {
               data.dataValues.event_images = image_array;
 
               data.dataValues.is_user_join = false;
-              if (data.user_events && data.user_events?.length > 0) {
+              if(data.user_events && data.user_events?.length > 0) {
                 data.dataValues.is_user_join = true;
               }
               delete data.dataValues.user_events;
@@ -2637,12 +2637,12 @@ exports.homeList = async (req, res) => {
               const isEndDatePastDate = moment(eventEndDate).isBefore(
                 moment().format("YYYY-MM-DD HH:mm:ss")
               );
-              if (data.dataValues.status == 4) {
+              if(data.dataValues.status == 4) {
                 data.dataValues.event_status = "Cancelled";
               } else {
-                if (isEndDatePastDate && isStartDatePastDate) {
+                if(isEndDatePastDate && isStartDatePastDate) {
                   data.dataValues.event_status = "Completed";
-                } else if (isStartDatePastDate && isEndDatePastDate == false) {
+                } else if(isStartDatePastDate && isEndDatePastDate == false) {
                   data.dataValues.event_status = "Inprogress";
                 } else {
                   data.dataValues.event_status = "Pending";
@@ -2668,10 +2668,10 @@ exports.homeList = async (req, res) => {
     resData.upcoming_events = eventDataArray;
 
     res.send(
-      setRes(resCode.OK, true, "Get home page details successfully.", resData)
+      setRes(resCode.OK,true,"Get home page details successfully.",resData)
     );
-  } catch (error) {
-    res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null));
+  } catch(error) {
+    res.send(setRes(resCode.BadRequest,false,"Something went wrong!",null));
   }
 };
 
@@ -2680,13 +2680,13 @@ function shuffle(array) {
     randomIndex;
 
   // While there remain elements to shuffle.
-  while (currentIndex != 0) {
+  while(currentIndex != 0) {
     // Pick a remaining element.
     randomIndex = Math.floor(Math.random() * currentIndex);
     currentIndex--;
 
     // And swap it with the current element.
-    [array[currentIndex], array[randomIndex]] = [
+    [array[currentIndex],array[randomIndex]] = [
       array[randomIndex],
       array[currentIndex],
     ];
@@ -2700,7 +2700,7 @@ function shuffle(array) {
 /**
  * User: Online Store Reward Older api
  */
-exports.rewardsListOlder = async (req, res) => {
+exports.rewardsListOlder = async (req,res) => {
   try {
     var data = req.body;
     var giftCardModel = models.gift_cards;
@@ -2709,12 +2709,12 @@ exports.rewardsListOlder = async (req, res) => {
     var couponeModel = models.coupones;
     var Op = models.Op;
     const promises = [];
-    var requiredFields = _.reject(["business_id", "page", "page_size"], (o) => {
-      return _.has(data, o);
+    var requiredFields = _.reject(["business_id","page","page_size"],(o) => {
+      return _.has(data,o);
     });
 
-    if (requiredFields == "") {
-      if (data.page < 0 || data.page == 0) {
+    if(requiredFields == "") {
+      if(data.page < 0 || data.page == 0) {
         return res.send(
           setRes(
             resCode.BadRequest,
@@ -2742,15 +2742,15 @@ exports.rewardsListOlder = async (req, res) => {
             },
           })
           .then(async (giftCardData) => {
-            if (giftCardData.length > 0) {
+            if(giftCardData.length > 0) {
               const dataArray = [];
               // Update Sign URL
-              for (const data of giftCardData) {
-                if (data.image != null) {
+              for(const data of giftCardData) {
+                if(data.image != null) {
                   var images = data.image;
                   const signurl = await awsConfig
                     .getSignUrl(images.toString())
-                    .then(function (res) {
+                    .then(function(res) {
                       data.image = res;
                     });
                 } else {
@@ -2777,9 +2777,9 @@ exports.rewardsListOlder = async (req, res) => {
             },
           })
           .then(async (CashbackData) => {
-            if (CashbackData.length > 0) {
+            if(CashbackData.length > 0) {
               const dataArray = [];
-              for (const data of CashbackData) {
+              for(const data of CashbackData) {
                 let result = JSON.parse(JSON.stringify(data));
                 result.type = "cashbacks";
                 dataArray.push(result);
@@ -2801,9 +2801,9 @@ exports.rewardsListOlder = async (req, res) => {
             },
           })
           .then(async (DiscountData) => {
-            if (DiscountData.length > 0) {
+            if(DiscountData.length > 0) {
               const dataArray = [];
-              for (const data of DiscountData) {
+              for(const data of DiscountData) {
                 let result = JSON.parse(JSON.stringify(data));
                 result.type = "discounts";
                 dataArray.push(result);
@@ -2825,9 +2825,9 @@ exports.rewardsListOlder = async (req, res) => {
             },
           })
           .then(async (CouponeData) => {
-            if (CouponeData.length > 0) {
+            if(CouponeData.length > 0) {
               const dataArray = [];
-              for (const data of CouponeData) {
+              for(const data of CouponeData) {
                 let result = JSON.parse(JSON.stringify(data));
                 result.type = "coupones";
                 dataArray.push(result);
@@ -2838,14 +2838,14 @@ exports.rewardsListOlder = async (req, res) => {
           })
       );
 
-      const [giftcardRewards, cashbackData, discountData, couponeData] =
+      const [giftcardRewards,cashbackData,discountData,couponeData] =
         await Promise.all(promises);
 
-      const arrays = [giftcardRewards, cashbackData, discountData, couponeData];
+      const arrays = [giftcardRewards,cashbackData,discountData,couponeData];
       const mergedArray = mergeRandomArrayObjects(arrays);
-      let result = mergedArray.slice(skip, skip + limit);
+      let result = mergedArray.slice(skip,skip + limit);
       res.send(
-        setRes(resCode.OK, true, "Get rewards list successfully.", result)
+        setRes(resCode.OK,true,"Get rewards list successfully.",result)
       );
     } else {
       res.send(
@@ -2857,15 +2857,15 @@ exports.rewardsListOlder = async (req, res) => {
         )
       );
     }
-  } catch (error) {
-    res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null));
+  } catch(error) {
+    res.send(setRes(resCode.BadRequest,false,"Something went wrong!",null));
   }
 };
 
 /**
  * User: Online Store Reward Latest api
  */
-exports.rewardsList = async (req, res) => {
+exports.rewardsList = async (req,res) => {
   try {
     const data = req.body;
     const giftCardModel = models.gift_cards;
@@ -2874,12 +2874,12 @@ exports.rewardsList = async (req, res) => {
     const couponeModel = models.coupones;
     const Op = models.Op;
     const currentDate = moment().format("YYYY-MM-DD");
-    const requiredFields = _.reject(["page", "business_id"], (o) => {
-      return _.has(data, o);
+    const requiredFields = _.reject(["page","business_id"],(o) => {
+      return _.has(data,o);
     });
 
-    if (requiredFields == "") {
-      if (!data?.page || +data.page <= 0) {
+    if(requiredFields == "") {
+      if(!data?.page || +data.page <= 0) {
         return res.send(
           setRes(
             resCode.BadRequest,
@@ -2889,20 +2889,20 @@ exports.rewardsList = async (req, res) => {
           )
         );
       }
-      var typeArr = ["gift_cards", "cashbacks", "discounts", "coupones"];
+      var typeArr = ["gift_cards","cashbacks","discounts","coupones"];
       let request_type =
         data?.type?.includes(",") && data?.type?.split(",").length > 0
           ? data?.type?.split(",")
           : data?.type && data?.type?.trim() !== ""
-          ? [data?.type]
-          : typeArr;
+            ? [data?.type]
+            : typeArr;
       request_type = request_type.filter((tp) => tp && tp.trim() !== "");
       const requestTypeNotExists = request_type.filter(
         (tp) => !typeArr.includes(tp) && tp !== ""
       );
-      if (request_type && requestTypeNotExists.length !== 0) {
+      if(request_type && requestTypeNotExists.length !== 0) {
         return res.send(
-          setRes(resCode.BadRequest, null, false, "Please select valid type.")
+          setRes(resCode.BadRequest,null,false,"Please select valid type.")
         );
       }
       // if((request_type) && !(typeArr.includes(request_type))){
@@ -2916,34 +2916,34 @@ exports.rewardsList = async (req, res) => {
         request_type.length % 2 != 0 ? perTableLimit : perTableLimit - 1;
       const giftCardLoyaltyCondition = data.search
         ? {
-            [Op.or]: [
-              {
-                name: {
-                  [Op.like]: "%" + data.search + "%",
-                },
+          [Op.or]: [
+            {
+              name: {
+                [Op.like]: "%" + data.search + "%",
               },
-            ],
-          }
+            },
+          ],
+        }
         : {};
 
       const cashBackDiscountCouponCondition = data.search
         ? {
-            [Op.or]: [
-              {
-                title: {
-                  [Op.like]: "%" + data.search + "%",
-                },
+          [Op.or]: [
+            {
+              title: {
+                [Op.like]: "%" + data.search + "%",
               },
-            ],
-          }
+            },
+          ],
+        }
         : {};
       const bussinessIdCond = data.business_id
         ? {
-            business_id: data.business_id,
-          }
+          business_id: data.business_id,
+        }
         : {};
 
-      let giftCardsRecords, cashbackRecords, discountRecords, couponeRecords;
+      let giftCardsRecords,cashbackRecords,discountRecords,couponeRecords;
       let remainingGiftcardRecordLimit = 0,
         remainingCashbackRecordLimit = 0,
         remainingDiscountRecordLimit = 0,
@@ -2951,7 +2951,7 @@ exports.rewardsList = async (req, res) => {
       /**
        * Fetch Gift cards and calculate and forward to next module not fetched record limit
        */
-      if (request_type.includes("gift_cards")) {
+      if(request_type.includes("gift_cards")) {
         giftCardsRecords = await giftCardModel.findAndCountAll({
           offset: perTableLimit * (data.page - 1),
           limit: perTableLimit,
@@ -2965,7 +2965,7 @@ exports.rewardsList = async (req, res) => {
             ...giftCardLoyaltyCondition,
           },
           attributes: {
-            include: [[models.sequelize.literal("'gift_cards'"), "type"]],
+            include: [[models.sequelize.literal("'gift_cards'"),"type"]],
           },
         });
 
@@ -2979,7 +2979,7 @@ exports.rewardsList = async (req, res) => {
       /**
        * Fetch Cashback records and calculate and forward to next module not fetched record limit
        */
-      if (request_type.includes("cashbacks")) {
+      if(request_type.includes("cashbacks")) {
         cashbackRecords = await cashbackModel.findAndCountAll({
           offset: perTableLimit * (data.page - 1),
           limit: perTableLimit + remainingGiftcardRecordLimit,
@@ -2993,17 +2993,17 @@ exports.rewardsList = async (req, res) => {
             ...cashBackDiscountCouponCondition,
           },
           attributes: {
-            include: [[models.sequelize.literal("'cashbacks'"), "type"]],
+            include: [[models.sequelize.literal("'cashbacks'"),"type"]],
           },
         });
 
         const fetchedCashbackCount = cashbackRecords?.rows?.length || 0;
         remainingCashbackRecordLimit =
           perTableLimit + remainingGiftcardRecordLimit - fetchedCashbackCount >
-          0
+            0
             ? perTableLimit +
-              remainingGiftcardRecordLimit -
-              fetchedCashbackCount
+            remainingGiftcardRecordLimit -
+            fetchedCashbackCount
             : 0;
       }
       // -----------------------------------------------------------------------------
@@ -3011,7 +3011,7 @@ exports.rewardsList = async (req, res) => {
       /**
        * Fetch discount records and calculate and forward to next module not fetched record limit
        */
-      if (request_type.includes("discounts")) {
+      if(request_type.includes("discounts")) {
         discountRecords = await discountModel.findAndCountAll({
           offset: perTableLimit * (data.page - 1),
           limit: perTableLimit + remainingCashbackRecordLimit,
@@ -3025,17 +3025,17 @@ exports.rewardsList = async (req, res) => {
             ...cashBackDiscountCouponCondition,
           },
           attributes: {
-            include: [[models.sequelize.literal("'discounts'"), "type"]],
+            include: [[models.sequelize.literal("'discounts'"),"type"]],
           },
         });
 
         const fetchedDiscountCount = discountRecords?.rows?.length || 0;
         remainingDiscountRecordLimit =
           perTableLimit + remainingCashbackRecordLimit - fetchedDiscountCount >
-          0
+            0
             ? perTableLimit +
-              remainingCashbackRecordLimit -
-              fetchedDiscountCount
+            remainingCashbackRecordLimit -
+            fetchedDiscountCount
             : 0;
       }
       // -----------------------------------------------------------------------------
@@ -3043,7 +3043,7 @@ exports.rewardsList = async (req, res) => {
       /**
        *  Fetch coupon records and calculate and forward to next module not fetched record limit
        */
-      if (request_type.includes("coupones")) {
+      if(request_type.includes("coupones")) {
         couponeRecords = await couponeModel.findAndCountAll({
           offset: lastTableLimit * (data.page - 1),
           limit: lastTableLimit + remainingDiscountRecordLimit,
@@ -3057,7 +3057,7 @@ exports.rewardsList = async (req, res) => {
             ...cashBackDiscountCouponCondition,
           },
           attributes: {
-            include: [[models.sequelize.literal("'coupones'"), "type"]],
+            include: [[models.sequelize.literal("'coupones'"),"type"]],
           },
         });
 
@@ -3144,9 +3144,9 @@ exports.rewardsList = async (req, res) => {
         )
       );
     }
-  } catch (error) {
+  } catch(error) {
     console.log(error);
-    res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null));
+    res.send(setRes(resCode.BadRequest,false,"Something went wrong!",null));
   }
 };
 
@@ -3154,20 +3154,20 @@ function mergeRandomArrayObjects(arrays) {
   const shuffledArrays = _.shuffle(arrays);
   const mergedArray = [];
 
-  _.each(shuffledArrays, function (array) {
-    _.each(array, function (obj) {
-      _.extend(obj, { random: Math.random() });
+  _.each(shuffledArrays,function(array) {
+    _.each(array,function(obj) {
+      _.extend(obj,{random: Math.random()});
       mergedArray.push(obj);
     });
   });
   return mergedArray.sort(
-    (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+    (a,b) => new Date(b.createdAt) - new Date(a.createdAt)
   );
 }
 // Rewards List END
 
 // Rewards View START
-exports.rewardsView = async (req, res) => {
+exports.rewardsView = async (req,res) => {
   try {
     var data = req.params;
     var paramType = req.query.type;
@@ -3178,13 +3178,13 @@ exports.rewardsView = async (req, res) => {
     var Op = models.Op;
     var currentDate = moment().format("YYYY-MM-DD");
 
-    var typeArr = ["gift_cards", "cashbacks", "discounts", "coupones"];
-    if (paramType && !typeArr.includes(paramType)) {
+    var typeArr = ["gift_cards","cashbacks","discounts","coupones"];
+    if(paramType && !typeArr.includes(paramType)) {
       return res.send(
-        setRes(resCode.BadRequest, false, "Please select valid type.", null)
+        setRes(resCode.BadRequest,false,"Please select valid type.",null)
       );
     } else {
-      if (paramType == "gift_cards") {
+      if(paramType == "gift_cards") {
         giftCardModel
           .findOne({
             where: {
@@ -3197,11 +3197,11 @@ exports.rewardsView = async (req, res) => {
             },
           })
           .then(async (giftCardData) => {
-            if (giftCardData != null) {
-              if (giftCardData.image != null) {
+            if(giftCardData != null) {
+              if(giftCardData.image != null) {
                 var giftCardData_image = await awsConfig
                   .getSignUrl(giftCardData.image)
-                  .then(function (res) {
+                  .then(function(res) {
                     giftCardData.image = res;
                   });
               } else {
@@ -3236,7 +3236,7 @@ exports.rewardsView = async (req, res) => {
               )
             );
           });
-      } else if (paramType == "cashbacks") {
+      } else if(paramType == "cashbacks") {
         cashbackModel
           .findOne({
             where: {
@@ -3249,7 +3249,7 @@ exports.rewardsView = async (req, res) => {
             },
           })
           .then(async (cashbackData) => {
-            if (cashbackData != null) {
+            if(cashbackData != null) {
               res.send(
                 setRes(
                   resCode.OK,
@@ -3279,7 +3279,7 @@ exports.rewardsView = async (req, res) => {
               )
             );
           });
-      } else if (paramType == "discounts") {
+      } else if(paramType == "discounts") {
         discountModel
           .findOne({
             where: {
@@ -3293,7 +3293,7 @@ exports.rewardsView = async (req, res) => {
             },
           })
           .then(async (discountData) => {
-            if (discountData != null) {
+            if(discountData != null) {
               res.send(
                 setRes(
                   resCode.OK,
@@ -3323,7 +3323,7 @@ exports.rewardsView = async (req, res) => {
               )
             );
           });
-      } else if (paramType == "coupones") {
+      } else if(paramType == "coupones") {
         couponeModel
           .findOne({
             where: {
@@ -3337,7 +3337,7 @@ exports.rewardsView = async (req, res) => {
             },
           })
           .then(async (couponeData) => {
-            if (couponeData != null) {
+            if(couponeData != null) {
               res.send(
                 setRes(
                   resCode.OK,
@@ -3369,19 +3369,19 @@ exports.rewardsView = async (req, res) => {
           });
       } else {
         res.send(
-          setRes(resCode.BadRequest, false, "Please select valid type.", null)
+          setRes(resCode.BadRequest,false,"Please select valid type.",null)
         );
       }
     }
-  } catch (error) {
-    res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null));
+  } catch(error) {
+    res.send(setRes(resCode.BadRequest,false,"Something went wrong!",null));
   }
 };
 
 // Rewards View END
 
 // Loyalty List START
-exports.loyaltyList = async (req, res) => {
+exports.loyaltyList = async (req,res) => {
   try {
     var data = req.body;
     var loyaltyPointModel = models.loyalty_points;
@@ -3389,11 +3389,11 @@ exports.loyaltyList = async (req, res) => {
     var productModel = models.products;
     const Op = models.Op;
     var currentDate = moment().format("YYYY-MM-DD");
-    var requiredFields = _.reject(["business_id", "page", "page_size"], (o) => {
-      return _.has(data, o);
+    var requiredFields = _.reject(["business_id","page","page_size"],(o) => {
+      return _.has(data,o);
     });
-    if (requiredFields == "") {
-      if (data.page < 0 || data.page == 0) {
+    if(requiredFields == "") {
+      if(data.page < 0 || data.page == 0) {
         return res.send(
           setRes(
             resCode.BadRequest,
@@ -3407,7 +3407,7 @@ exports.loyaltyList = async (req, res) => {
       let skip = data.page_size * (data.page - 1);
       let limit = parseInt(data.page_size);
 
-      loyaltyPointModel
+      await loyaltyPointModel
         .findAll({
           offset: skip,
           limit: limit,
@@ -3416,22 +3416,22 @@ exports.loyaltyList = async (req, res) => {
             status: true,
             business_id: data.business_id,
             validity: {
-              [Op.gt]: currentDate,
+              [Op.gte]: currentDate,
             },
           },
           include: [
             {
               model: businessModel,
-              attributes: ["id", "business_name"],
+              attributes: ["id","business_name"],
             },
             {
               model: productModel,
-              attributes: ["id", "name"],
+              attributes: ["id","name"],
             },
           ],
         })
         .then(async (loyaltyData) => {
-          if (loyaltyData.length > 0) {
+          if(loyaltyData.length > 0) {
             const loyaltyRecordCounts = await loyaltyPointModel.findAndCountAll(
               {
                 where: {
@@ -3445,26 +3445,26 @@ exports.loyaltyList = async (req, res) => {
                 include: [
                   {
                     model: businessModel,
-                    attributes: ["id", "business_name"],
+                    attributes: ["id","business_name"],
                   },
                   {
                     model: productModel,
-                    attributes: ["id", "name"],
+                    attributes: ["id","name"],
                   },
                 ],
               }
             );
             const totalRecords = loyaltyRecordCounts?.count;
-            for (const data of loyaltyData) {
+            for(const data of loyaltyData) {
               // Get businesss name
-              if (data.business != null) {
+              if(data.business != null) {
                 data.dataValues.business_name = data.business.business_name;
                 delete data.dataValues.business;
               } else {
                 data.dataValues.business_name = "";
               }
               // Get products name
-              if (data.product != null) {
+              if(data.product != null) {
                 data.dataValues.product_name = data.product.name;
                 delete data.dataValues.product;
               } else {
@@ -3487,7 +3487,7 @@ exports.loyaltyList = async (req, res) => {
             );
           } else {
             res.send(
-              setRes(resCode.ResourceNotFound, false, "Loyalty not found", null)
+              setRes(resCode.ResourceNotFound,false,"Loyalty not found",null)
             );
           }
         });
@@ -3501,14 +3501,14 @@ exports.loyaltyList = async (req, res) => {
         )
       );
     }
-  } catch (error) {
-    res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null));
+  } catch(error) {
+    res.send(setRes(resCode.BadRequest,false,"Something went wrong!",null));
   }
 };
 // Loyalty List END
 
 // Loyalty View START
-exports.loyaltyView = async (req, res) => {
+exports.loyaltyView = async (req,res) => {
   try {
     var data = req.params;
     var loyaltyPointModel = models.loyalty_points;
@@ -3531,16 +3531,16 @@ exports.loyaltyView = async (req, res) => {
         include: [
           {
             model: businessModel,
-            attributes: ["id", "business_name"],
+            attributes: ["id","business_name"],
           },
           {
             model: productModel,
-            attributes: ["id", "name"],
+            attributes: ["id","name"],
           },
         ],
       })
       .then(async (loyaltyData) => {
-        if (loyaltyData) {
+        if(loyaltyData) {
           res.send(
             setRes(
               resCode.OK,
@@ -3551,18 +3551,18 @@ exports.loyaltyView = async (req, res) => {
           );
         } else {
           res.send(
-            setRes(resCode.ResourceNotFound, false, "Loyalty not found", null)
+            setRes(resCode.ResourceNotFound,false,"Loyalty not found",null)
           );
         }
       });
-  } catch (error) {
-    res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null));
+  } catch(error) {
+    res.send(setRes(resCode.BadRequest,false,"Something went wrong!",null));
   }
 };
 // Loyalty List END
 
 // Business BIO START
-exports.businessBIO = async (req, res) => {
+exports.businessBIO = async (req,res) => {
   var data = req.query;
   var businessModel = models.business;
   var businessCategory = models.business_categorys;
@@ -3570,23 +3570,23 @@ exports.businessBIO = async (req, res) => {
   var settingModel = models.settings;
   await businessModel
     .findOne({
-      where: { id: data.business_id, is_active: true, is_deleted: false },
-      attributes: ["id", "business_name", "description"],
+      where: {id: data.business_id,is_active: true,is_deleted: false},
+      attributes: ["id","business_name","description"],
       include: [
         {
           model: businessCategory,
-          attributes: ["id", "name"],
+          attributes: ["id","name"],
         },
         {
           model: settingModel,
-          attributes: ["id", "setting_value"],
+          attributes: ["id","setting_value"],
         },
       ],
     })
     .then(async (bio) => {
-      if (bio != null) {
+      if(bio != null) {
         //  Category name Get
-        if (bio.business_category != null) {
+        if(bio.business_category != null) {
           bio.dataValues.business_category_name = bio.business_category.name;
           delete bio.dataValues.business_category;
         } else {
@@ -3594,11 +3594,11 @@ exports.businessBIO = async (req, res) => {
         }
 
         //  Opening Time
-        if (bio.setting != null) {
+        if(bio.setting != null) {
           var date = bio.setting.setting_value;
           var arr1 = date.split("_");
-          var from = moment(arr1[0], "HH:mm").format("hh:mm A");
-          var to = moment(arr1[1], "HH:mm").format("hh:mm A");
+          var from = moment(arr1[0],"HH:mm").format("hh:mm A");
+          var to = moment(arr1[1],"HH:mm").format("hh:mm A");
           bio.dataValues.available = `${from} - ${to}`;
         } else {
           bio.dataValues.available = null;
@@ -3614,7 +3614,7 @@ exports.businessBIO = async (req, res) => {
         });
 
         // Terms And Conditions GET
-        if (TAndC != null && !_.isEmpty(TAndC)) {
+        if(TAndC != null && !_.isEmpty(TAndC)) {
           bio.dataValues.terms_and_condition = TAndC.page_value;
         } else {
           bio.dataValues.terms_and_condition = null;
@@ -3630,7 +3630,7 @@ exports.businessBIO = async (req, res) => {
         );
       } else {
         res.send(
-          setRes(resCode.ResourceNotFound, false, "Bussiness not found.", null)
+          setRes(resCode.ResourceNotFound,false,"Bussiness not found.",null)
         );
       }
     });
@@ -3639,7 +3639,7 @@ exports.businessBIO = async (req, res) => {
 // =========================================Online STORE END=========================================
 
 // Business event list
-exports.businessEventList = async (req, res) => {
+exports.businessEventList = async (req,res) => {
   try {
     var data = req.body;
     var combocalenderModel = models.combo_calendar;
@@ -3649,15 +3649,15 @@ exports.businessEventList = async (req, res) => {
     // const userEmail = req.userEmail;
     var currentDate = moment().format("YYYY-MM-DD");
     var Op = models.Op;
-    var requiredFields = _.reject(["page", "page_size"], (o) => {
-      return _.has(data, o);
+    var requiredFields = _.reject(["page","page_size"],(o) => {
+      return _.has(data,o);
     });
     var currentDateTime = moment().format("YYYY-MM-DD HH:mm:ss");
     // const userDetails = await userModel.findOne({ where: { email: userEmail, is_deleted: false, is_active: true } });
     const user = req?.user || {};
     const userId = user?.id ? user.id : "";
-    if (requiredFields == "") {
-      if (data.page < 0 || data.page == 0) {
+    if(requiredFields == "") {
+      if(data.page < 0 || data.page == 0) {
         return res.send(
           setRes(
             resCode.BadRequest,
@@ -3704,31 +3704,31 @@ exports.businessEventList = async (req, res) => {
           ),
         ],
       };
-      if (data.search) {
+      if(data.search) {
         condition.where = {
           ...condition.where,
-          ...{ [Op.or]: [{ title: { [Op.like]: "%" + data.search + "%" } }] },
+          ...{[Op.or]: [{title: {[Op.like]: "%" + data.search + "%"}}]},
         };
       }
-      if (data.business_id) {
+      if(data.business_id) {
         condition.where = {
           ...condition.where,
-          ...{ business_id: data.business_id },
+          ...{business_id: data.business_id},
         };
       }
-      if (data.page_size != 0 && !_.isEmpty(data.page_size)) {
-        (condition.offset = skip), (condition.limit = limit);
+      if(data.page_size != 0 && !_.isEmpty(data.page_size)) {
+        (condition.offset = skip),(condition.limit = limit);
       }
       await combocalenderModel.findAll(condition).then(async (event) => {
         const dataArray = [];
-        for (const data of event) {
+        for(const data of event) {
           var event_images = data.images;
           var image_array = [];
-          if (event_images != null) {
-            for (const data of event_images) {
+          if(event_images != null) {
+            for(const data of event_images) {
               const signurl = await awsConfig
                 .getSignUrl(data)
-                .then(function (res) {
+                .then(function(res) {
                   image_array.push(res);
                 });
             }
@@ -3738,7 +3738,7 @@ exports.businessEventList = async (req, res) => {
           data.dataValues.event_images = image_array;
           delete data.dataValues.business;
           data.dataValues.is_user_join = false;
-          if (data.dataValues.user_events?.length > 0) {
+          if(data.dataValues.user_events?.length > 0) {
             data.dataValues.is_user_join = true;
           }
           delete data.dataValues.user_events;
@@ -3770,13 +3770,13 @@ exports.businessEventList = async (req, res) => {
         )
       );
     }
-  } catch (error) {
-    res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null));
+  } catch(error) {
+    res.send(setRes(resCode.BadRequest,false,"Something went wrong!",null));
   }
 };
 
 // Register user in event
-exports.eventUserRegister = async (req, res) => {
+exports.eventUserRegister = async (req,res) => {
   try {
     var data = req.body;
     var businessModel = models.business;
@@ -3792,20 +3792,20 @@ exports.eventUserRegister = async (req, res) => {
     var validation = true;
     var currentDate = moment().format("YYYY-MM-DD");
     var requiredFields = _.reject(
-      ["business_id", "event_id", "user_id"],
+      ["business_id","event_id","user_id"],
       (o) => {
-        return _.has(data, o);
+        return _.has(data,o);
       }
     );
-    let businessDetails, eventDetails, userDetails;
-    if (requiredFields == "") {
-      if (data.business_id) {
+    let businessDetails,eventDetails,userDetails;
+    if(requiredFields == "") {
+      if(data.business_id) {
         await businessModel
           .findOne({
-            where: { id: data.business_id, is_deleted: false, is_active: true },
+            where: {id: data.business_id,is_deleted: false,is_active: true},
           })
           .then(async (business) => {
-            if (_.isEmpty(business)) {
+            if(_.isEmpty(business)) {
               validation = false;
               return res.send(
                 setRes(
@@ -3820,36 +3820,36 @@ exports.eventUserRegister = async (req, res) => {
           });
       }
 
-      if (data.event_id) {
+      if(data.event_id) {
         var condition = {};
-        if (!_.isEmpty(data.business_id)) {
-          condition.where = { business_id: data.business_id };
+        if(!_.isEmpty(data.business_id)) {
+          condition.where = {business_id: data.business_id};
         }
         condition.where = {
           ...condition.where,
-          ...{ id: data.event_id, is_deleted: false },
+          ...{id: data.event_id,is_deleted: false},
         };
         await comboModel.findOne(condition).then(async (event) => {
-          if (_.isEmpty(event)) {
+          if(_.isEmpty(event)) {
             validation = false;
             return res.send(
-              setRes(resCode.ResourceNotFound, false, "Event not found.", null)
+              setRes(resCode.ResourceNotFound,false,"Event not found.",null)
             );
           }
           eventDetails = event;
         });
       }
 
-      if (data.user_id) {
+      if(data.user_id) {
         await userModel
           .findOne({
-            where: { id: data.user_id, is_deleted: false, is_active: true },
+            where: {id: data.user_id,is_deleted: false,is_active: true},
           })
           .then(async (user) => {
-            if (_.isEmpty(user)) {
+            if(_.isEmpty(user)) {
               validation = false;
               return res.send(
-                setRes(resCode.ResourceNotFound, false, "User not found.", null)
+                setRes(resCode.ResourceNotFound,false,"User not found.",null)
               );
             }
             userDetails = user;
@@ -3866,7 +3866,7 @@ exports.eventUserRegister = async (req, res) => {
         },
       });
 
-      if (isUserExist) {
+      if(isUserExist) {
         validation = false;
         return res.send(
           setRes(
@@ -3877,13 +3877,13 @@ exports.eventUserRegister = async (req, res) => {
           )
         );
       }
-      if (validation) {
+      if(validation) {
         await eventUserModel
           .create(data)
           .then(async (event_user) => {
-            if (event_user) {
+            if(event_user) {
               /** Notification object created */
-              console.log("userDetails?.username", userDetails?.username);
+              console.log("userDetails?.username",userDetails?.username);
               const notificationObj = {
                 params: JSON.stringify({
                   notification_type: NOTIFICATION_TYPES.EVENT_USER_JOIN,
@@ -3906,7 +3906,7 @@ exports.eventUserRegister = async (req, res) => {
               const notification = await notificationModel.create(
                 notificationObj
               );
-              if (notification && notification.id) {
+              if(notification && notification.id) {
                 const notificationReceiverObj = {
                   role_id: businessDetails.role_id,
                   notification_id: notification.id,
@@ -3919,8 +3919,8 @@ exports.eventUserRegister = async (req, res) => {
               }
               /** FCM push noifiation */
               const activeReceiverDevices = await deviceModel.findAll(
-                { where: { status: 1, business_id: businessDetails.id } },
-                { attributes: ["device_token"] }
+                {where: {status: 1,business_id: businessDetails.id}},
+                {attributes: ["device_token"]}
               );
               const deviceTokensList = activeReceiverDevices.map(
                 (device) => device.device_token
@@ -3979,24 +3979,24 @@ exports.eventUserRegister = async (req, res) => {
         )
       );
     }
-  } catch (error) {
-    res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null));
+  } catch(error) {
+    res.send(setRes(resCode.BadRequest,false,"Something went wrong!",null));
   }
 };
 
 // User Event Listing API
-exports.userEventList = async (req, res) => {
+exports.userEventList = async (req,res) => {
   var data = req.body;
   var combocalenderModel = models.combo_calendar;
   const businesModel = models.business;
   var userEventModel = models.user_events;
   var currentDate = moment().format("YYYY-MM-DD");
   var Op = models.Op;
-  var requiredFields = _.reject(["page", "page_size", "user_id"], (o) => {
-    return _.has(data, o);
+  var requiredFields = _.reject(["page","page_size","user_id"],(o) => {
+    return _.has(data,o);
   });
-  if (requiredFields == "") {
-    if (data.page < 0 || data.page == 0) {
+  if(requiredFields == "") {
+    if(data.page < 0 || data.page == 0) {
       return res.send(
         setRes(
           resCode.BadRequest,
@@ -4026,9 +4026,9 @@ exports.userEventList = async (req, res) => {
       include: [
         {
           model: userEventModel,
-          attributes: ["id", "user_id", "createdAt"],
+          attributes: ["id","user_id","createdAt"],
           as: "user_events",
-          where: { user_id: data.user_id, is_deleted: false },
+          where: {user_id: data.user_id,is_deleted: false},
           include: [
             {
               model: models.user,
@@ -4052,7 +4052,7 @@ exports.userEventList = async (req, res) => {
         },
       ],
       order: [
-        ["user_events", "createdAt", "DESC"],
+        ["user_events","createdAt","DESC"],
         // ['status','ASC'],
         // ['start_date','ASC'],
         // ['start_time','ASC'],
@@ -4064,7 +4064,7 @@ exports.userEventList = async (req, res) => {
         [Op.gt]: currentDate,
       },
     };
-    if (!_.isEmpty(data.search)) {
+    if(!_.isEmpty(data.search)) {
       condition.where = {
         ...condition.where,
         ...{
@@ -4079,7 +4079,7 @@ exports.userEventList = async (req, res) => {
       };
     }
 
-    if (!_.isEmpty(data.from_date) && !_.isEmpty(data.to_date)) {
+    if(!_.isEmpty(data.from_date) && !_.isEmpty(data.to_date)) {
       var startDate = moment(data.from_date).format("YYYY-MM-DD");
       var endDate = moment(data.to_date).format("YYYY-MM-DD");
       condition.where = {
@@ -4088,7 +4088,7 @@ exports.userEventList = async (req, res) => {
           [Op.or]: [
             {
               start_date: {
-                [Op.between]: [startDate, endDate],
+                [Op.between]: [startDate,endDate],
               },
             },
             {
@@ -4110,21 +4110,21 @@ exports.userEventList = async (req, res) => {
       };
     }
 
-    if (data.page_size != 0 && !_.isEmpty(data.page_size)) {
-      (condition.offset = skip), (condition.limit = limit);
+    if(data.page_size != 0 && !_.isEmpty(data.page_size)) {
+      (condition.offset = skip),(condition.limit = limit);
     }
 
     combocalenderModel.findAll(condition).then(async (event) => {
-      if (event.length > 0) {
+      if(event.length > 0) {
         const dataArray = [];
-        for (const data of event) {
+        for(const data of event) {
           var event_images = data.images;
           var image_array = [];
-          if (event_images != null) {
-            for (const data of event_images) {
+          if(event_images != null) {
+            for(const data of event_images) {
               const signurl = await awsConfig
                 .getSignUrl(data)
-                .then(function (res) {
+                .then(function(res) {
                   image_array.push(res);
                 });
             }
@@ -4152,7 +4152,7 @@ exports.userEventList = async (req, res) => {
         );
       } else {
         res.send(
-          setRes(resCode.ResourceNotFound, false, "Event not found", [])
+          setRes(resCode.ResourceNotFound,false,"Event not found",[])
         );
       }
     });
@@ -4169,7 +4169,7 @@ exports.userEventList = async (req, res) => {
 };
 
 // User Leave API
-exports.eventUserLeave = async (req, res) => {
+exports.eventUserLeave = async (req,res) => {
   try {
     var data = req.body;
     var businessModel = models.business;
@@ -4185,23 +4185,23 @@ exports.eventUserLeave = async (req, res) => {
     const Op = models.Op;
     var currentDate = moment().format("YYYY-MM-DD");
     var requiredFields = _.reject(
-      ["id", "business_id", "event_id", "user_id"],
+      ["id","business_id","event_id","user_id"],
       (o) => {
-        return _.has(data, o);
+        return _.has(data,o);
       }
     );
-    let businessDetails, userDetails;
-    if (data) {
-      if (requiredFields == "") {
+    let businessDetails,userDetails;
+    if(data) {
+      if(requiredFields == "") {
         const eventDetails = await combocalenderModel.findOne({
-          where: { id: data.event_id },
+          where: {id: data.event_id},
         });
         await eventUserModel
           .findOne({
-            where: { id: data.id, is_deleted: false, is_available: true },
+            where: {id: data.id,is_deleted: false,is_available: true},
           })
           .then(async (event_user) => {
-            if (_.isEmpty(event_user)) {
+            if(_.isEmpty(event_user)) {
               validation = false;
               return res.send(
                 setRes(
@@ -4214,7 +4214,7 @@ exports.eventUserLeave = async (req, res) => {
             }
           });
 
-        if (data.business_id && validation == true) {
+        if(data.business_id && validation == true) {
           await businessModel
             .findOne({
               where: {
@@ -4224,7 +4224,7 @@ exports.eventUserLeave = async (req, res) => {
               },
             })
             .then(async (business) => {
-              if (_.isEmpty(business)) {
+              if(_.isEmpty(business)) {
                 validation = false;
                 return res.send(
                   setRes(
@@ -4239,10 +4239,10 @@ exports.eventUserLeave = async (req, res) => {
             });
         }
 
-        if (data.event_id && validation == true) {
+        if(data.event_id && validation == true) {
           var condition = {};
-          if (!_.isEmpty(data.business_id)) {
-            condition.where = { business_id: data.business_id };
+          if(!_.isEmpty(data.business_id)) {
+            condition.where = {business_id: data.business_id};
           }
           condition.where = {
             ...condition.where,
@@ -4255,7 +4255,7 @@ exports.eventUserLeave = async (req, res) => {
             },
           };
           await comboModel.findOne(condition).then(async (event) => {
-            if (_.isEmpty(event)) {
+            if(_.isEmpty(event)) {
               validation = false;
               return res.send(
                 setRes(
@@ -4269,13 +4269,13 @@ exports.eventUserLeave = async (req, res) => {
           });
         }
 
-        if (data.user_id && validation == true) {
+        if(data.user_id && validation == true) {
           await userModel
             .findOne({
-              where: { id: data.user_id, is_deleted: false, is_active: true },
+              where: {id: data.user_id,is_deleted: false,is_active: true},
             })
             .then(async (user) => {
-              if (_.isEmpty(user)) {
+              if(_.isEmpty(user)) {
                 validation = false;
                 return res.send(
                   setRes(
@@ -4300,7 +4300,7 @@ exports.eventUserLeave = async (req, res) => {
             is_available: true,
           },
         });
-        if (_.isEmpty(eventUserData) && validation == true) {
+        if(_.isEmpty(eventUserData) && validation == true) {
           validation = false;
           return res.send(
             setRes(
@@ -4312,7 +4312,7 @@ exports.eventUserLeave = async (req, res) => {
           );
         }
 
-        if (validation) {
+        if(validation) {
           await eventUserModel
             .update(
               {
@@ -4331,9 +4331,9 @@ exports.eventUserLeave = async (req, res) => {
               }
             )
             .then(async (dataVal) => {
-              if (dataVal) {
+              if(dataVal) {
                 /** Notification object created */
-                console.log("userDetails?.username", userDetails?.username);
+                console.log("userDetails?.username",userDetails?.username);
                 const notificationObj = {
                   params: JSON.stringify({
                     notification_type: NOTIFICATION_TYPES.EVENT_USER_LEAVE,
@@ -4356,7 +4356,7 @@ exports.eventUserLeave = async (req, res) => {
                 const notification = await notificationModel.create(
                   notificationObj
                 );
-                if (notification && notification.id) {
+                if(notification && notification.id) {
                   const notificationReceiverObj = {
                     role_id: businessDetails.role_id,
                     notification_id: notification.id,
@@ -4369,8 +4369,8 @@ exports.eventUserLeave = async (req, res) => {
                 }
                 /** FCM push noifiation */
                 const activeReceiverDevices = await deviceModel.findAll(
-                  { where: { status: 1, business_id: businessDetails.id } },
-                  { attributes: ["device_token"] }
+                  {where: {status: 1,business_id: businessDetails.id}},
+                  {attributes: ["device_token"]}
                 );
                 const deviceTokensList = activeReceiverDevices.map(
                   (device) => device.device_token
@@ -4401,7 +4401,7 @@ exports.eventUserLeave = async (req, res) => {
                 fcmNotification.SendNotification(notificationPayload);
                 await eventUserModel
                   .findOne({
-                    where: { id: data.id },
+                    where: {id: data.id},
                   })
                   .then(async (user_data) => {
                     return res.send(
@@ -4438,18 +4438,18 @@ exports.eventUserLeave = async (req, res) => {
       }
     } else {
       return res.send(
-        setRes(resCode.BadRequest, false, "Id are required", null)
+        setRes(resCode.BadRequest,false,"Id are required",null)
       );
     }
-  } catch (error) {
+  } catch(error) {
     return res.send(
-      setRes(resCode.BadRequest, false, "Something went wrong!", null)
+      setRes(resCode.BadRequest,false,"Something went wrong!",null)
     );
   }
 };
 
 // Purchase gift card  START
-exports.userGiftCardPurchase = async (req, res) => {
+exports.userGiftCardPurchase = async (req,res) => {
   try {
     const Op = models.Op;
     const data = req.body;
@@ -4473,20 +4473,20 @@ exports.userGiftCardPurchase = async (req, res) => {
         "qty",
       ],
       (o) => {
-        return _.has(data, o);
+        return _.has(data,o);
       }
     );
 
     const userDetails = await userModel.findOne({
-      where: { id: user.id, is_active: true, is_deleted: false },
+      where: {id: user.id,is_active: true,is_deleted: false},
     });
-    if (!userDetails) {
+    if(!userDetails) {
       return res.send(
-        setRes(resCode.ResourceNotFound, false, "User not found.", null)
+        setRes(resCode.ResourceNotFound,false,"User not found.",null)
       );
     }
-    if (requiredFields == "") {
-      if (![1, 2, 3, 4].includes(+data.payment_status)) {
+    if(requiredFields == "") {
+      if(![1,2,3,4].includes(+data.payment_status)) {
         return res.send(
           setRes(
             resCode.BadRequest,
@@ -4515,13 +4515,13 @@ exports.userGiftCardPurchase = async (req, res) => {
 
       // check gift card expire or not
       const giftCardDetails = await giftCardModel.findOne({
-        where: { id: data.gift_card_id, status: true, isDeleted: false },
+        where: {id: data.gift_card_id,status: true,isDeleted: false},
       });
-      if (giftCardDetails) {
+      if(giftCardDetails) {
         let giftCardImage = "";
         const img = await awsConfig
-          .getSignUrl(giftCardDetails.image, 180)
-          .then(function (res) {
+          .getSignUrl(giftCardDetails.image,180)
+          .then(function(res) {
             giftCardImage = res;
           });
         const giftCardObj = {
@@ -4540,7 +4540,7 @@ exports.userGiftCardPurchase = async (req, res) => {
           // qty: data.qty || 1,
           // is_email_sent: true
         };
-        if (data.qty && +data.qty > 0) {
+        if(data.qty && +data.qty > 0) {
           const createdGiftCards = [];
           // for(let i = 0; i < +(data.qty); i++){
           const userCashbackLoyalty = await userModel.findOne({
@@ -4550,7 +4550,7 @@ exports.userGiftCardPurchase = async (req, res) => {
             },
           });
           const gCard = await userGiftCardModel.create(giftCardObj);
-          if (giftCardDetails.is_cashback == true) {
+          if(giftCardDetails.is_cashback == true) {
             const giftcardcashbackamount = (
               (giftCardDetails.amount * giftCardDetails.cashback_percentage) /
               100
@@ -4567,7 +4567,7 @@ exports.userGiftCardPurchase = async (req, res) => {
           const loyaltyPointModel = models.loyalty_points;
           const loyalty = await loyaltyPointModel.findOne({
             attributes: {
-              exclude: ["createdAt", "updatedAt", "deleted_at", "isDeleted"],
+              exclude: ["createdAt","updatedAt","deleted_at","isDeleted"],
             },
             where: {
               gift_card_id: {
@@ -4577,8 +4577,8 @@ exports.userGiftCardPurchase = async (req, res) => {
               isDeleted: false,
             },
           });
-          if (loyalty != null) {
-            if (loyalty.points_redeemed == true && loyalty) {
+          if(loyalty != null) {
+            if(loyalty.points_redeemed == true && loyalty) {
               const giftcardloyaltyamount = loyalty.points_earned || 0.0;
               const userloyalty =
                 userCashbackLoyalty.total_loyalty_points || 0.0;
@@ -4632,7 +4632,7 @@ exports.userGiftCardPurchase = async (req, res) => {
               "gift-card-purchased.html"
             ),
             context,
-            (err, html, text, subject) => {
+            (err,html,text,subject) => {
               transporter.sendMail(
                 {
                   from: "b.a.s.e. <do-not-reply@mail.com>",
@@ -4640,9 +4640,9 @@ exports.userGiftCardPurchase = async (req, res) => {
                   subject: `B.a.s.e Virtual card`,
                   html: html,
                 },
-                function (err, result) {
-                  if (err) {
-                    console.log("mail error", err);
+                function(err,result) {
+                  if(err) {
+                    console.log("mail error",err);
                   }
                 }
               );
@@ -4675,7 +4675,7 @@ exports.userGiftCardPurchase = async (req, res) => {
             notification_type: NOTIFICATION_TYPES.GIFT_CARD_PURCHASE,
           };
           const notification = await notificationModel.create(notificationObj);
-          if (notification && notification.id) {
+          if(notification && notification.id) {
             const notificationReceiverObj = {
               role_id: 3,
               notification_id: notification.id,
@@ -4688,8 +4688,8 @@ exports.userGiftCardPurchase = async (req, res) => {
           }
           /** FCM push noifiation */
           const activeReceiverDevices = await deviceModel.findAll(
-            { where: { status: 1, business_id: giftCardDetails.business_id } },
-            { attributes: ["device_token"] }
+            {where: {status: 1,business_id: giftCardDetails.business_id}},
+            {attributes: ["device_token"]}
           );
           const deviceTokensList = activeReceiverDevices.map(
             (device) => device.device_token
@@ -4732,7 +4732,7 @@ exports.userGiftCardPurchase = async (req, res) => {
           );
         } else {
           return res.send(
-            setRes(resCode.BadRequest, false, "Invald Qty value.", null)
+            setRes(resCode.BadRequest,false,"Invald Qty value.",null)
           );
         }
       } else {
@@ -4755,17 +4755,17 @@ exports.userGiftCardPurchase = async (req, res) => {
         )
       );
     }
-  } catch (error) {
+  } catch(error) {
     console.log(error);
     return res.send(
-      setRes(resCode.BadRequest, false, "Something went wrong!", null)
+      setRes(resCode.BadRequest,false,"Something went wrong!",null)
     );
   }
 };
 // Purchase gift card  END
 
 // Purchase gift card  START
-exports.userGiftCardShare = async (req, res) => {
+exports.userGiftCardShare = async (req,res) => {
   try {
     const data = req.body;
     const userModel = models.user;
@@ -4797,16 +4797,16 @@ exports.userGiftCardShare = async (req, res) => {
         "qty",
       ],
       (o) => {
-        return _.has(data, o);
+        return _.has(data,o);
       }
     );
 
     const userDetails = await userModel.findOne({
-      where: { email: userEmail, is_active: true, is_deleted: false },
+      where: {email: userEmail,is_active: true,is_deleted: false},
     });
-    if (!userDetails) {
+    if(!userDetails) {
       return res.send(
-        setRes(resCode.ResourceNotFound, false, "User not found.", null)
+        setRes(resCode.ResourceNotFound,false,"User not found.",null)
       );
     }
 
@@ -4818,16 +4818,16 @@ exports.userGiftCardShare = async (req, res) => {
     const isScheduleDateFutureDate =
       moment(currentDateTime).isBefore(scheduledDateTime);
 
-    if (
+    if(
       data?.schedule_datetime &&
       data?.schedule_datetime != "" &&
       !moment(data.schedule_datetime).isValid()
     ) {
       return res.send(
-        setRes(resCode.BadRequest, false, "Invalid Schedule date time.", null)
+        setRes(resCode.BadRequest,false,"Invalid Schedule date time.",null)
       );
     }
-    if (
+    if(
       data?.schedule_datetime &&
       !moment(data.schedule_datetime).isValid() &&
       !isScheduleDateFutureDate
@@ -4842,7 +4842,7 @@ exports.userGiftCardShare = async (req, res) => {
       );
     }
 
-    if (data.note && data.note.length >= 250) {
+    if(data.note && data.note.length >= 250) {
       return res.send(
         setRes(
           resCode.BadRequest,
@@ -4852,8 +4852,8 @@ exports.userGiftCardShare = async (req, res) => {
         )
       );
     }
-    if (requiredFields == "") {
-      if (![1, 2, 3, 4].includes(+data.payment_status)) {
+    if(requiredFields == "") {
+      if(![1,2,3,4].includes(+data.payment_status)) {
         return res.send(
           setRes(
             resCode.BadRequest,
@@ -4871,7 +4871,7 @@ exports.userGiftCardShare = async (req, res) => {
           is_deleted: false,
         },
       });
-      if (!giftCardTemplate) {
+      if(!giftCardTemplate) {
         return res.send(
           setRes(
             resCode.ResourceNotFound,
@@ -4883,24 +4883,24 @@ exports.userGiftCardShare = async (req, res) => {
       }
       // check gift card expire or not
       const giftCardDetails = await giftCardModel.findOne({
-        where: { id: data.gift_card_id },
+        where: {id: data.gift_card_id},
       });
       let giftCardImage = "";
       let giftCardTemplateUrl = "";
       const img = await awsConfig
-        .getSignUrl(giftCardDetails.image, 180)
-        .then(function (res) {
+        .getSignUrl(giftCardDetails.image,180)
+        .then(function(res) {
           giftCardImage = res;
         });
       const imgGiftTemplate = await awsConfig
-        .getSignUrl(giftCardTemplate.template_image, 180)
-        .then(function (res) {
+        .getSignUrl(giftCardTemplate.template_image,180)
+        .then(function(res) {
           giftCardTemplateUrl = res;
         });
       const businessDetails = await bussinessModel.findOne({
-        where: { id: giftCardDetails.business_id },
+        where: {id: giftCardDetails.business_id},
       });
-      if (giftCardDetails) {
+      if(giftCardDetails) {
         const giftCardObj = {
           gift_card_id: data.gift_card_id,
           gift_card_template_id: data.gift_card_template_id,
@@ -4913,12 +4913,12 @@ exports.userGiftCardShare = async (req, res) => {
           business_id: giftCardDetails.business_id,
           purchase_date: currentDate,
           redeemed_amount: 0,
-		  payment_id: data.payment_id,
-      payment_status: data.payment_status,
-		  payment_response: data.payment_response && typeof(data.payment_response) != 'string' ? JSON.stringify(data.payment_response): data.payment_response,
+          payment_id: data.payment_id,
+          payment_status: data.payment_status,
+          payment_response: data.payment_response && typeof (data.payment_response) != 'string' ? JSON.stringify(data.payment_response) : data.payment_response,
           qty: data.qty,
         };
-        if (
+        if(
           data?.schedule_datetime &&
           data?.schedule_datetime != "" &&
           moment(data.schedule_datetime).isValid()
@@ -4930,7 +4930,7 @@ exports.userGiftCardShare = async (req, res) => {
         } else {
           giftCardObj.is_email_sent = true;
         }
-        if (data.qty && +data.qty > 0) {
+        if(data.qty && +data.qty > 0) {
           const createdSharedGiftCards = [];
           const gCard = await userGiftCardModel.create(giftCardObj);
           const createRewardHistory = await rewardHistoryModel.create({
@@ -4959,7 +4959,7 @@ exports.userGiftCardShare = async (req, res) => {
           const expireDate = moment(giftCardDetails.expire_at).format(
             "YYYY-MM-DD"
           );
-          if (userDetails.email == data.to_email) {
+          if(userDetails.email == data.to_email) {
             const context = {
               userName: userDetails.username,
               giftCardName: giftCardDetails.name,
@@ -4977,7 +4977,7 @@ exports.userGiftCardShare = async (req, res) => {
                 "gift-card-purchased.html"
               ),
               context,
-              (err, html, text, subject) => {
+              (err,html,text,subject) => {
                 transporter.sendMail(
                   {
                     from: "b.a.s.e. <do-not-reply@mail.com>",
@@ -4985,16 +4985,16 @@ exports.userGiftCardShare = async (req, res) => {
                     subject: `B.a.s.e Virtual card`,
                     html: html,
                   },
-                  function (err, result) {
-                    if (err) {
-                      console.log("mail error", err);
+                  function(err,result) {
+                    if(err) {
+                      console.log("mail error",err);
                     }
                   }
                 );
               }
             );
           }
-          if (userDetails.email != data.to_email && !data?.schedule_datetime) {
+          if(userDetails.email != data.to_email && !data?.schedule_datetime) {
             const toUser = await userModel.findOne({
               where: {
                 email: data.to_email,
@@ -5021,7 +5021,7 @@ exports.userGiftCardShare = async (req, res) => {
                 "gift-card-shared.html"
               ),
               context,
-              (err, html, text, subject) => {
+              (err,html,text,subject) => {
                 transporter.sendMail(
                   {
                     from: "b.a.s.e. <do-not-reply@mail.com>",
@@ -5029,9 +5029,9 @@ exports.userGiftCardShare = async (req, res) => {
                     subject: `${userDetails.username} Sent you  B.a.s.e Virtual card !`,
                     html: html,
                   },
-                  function (err, result) {
-                    if (err) {
-                      console.log("mail error", err);
+                  function(err,result) {
+                    if(err) {
+                      console.log("mail error",err);
                     }
                   }
                 );
@@ -5041,7 +5041,7 @@ exports.userGiftCardShare = async (req, res) => {
 
           /** Send Push Notification */
           // For share self to purchase
-          if (userDetails.email == data.to_email) {
+          if(userDetails.email == data.to_email) {
             const notificationObj = {
               params: JSON.stringify({
                 notification_type: NOTIFICATION_TYPES.GIFT_CARD_PURCHASE,
@@ -5068,7 +5068,7 @@ exports.userGiftCardShare = async (req, res) => {
             const notification = await notificationModel.create(
               notificationObj
             );
-            if (notification && notification.id) {
+            if(notification && notification.id) {
               const notificationReceiverObj = {
                 role_id: businessDetails?.role_id,
                 notification_id: notification.id,
@@ -5080,9 +5080,9 @@ exports.userGiftCardShare = async (req, res) => {
             /** FCM push noifiation */
             const activeReceiverDevices = await deviceModel.findAll(
               {
-                where: { status: 1, business_id: giftCardDetails.business_id },
+                where: {status: 1,business_id: giftCardDetails.business_id},
               },
-              { attributes: ["device_token"] }
+              {attributes: ["device_token"]}
             );
             const deviceTokensList = activeReceiverDevices.map(
               (device) => device.device_token
@@ -5115,7 +5115,7 @@ exports.userGiftCardShare = async (req, res) => {
             fcmNotification.SendNotification(notificationPayload);
           }
           // For share to user
-          if (userDetails.email != data.to_email && !data?.schedule_datetime) {
+          if(userDetails.email != data.to_email && !data?.schedule_datetime) {
             const toEmailUserExists = await userModel.findOne({
               where: {
                 email: data.to_email,
@@ -5123,8 +5123,8 @@ exports.userGiftCardShare = async (req, res) => {
                 is_deleted: false,
               },
             });
-            if (toEmailUserExists) {
-              if (giftCardDetails.is_cashback == true) {
+            if(toEmailUserExists) {
+              if(giftCardDetails.is_cashback == true) {
                 const giftcardcashbackamount = (
                   (giftCardDetails.amount *
                     giftCardDetails.cashback_percentage) /
@@ -5157,8 +5157,8 @@ exports.userGiftCardShare = async (req, res) => {
                   isDeleted: false,
                 },
               });
-              if (loyalty != null) {
-                if (loyalty.points_redeemed == true && loyalty) {
+              if(loyalty != null) {
+                if(loyalty.points_redeemed == true && loyalty) {
                   const giftcardloyaltyamount = loyalty.points_earned || 0.0;
                   const userloyalty =
                     toEmailUserExists.total_loyalty_points || 0.0;
@@ -5194,7 +5194,7 @@ exports.userGiftCardShare = async (req, res) => {
               const notification = await notificationModel.create(
                 notificationObj
               );
-              if (notification && notification.id) {
+              if(notification && notification.id) {
                 const notificationReceiverObj = {
                   role_id: toEmailUserExists.role_id,
                   notification_id: notification.id,
@@ -5208,8 +5208,8 @@ exports.userGiftCardShare = async (req, res) => {
               }
               /** FCM push noifiation */
               const activeReceiverDevices = await deviceModel.findAll(
-                { where: { status: 1, user_id: toEmailUserExists.id } },
-                { attributes: ["device_token"] }
+                {where: {status: 1,user_id: toEmailUserExists.id}},
+                {attributes: ["device_token"]}
               );
               const deviceTokensList = activeReceiverDevices.map(
                 (device) => device.device_token
@@ -5264,7 +5264,7 @@ exports.userGiftCardShare = async (req, res) => {
             const notification = await notificationModel.create(
               notificationObj
             );
-            if (notification && notification.id) {
+            if(notification && notification.id) {
               const notificationReceiverObj = {
                 role_id: businessDetails.role_id,
                 notification_id: notification.id,
@@ -5287,7 +5287,7 @@ exports.userGiftCardShare = async (req, res) => {
           );
         } else {
           return res.send(
-            setRes(resCode.BadRequest, false, "Invalid value for Qty.", null)
+            setRes(resCode.BadRequest,false,"Invalid value for Qty.",null)
           );
         }
       } else {
@@ -5310,17 +5310,17 @@ exports.userGiftCardShare = async (req, res) => {
         )
       );
     }
-  } catch (error) {
+  } catch(error) {
     console.log(error);
     return res.send(
-      setRes(resCode.BadRequest, false, "Something went wrong!", null)
+      setRes(resCode.BadRequest,false,"Something went wrong!",null)
     );
   }
 };
 // Purchase gift card  END
 
 // User giftcards list
-exports.userGiftCardList = async (req, res) => {
+exports.userGiftCardList = async (req,res) => {
   try {
     const data = req.body;
     const user = req?.user;
@@ -5331,20 +5331,20 @@ exports.userGiftCardList = async (req, res) => {
     const userGiftCardsModel = models.user_giftcards;
     const Op = models.Op;
     const currentDate = moment().format("YYYY-MM-DD");
-    let requiredFields = _.reject(["page", "page_size"], (o) => {
-      return _.has(data, o);
+    let requiredFields = _.reject(["page","page_size"],(o) => {
+      return _.has(data,o);
     });
 
     const userDetails = await userModel.findOne({
-      where: { email: userEmail, is_active: true, is_deleted: false },
+      where: {email: userEmail,is_active: true,is_deleted: false},
     });
-    if (!userDetails) {
+    if(!userDetails) {
       return res.send(
-        setRes(resCode.ResourceNotFound, false, "User not found", null)
+        setRes(resCode.ResourceNotFound,false,"User not found",null)
       );
     }
-    if (requiredFields == "") {
-      if (data.page < 0 || data.page === 0) {
+    if(requiredFields == "") {
+      if(data.page < 0 || data.page === 0) {
         return res.send(
           setRes(
             resCode.BadRequest,
@@ -5380,7 +5380,7 @@ exports.userGiftCardList = async (req, res) => {
           },
         ],
         attributes: {
-          exclude: ["status", "isDeleted", "createdAt", "updatedAt"],
+          exclude: ["status","isDeleted","createdAt","updatedAt"],
           include: [
             [
               models.sequelize.literal(
@@ -5390,10 +5390,10 @@ exports.userGiftCardList = async (req, res) => {
             ],
           ],
         },
-        order: [["createdAt", "DESC"]],
+        order: [["createdAt","DESC"]],
       };
       const businessCond = data.business_id
-        ? { business_id: data.business_id }
+        ? {business_id: data.business_id}
         : {};
       condition.where = {
         status: true,
@@ -5441,33 +5441,33 @@ exports.userGiftCardList = async (req, res) => {
         )
       );
     }
-  } catch (error) {
+  } catch(error) {
     return res.send(
-      setRes(resCode.BadRequest, false, "Something went wrong!", null)
+      setRes(resCode.BadRequest,false,"Something went wrong!",null)
     );
   }
 };
 
 // Gift Card Redeem
-exports.redeemGiftCard = async (req, res) => {
+exports.redeemGiftCard = async (req,res) => {
   try {
     const giftCardsModel = models.gift_cards;
     const userGiftCardsModel = models.user_giftcards;
     const data = req.body;
     const user = req.user;
     const requiredFields = _.reject(
-      ["user_gift_card_id", "redeem_amount"],
+      ["user_gift_card_id","redeem_amount"],
       (o) => {
-        return _.has(data, o);
+        return _.has(data,o);
       }
     );
 
-    if (requiredFields == "") {
+    if(requiredFields == "") {
       const giftCardDetails = await userGiftCardsModel.findOne({
         include: [
           {
             model: giftCardsModel,
-            attributes: ["id", "amount", "name", "expire_at", "description"],
+            attributes: ["id","amount","name","expire_at","description"],
           },
         ],
         where: {
@@ -5476,18 +5476,18 @@ exports.redeemGiftCard = async (req, res) => {
         },
       });
       // Check for user gift card exist for user
-      if (!giftCardDetails) {
+      if(!giftCardDetails) {
         return res.send(
-          setRes(resCode.BadRequest, false, "User Giftcard not found.", null)
+          setRes(resCode.BadRequest,false,"User Giftcard not found.",null)
         );
       }
 
       // Check for gift card expiration
       const expireAt = giftCardDetails?.dataValues?.gift_card.expire_at;
       const currentDate = moment().format("YYYY-MM-DD");
-      if (currentDate > expireAt) {
+      if(currentDate > expireAt) {
         return res.send(
-          setRes(resCode.BadRequest, false, "Virtaulcard is expired", null)
+          setRes(resCode.BadRequest,false,"Virtaulcard is expired",null)
         );
       }
 
@@ -5497,7 +5497,7 @@ exports.redeemGiftCard = async (req, res) => {
         giftCardDetails?.dataValues?.redeemed_amount || 0
       );
       const giftCardRemainingAmount = giftCardAmount - giftCardRedeemedAmount;
-      if (data.redeem_amount > giftCardRemainingAmount) {
+      if(data.redeem_amount > giftCardRemainingAmount) {
         return res.send(
           setRes(
             resCode.BadRequest,
@@ -5520,7 +5520,7 @@ exports.redeemGiftCard = async (req, res) => {
           },
         }
       );
-      if (redeemeUpdatedRecord) {
+      if(redeemeUpdatedRecord) {
         const updatedUserGiftCard = await userGiftCardsModel.findOne({
           include: [
             {
@@ -5538,7 +5538,7 @@ exports.redeemGiftCard = async (req, res) => {
             },
           ],
           attributes: {
-            exclude: ["status", "isDeleted", "createdAt", "updatedAt"],
+            exclude: ["status","isDeleted","createdAt","updatedAt"],
             include: [
               [
                 models.sequelize.literal(
@@ -5580,14 +5580,14 @@ exports.redeemGiftCard = async (req, res) => {
         )
       );
     }
-  } catch (error) {
+  } catch(error) {
     return res.send(
-      setRes(resCode.BadRequest, false, "Something went wrong!", null)
+      setRes(resCode.BadRequest,false,"Something went wrong!",null)
     );
   }
 };
 
-exports.recommendedGiftCard = async (req, res) => {
+exports.recommendedGiftCard = async (req,res) => {
   try {
     const giftCardsModel = models.gift_cards;
     const Op = models.Op;
@@ -5595,13 +5595,13 @@ exports.recommendedGiftCard = async (req, res) => {
     const user = req.user;
     const currentDate = moment().format("YYYY-MM-DD");
     const requiredFields = _.reject(
-      ["page", "page_size", "giftcard_id"],
+      ["page","page_size","giftcard_id"],
       (o) => {
-        return _.has(data, o);
+        return _.has(data,o);
       }
     );
 
-    if (data.page < 0 || data.page === 0) {
+    if(data.page < 0 || data.page === 0) {
       return res.send(
         setRes(
           resCode.BadRequest,
@@ -5615,13 +5615,13 @@ exports.recommendedGiftCard = async (req, res) => {
     const skip = data.page_size * (data.page - 1);
     const limit = parseInt(data.page_size);
 
-    if (requiredFields == "") {
+    if(requiredFields == "") {
       const giftCardExists = await giftCardsModel.findOne({
         where: {
           id: data.giftcard_id,
         },
       });
-      if (!giftCardExists) {
+      if(!giftCardExists) {
         return res.send(
           setRes(
             resCode.BadRequest,
@@ -5646,16 +5646,16 @@ exports.recommendedGiftCard = async (req, res) => {
             [Op.gte]: currentDate,
           },
         },
-        order: [["createdAt", "DESC"]],
+        order: [["createdAt","DESC"]],
       });
 
       const totalRecords = +giftCards.count || 0;
 
-      for (let giftCardObj of giftCards.rows) {
-        if (giftCardObj.image != null) {
+      for(let giftCardObj of giftCards.rows) {
+        if(giftCardObj.image != null) {
           var profile_picture = await awsConfig
             .getSignUrl(giftCardObj.image)
-            .then(function (res) {
+            .then(function(res) {
               giftCardObj.dataValues.image = res;
             });
         }
@@ -5686,14 +5686,14 @@ exports.recommendedGiftCard = async (req, res) => {
         )
       );
     }
-  } catch (error) {
+  } catch(error) {
     return res.send(
-      setRes(resCode.BadRequest, false, "Something went wrong!", null)
+      setRes(resCode.BadRequest,false,"Something went wrong!",null)
     );
   }
 };
 
-exports.priceFilterForWallet = async (req, res) => {
+exports.priceFilterForWallet = async (req,res) => {
   try {
     const data = req.query;
     const promises = [];
@@ -5705,10 +5705,10 @@ exports.priceFilterForWallet = async (req, res) => {
     const loyaltyPointModel = models.loyalty_points;
     const Op = models.Op;
     const currentDate = moment().format("YYYY-MM-DD");
-    const requiredFields = _.reject([], (o) => {
-      return _.has(data, o);
+    const requiredFields = _.reject([],(o) => {
+      return _.has(data,o);
     });
-    if (requiredFields == "") {
+    if(requiredFields == "") {
       var typeArr = [
         "gift_cards",
         "cashbacks",
@@ -5721,34 +5721,34 @@ exports.priceFilterForWallet = async (req, res) => {
         request_type.includes(",") && request_type.split(",").length > 0
           ? request_type.split(",")
           : request_type && request_type.trim() !== ""
-          ? [request_type]
-          : typeArr;
+            ? [request_type]
+            : typeArr;
       reqTypeArr = reqTypeArr.filter((tp) => tp && tp.trim() !== "");
       const requestTypeNotExists = reqTypeArr.filter(
         (tp) => !typeArr.includes(tp) && tp !== ""
       );
-      if (reqTypeArr && requestTypeNotExists.length !== 0) {
+      if(reqTypeArr && requestTypeNotExists.length !== 0) {
         return res.send(
-          setRes(resCode.BadRequest, false, "Please select valid type.", null)
+          setRes(resCode.BadRequest,false,"Please select valid type.",null)
         );
       }
       promises.push(
         await giftCardModel
           .findAll({
-            where: { isDeleted: false, status: true, deleted_at: null },
+            where: {isDeleted: false,status: true,deleted_at: null},
             attributes: {
               include: [
                 "id",
                 "amount",
-                [models.sequelize.literal("'gift_cards'"), "type"],
+                [models.sequelize.literal("'gift_cards'"),"type"],
               ],
             },
           })
           .then(async (giftCardData) => {
-            if (giftCardData) {
+            if(giftCardData) {
               const dataArray = [];
               // Update Sign URL
-              for (const data of giftCardData) {
+              for(const data of giftCardData) {
                 let result = JSON.parse(JSON.stringify(data));
                 dataArray.push(result);
               }
@@ -5758,20 +5758,20 @@ exports.priceFilterForWallet = async (req, res) => {
           }),
         await cashbackModel
           .findAll({
-            where: { isDeleted: false, status: true, deleted_at: null },
+            where: {isDeleted: false,status: true,deleted_at: null},
             attributes: {
               include: [
                 "id",
                 "cashback_type",
                 "cashback_value",
-                [models.sequelize.literal("'cashbacks'"), "type"],
+                [models.sequelize.literal("'cashbacks'"),"type"],
               ],
             },
           })
           .then(async (CashbackData) => {
-            if (CashbackData) {
+            if(CashbackData) {
               const dataArray = [];
-              for (const data of CashbackData) {
+              for(const data of CashbackData) {
                 let result = JSON.parse(JSON.stringify(data));
                 result.amount = data.cashback_value;
                 dataArray.push(result);
@@ -5782,20 +5782,20 @@ exports.priceFilterForWallet = async (req, res) => {
           }),
         await discountModel
           .findAll({
-            where: { isDeleted: false, status: true, deleted_at: null },
+            where: {isDeleted: false,status: true,deleted_at: null},
             attributes: {
               include: [
                 "id",
                 "discount_type",
                 "discount_value",
-                [models.sequelize.literal("'discounts'"), "type"],
+                [models.sequelize.literal("'discounts'"),"type"],
               ],
             },
           })
           .then(async (DiscountData) => {
-            if (DiscountData) {
+            if(DiscountData) {
               const dataArray = [];
-              for (const data of DiscountData) {
+              for(const data of DiscountData) {
                 let result = JSON.parse(JSON.stringify(data));
                 result.amount = data.discount_value;
                 dataArray.push(result);
@@ -5806,20 +5806,20 @@ exports.priceFilterForWallet = async (req, res) => {
           }),
         await couponeModel
           .findAll({
-            where: { isDeleted: false, status: true, deleted_at: null },
+            where: {isDeleted: false,status: true,deleted_at: null},
             attributes: {
               include: [
                 "id",
                 "value_type",
                 "coupon_value",
-                [models.sequelize.literal("'coupones'"), "type"],
+                [models.sequelize.literal("'coupones'"),"type"],
               ],
             },
           })
           .then(async (CouponeData) => {
-            if (CouponeData) {
+            if(CouponeData) {
               const dataArray = [];
-              for (const data of CouponeData) {
+              for(const data of CouponeData) {
                 let result = JSON.parse(JSON.stringify(data));
                 result.amount = data.coupon_value;
                 dataArray.push(result);
@@ -5830,19 +5830,19 @@ exports.priceFilterForWallet = async (req, res) => {
           }),
         await loyaltyPointModel
           .findAll({
-            where: { isDeleted: false, status: true, deleted_at: null },
+            where: {isDeleted: false,status: true,deleted_at: null},
             attributes: {
               include: [
                 "id",
                 "amount",
-                [models.sequelize.literal("'loyalty_points'"), "type"],
+                [models.sequelize.literal("'loyalty_points'"),"type"],
               ],
             },
           })
           .then(async (LoyaltyPointData) => {
-            if (LoyaltyPointData) {
+            if(LoyaltyPointData) {
               const dataArray = [];
-              for (const data of LoyaltyPointData) {
+              for(const data of LoyaltyPointData) {
                 let result = JSON.parse(JSON.stringify(data));
                 dataArray.push(result);
               }
@@ -5870,33 +5870,33 @@ exports.priceFilterForWallet = async (req, res) => {
       const mergedArray = mergeRandomArrayObjects(arrays);
       let result = mergedArray;
 
-      if (!_.isEmpty(request_type)) {
-        result = _.filter(result, (reward) => reqTypeArr.includes(reward.type));
+      if(!_.isEmpty(request_type)) {
+        result = _.filter(result,(reward) => reqTypeArr.includes(reward.type));
         //result = _.filter(result, {type: request_type})
       }
       var filters = [];
       const attrToExtract = "amount";
-      const extractedData = _.map(result, (obj) =>
+      const extractedData = _.map(result,(obj) =>
         Math.round(obj[attrToExtract])
       );
 
-      if (!_.isEmpty(extractedData)) {
+      if(!_.isEmpty(extractedData)) {
         var minValue = null;
-        if (extractedData.length == 1) {
+        if(extractedData.length == 1) {
           minValue = 10;
         } else {
-          if (Math.min(...extractedData) <= 5) {
+          if(Math.min(...extractedData) <= 5) {
             minValue = 10;
           } else {
             minValue = Math.min(...extractedData);
           }
         }
         const maxValue = Math.max(...extractedData);
-        filters = generateFilters(minValue, maxValue, 2);
+        filters = generateFilters(minValue,maxValue,2);
       }
 
       res.send(
-        setRes(resCode.OK, true, "Get rewards list successfully", filters)
+        setRes(resCode.OK,true,"Get rewards list successfully",filters)
       );
     } else {
       res.send(
@@ -5908,12 +5908,12 @@ exports.priceFilterForWallet = async (req, res) => {
         )
       );
     }
-  } catch (error) {
-    res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null));
+  } catch(error) {
+    res.send(setRes(resCode.BadRequest,false,"Something went wrong!",null));
   }
 };
 
-exports.userGiftCardDetails = async (req, res) => {
+exports.userGiftCardDetails = async (req,res) => {
   try {
     const data = req.params;
     const giftCardId = data.id;
@@ -5932,14 +5932,14 @@ exports.userGiftCardDetails = async (req, res) => {
         {
           model: giftCardModel,
           attributes: {
-            include: [[models.sequelize.literal("'gift_cards'"), "type"]],
+            include: [[models.sequelize.literal("'gift_cards'"),"type"]],
           },
         },
       ],
     });
-    if (!userGiftCard) {
+    if(!userGiftCard) {
       return res.send(
-        setRes(resCode.ResourceNotFound, false, "User giftcard not found", null)
+        setRes(resCode.ResourceNotFound,false,"User giftcard not found",null)
       );
     }
     const giftCardDetail = userGiftCard.gift_card;
@@ -5951,7 +5951,7 @@ exports.userGiftCardDetails = async (req, res) => {
         is_deleted: false,
       },
     });
-    if (userGiftCard.payment_status === 2) {
+    if(userGiftCard.payment_status === 2) {
       const purchase_for = userGiftCard?.to_email
         ? user?.user == userGiftCard?.to_email
           ? "Self"
@@ -5962,7 +5962,7 @@ exports.userGiftCardDetails = async (req, res) => {
         userGiftCard?.purchase_date || "";
       giftCardDetail.dataValues.redeemed_amount =
         userGiftCard?.redeemed_amount || "";
-      if (userGiftCard?.from) {
+      if(userGiftCard?.from) {
         giftCardDetail.dataValues.from = userGiftCard?.from || "";
         giftCardDetail.dataValues.note = userGiftCard?.note || "";
       }
@@ -5983,16 +5983,16 @@ exports.userGiftCardDetails = async (req, res) => {
       totalPurchasedGiftcard?.length || 0;
 
     return res.send(
-      setRes(resCode.OK, true, "User Virtual card details!", giftCardDetail)
+      setRes(resCode.OK,true,"User Virtual card details!",giftCardDetail)
     );
-  } catch (error) {
+  } catch(error) {
     return res.send(
-      setRes(resCode.BadRequest, false, "Something went wrong!", null)
+      setRes(resCode.BadRequest,false,"Something went wrong!",null)
     );
   }
 };
 // Function to generate filters
-function generateFilters(min, max, size) {
+function generateFilters(min,max,size) {
   const midValue = Math.floor((min + max) / size);
 
   return [

@@ -125,12 +125,12 @@ var NotificationQueue = new Queue(async function(task,cb) {
 			}
 		}).then(async user => {
 			if(user != null) {
-				const deviceToken = await deviceModel.findOne({where: {status: 1,user_id: user?.id}});
+				const deviceToken = await deviceModel.findOne({where: {status: 1,user_id: user.id}});
 				if(deviceToken) {
 					NotificationData.device_token = deviceToken?.device_token;
 					NotificationData.message = task.text
 					NotificationData.title = task.from_name
-					NotificationData.content = {notification_type: NOTIFICATION_TYPES.CHAT_NOTIFICATION,user_id: user.id}
+					NotificationData.content = {notification_type: NOTIFICATION_TYPES.CHAT_NOTIFICATION,user_id: user.id,business_id: task.business_id}
 					notification.SendNotification(NotificationData)
 				}
 			}
@@ -144,12 +144,12 @@ var NotificationQueue = new Queue(async function(task,cb) {
 			}
 		}).then(async business => {
 			if(business != null) {
-				const deviceToken = await deviceModel.findOne({where: {status: 1,business_id: business?.id}});
+				const deviceToken = await deviceModel.findOne({where: {status: 1,business_id: business.id}});
 				if(deviceToken) {
 					NotificationData.device_token = deviceToken?.device_token
 					NotificationData.message = task.text
 					NotificationData.title = task.from_name
-					NotificationData.content = {notification_type: NOTIFICATION_TYPES.CHAT_NOTIFICATION,user_id: business.id}
+					NotificationData.content = {notification_type: NOTIFICATION_TYPES.CHAT_NOTIFICATION,user_id: task.user_id,business_id: business.id}
 					notification.SendNotification(NotificationData)
 				}
 			}
@@ -164,7 +164,6 @@ var RemoveDataQueue = new Queue(function(task,cb) {
 })
 
 NotificationRef.on("child_added",function(snapshot) {
-
 	snapshotVal = JSON.parse(JSON.stringify(snapshot.val()))
 	snapshotKey = JSON.parse(JSON.stringify(snapshot.key))
 	NotificationQueue.push(snapshotVal);

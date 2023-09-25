@@ -96,7 +96,7 @@ exports.create = async (req,res) => {
 				}
 				if(valcheck) {
 					var couponAmount = lowerpriceAmount.price * data.coupon_value / 100;
-					if((data.value_type == true && data.coupon_value >= lowerpriceAmount.price) || (data.value_type == false && couponAmount >= lowerpriceAmount.price)) {
+					if((data.value_type == true && data.coupon_value >= lowerpriceAmount.price) || (data.value_type == false && lowerpriceAmount.price >= couponAmount)) {
 						return res.send(setRes(resCode.BadRequest,false,"Please enter coupon value less then selected products min value!",null))
 					} else {
 						await businessModel.findOne({
@@ -254,7 +254,7 @@ exports.update = async (req,res) => {
 						}
 						var lowerpriceAmount = products[0].price;
 						var couponAmount = data.value_type == false ? lowerpriceAmount * data.coupon_value / 100 : data.coupon_value;
-						if((data.value_type == true && data.coupon_value >= couponAmount) || (data.value_type == false && couponAmount >= couponAmount)) {
+						if((data.value_type == true && data.coupon_value >= couponAmount) || (data.value_type == false && lowerpriceAmount >= couponAmount)) {
 							return res.send(setRes(resCode.BadRequest,false,"Please enter coupon value less then selected products min value!",null))
 						} else {
 							await couponeModel.findOne({
@@ -497,7 +497,7 @@ exports.getUserCouponList = async (req,res) => {
 					isDeleted: false,
 					status: 1,
 					expire_at: {
-						[Op.gt]: currentDate
+						[Op.gte]: currentDate
 					}
 				}
 			}
