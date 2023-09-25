@@ -1774,13 +1774,14 @@ exports.homeList = async (req,res) => {
 		});
 
 		const orderDetailsModel = models.order_details;
-		const orderDetails = await orderDetailsModel.findAll({
+		const orderDetails = await orderModel.findAll({
 			where: {
 				business_id: data.business_id,
+				order_status: 1,
 				is_deleted: false
 			},
 			attributes: [
-				[models.sequelize.fn('count',models.sequelize.col('order_id')),'total_orders'],
+				[models.sequelize.fn('count',models.sequelize.col('id')),'total_orders'],
 			],
 			raw: true,
 			group: ['business_id']
@@ -1789,7 +1790,7 @@ exports.homeList = async (req,res) => {
 		let resData = {};
 		resData.unread_notifications = unreadNotification?.count;
 		resData.total_sale = !_.isEmpty(orderCount) ? orderCount[0].total_amount : 0.00;
-		resData.total_ongoing_orders = !_.isEmpty(orderCount) ? orderCount[0].total_orders : 0.00;
+		resData.total_ongoing_orders = !_.isEmpty(orderDetails) ? orderDetails[0].total_orders : 0.00;
 		resData.total_products = totalProducts;
 		resData.rewards_and_loyalty = result;
 		resData.events = eventDataArray;

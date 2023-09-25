@@ -700,6 +700,20 @@ exports.createProduct = async (req,res) => {
 				}
 			}
 
+			if(data.cost_price && !_.isEmpty(data.cost_price)) {
+				if(data.cost_price <= 0) {
+					validation = false;
+					return res.send(
+						setRes(
+							resCode.BadRequest,
+							false,
+							"Please enter cost price value more than 0.",
+							null
+						)
+					);
+				}
+			}
+
 			if(data.sub_category_id) {
 				await categoryModel
 					.findOne({
@@ -984,6 +998,21 @@ exports.UpdateProductDetail = async (req,res) => {
 					);
 				}
 			}
+
+			if(data.cost_price && !_.isEmpty(data.cost_price)) {
+				if(data.cost_price <= 0) {
+					validation = false;
+					return res.send(
+						setRes(
+							resCode.BadRequest,
+							false,
+							"Please enter cost price value more than 0.",
+							null
+						)
+					);
+				}
+			}
+
 			if(req.files) {
 				const filesData = req.files;
 				const total_image = image.length + filesData.length;
@@ -1900,6 +1929,7 @@ ORDER BY name ASC
 				},
 				type: Sequelize.QueryTypes.SELECT,
 			});
+
 			for(const data of allCategorys) {
 				if(data.image != null) {
 					const signurl = await awsConfig
@@ -1911,9 +1941,15 @@ ORDER BY name ASC
 					data.image = commonConfig.default_image;
 				}
 			}
-			const totalRecords = allCategorys[0].total_count;
+
+			const updatedResponse = allCategorys.map(obj => {
+				obj.is_editable_deleteble = obj.type == 'admin' ? false : true;
+				return obj;
+			});
+
+			const totalRecords = updatedResponse[0].total_count;
 			const response = new pagination(
-				allCategorys,
+				updatedResponse,
 				totalRecords,
 				parseInt(data.page),
 				parseInt(data.page_size)
@@ -2450,9 +2486,13 @@ exports.ProductTypeList = async (req,res) => {
 					data.image = commonConfig.default_image;
 				}
 			}
-			const totalRecords = allSubCategorys[0].total_count;
+			const updatedResponse = allSubCategorys.map(obj => {
+				obj.is_editable_deleteble = obj.type == 'admin' ? false : true;
+				return obj;
+			});
+			const totalRecords = updatedResponse[0].total_count;
 			const response = new pagination(
-				allSubCategorys,
+				updatedResponse,
 				parseInt(totalRecords),
 				parseInt(data.page),
 				parseInt(data.page_size)
