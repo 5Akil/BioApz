@@ -1943,7 +1943,7 @@ ORDER BY name ASC
 			}
 
 			const updatedResponse = allCategorys.map(obj => {
-				obj.is_editable_deleteble = obj.type == 'admin' ? false : true;
+				obj.is_editable_deletable = obj.type == 'admin' ? false : true;
 				return obj;
 			});
 
@@ -2487,7 +2487,7 @@ exports.ProductTypeList = async (req,res) => {
 				}
 			}
 			const updatedResponse = allSubCategorys.map(obj => {
-				obj.is_editable_deleteble = obj.type == 'admin' ? false : true;
+				obj.is_editable_deletable = obj.type == 'admin' ? false : true;
 				return obj;
 			});
 			const totalRecords = updatedResponse[0].total_count;
