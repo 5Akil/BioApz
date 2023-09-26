@@ -783,7 +783,7 @@ exports.createProduct = async (req,res) => {
 							setRes(
 								resCode.BadRequest,
 								false,
-								"You can upload only jpg, jpeg, png, gif files",
+								"You can upload only jpg, jpeg, png files",
 								null
 							)
 						);
@@ -1051,7 +1051,7 @@ exports.UpdateProductDetail = async (req,res) => {
 							setRes(
 								resCode.BadRequest,
 								false,
-								"You can upload only jpg, jpeg, png, gif files",
+								"You can upload only jpg, jpeg, png files",
 								null
 							)
 						);
@@ -1735,9 +1735,19 @@ exports.CreateCategory = async (req,res) => {
 								where: {
 									id: data.parent_id,
 									is_deleted: false,
-									type: "business",
 								},
 							});
+							if(parentCategory.type == 'admin') {
+								validation = false;
+								return res.send(
+									setRes(
+										resCode.BadRequest,
+										false,
+										"You Can't create sub category in this parent category because it's admin's pre-defined main category!",
+										null
+									)
+								);
+							}
 							if(!parentCategory) {
 								validation = false;
 								return res.send(
@@ -2074,6 +2084,17 @@ exports.UpdateCategory = async (req,res) => {
 						is_deleted: false,
 					},
 				});
+				if(parentCategory && parentCategory.type == 'admin') {
+					validation = false;
+					return res.send(
+						setRes(
+							resCode.BadRequest,
+							false,
+							"You Can't create sub category in this parent category because it's admin's pre-defined main category!",
+							null
+						)
+					);
+				}
 				if(!parentCategory) {
 					validation = false;
 					return res.send(
@@ -2437,30 +2458,56 @@ exports.ProductTypeList = async (req,res) => {
 			var searchPattern = data?.search ? "%" + data.search + "%" : null;
 			var business_id = data.business_id;
 
+			//	var query = `
+			//SELECT *,
+			//	(SELECT COUNT(*) FROM product_categorys
+			//	WHERE is_deleted = false
+			//	AND is_enable = true
+			//	AND parent_id != 0
+			//	${data.category_id ? `AND parent_id = ${data.category_id}` : ""}
+			//	AND (
+			//		(type = 'admin' ${searchPattern ? `AND name LIKE :searchPattern` : ""})
+			//		OR
+			//		(type = 'business' ${searchPattern ? `AND name LIKE :searchPattern` : ""} AND (business_id = :business_id))
+			//	)) AS total_count
+			//FROM product_categorys
+			//WHERE is_deleted = false
+			//AND is_enable = true
+			//AND parent_id != 0
+			//${data.category_id ? `AND parent_id = ${data.category_id}` : ""}
+			//AND (
+			//	(type = 'admin' ${searchPattern ? `AND name LIKE :searchPattern` : ""})
+			//	OR
+			//	(type = 'business' ${searchPattern ? `AND name LIKE :searchPattern` : ""} AND (business_id = :business_id))
+			//)
+			//ORDER BY name ASC
+			//`;
+
 			var query = `
-		SELECT *,
-			(SELECT COUNT(*) FROM product_categorys
-			WHERE is_deleted = false
-			AND is_enable = true
-			AND parent_id != 0
-			${data.category_id ? `AND parent_id = ${data.category_id}` : ""}
-			AND (
-				(type = 'admin' ${searchPattern ? `AND name LIKE :searchPattern` : ""})
-				OR
-				(type = 'business' ${searchPattern ? `AND name LIKE :searchPattern` : ""} AND (business_id = :business_id))
-			)) AS total_count
-		FROM product_categorys
-		WHERE is_deleted = false
-		AND is_enable = true
-		AND parent_id != 0
-		${data.category_id ? `AND parent_id = ${data.category_id}` : ""}
-		AND (
-			(type = 'admin' ${searchPattern ? `AND name LIKE :searchPattern` : ""})
-			OR
-			(type = 'business' ${searchPattern ? `AND name LIKE :searchPattern` : ""} AND (business_id = :business_id))
-		)
-		ORDER BY name ASC
-		`;
+    SELECT pc.id,pc.name,pc.image,
+        (SELECT COUNT(*) FROM product_categorys
+        WHERE is_deleted = false
+        AND is_enable = true
+        AND parent_id != 0
+        ${data.category_id ? `AND parent_id = ${data.category_id}` : ""}
+        AND (
+            (type = 'admin' ${searchPattern ? `AND name LIKE :searchPattern` : ""})
+            OR
+            (type = 'business' ${searchPattern ? `AND name LIKE :searchPattern` : ""} AND (business_id = :business_id))
+        )) AS total_count, parent.name AS category_name
+    FROM product_categorys pc
+    LEFT JOIN product_categorys parent ON pc.parent_id = parent.id
+    WHERE pc.is_deleted = false
+    AND pc.is_enable = true
+    AND pc.parent_id != 0
+    ${data.category_id ? `AND pc.parent_id = ${data.category_id}` : ""}
+    AND (
+        (pc.type = 'admin' ${searchPattern ? `AND pc.name LIKE :searchPattern` : ""})
+        OR
+        (pc.type = 'business' ${searchPattern ? `AND pc.name LIKE :searchPattern` : ""} AND (pc.business_id = :business_id))
+    )
+    ORDER BY pc.name ASC
+    `;
 
 
 			// Check if pagination is requested

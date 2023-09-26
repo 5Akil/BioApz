@@ -80,7 +80,7 @@ exports.CreateEvent = async (req,res) => {
 				} else if(!commonConfig.allowedExtensions.includes(fileExt)) {
 					// the file extension is not allowed
 					validation = false;
-					res.send(setRes(resCode.BadRequest,false,'You can upload only jpg, jpeg, png, gif files',null))
+					res.send(setRes(resCode.BadRequest,false,'You can upload only jpg, jpeg, png files',null))
 				}
 			}
 
@@ -689,7 +689,7 @@ exports.UpdateEvent = async (req,res) => {
 					} else if(!commonConfig.allowedExtensions.includes(fileExt)) {
 						// the file extension is not allowed
 						validation = false;
-						return res.send(setRes(resCode.BadRequest,false,'You can upload only jpg, jpeg, png, gif files',null))
+						return res.send(setRes(resCode.BadRequest,false,'You can upload only jpg, jpeg, png files',null))
 					}
 				}
 

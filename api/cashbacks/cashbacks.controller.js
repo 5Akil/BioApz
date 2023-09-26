@@ -83,7 +83,7 @@ exports.cashbackCreate = async (req,res) => {
 								} else {
 									var lowerpriceAmount = products[0].price;
 									var cashbackAmount = data.cashback_type == false ? lowerpriceAmount * data.cashback_value / 100 : data.cashback_value;
-									if((data.cashback_type == true && data.cashback_value >= cashbackAmount) || (data.cashback_type == false && lowerpriceAmount >= cashbackAmount)) {
+									if((data.cashback_type == true && lowerpriceAmount >= cashbackAmount) || (data.cashback_type == false && cashbackAmount >= lowerpriceAmount)) {
 										return res.send(setRes(resCode.BadRequest,false,"Please enter cashback value less then selected products min value!",null))
 									}
 									else {
@@ -259,7 +259,7 @@ exports.cashbackUpdate = async (req,res) => {
 							});
 							var lowerpriceAmount = products[0].price;
 							var cashbackAmount = data.cashback_type == false ? lowerpriceAmount * data.cashback_value / 100 : data.cashback_value;
-							if((data.cashback_type == true && data.cashback_value >= cashbackAmount) || (data.cashback_type == false && lowerpriceAmount >= cashbackAmount)) {
+							if((data.cashback_type == true && lowerpriceAmount >= cashbackAmount) || (data.cashback_type == false && cashbackAmount >= lowerpriceAmount)) {
 								return res.send(setRes(resCode.BadRequest,false,"Please enter cashback value less then selected products min value!",null))
 							}
 						}

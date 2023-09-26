@@ -28,7 +28,7 @@ const fileFilter = (req,file,cb) => {
   if(file.mimetype === 'image/jpeg' || file.mimetype === 'image/png') {
     cb(null,true)
   } else {
-    cb(new Error('You can upload only jpg, jpeg, png, gif files'),false);
+    cb(new Error('You can upload only jpg, jpeg, png files'),false);
   }
 }
 
