@@ -44,7 +44,7 @@ const NOTIFICATION_MESSAGE = {
     ORDER_DELIVERED_USER: (orderNo='') => `Your Order ${orderNo} delivered successfully!`,
     ORDER_DELIVERED_BUSINESS: (orderNo= '') => `Order ${orderNo} Completed `,
     GET_DISCOUNT_ORDER: (orderNo='') => `User get discount on order ${orderNo}`,
-    GET_LOYALTY_POINT_USER: (orderNo='') => `You received loyalty points on order ${orderNo}`,
+    GET_LOYALTY_POINT_USER: (orderNo='',loyaltyPoints='') => `You received ${loyaltyPoints} loyalty points on order ${orderNo}`,
     GET_LOYALTY_POINT_BUSINESS: (orderNo='') => `User received loyalty points on order ${orderNo}`,
     CASHBACK_REWARD:(orderNo='',amount='') => `Cashback received of amount ${amount} on order ${orderNo}`,
 }
