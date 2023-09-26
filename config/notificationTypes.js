@@ -9,7 +9,7 @@ const NOTIFICATION_TYPES = {
     PLACE_ORDER: "place_order",
     ORDER_DELIVERED: "order_delivered",
     DISCOUNT_USE: "discount_use",
-    LOYALTY_USE: "loyalty_point_use",
+    LOYALTY_RECEIVED: "loyalty_point_received",
     CHAT_NOTIFICATION: "chat_notification",
     CASHBACK_REWARD:"cashback_reward",
 };
@@ -29,6 +29,7 @@ const NOTIFICATION_TITLES = {
     GET_LOYALTY_POINT_USER: () => `Loyalty points on order`,
     GET_LOYALTY_POINT_BUSINESS: () => `Loyalty points on order`,
     CASHBACK_REWARD: () => `Cashback Reward!`,
+    LOYALTY_REDEEMED: () => ``
 }
 
 const NOTIFICATION_MESSAGE = {
@@ -43,7 +44,7 @@ const NOTIFICATION_MESSAGE = {
     ORDER_DELIVERED_USER: (orderNo='') => `Your Order ${orderNo} delivered successfully!`,
     ORDER_DELIVERED_BUSINESS: (orderNo= '') => `Order ${orderNo} Completed `,
     GET_DISCOUNT_ORDER: (orderNo='') => `User get discount on order ${orderNo}`,
-    GET_LOYALTY_POINT_USER: (orderNo='') => `You received loyalty points on order ${orderNo}`,
+    GET_LOYALTY_POINT_USER: (orderNo='',loyaltyPoints='') => `You received ${loyaltyPoints} loyalty points on order ${orderNo}`,
     GET_LOYALTY_POINT_BUSINESS: (orderNo='') => `User received loyalty points on order ${orderNo}`,
     CASHBACK_REWARD:(orderNo='',amount='') => `Cashback received of amount ${amount} on order ${orderNo}`,
 }
