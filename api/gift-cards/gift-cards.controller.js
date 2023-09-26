@@ -21,7 +21,7 @@ const multerS3 = require('multer-s3');
 const pagination = require('../../helpers/pagination');
 
 
-// Create Reward Gift Card START
+// Create Reward Virtual card START
 exports.giftCardCreate = async (req,res) => {
 	try {
 		var data = req.body
@@ -67,7 +67,7 @@ exports.giftCardCreate = async (req,res) => {
 								}
 							}).then(async giftCard => {
 								if(giftCard) {
-									res.send(setRes(resCode.BadRequest,false,"Gift card name already taken.!",null))
+									res.send(setRes(resCode.BadRequest,false,"Virtual card name already taken.!",null))
 								} else {
 									giftCardModel.create(data).then(async giftCardData => {
 										if(giftCardData) {
@@ -78,7 +78,7 @@ exports.giftCardCreate = async (req,res) => {
 											} else {
 												giftCardData.image = commonConfig.default_image
 											}
-											res.send(setRes(resCode.OK,true,"Gift card added successfully",giftCardData))
+											res.send(setRes(resCode.OK,true,"Virtual card added successfully",giftCardData))
 										} else {
 											res.send(setRes(resCode.InternalServer,false,"Internal server error",null))
 										}
@@ -98,9 +98,9 @@ exports.giftCardCreate = async (req,res) => {
 		res.send(setRes(resCode.BadRequest,false,"Something went wrong!",null))
 	}
 }
-// Create Reward Gift Card END
+// Create Reward Virtual card END
 
-// Delete Reward Gift Card START
+// Delete Reward Virtual card START
 exports.deleteGiftCard = async (req,res) => {
 	try {
 		var data = req.params
@@ -141,9 +141,9 @@ exports.deleteGiftCard = async (req,res) => {
 							});
 						}
 					});
-					res.send(setRes(resCode.OK,true,"Gift card deleted successfully",null))
+					res.send(setRes(resCode.OK,true,"Virtual card deleted successfully",null))
 				} else {
-					res.send(setRes(resCode.ResourceNotFound,false,"Gift card not found",null))
+					res.send(setRes(resCode.ResourceNotFound,false,"Virtual card not found",null))
 				}
 			}).catch(error => {
 				res.send(setRes(resCode.BadRequest,false,error,null))
@@ -155,9 +155,9 @@ exports.deleteGiftCard = async (req,res) => {
 		res.send(setRes(resCode.BadRequest,false,"Something went wrong!",null))
 	}
 }
-// Delete Reward Gift Card END
+// Delete Reward Virtual card END
 
-// Update Reward Gift Card START
+// Update Reward Virtual card START
 exports.giftCardUpdate = async (req,res) => {
 	try {
 		var data = req.body;
@@ -185,7 +185,7 @@ exports.giftCardUpdate = async (req,res) => {
 					where: {id: data.id,isDeleted: false,status: true}
 				}).then(async giftCardDetail => {
 					if(_.isEmpty(giftCardDetail)) {
-						res.send(setRes(resCode.ResourceNotFound,false,"Gift Card not found.",null))
+						res.send(setRes(resCode.ResourceNotFound,false,"Virtual card not found.",null))
 					} else {
 						giftCardModel.findOne({
 							where: {isDeleted: false,status: true,name: {[Op.eq]: giftCardName},id: {[Op.ne]: data.id}}
@@ -237,14 +237,14 @@ exports.giftCardUpdate = async (req,res) => {
 												updatedGiftCardDetail.dataValues.totalPurchase = updatedGiftCardDetail?.dataValues?.user_giftcards?.length || 0;
 												delete updatedGiftCardDetail?.dataValues?.user_giftcards;
 
-												res.send(setRes(resCode.OK,true,'Gift card update successfully',updatedGiftCardDetail))
+												res.send(setRes(resCode.OK,true,'Virtual card update successfully',updatedGiftCardDetail))
 											})
 										} else {
-											res.send(setRes(resCode.BadRequest,false,"Fail to update gift card.",null))
+											res.send(setRes(resCode.BadRequest,false,"Fail to update Virtual card.",null))
 										}
 									})
 							} else {
-								res.send(setRes(resCode.BadRequest,false,"Gift card name already taken.!",null))
+								res.send(setRes(resCode.BadRequest,false,"Virtual card name already taken.!",null))
 							}
 						})
 					}
@@ -257,9 +257,9 @@ exports.giftCardUpdate = async (req,res) => {
 		res.send(setRes(resCode.BadRequest,false,"Something went wrong!",null))
 	}
 }
-// Update Reward Gift Card END
+// Update Reward Virtual card END
 
-// LIST Gift Cards 
+// LIST Virtual cards 
 exports.giftCardLists = async (req,res) => {
 	try {
 		const query = req.query;
@@ -281,7 +281,7 @@ exports.giftCardLists = async (req,res) => {
 			],
 			attributes: {exclude: ["status","isDeleted","updatedAt","deleted_at"]}
 		});
-		return res.send(setRes(resCode.OK,true,"Gift Cards List.",giftCards));
+		return res.send(setRes(resCode.OK,true,"Virtual cards List.",giftCards));
 	} catch(error) {
 		return res.send(setRes(resCode.BadRequest,false,"Something went wrong!",null))
 	}
@@ -513,7 +513,7 @@ exports.commonRewardsListOld = async (req,res) => {
 			let giftCardsRecords,cashbackRecords,discountRecords,couponeRecords,loyaltyRecords;
 			let remainingGiftcardRecordLimit = 0,remainingCashbackRecordLimit = 0,remainingDiscountRecordLimit = 0,remainingCouponRecordLimit = 0;
 			/**
-			 * Fetch Gift cards and calculate and forward to next module not fetched record limit 
+			 * Fetch Virtual cards and calculate and forward to next module not fetched record limit 
 			 */
 			if(request_type.includes('gift_cards')) {
 				giftCardsRecords = await giftCardModel.findAndCountAll({
@@ -1425,10 +1425,10 @@ exports.commonRewardsView = async (req,res) => {
 						giftCardData.dataValues.type = 'gift_cards';
 						giftCardData.dataValues.totalPurchase = giftCardData.user_giftcards.length || 0;
 						delete giftCardData.dataValues.user_giftcards;
-						return res.send(setRes(resCode.OK,true,"Get gift card detail successfully.",giftCardData))
+						return res.send(setRes(resCode.OK,true,"Get Virtual card detail successfully.",giftCardData))
 					}
 					else {
-						return res.send(setRes(resCode.ResourceNotFound,false,"Gift card not found.",null))
+						return res.send(setRes(resCode.ResourceNotFound,false,"Virtual card not found.",null))
 					}
 				}).catch(error2 => {
 					res.send(setRes(resCode.InternalServer,false,"Internal server error.",null))

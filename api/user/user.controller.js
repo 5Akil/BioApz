@@ -3594,11 +3594,11 @@ exports.businessBIO = async (req,res) => {
         }
 
         //  Opening Time
-        if(bio.setting != null) {
+        if(bio.setting != null && data.setting_key == 'working_hours') {
           var date = bio.setting.setting_value;
           var arr1 = date.split("_");
-          var from = moment(arr1[0],"HH:mm").format("hh:mm A");
-          var to = moment(arr1[1],"HH:mm").format("hh:mm A");
+          var from = arr1[0] ? moment(arr1[0],"HH:mm").format("hh:mm A") : null;
+          var to = arr1[1] ? moment(arr1[1],"HH:mm").format("hh:mm A") : null;
           bio.dataValues.available = `${from} - ${to}`;
         } else {
           bio.dataValues.available = null;

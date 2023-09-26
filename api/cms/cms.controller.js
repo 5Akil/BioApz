@@ -58,7 +58,7 @@ exports.createCMS = async (req,res) => {
 							data.business_id = authUser.id;
 							data.page_key = data.page_key.toLowerCase();
 							await cmsModel.create(data).then(async cmsData => {
-								return res.send(setRes(resCode.OK,true,'Cms page added successfully',cmsData))
+								return res.send(setRes(resCode.OK,true,'Store data added successfully',cmsData))
 							}).catch(error => {
 								return res.send(setRes(resCode.InternalServer,false,"Fail to add cms data",null))
 							})
@@ -201,7 +201,7 @@ exports.updateCMS = async (req,res) => {
 									page_key: data.page_key
 								}
 							}).then(async pageDetails => {
-								return res.send(setRes(resCode.OK,true,'Cms page updated successfully',pageDetails))
+								return res.send(setRes(resCode.OK,true,'Store data updated successfully',pageDetails))
 							})
 						} else {
 							return res.send(setRes(resCode.InternalServer,false,'Internal server error',null))
