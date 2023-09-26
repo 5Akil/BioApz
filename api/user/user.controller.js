@@ -4060,9 +4060,9 @@ exports.userEventList = async (req,res) => {
     };
     condition.where = {
       is_deleted: false,
-      end_date: {
-        [Op.gt]: currentDate,
-      },
+      //end_date: {
+      //  [Op.gt]: currentDate,
+      //},
     };
     if(!_.isEmpty(data.search)) {
       condition.where = {

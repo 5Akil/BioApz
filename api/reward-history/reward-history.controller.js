@@ -214,7 +214,7 @@ exports.rewardHistoryBusinessList = async (req,res) => {
                             where: {
                                 id: rewardHistory?.reference_reward_id || ''
                             },
-                            attributes: ["id","title","description"]
+                            attributes: ["id","name","description"]
                         });
 
                         //let rewardDetailsObj = await userGiftCardsModel.findOne({
@@ -232,6 +232,9 @@ exports.rewardHistoryBusinessList = async (req,res) => {
                         //rewardDetailsObj.dataValues.description = rewardDetailsObj?.dataValues?.gift_card?.dataValues?.description || "";
                         //rewardDetailsObj.dataValues.is_cashback = rewardDetailsObj?.dataValues?.gift_card?.dataValues?.is_cashback;
                         //delete rewardDetailsObj.dataValues.gift_card;
+                        if(rewardDetailsObj) {
+                            rewardDetailsObj.dataValues.title = rewardDetailsObj.name
+                        }
                         rewardHistory.dataValues.reward_details = rewardDetailsObj;
                         responseArr.push(rewardHistory)
 
@@ -296,6 +299,7 @@ exports.rewardHistoryBusinessList = async (req,res) => {
             res.send(setRes(resCode.BadRequest,false,(requiredFields.toString() + ' are required'),null))
         }
     } catch(error) {
+        console.log(error)
         return res.send(setRes(resCode.BadRequest,false,"Something went wrong!",null))
     }
 }

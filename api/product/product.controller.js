@@ -2484,7 +2484,7 @@ exports.ProductTypeList = async (req,res) => {
 			//`;
 
 			var query = `
-    SELECT pc.id,pc.name,pc.image,
+    SELECT pc.id,pc.name,pc.image,pc.parent_id,pc.type,
         (SELECT COUNT(*) FROM product_categorys
         WHERE is_deleted = false
         AND is_enable = true
