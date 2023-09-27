@@ -1077,16 +1077,16 @@ exports.orderCreate = async (req, res) => {
 			// }
 
 			// Cashback
-			if (data?.applied_cashback && data?.applied_cashback?.cashback_id && data?.applied_cashback?.amount) {
-				const discountId = data?.applied_cashback?.cashback_id;
-				const cashbackReward = await rewardHistoryModel.create({
-					order_id: createdOrder.id,
-					credit_debit: true,
-					amount: cashbackAmount,
-					reference_reward_id: discountId,
-					reference_reward_type: 'cashbacks'
-				}, { transaction: t });
-			}
+			// if (data?.applied_cashback && data?.applied_cashback?.cashback_id && data?.applied_cashback?.amount) {
+			// 	const discountId = data?.applied_cashback?.cashback_id;
+			// 	const cashbackReward = await rewardHistoryModel.create({
+			// 		order_id: createdOrder.id,
+			// 		credit_debit: true,
+			// 		amount: cashbackAmount,
+			// 		reference_reward_id: discountId,
+			// 		reference_reward_type: 'cashbacks'
+			// 	}, { transaction: t });
+			// }
 
 			// Update user wallet loyalty points and cashback
 
@@ -1143,11 +1143,11 @@ exports.orderCreate = async (req, res) => {
 				const notificationReceiver = await notificationReceiverModel.create(notificationReceiverUserObj, { transaction: t });
 			}
 			/** FCM push noifiation */
-			const activeUserReceiverDevices = await deviceModel.findAll({ where: { status: 1, business_id: user.id } }, { attributes: ["device_token"] });
-			const userDeviceTokensList = activeUserReceiverDevices.map((device) => device.device_token);
-			const userUniqueDeviceTokens = Array.from(new Set(userDeviceTokensList));
+			const activeUserReceiverDevices = await deviceModel.findOne({ where: { status: 1, user_id: user.id } }, { attributes: ["device_token"] });
+			// const userDeviceTokensList = activeUserReceiverDevices.map((device) => device.device_token);
+			// const userUniqueDeviceTokens = Array.from(new Set(userDeviceTokensList));
 			const userNotificationPayload = {
-				device_token: userUniqueDeviceTokens,
+				device_token: activeUserReceiverDevices?.device_token,
 				title: NOTIFICATION_TITLES.PLACE_ORDER_USER(),
 				message: NOTIFICATION_MESSAGE.PLACE_ORDER_USER(createdOrder?.order_no),
 				content: { notification_type: NOTIFICATION_TYPES.PLACE_ORDER, notification_id: notificationUser?.id, title: NOTIFICATION_TITLES.PLACE_ORDER_USER(), message: NOTIFICATION_MESSAGE.PLACE_ORDER_USER(createdOrder?.order_no), order_id: createdOrder.id, user_id: user.id, business_id: businessDetails.id }
@@ -1475,11 +1475,11 @@ try {
 			const notificationLoyaltyReceiver = await notificationReceiverModel.create(notificationReceiverLoyaltyObj, { transaction: t });
 		}
 		/** FCM push noifiation */
-		const activeUserReceiverDevices = await deviceModel.findAll({ where: { status: 1, user_id: user.id } }, { attributes: ["device_token"] });
-		const userDeviceTokensList = activeUserReceiverDevices.map((device) => device.device_token);
-		const userUniqueDeviceTokens = Array.from(new Set(userDeviceTokensList))
+		const activeUserReceiverDevices = await deviceModel.findOne({ where: { status: 1, user_id: user.id } }, { attributes: ["device_token"] });
+		// const userDeviceTokensList = activeUserReceiverDevices.map((device) => device.device_token);
+		// const userUniqueDeviceTokens = Array.from(new Set(userDeviceTokensList))
 		const userLoyaltyNotificationPayload = {
-			device_token: userUniqueDeviceTokens,
+			device_token: activeUserReceiverDevices?.device_token,
 			title: NOTIFICATION_TITLES.GET_LOYALTY_POINT_USER(),
 			message: NOTIFICATION_MESSAGE.GET_LOYALTY_POINT_USER(createdOrder?.order_no,loyaltyPoints),
 			content: { notification_type:NOTIFICATION_TYPES.LOYALTY_RECEIVED, notification_id: notificationLoyaltyUser?.id, title: NOTIFICATION_TITLES.GET_LOYALTY_POINT_USER(),message: NOTIFICATION_MESSAGE.GET_LOYALTY_POINT_USER(createdOrder?.order_no,loyaltyPoints), loyalty_id: loyalty?.id, business_id: businessDetails.id }
