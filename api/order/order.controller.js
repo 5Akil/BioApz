@@ -1243,6 +1243,7 @@ const calculateOrderAndProductLoyalty = async (data, createdOrder, user, busines
 				status: 1,
 				isDeleted: 0,
 				business_id: data?.business_id,
+				[models.Op.and]: [models.sequelize.literal(`validity >= CURRENT_DATE`)]
 				// [models.Op.and]: models.sequelize.literal(
 				// 	productIds?.map(id => `FIND_IN_SET(${id}, product_id)`).join(' OR ')
 				//   ),
@@ -1255,7 +1256,8 @@ const calculateOrderAndProductLoyalty = async (data, createdOrder, user, busines
 				loyalty_type: 0,
 				status: 1,
 				isDeleted: 0,
-				business_id: data?.business_id
+				business_id: data?.business_id,
+				[models.Op.and]: [models.sequelize.literal(`validity >= CURRENT_DATE`)]
 			},
 		})
 
@@ -1354,7 +1356,8 @@ const calculateOrderAndProductCashback = async (data,createdOrder, user) => {
 				cashback_on: 0,
 				status: 1,
 				isDeleted: 0,
-				business_id: data?.business_id
+				business_id: data?.business_id,
+				[models.Op.and]: [models.sequelize.literal(`validity_for >= CURRENT_DATE`)]
 			}
 		});
 
@@ -1364,6 +1367,7 @@ const calculateOrderAndProductCashback = async (data,createdOrder, user) => {
 				status: 1,
 				isDeleted: 0,
 				business_id: data?.business_id,
+				[models.Op.and]: [models.sequelize.literal(`validity_for >= CURRENT_DATE`)]
 			},
 		});
 
@@ -1392,6 +1396,14 @@ const calculateOrderAndProductCashback = async (data,createdOrder, user) => {
 							reference_reward_id: cashback?.id,
 							reference_reward_type: 'cashbacks'
 						} ,{ transaction: t });
+						const userCashbackUpdate = await userModel.update({
+							total_cashbacks: models.sequelize.literal(`total_cashbacks + ${cashbackAmount}`)
+						},
+							{
+								where: {
+									id: user.id
+								}
+							}, { transaction: t });
 						if (cashbackReward) {
 							await sendCashbackReceivedNotification(user, createdOrder, cashbackReward, cashbackAmount);
 						}
@@ -1415,6 +1427,14 @@ const calculateOrderAndProductCashback = async (data,createdOrder, user) => {
 					reference_reward_id: cashback?.id,
 					reference_reward_type: 'cashbacks'
 				} ,{ transaction: t });
+				const userCashbackUpdate = await userModel.update({
+					total_cashbacks: models.sequelize.literal(`total_cashbacks + ${cashbackAmount}`)
+				},
+					{
+						where: {
+							id: user.id
+						}
+					}, { transaction: t });
 				if (cashbackReward) {
 					await sendCashbackReceivedNotification(user, createdOrder, cashbackReward, cashbackAmount);
 				}
@@ -1428,7 +1448,7 @@ const calculateOrderAndProductCashback = async (data,createdOrder, user) => {
 	}
 }
 
-/** Send User and Business Notifcation for Loyalty points*/
+/** Send User and Business Notification for Loyalty points*/
 const sendLoyaltyReceivedNotification = async (createdOrder,loyalty,businessDetails,user,loyaltyPoints,t) => {
 
 		const notificationModel = models.notifications;
@@ -1464,7 +1484,7 @@ try {
 			message: NOTIFICATION_MESSAGE.GET_LOYALTY_POINT_USER(createdOrder?.order_no,loyaltyPoints),
 			content: { notification_type:NOTIFICATION_TYPES.LOYALTY_RECEIVED, notification_id: notificationLoyaltyUser?.id, title: NOTIFICATION_TITLES.GET_LOYALTY_POINT_USER(),message: NOTIFICATION_MESSAGE.GET_LOYALTY_POINT_USER(createdOrder?.order_no,loyaltyPoints), loyalty_id: loyalty?.id, business_id: businessDetails.id }
 		};
-		fcmNotification.SendNotification(userLoyaltyNotificationPayload);
+			await fcmNotification.SendNotification(userLoyaltyNotificationPayload);
 
 		// send to Business
 		// const notificationLoyaltyBusinessObj = {
@@ -1499,7 +1519,7 @@ try {
 	}
 }
 
-/** Send User Notifcation for cashback rewards on product and orders*/
+/** Send User Notification for cashback rewards on product and orders*/
 const sendCashbackReceivedNotification = async (user, createdOrder, cashbackReward, cashbackAmount) => {
 	const notificationModel = models.notifications;
 		const notificationReceiverModel = models.notification_receivers;
