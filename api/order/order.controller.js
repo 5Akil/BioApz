@@ -822,7 +822,6 @@ exports.orderCreate = async (req, res) => {
 			const orderDetails = [];
 			if (createdOrder.id) {
 				for (const product of data.products) {
-					console.log('product', product);
 					const productDetails = await productModel.findOne({ where: { id: product.product_id, business_id: data.business_id, is_deleted: false } });
 					if (!productDetails) {
 						throw new Error('Product details not found for business!');
@@ -1215,14 +1214,14 @@ exports.orderCreate = async (req, res) => {
 			
 			calculateOrderAndProductLoyalty(data,createdOrder,user,businessDetails);
 			calculateOrderAndProductCashback(data,createdOrder,user);
-			t.commit();
-			return res.send(setRes(resCode.OK, true, 'Order Created Successfully!', null));
+			await t.commit();
+			return res.send(setRes(resCode.OK, true, 'Order Created Successfully!', createdOrder));
 		} else {
 			return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null));
 		}
 	} catch (error) {
 		console.log(error);
-		t.rollback();
+		await t.rollback();
 		return res.send(setRes(resCode.BadRequest, false, error?.message || "Something went wrong", "", null))
 	}
 }
@@ -1295,7 +1294,8 @@ const calculateOrderAndProductLoyalty = async (data, createdOrder, user, busines
 								id: user.id
 							}
 						}, { transaction: t });
-					if (userCashbackUpdate) {
+						console.log('User loyalty Updated',userCashbackUpdate[0]);
+					if (userCashbackUpdate?.length) {
 						await sendLoyaltyReceivedNotification(createdOrder,businessProductLoyalty,businessDetails,user,earnPoints,t)
 					}
 				}
@@ -1325,7 +1325,8 @@ const calculateOrderAndProductLoyalty = async (data, createdOrder, user, busines
 										id: user.id
 									}
 								}, { transaction: t });
-							if (userCashbackUpdate) {
+								console.log('User loyalty Updated order', userCashbackUpdate);
+							if (userCashbackUpdate?.length) {
 								await sendLoyaltyReceivedNotification(createdOrder,businessOrderLoyalty,businessDetails,user,earnPoints,t)
 							}
 						}
@@ -1333,9 +1334,9 @@ const calculateOrderAndProductLoyalty = async (data, createdOrder, user, busines
 				}
 			}
 		}
-		t.commit();
+		await t.commit();
 	} catch (error) {
-		t.rollback();
+		await t.rollback();
 		console.error('Error occurred in loyalty calculation', error);
 		throw error;
 	}
@@ -1404,7 +1405,7 @@ const calculateOrderAndProductCashback = async (data,createdOrder, user) => {
 									id: user.id
 								}
 							}, { transaction: t });
-						if (cashbackReward) {
+						if (userCashbackUpdate?.length) {
 							await sendCashbackReceivedNotification(user, createdOrder, cashbackReward, cashbackAmount);
 						}
 	
@@ -1435,14 +1436,14 @@ const calculateOrderAndProductCashback = async (data,createdOrder, user) => {
 							id: user.id
 						}
 					}, { transaction: t });
-				if (cashbackReward) {
+				if (userCashbackUpdate?.length) {
 					await sendCashbackReceivedNotification(user, createdOrder, cashbackReward, cashbackAmount);
 				}
 			}
 		}
-		t.commit();
+		await t.commit();
 	} catch (error) {
-		t.rollback();
+		await t.rollback();
 		console.error('Error occurred in cashback calculation', error);
 		throw error;
 	}
@@ -1678,13 +1679,13 @@ exports.updateOrderStatus = async (req, res) => {
 				};
 				fcmNotification.SendNotification(businessNotificationPayload);
 			}
-			t.commit();
+			await t.commit();
 			return res.send(setRes(resCode.OK, true, 'Order status updated.', { order_id: data.order_id }));
 		} else {
 			return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null));
 		}
 	} catch (error) {
-		t.rollback();
+		await t.rollback();
 		return res.send(setRes(resCode.BadRequest, false, "Something went wrong", "", null))
 	}
 }
