@@ -1314,16 +1314,16 @@ exports.orderCreate = async (req,res) => {
 			// }
 
 			// Cashback
-			if(data?.applied_cashback && data?.applied_cashback?.cashback_id && data?.applied_cashback?.amount) {
-				const discountId = data?.applied_cashback?.cashback_id;
-				const cashbackReward = await rewardHistoryModel.create({
-					order_id: createdOrder.id,
-					credit_debit: true,
-					amount: cashbackAmount,
-					reference_reward_id: discountId,
-					reference_reward_type: 'cashbacks'
-				},{transaction: t});
-			}
+			// if (data?.applied_cashback && data?.applied_cashback?.cashback_id && data?.applied_cashback?.amount) {
+			// 	const discountId = data?.applied_cashback?.cashback_id;
+			// 	const cashbackReward = await rewardHistoryModel.create({
+			// 		order_id: createdOrder.id,
+			// 		credit_debit: true,
+			// 		amount: cashbackAmount,
+			// 		reference_reward_id: discountId,
+			// 		reference_reward_type: 'cashbacks'
+			// 	}, { transaction: t });
+			// }
 
 			// Update user wallet loyalty points and cashback
 
@@ -1380,11 +1380,11 @@ exports.orderCreate = async (req,res) => {
 				const notificationReceiver = await notificationReceiverModel.create(notificationReceiverUserObj,{transaction: t});
 			}
 			/** FCM push noifiation */
-			const activeUserReceiverDevices = await deviceModel.findAll({where: {status: 1,business_id: user.id}},{attributes: ["device_token"]});
-			const userDeviceTokensList = activeUserReceiverDevices.map((device) => device.device_token);
-			const userUniqueDeviceTokens = Array.from(new Set(userDeviceTokensList));
+			const activeUserReceiverDevices = await deviceModel.findOne({where: {status: 1,user_id: user.id}},{attributes: ["device_token"]});
+			// const userDeviceTokensList = activeUserReceiverDevices.map((device) => device.device_token);
+			// const userUniqueDeviceTokens = Array.from(new Set(userDeviceTokensList));
 			const userNotificationPayload = {
-				device_token: userUniqueDeviceTokens,
+				device_token: activeUserReceiverDevices?.device_token,
 				title: NOTIFICATION_TITLES.PLACE_ORDER_USER(),
 				message: NOTIFICATION_MESSAGE.PLACE_ORDER_USER(createdOrder?.order_no),
 				content: {notification_type: NOTIFICATION_TYPES.PLACE_ORDER,notification_id: notificationUser?.id,title: NOTIFICATION_TITLES.PLACE_ORDER_USER(),message: NOTIFICATION_MESSAGE.PLACE_ORDER_USER(createdOrder?.order_no),order_id: createdOrder.id,user_id: user.id,business_id: businessDetails.id}
@@ -1452,14 +1452,14 @@ exports.orderCreate = async (req,res) => {
 
 			calculateOrderAndProductLoyalty(data,createdOrder,user,businessDetails);
 			calculateOrderAndProductCashback(data,createdOrder,user);
-			t.commit();
-			return res.send(setRes(resCode.OK,true,'Order Created Successfully!',null));
+			await t.commit();
+			return res.send(setRes(resCode.OK,true,'Order Created Successfully!',createdOrder));
 		} else {
 			return res.send(setRes(resCode.BadRequest,false,(requiredFields.toString() + ' are required'),null));
 		}
 	} catch(error) {
 		console.log(error);
-		t.rollback();
+		await t.rollback();
 		return res.send(setRes(resCode.BadRequest,false,error?.message || "Something went wrong","",null))
 	}
 }
@@ -1480,6 +1480,7 @@ const calculateOrderAndProductLoyalty = async (data,createdOrder,user,businessDe
 				status: 1,
 				isDeleted: 0,
 				business_id: data?.business_id,
+				[models.Op.and]: [models.sequelize.literal(`validity >= CURRENT_DATE`)]
 				// [models.Op.and]: models.sequelize.literal(
 				// 	productIds?.map(id => `FIND_IN_SET(${id}, product_id)`).join(' OR ')
 				//   ),
@@ -1492,7 +1493,8 @@ const calculateOrderAndProductLoyalty = async (data,createdOrder,user,businessDe
 				loyalty_type: 0,
 				status: 1,
 				isDeleted: 0,
-				business_id: data?.business_id
+				business_id: data?.business_id,
+				[models.Op.and]: [models.sequelize.literal(`validity >= CURRENT_DATE`)]
 			},
 		})
 
@@ -1568,9 +1570,9 @@ const calculateOrderAndProductLoyalty = async (data,createdOrder,user,businessDe
 				}
 			}
 		}
-		t.commit();
+		await t.commit();
 	} catch(error) {
-		t.rollback();
+		await t.rollback();
 		console.error('Error occurred in loyalty calculation',error);
 		throw error;
 	}
@@ -1591,7 +1593,8 @@ const calculateOrderAndProductCashback = async (data,createdOrder,user) => {
 				cashback_on: 0,
 				status: 1,
 				isDeleted: 0,
-				business_id: data?.business_id
+				business_id: data?.business_id,
+				[models.Op.and]: [models.sequelize.literal(`validity_for >= CURRENT_DATE`)]
 			}
 		});
 
@@ -1601,6 +1604,7 @@ const calculateOrderAndProductCashback = async (data,createdOrder,user) => {
 				status: 1,
 				isDeleted: 0,
 				business_id: data?.business_id,
+				[models.Op.and]: [models.sequelize.literal(`validity_for >= CURRENT_DATE`)]
 			},
 		});
 
@@ -1652,20 +1656,28 @@ const calculateOrderAndProductCashback = async (data,createdOrder,user) => {
 					reference_reward_id: cashback?.id,
 					reference_reward_type: 'cashbacks'
 				},{transaction: t});
-				if(cashbackReward) {
+				const userCashbackUpdate = await userModel.update({
+					total_cashbacks: models.sequelize.literal(`total_cashbacks + ${cashbackAmount}`)
+				},
+					{
+						where: {
+							id: user.id
+						}
+					},{transaction: t});
+				if(userCashbackUpdate?.length) {
 					await sendCashbackReceivedNotification(user,createdOrder,cashbackReward,cashbackAmount);
 				}
 			}
 		}
-		t.commit();
+		await t.commit();
 	} catch(error) {
-		t.rollback();
+		await t.rollback();
 		console.error('Error occurred in cashback calculation',error);
 		throw error;
 	}
 }
 
-/** Send User and Business Notifcation for Loyalty points*/
+/** Send User and Business Notification for Loyalty points*/
 const sendLoyaltyReceivedNotification = async (createdOrder,loyalty,businessDetails,user,loyaltyPoints,t) => {
 
 	const notificationModel = models.notifications;
@@ -1692,11 +1704,11 @@ const sendLoyaltyReceivedNotification = async (createdOrder,loyalty,businessDeta
 			const notificationLoyaltyReceiver = await notificationReceiverModel.create(notificationReceiverLoyaltyObj,{transaction: t});
 		}
 		/** FCM push noifiation */
-		const activeUserReceiverDevices = await deviceModel.findAll({where: {status: 1,user_id: user.id}},{attributes: ["device_token"]});
-		const userDeviceTokensList = activeUserReceiverDevices.map((device) => device.device_token);
-		const userUniqueDeviceTokens = Array.from(new Set(userDeviceTokensList))
+		const activeUserReceiverDevices = await deviceModel.findOne({where: {status: 1,user_id: user.id}},{attributes: ["device_token"]});
+		// const userDeviceTokensList = activeUserReceiverDevices.map((device) => device.device_token);
+		// const userUniqueDeviceTokens = Array.from(new Set(userDeviceTokensList))
 		const userLoyaltyNotificationPayload = {
-			device_token: userUniqueDeviceTokens,
+			device_token: activeUserReceiverDevices?.device_token,
 			title: NOTIFICATION_TITLES.GET_LOYALTY_POINT_USER(),
 			message: NOTIFICATION_MESSAGE.GET_LOYALTY_POINT_USER(createdOrder?.order_no,loyaltyPoints),
 			content: {notification_type: NOTIFICATION_TYPES.LOYALTY_RECEIVED,notification_id: notificationLoyaltyUser?.id,title: NOTIFICATION_TITLES.GET_LOYALTY_POINT_USER(),message: NOTIFICATION_MESSAGE.GET_LOYALTY_POINT_USER(createdOrder?.order_no,loyaltyPoints),loyalty_id: loyalty?.id,business_id: businessDetails.id}
@@ -1736,7 +1748,7 @@ const sendLoyaltyReceivedNotification = async (createdOrder,loyalty,businessDeta
 	}
 }
 
-/** Send User Notifcation for cashback rewards on product and orders*/
+/** Send User Notification for cashback rewards on product and orders*/
 const sendCashbackReceivedNotification = async (user,createdOrder,cashbackReward,cashbackAmount) => {
 	const notificationModel = models.notifications;
 	const notificationReceiverModel = models.notification_receivers;
@@ -1896,13 +1908,13 @@ exports.updateOrderStatus = async (req,res) => {
 				};
 				fcmNotification.SendNotification(businessNotificationPayload);
 			}
-			t.commit();
+			await t.commit();
 			return res.send(setRes(resCode.OK,true,'Order status updated.',{order_id: data.order_id}));
 		} else {
 			return res.send(setRes(resCode.BadRequest,false,(requiredFields.toString() + ' are required'),null));
 		}
 	} catch(error) {
-		t.rollback();
+		await t.rollback();
 		return res.send(setRes(resCode.BadRequest,false,"Something went wrong","",null))
 	}
 }
