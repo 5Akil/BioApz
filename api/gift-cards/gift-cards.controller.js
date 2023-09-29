@@ -1328,9 +1328,9 @@ exports.commonRewardsList = async (req,res) => {
 								delete loyaltyObj?.dataValues?.gift_card;
 								delete loyaltyObj?.dataValues.product;
 								if(loyaltyObj.validity < currentDate) {
-									loyaltyObj.is_expired = true;
+									loyaltyObj.dataValues.is_expired = true;
 								} else {
-									loyaltyObj.is_expired = false;
+									loyaltyObj.dataValues.is_expired = false;
 								}
 								resolve(loyaltyObj);
 							} else {

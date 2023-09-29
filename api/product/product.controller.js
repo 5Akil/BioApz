@@ -239,6 +239,7 @@ exports.GetAllProducts = async (req,res) => {
 					if(products) {
 						for(const data of products) {
 							const rewards = [];
+							var isFree = false;
 							const discounts = await discountsModel.findAll({
 								attributes: {
 									exclude: ["createdAt","updatedAt","deleted_at","isDeleted"],
@@ -2484,7 +2485,7 @@ exports.ProductTypeList = async (req,res) => {
 			//`;
 
 			var query = `
-    SELECT pc.id,pc.name,pc.image,pc.parent_id,pc.type,
+    SELECT pc.*,
         (SELECT COUNT(*) FROM product_categorys
         WHERE is_deleted = false
         AND is_enable = true
