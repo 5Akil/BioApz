@@ -144,9 +144,6 @@ exports.OrderDetail = async (req,res) => {
 						{
 							model: businessModel,
 							attributes: ['banner','business_name']
-						},
-						{
-							model: rewardHistoryModel,
 						}
 					],
 				},
