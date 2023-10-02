@@ -1955,7 +1955,14 @@ ORDER BY name ASC
 			if(data.page_size != 0 && !_.isEmpty(data.page_size)) {
 				query += ` LIMIT ${limit} OFFSET ${skip}`;
 			}
-			c
+
+			var allCategorys = await models.sequelize.query(query,{
+				replacements: {
+					searchPattern: searchPattern,
+					business_id: business_id,
+				},
+				type: Sequelize.QueryTypes.SELECT,
+			});
 
 			for(const data of allCategorys) {
 				if(data.image != null) {
