@@ -530,6 +530,7 @@ exports.getUserCouponList = async (req,res) => {
 						});
 						var isFree = false;
 
+
 						if(productVal) {
 							var couponData = await couponeModel.findOne({
 								where: {
