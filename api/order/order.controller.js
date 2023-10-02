@@ -181,6 +181,8 @@ exports.OrderDetail = async (req,res) => {
 				data.dataValues.product_type = data?.product?.sub_category?.name
 				data.dataValues.product_name = data?.product?.name
 				data.dataValues.product_price = data?.product?.price
+				data.product.dataValues.discount_price = data?.discount_price
+				data.product.dataValues.discount_type = data?.discount_type
 				data.product.dataValues.category_name = data?.product?.product_categorys?.name
 				data.product.dataValues.product_type = data?.product?.sub_category?.name
 				data.product.dataValues.product_image = ''
@@ -351,7 +353,6 @@ exports.OrderDetail = async (req,res) => {
 				res.send(setRes(resCode.ResourceNotFound,false,'Order details not found',null))
 			}
 		}).catch(error => {
-			console.log(error)
 			res.send(setRes(resCode.BadRequest,false,'Fail to get order details',null))
 		})
 	} else {
@@ -516,6 +517,8 @@ exports.BusinessOrderDetail = async (req,res) => {
 						data.product.dataValues.category_name = data?.product?.product_categorys?.name
 						data.product.dataValues.product_type = data?.product?.sub_category?.name
 						data.product.dataValues.qty = data.qty
+						data.product.dataValues.discount_price = data?.discount_price
+						data.product.dataValues.discount_type = data?.discount_type
 
 						let product_images = data.product.image
 
@@ -1085,7 +1088,6 @@ exports.orderCreate = async (req,res) => {
 			const orderDetails = [];
 			if(createdOrder.id) {
 				for(const product of data.products) {
-					console.log('product',product);
 					const productDetails = await productModel.findOne({where: {id: product.product_id,business_id: data.business_id,is_deleted: false}});
 					if(!productDetails) {
 						throw new Error('Product details not found for business!');
@@ -1155,7 +1157,6 @@ exports.orderCreate = async (req,res) => {
 						reference_reward_type: 'cashbacks'
 					},{transaction: t});
 					const userWalletAmounts = await userModel.findOne({where: {id: user.id},attributes: ["total_loyalty_points","total_cashbacks"]});
-					console.log('userWalletAmounts',userWalletAmounts);
 					if(userWalletAmounts.total_cashbacks < data?.use_cashback?.amount) {
 						throw new Error('Insufficient amount of cashback for user request');
 					} else {
@@ -1181,7 +1182,6 @@ exports.orderCreate = async (req,res) => {
 						reference_reward_type: 'loyalty_points'
 					},{transaction: t});
 					const userWalletAmounts = await userModel.findOne({where: {id: user.id},attributes: ["total_loyalty_points","total_cashbacks"]});
-					console.log('userWalletAmounts',userWalletAmounts);
 					if(userWalletAmounts.total_loyalty_points < data?.use_redeem_points?.amount) {
 						throw new Error('Insufficient amount of cashback for loyalty points request');
 					} else {
@@ -1494,7 +1494,6 @@ exports.orderCreate = async (req,res) => {
 			return res.send(setRes(resCode.BadRequest,false,(requiredFields.toString() + ' are required'),null));
 		}
 	} catch(error) {
-		console.log(error);
 		await t.rollback();
 		return res.send(setRes(resCode.BadRequest,false,error?.message || "Something went wrong","",null))
 	}

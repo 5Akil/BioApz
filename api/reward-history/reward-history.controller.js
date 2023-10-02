@@ -45,7 +45,7 @@ exports.rewardHistoryList = async (req,res) => {
                         where: {
                             user_id: data.user_id
                         },
-                        required: false,
+                        required: true,
                     }
                 ],
                 attributes: {exclude: ["deleted_at","updatedAt"]},
