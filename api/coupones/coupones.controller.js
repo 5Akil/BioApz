@@ -529,13 +529,16 @@ exports.getUserCouponList = async (req,res) => {
 							},
 						});
 						var isFree = false;
+
 						if(productVal) {
 							var couponData = await couponeModel.findOne({
 								where: {
 									isDeleted: false,
 									status: true,
 									coupon_type: false,
-									product_id: product
+									product_id: {
+										[Op.regexp]: `(^|,)${product}(,|$)`,
+									}
 								}
 							});
 							if(!(_.isNull(couponData))) {
