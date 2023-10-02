@@ -17,7 +17,7 @@ var commonConfig = require('../../config/common_config');
 var pagination = require('../../helpers/pagination');
 const {NOTIFICATION_TITLES,NOTIFICATION_TYPES,NOTIFICATION_MESSAGE} = require('../../config/notificationTypes');
 const fcmNotification = require('../../push_notification')
-//const {JSON} = require('sequelize')
+// const {JSON} = require('sequelize')
 
 exports.OrderHistory = async (req,res) => {
 
