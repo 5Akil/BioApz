@@ -17,7 +17,7 @@ var commonConfig = require('../../config/common_config');
 var pagination = require('../../helpers/pagination');
 const {NOTIFICATION_TITLES,NOTIFICATION_TYPES,NOTIFICATION_MESSAGE} = require('../../config/notificationTypes');
 const fcmNotification = require('../../push_notification')
-const {JSON} = require('sequelize')
+//const {JSON} = require('sequelize')
 
 exports.OrderHistory = async (req,res) => {
 
@@ -124,6 +124,7 @@ exports.OrderDetail = async (req,res) => {
 	const userModel = models.user;
 	const reqUser = req?.user || {};
 	var couponModel = models.coupones;
+	var discountModel = models.discounts;
 	// const userEmail = req.userEmail;
 	const userEmail = reqUser?.user;
 
@@ -193,6 +194,7 @@ exports.OrderDetail = async (req,res) => {
 
 			}
 			const products = [];
+			const discounted_product = [];
 
 			for(const order of orderDetails) {
 				const product = order.product;
@@ -201,6 +203,7 @@ exports.OrderDetail = async (req,res) => {
 				var couponData = await couponModel.findOne({
 					isDeleted: false,
 					status: true,
+					coupon_type: false,
 					product_id: {
 						[Op.regexp]: `(^|,)${product.id}(,|$)`,
 					}
@@ -209,6 +212,19 @@ exports.OrderDetail = async (req,res) => {
 					isFree = true;
 				}
 				product.dataValues.is_free = isFree
+
+
+				var couponData = await couponModel.findOne({
+					isDeleted: false,
+					status: true,
+					coupon_type: false,
+					product_id: {
+						[Op.regexp]: `(^|,)${product.id}(,|$)`,
+					}
+				});
+				if(!(_.isNull(couponData))) {
+					isFree = true;
+				}
 				products.push(product);
 			}
 			const totalCashbacks = await rewardHistoryModel.findAll({
@@ -300,6 +316,8 @@ exports.OrderDetail = async (req,res) => {
 					}
 				})
 			}
+
+
 
 			const orderdata = {
 				amount: orderDetails[0]?.order?.amount || '',
@@ -524,6 +542,7 @@ exports.BusinessOrderDetail = async (req,res) => {
 						var couponData = await couponModel.findOne({
 							isDeleted: false,
 							status: true,
+							coupon_type: false,
 							product_id: {
 								[Op.regexp]: `(^|,)${product.id}(,|$)`,
 							}
@@ -1359,9 +1378,17 @@ exports.orderCreate = async (req,res) => {
 
 			/** Send Device notifications order Placed*/
 			/** Send to user */
+			var Notificationdata = {
+				notification_type: NOTIFICATION_TYPES.PLACE_ORDER,
+				title: NOTIFICATION_TITLES.PLACE_ORDER_USER(),
+				message: NOTIFICATION_MESSAGE.PLACE_ORDER_USER(createdOrder?.order_no),
+				order_id: createdOrder.id,
+				user_id: user.id,
+				business_id: businessDetails.id
+			};
 			const notificationUserObj = {
 				role_id: businessDetails.role_id,
-				params: JSON.stringify({notification_type: NOTIFICATION_TYPES.PLACE_ORDER,title: NOTIFICATION_TITLES.PLACE_ORDER_USER(),message: NOTIFICATION_MESSAGE.PLACE_ORDER_USER(createdOrder?.order_no),order_id: createdOrder.id,user_id: user.id,business_id: businessDetails.id}),
+				params: JSON.stringify(Notificationdata),
 				title: NOTIFICATION_TITLES.PLACE_ORDER_USER(),
 				message: NOTIFICATION_MESSAGE.PLACE_ORDER_USER(createdOrder?.order_no),
 				notification_type: NOTIFICATION_TYPES.PLACE_ORDER,

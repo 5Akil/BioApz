@@ -238,8 +238,8 @@ exports.GetAllProducts = async (req,res) => {
 				.then(async (products) => {
 					if(products) {
 						for(const data of products) {
+
 							const rewards = [];
-							var isFree = false;
 							const discounts = await discountsModel.findAll({
 								attributes: {
 									exclude: ["createdAt","updatedAt","deleted_at","isDeleted"],
@@ -369,6 +369,20 @@ exports.GetAllProducts = async (req,res) => {
 							} else {
 								data.dataValues.product_type = "";
 							}
+							var isFree = false;
+
+							var couponData = await couponesModel.findOne({
+								isDeleted: false,
+								status: true,
+								coupon_type: false,
+								product_id: {
+									[Op.regexp]: `(^|,)${data.id}(,|$)`,
+								}
+							});
+							if(!(_.isNull(couponData))) {
+								isFree = true;
+							}
+							data.dataValues.is_free = isFree
 							data.dataValues.rewards = rewards;
 						}
 						const response = new pagination(
