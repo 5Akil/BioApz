@@ -165,8 +165,12 @@ exports.OrderDetail = async (req,res) => {
 					]
 				}
 			],
+			attributes: [
+				[models.sequelize.fn('sum',models.sequelize.col('')),'total_discounts']
+			],
 			attributes: {exclude: ['is_deleted','updatedAt','price','business_id','product_id']}
 		}).then(async orderDetails => {
+
 			let businesssBanner = '';
 			const bannerurl = await awsConfig.getSignUrl(orderDetails[0]?.order?.business?.banner).then(function(res) {
 				businesssBanner = res
@@ -201,11 +205,13 @@ exports.OrderDetail = async (req,res) => {
 				var isFree = false;
 
 				var couponData = await couponModel.findOne({
-					isDeleted: false,
-					status: true,
-					coupon_type: false,
-					product_id: {
-						[Op.regexp]: `(^|,)${product.id}(,|$)`,
+					where: {
+						isDeleted: false,
+						status: true,
+						coupon_type: false,
+						product_id: {
+							[Op.regexp]: `(^|,)${product.id}(,|$)`,
+						}
 					}
 				});
 				if(!(_.isNull(couponData))) {
@@ -215,11 +221,13 @@ exports.OrderDetail = async (req,res) => {
 
 
 				var couponData = await couponModel.findOne({
-					isDeleted: false,
-					status: true,
-					coupon_type: false,
-					product_id: {
-						[Op.regexp]: `(^|,)${product.id}(,|$)`,
+					where: {
+						isDeleted: false,
+						status: true,
+						coupon_type: false,
+						product_id: {
+							[Op.regexp]: `(^|,)${product.id}(,|$)`,
+						}
 					}
 				});
 				if(!(_.isNull(couponData))) {
@@ -540,11 +548,13 @@ exports.BusinessOrderDetail = async (req,res) => {
 						var isFree = false;
 
 						var couponData = await couponModel.findOne({
-							isDeleted: false,
-							status: true,
-							coupon_type: false,
-							product_id: {
-								[Op.regexp]: `(^|,)${product.id}(,|$)`,
+							where: {
+								isDeleted: false,
+								status: true,
+								coupon_type: false,
+								product_id: {
+									[Op.regexp]: `(^|,)${product.id}(,|$)`,
+								}
 							}
 						});
 						if(!(_.isNull(couponData))) {
