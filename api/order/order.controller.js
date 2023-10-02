@@ -1085,6 +1085,8 @@ exports.orderCreate = async (req,res) => {
 						order_id: createdOrder.id,
 						business_id: data.business_id,
 						product_id: product.product_id,
+						discount_price: product.discount_price,
+						discount_type: product.discount_type,
 						category_id: product.category_id,
 						price: product.price,
 						qty: product.qty,
