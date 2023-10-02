@@ -1132,17 +1132,17 @@ exports.orderCreate = async (req,res) => {
 				couponCashbackDiscountUsed = true;
 			}
 
-			if(loyaltyPointsUsed && (data?.applied_giftcard?.user_gift_card_id || data?.use_cashback?.is_used || data?.applied_coupon?.user_coupon_id || data?.applied_discount?.discount_id)) {
-				throw new Error('Other rewards cannot be used with Redeem points.');
-			}
+			//if(loyaltyPointsUsed && (data?.applied_giftcard?.user_gift_card_id || data?.use_cashback?.is_used || data?.applied_coupon?.user_coupon_id || data?.applied_discount?.discount_id)) {
+			//	throw new Error('Other rewards cannot be used with Redeem points.');
+			//}
 
-			if(giftCardAndCashbackUsed && (loyaltyPointsUsed || data?.applied_coupon?.user_coupon_id || data?.applied_discount?.discount_id)) {
-				throw new Error('Other rewards cannot be used with Giftcard and Redeem Cashback.');
-			}
+			//if(giftCardAndCashbackUsed && (loyaltyPointsUsed || data?.applied_coupon?.user_coupon_id || data?.applied_discount?.discount_id)) {
+			//	throw new Error('Other rewards cannot be used with Giftcard and Redeem Cashback.');
+			//}
 
-			if(couponCashbackDiscountUsed && data?.applied_giftcard?.user_gift_card_id) {
-				throw new Error('Other rewards cannot be used with Coupon, Cashback and Discount.');
-			}
+			//if(couponCashbackDiscountUsed && data?.applied_giftcard?.user_gift_card_id) {
+			//	throw new Error('Other rewards cannot be used with Coupon, Cashback and Discount.');
+			//}
 
 
 			let sendUseCashbackNotification = false;
