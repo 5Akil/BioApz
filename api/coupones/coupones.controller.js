@@ -516,8 +516,8 @@ exports.getUserCouponList = async (req,res) => {
 				})
 				var productsId = val.product_id
 				var couponProducts = [];
-				var product_ids = productsId.split(',')
-				if(!_.isEmpty(product_ids)) {
+				var product_ids = !_.isNull(val.product_id) && (val.product_id) ? productsId.split(',') : null;
+				if(!_.isEmpty(product_ids) && !_.isNull(product_ids)) {
 					for(const product of product_ids) {
 						var productVal = await productModel.findOne({
 							attributes: {
