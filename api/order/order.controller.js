@@ -220,21 +220,6 @@ exports.OrderDetail = async (req,res) => {
 					isFree = true;
 				}
 				product.dataValues.is_free = isFree
-
-
-				var couponData = await couponModel.findOne({
-					where: {
-						isDeleted: false,
-						status: true,
-						coupon_type: false,
-						product_id: {
-							[Op.regexp]: `(^|,)${product.id}(,|$)`,
-						}
-					}
-				});
-				if(!(_.isNull(couponData))) {
-					isFree = true;
-				}
 				products.push(product);
 			}
 			const totalCashbacks = await rewardHistoryModel.findAll({
@@ -296,7 +281,7 @@ exports.OrderDetail = async (req,res) => {
 				where: {
 					order_id: data.id,
 					reference_reward_type: 'coupones',
-					credit_debit: false
+					credit_debit: true
 				},
 			});
 			var usedCoupon = null;
@@ -626,7 +611,7 @@ exports.BusinessOrderDetail = async (req,res) => {
 						where: {
 							order_id: param.id,
 							reference_reward_type: 'coupones',
-							credit_debit: false
+							credit_debit: true
 						},
 					});
 					var usedCoupon = null;
@@ -1120,17 +1105,17 @@ exports.orderCreate = async (req,res) => {
 			let giftCardAndCashbackUsed = false;
 			let couponCashbackDiscountUsed = false;
 
-			if(data?.use_redeem_points?.is_used) {
-				loyaltyPointsUsed = true;
-			}
+			//if(data?.use_redeem_points?.is_used) {
+			//	loyaltyPointsUsed = true;
+			//}
 
-			if((data?.applied_giftcard?.user_gift_card_id && data?.use_cashback?.is_used)) {
-				giftCardAndCashbackUsed = true;
-			}
+			//if((data?.applied_giftcard?.user_gift_card_id && data?.use_cashback?.is_used)) {
+			//	giftCardAndCashbackUsed = true;
+			//}
 
-			if((data?.applied_coupon && data?.use_cashback?.is_used && data?.applied_discount)) {
-				couponCashbackDiscountUsed = true;
-			}
+			//if((data?.applied_coupon && data?.use_cashback?.is_used && data?.applied_discount)) {
+			//	couponCashbackDiscountUsed = true;
+			//}
 
 			//if(loyaltyPointsUsed && (data?.applied_giftcard?.user_gift_card_id || data?.use_cashback?.is_used || data?.applied_coupon?.user_coupon_id || data?.applied_discount?.discount_id)) {
 			//	throw new Error('Other rewards cannot be used with Redeem points.');

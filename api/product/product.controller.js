@@ -147,16 +147,16 @@ exports.GetAllProducts = async (req,res) => {
 				);
 			}
 
-			if(data.page_size && +data.page_size <= 0) {
-				return res.send(
-					setRes(
-						resCode.BadRequest,
-						false,
-						"invalid page number, should start with 1",
-						null
-					)
-				);
-			}
+			//if(data.page_size && +data.page_size <= 0) {
+			//	return res.send(
+			//		setRes(
+			//			resCode.BadRequest,
+			//			false,
+			//			"invalid page number, should start with 1",
+			//			null
+			//		)
+			//	);
+			//}
 
 			if(data.category_id && +data.category_id < 1) {
 				return res.send(
@@ -176,12 +176,18 @@ exports.GetAllProducts = async (req,res) => {
 					{
 						model: categoryModel,
 						as: "product_categorys",
-						attributes: ["name"],
+						attributes: ["name","is_deleted"],
+						where: {
+							is_deleted: false
+						}
 					},
 					{
 						model: categoryModel,
 						as: "sub_category",
-						attributes: ["name"],
+						attributes: ["name","is_deleted"],
+						//where: {
+						//	is_deleted: false
+						//}
 					},
 				],
 				attributes: {
@@ -372,11 +378,13 @@ exports.GetAllProducts = async (req,res) => {
 							var isFree = false;
 
 							var couponData = await couponesModel.findOne({
-								isDeleted: false,
-								status: true,
-								coupon_type: false,
-								product_id: {
-									[Op.regexp]: `(^|,)${data.id}(,|$)`,
+								where: {
+									isDeleted: false,
+									status: true,
+									coupon_type: false,
+									product_id: {
+										[Op.regexp]: `(^|,)${data.id}(,|$)`,
+									}
 								}
 							});
 							if(!(_.isNull(couponData))) {
@@ -1947,13 +1955,7 @@ ORDER BY name ASC
 			if(data.page_size != 0 && !_.isEmpty(data.page_size)) {
 				query += ` LIMIT ${limit} OFFSET ${skip}`;
 			}
-			var allCategorys = await models.sequelize.query(query,{
-				replacements: {
-					searchPattern: searchPattern,
-					business_id: business_id,
-				},
-				type: Sequelize.QueryTypes.SELECT,
-			});
+			c
 
 			for(const data of allCategorys) {
 				if(data.image != null) {

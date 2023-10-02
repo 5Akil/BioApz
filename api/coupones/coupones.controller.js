@@ -476,6 +476,7 @@ exports.getUserCouponList = async (req,res) => {
 		const userCouponModel = models.user_coupons;
 		const currentDate = moment().format('YYYY-MM-DD');
 		var Op = models.Op;
+		var productModel = models.products
 
 		const skip = data.page_size * (data.page - 1)
 		const limit = parseInt(data.page_size)
@@ -513,8 +514,41 @@ exports.getUserCouponList = async (req,res) => {
 				const appliedCoupon = await userCouponModel.findOne({
 					where: {is_deleted: false,user_id: authUser.id,coupon_id: val.id}
 				})
+				var productsId = val.product_id
+				var couponProducts = [];
+				var product_ids = productsId.split(',')
+				if(!_.isEmpty(product_ids)) {
+					for(const product of product_ids) {
+						var productVal = await productModel.findOne({
+							attributes: {
+								exclude: ["createdAt","updatedAt","deleted_at","isDeleted"],
+							},
+							where: {
+								id: product,
+								is_deleted: false,
+							},
+						});
+						var isFree = false;
+						if(productVal) {
+							var couponData = await couponeModel.findOne({
+								where: {
+									isDeleted: false,
+									status: true,
+									coupon_type: false,
+									product_id: product
+								}
+							});
+							if(!(_.isNull(couponData))) {
+								isFree = true;
+							}
+							productVal.dataValues.is_free = isFree
+						}
+						couponProducts.push(productVal);
+					}
+				}
 				if(!_.isEmpty(appliedCoupon)) {is_applied = true;}
 				val.dataValues.is_applied = is_applied;
+				val.dataValues.products = couponProducts;
 			}
 			const recordCount = await couponeModel.findAndCountAll(condition);
 			const totalRecords = recordCount?.count;
@@ -525,6 +559,7 @@ exports.getUserCouponList = async (req,res) => {
 			res.send(setRes(resCode.BadRequest,false,(requiredFields.toString() + ' are required'),null))
 		}
 	} catch(error) {
+		console.log(error)
 		res.send(setRes(resCode.BadRequest,false,"Something went wrong!",null))
 	}
 }

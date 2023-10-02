@@ -1758,7 +1758,20 @@ exports.homeList = async (req,res) => {
 		const eventDataArray = eventsData;
 		const orderModel = models.orders;
 
-		const productCount = await productModel.findAndCountAll({where: {business_id: data.business_id,is_deleted: false}});
+		var categoryModel = models.product_categorys;
+		const productCount = await productModel.findAndCountAll({
+			include: [
+				{
+					model: categoryModel,
+					as: "product_categorys",
+					attributes: ["name","is_deleted"],
+					where: {
+						is_deleted: false
+					}
+				},
+			],
+			where: {business_id: data.business_id,is_deleted: false}
+		});
 		const totalProducts = productCount?.count;
 
 		const orderCount = await orderModel.findAll({
