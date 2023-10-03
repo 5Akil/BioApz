@@ -1217,17 +1217,17 @@ exports.orderCreate = async (req,res) => {
 
 			if(data?.applied_coupon?.user_coupon_id && data?.applied_coupon?.amount > 0) {
 				// update used user coupon with order created
-				const findAppliedCoupon = await userCouponModel.findOne({where: {coupon_id: data?.applied_coupon?.user_coupon_id,user_id: user.id}});
-				if(findAppliedCoupon) {
-					//const updateCouponOrder = await userCouponModel.update({order_id: createdOrder.id},{where: {coupon_id: data?.applied_coupon?.user_coupon_id,user_id: user.id}},{transaction: t});
-					const userCouponUsed = await rewardHistoryModel.create({
-						order_id: createdOrder.id,
-						credit_debit: true,
-						amount: data?.applied_coupon?.amount,
-						reference_reward_id: data?.applied_coupon?.user_coupon_id,
-						reference_reward_type: 'coupones'
-					},{transaction: t});
-				}
+				//const findAppliedCoupon = await userCouponModel.findOne({where: {coupon_id: data?.applied_coupon?.user_coupon_id,user_id: user.id}});
+				//if(findAppliedCoupon) {
+				//const updateCouponOrder = await userCouponModel.update({order_id: createdOrder.id},{where: {coupon_id: data?.applied_coupon?.user_coupon_id,user_id: user.id}},{transaction: t});
+				const userCouponUsed = await rewardHistoryModel.create({
+					order_id: createdOrder.id,
+					credit_debit: true,
+					amount: data?.applied_coupon?.amount,
+					reference_reward_id: data?.applied_coupon?.user_coupon_id,
+					reference_reward_type: 'coupones'
+				},{transaction: t});
+				//}
 			}
 
 			// Giftcard
