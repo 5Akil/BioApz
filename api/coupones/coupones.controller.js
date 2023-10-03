@@ -350,22 +350,11 @@ exports.applyCoupon = async (req,res) => {
 			if(!userDetails || _.isEmpty(userDetails) || _.isUndefined(userDetails)) {
 				return res.send(setRes(resCode.ResourceNotFound,false,'User not found',null))
 			}
-			// get product details
-			//const productDetails = await productModel.findOne({
-			//	where: {
-			//		id: data.product_id,
-			//		is_deleted: false
-			//	}
-			//})
-			//if(!productDetails || _.isEmpty(productDetails) || _.isUndefined(productDetails)) {
-			//	return res.send(setRes(resCode.ResourceNotFound,false,'Product not found',null))
-			//}
 
 			// get coupon details if active and exists
 			const couponDetails = await couponeModel.findOne({
 				where: {
 					id: data.coupon_id,
-					//business_id: productDetails.business_id,
 					isDeleted: false,
 					status: true
 				}
@@ -374,90 +363,38 @@ exports.applyCoupon = async (req,res) => {
 			if(!couponDetails || _.isEmpty(couponDetails) || _.isUndefined(couponDetails)) {
 				return res.send(setRes(resCode.ResourceNotFound,false,'Coupone not found',null))
 			}
-
 			// check if user has already applied coupon
 			const appliedCoupon = await userCouponModel.findOne({
 				where: {
-					user_id: userDetails.id,
-					coupon_id: couponDetails.id,
-					//order_id: data.order_id,
-					//product_id: productDetails.id,
+					user_id: userAuth?.id,
+					coupon_id: data.coupon_id,
 					is_deleted: false
 				}
 			})
 			if(appliedCoupon && !_.isEmpty(appliedCoupon)) {
 				return res.send(setRes(resCode.BadRequest,false,'Sorry,You have used this coupon code!',null))
 			}
-
-			// If coupon is Free product
-			if(couponDetails.coupon_type === false) {
-				// check free product coupon is applied for product
-				if(couponDetails.product_id) {
-					// apply coupon for user
-					if(data?.order_value && !isNaN(data.order_value)) {
-						if(Number(couponDetails.coupon_value) > Number(data.order_value)) {
-							return res.send(setRes(resCode.BadRequest,false,`Coupon minimum order value ${couponDetails.coupon_value}`,null));
-						}
-					}
-					const userCouponDetail = await userCouponModel.create({
-						coupon_id: couponDetails.id,
-						user_id: userDetails.id,
-						order_id: data.order_id,
-						//product_id: productDetails.id,
-					});
-					if(userCouponDetail) {
-						const discountObj = {
-							minimumOrderValue: +(couponDetails.coupon_value),
-							user_coupon_id: userCouponDetail.id,
-							coupon_id: couponDetails.id,
-							coupon_code: couponDetails.coupon_code,
-							value_type: couponDetails.value_type,
-						}
-						res.send(setRes(resCode.OK,true,'Coupon applied successfully!',discountObj))
-					} else {
-						res.send(setRes(resCode.BadRequest,false,'Failed to apply coupon',null))
-					}
-
-				} else {
-					res.send(setRes(resCode.BadRequest,false,'Coupon is not applicable for this product',null))
-				}
-			}
-			// If coupon is Discount coupon
-			else {
-
+			// check free product coupon is applied for product
+			if(couponDetails.product_id) {
 				// apply coupon for user
+				if(data?.order_value && !isNaN(data.order_value)) {
+					if(Number(couponDetails.coupon_value) > Number(data.order_value)) {
+						return res.send(setRes(resCode.BadRequest,false,`Coupon minimum order value ${couponDetails.coupon_value}`,null));
+					}
+				}
 				const userCouponDetail = await userCouponModel.create({
-					id: couponDetails.id,
-					user_id: userDetails.id,
+					coupon_id: data.coupon_id,
+					user_id: userAuth.id,
 					order_id: data.order_id,
-					//product_id: productDetails.id,
 				});
-
 				if(userCouponDetail) {
-					const discountObj = {
-						discountValue: 0,
-						user_coupon_id: userCouponDetail.id,
-						coupon_id: couponDetails.id,
-						coupon_code: couponDetails.coupon_code,
-						value_type: couponDetails.value_type,
-
-					}
-					if(couponDetails.value_type === true) {
-						// flat amount discount
-						if(couponDetails.coupon_value > productDetails.price) {
-							discountObj.discountValue = productDetails.price;
-						} else {
-							discountObj.discountValue = Number(couponDetails.coupon_value);
-						}
-					} else {
-						// percentage discount calculation
-						const discount = Math.ceil((productDetails.price * couponDetails.coupon_value) / 100)
-						discountObj.discountValue = discount;
-					}
-					res.send(setRes(resCode.OK,true,'Coupon applied successfully!',discountObj))
+					res.send(setRes(resCode.OK,true,'Coupon applied successfully!',userCouponDetail))
 				} else {
 					res.send(setRes(resCode.BadRequest,false,'Failed to apply coupon',null))
 				}
+
+			} else {
+				res.send(setRes(resCode.BadRequest,false,'Coupon is not applicable for this product',null))
 			}
 		} else {
 			res.send(setRes(resCode.BadRequest,false,(requiredFields.toString() + ' are required'),null))
