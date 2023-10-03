@@ -373,15 +373,7 @@ exports.applyCoupon = async (req,res) => {
 			})
 			if(appliedCoupon && !_.isEmpty(appliedCoupon)) {
 				return res.send(setRes(resCode.BadRequest,false,'Sorry,You have used this coupon code!',null))
-			}
-			// check free product coupon is applied for product
-			if(couponDetails.product_id) {
-				// apply coupon for user
-				if(data?.order_value && !isNaN(data.order_value)) {
-					if(Number(couponDetails.coupon_value) > Number(data.order_value)) {
-						return res.send(setRes(resCode.BadRequest,false,`Coupon minimum order value ${couponDetails.coupon_value}`,null));
-					}
-				}
+			} else {
 				const userCouponDetail = await userCouponModel.create({
 					coupon_id: data.coupon_id,
 					user_id: userAuth.id,
@@ -392,10 +384,20 @@ exports.applyCoupon = async (req,res) => {
 				} else {
 					res.send(setRes(resCode.BadRequest,false,'Failed to apply coupon',null))
 				}
-
-			} else {
-				res.send(setRes(resCode.BadRequest,false,'Coupon is not applicable for this product',null))
 			}
+			// check free product coupon is applied for product
+			//if(couponDetails.product_id) {
+			// apply coupon for user
+			//if(data?.order_value && !isNaN(data.order_value)) {
+			//	if(Number(couponDetails.coupon_value) > Number(data.order_value)) {
+			//		return res.send(setRes(resCode.BadRequest,false,`Coupon minimum order value ${couponDetails.coupon_value}`,null));
+			//	}
+			//}
+
+
+			//} else {
+			//	res.send(setRes(resCode.BadRequest,false,'Coupon is not applicable for this product',null))
+			//}
 		} else {
 			res.send(setRes(resCode.BadRequest,false,(requiredFields.toString() + ' are required'),null))
 		}
