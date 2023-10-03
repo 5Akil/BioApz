@@ -73,7 +73,7 @@ router.get('/categoryById/:id',verifyToken,controller.GetCategoryById)
 router.post('/updateCategory',verifyToken,categoryawsupload.single('image'),controller.UpdateCategory)
 router.delete('/category/delete/:id',verifyToken,controller.RemoveCategory)
 
-router.post('/productTypeList',verifyToken,controller.ProductTypeList)
+router.post('/productTypeList',verifyToken,authorize([2,3]),controller.ProductTypeList)
 router.delete('/sub-category/delete/:id',verifyToken,controller.removeProductType)
 
 router.post('/add-product-ratings',verifyToken,controller.AddProductRattings)

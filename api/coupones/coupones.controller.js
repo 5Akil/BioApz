@@ -335,7 +335,7 @@ exports.applyCoupon = async (req,res) => {
 		const userCouponModel = models.user_coupons;
 
 		const userAuth = req.user;
-		const arrayFields = ['coupon_code','product_id'];
+		const arrayFields = ['coupon_id','order_id'];
 		const requiredFields = _.reject(arrayFields,(o) => {return _.has(data,o)})
 
 		if(requiredFields.length == 0) {
@@ -351,21 +351,21 @@ exports.applyCoupon = async (req,res) => {
 				return res.send(setRes(resCode.ResourceNotFound,false,'User not found',null))
 			}
 			// get product details
-			const productDetails = await productModel.findOne({
-				where: {
-					id: data.product_id,
-					is_deleted: false
-				}
-			})
-			if(!productDetails || _.isEmpty(productDetails) || _.isUndefined(productDetails)) {
-				return res.send(setRes(resCode.ResourceNotFound,false,'Product not found',null))
-			}
+			//const productDetails = await productModel.findOne({
+			//	where: {
+			//		id: data.product_id,
+			//		is_deleted: false
+			//	}
+			//})
+			//if(!productDetails || _.isEmpty(productDetails) || _.isUndefined(productDetails)) {
+			//	return res.send(setRes(resCode.ResourceNotFound,false,'Product not found',null))
+			//}
 
 			// get coupon details if active and exists
 			const couponDetails = await couponeModel.findOne({
 				where: {
-					coupon_code: data.coupon_code,
-					business_id: productDetails.business_id,
+					id: data.coupon_id,
+					//business_id: productDetails.business_id,
 					isDeleted: false,
 					status: true
 				}
@@ -374,14 +374,14 @@ exports.applyCoupon = async (req,res) => {
 			if(!couponDetails || _.isEmpty(couponDetails) || _.isUndefined(couponDetails)) {
 				return res.send(setRes(resCode.ResourceNotFound,false,'Coupone not found',null))
 			}
-			console.log('couponDetails',couponDetails.id);
 
 			// check if user has already applied coupon
 			const appliedCoupon = await userCouponModel.findOne({
 				where: {
 					user_id: userDetails.id,
 					coupon_id: couponDetails.id,
-					product_id: productDetails.id,
+					//order_id: data.order_id,
+					//product_id: productDetails.id,
 					is_deleted: false
 				}
 			})
@@ -392,7 +392,7 @@ exports.applyCoupon = async (req,res) => {
 			// If coupon is Free product
 			if(couponDetails.coupon_type === false) {
 				// check free product coupon is applied for product
-				if(couponDetails.product_id && couponDetails?.product_id?.split(',')?.includes(`${productDetails.id}`)) {
+				if(couponDetails.product_id) {
 					// apply coupon for user
 					if(data?.order_value && !isNaN(data.order_value)) {
 						if(Number(couponDetails.coupon_value) > Number(data.order_value)) {
@@ -402,12 +402,12 @@ exports.applyCoupon = async (req,res) => {
 					const userCouponDetail = await userCouponModel.create({
 						coupon_id: couponDetails.id,
 						user_id: userDetails.id,
-						product_id: productDetails.id,
+						order_id: data.order_id,
+						//product_id: productDetails.id,
 					});
 					if(userCouponDetail) {
 						const discountObj = {
 							minimumOrderValue: +(couponDetails.coupon_value),
-							discountValue: productDetails.price,
 							user_coupon_id: userCouponDetail.id,
 							coupon_id: couponDetails.id,
 							coupon_code: couponDetails.coupon_code,
@@ -427,9 +427,10 @@ exports.applyCoupon = async (req,res) => {
 
 				// apply coupon for user
 				const userCouponDetail = await userCouponModel.create({
-					coupon_id: couponDetails.id,
+					id: couponDetails.id,
 					user_id: userDetails.id,
-					product_id: productDetails.id,
+					order_id: data.order_id,
+					//product_id: productDetails.id,
 				});
 
 				if(userCouponDetail) {
@@ -462,6 +463,7 @@ exports.applyCoupon = async (req,res) => {
 			res.send(setRes(resCode.BadRequest,false,(requiredFields.toString() + ' are required'),null))
 		}
 	} catch(error) {
+		console.log(error)
 		res.send(setRes(resCode.BadRequest,false,"Something went wrong!",null))
 	}
 }

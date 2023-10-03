@@ -1938,16 +1938,7 @@ exports.CategoryList = async (req,res) => {
 			   (pcs.type = 'admin' ${searchPattern ? `AND pcs.name LIKE :searchPattern` : ""})
 			   OR
 			   (pcs.type = 'business' ${searchPattern ? `AND pcs.name LIKE :searchPattern` : ""} AND pcs.business_id = :business_id)
-			 )) AS total_count,
-			(SELECT COUNT(*) FROM product_categorys pc
-			 WHERE pc.is_deleted = false
-			 AND pc.is_enable = true
-			 AND pc.parent_id = c.id
-			 AND (
-			   (pc.type = 'admin' ${searchPattern ? `AND pc.name LIKE :searchPattern` : ""})
-			   OR
-			   (pc.type = 'business' ${searchPattern ? `AND pc.name LIKE :searchPattern` : ""} AND pc.business_id = :business_id)
-			 )) AS subcategory_count
+			 )) AS total_count
 		  FROM product_categorys c
 		  WHERE c.is_deleted = false
 		  AND c.is_enable = true
@@ -1957,7 +1948,6 @@ exports.CategoryList = async (req,res) => {
 			OR
 			(c.type = 'business' ${searchPattern ? `AND c.name LIKE :searchPattern` : ""} AND c.business_id = :business_id)
 		  )
-		  HAVING subcategory_count > 2
 		  ORDER BY c.name ASC
 `;
 
