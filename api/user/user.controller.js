@@ -5416,9 +5416,13 @@ exports.userGiftCardList = async (req,res) => {
         ],
       };
       const userGiftCards = await userGiftCardsModel.findAndCountAll(condition);
+      for(const data of userGiftCards?.rows) {
+        delete data.dataValues.amount;
+        data.dataValues.amount = data?.gift_card?.amount
+      }
       const totalRecords = userGiftCards?.count || 0;
       const response = new pagination(
-        userGiftCards.rows,
+        userGiftCards?.rows,
         totalRecords,
         parseInt(data.page),
         parseInt(data.page_size)
@@ -5427,7 +5431,7 @@ exports.userGiftCardList = async (req,res) => {
         setRes(
           resCode.OK,
           true,
-          "User Virtualcards List.",
+          "User Virtual cards List.",
           response.getPaginationInfo()
         )
       );

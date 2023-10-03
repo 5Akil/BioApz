@@ -386,7 +386,7 @@ exports.applyCoupon = async (req,res) => {
 				}
 			})
 			if(appliedCoupon && !_.isEmpty(appliedCoupon)) {
-				return res.send(setRes(resCode.BadRequest,false,'Coupone is already applied!',null))
+				return res.send(setRes(resCode.BadRequest,false,'Sorry,You have used this coupon code!',null))
 			}
 
 			// If coupon is Free product
