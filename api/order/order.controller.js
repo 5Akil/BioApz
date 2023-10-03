@@ -202,22 +202,42 @@ exports.OrderDetail = async (req,res) => {
 			const products = [];
 			const discounted_product = [];
 
+			const onOrderCoupon = await rewardHistoryModel.findOne({
+				where: {
+					order_id: data.id,
+					reference_reward_type: 'coupones',
+					credit_debit: true
+				},
+			});
+			var usedCoupon = null;
+			if(!_.isNull(onOrderCoupon)) {
+				usedCoupon = await couponModel.findOne({
+					where: {
+						isDeleted: false,
+						status: true
+					}
+				})
+			}
+
 			for(const order of orderDetails) {
 				const product = order.product;
 				var isFree = false;
 
-				var couponData = await couponModel.findOne({
-					where: {
-						isDeleted: false,
-						status: true,
-						coupon_type: false,
-						product_id: {
-							[Op.regexp]: `(^|,)${product.id}(,|$)`,
+				if(!_.isNull(usedCoupon) && !_.isEmpty(usedCoupon)) {
+					var couponData = await couponModel.findOne({
+						where: {
+							id: usedCoupon.id,
+							isDeleted: false,
+							status: true,
+							coupon_type: false,
+							product_id: {
+								[Op.regexp]: `(^|,)${product.id}(,|$)`,
+							}
 						}
+					});
+					if(!(_.isNull(couponData))) {
+						isFree = true;
 					}
-				});
-				if(!(_.isNull(couponData))) {
-					isFree = true;
 				}
 				product.dataValues.is_free = isFree
 				products.push(product);
@@ -276,23 +296,6 @@ exports.OrderDetail = async (req,res) => {
 					credit_debit: false
 				},
 			});
-
-			const onOrderCoupon = await rewardHistoryModel.findOne({
-				where: {
-					order_id: data.id,
-					reference_reward_type: 'coupones',
-					credit_debit: true
-				},
-			});
-			var usedCoupon = null;
-			if(!_.isNull(onOrderCoupon)) {
-				usedCoupon = await couponModel.findOne({
-					where: {
-						isDeleted: false,
-						status: true
-					}
-				})
-			}
 
 			const onOrderGiftCard = await rewardHistoryModel.findOne({
 				where: {
@@ -1003,6 +1006,7 @@ exports.orderCreate = async (req,res) => {
 		const orderModel = models.orders;
 		const orderDetailsModel = models.order_details;
 		const productModel = models.products;
+		const shoppincartModel = models.shopping_cart
 
 		const notificationModel = models.notifications;
 		const notificationReceiverModel = models.notification_receivers;
@@ -1071,6 +1075,8 @@ exports.orderCreate = async (req,res) => {
 			}
 			const createdOrder = await orderModel.create(orderObj,{transaction: t});
 			const orderDetails = [];
+			var productsForCart = [];
+
 			if(createdOrder.id) {
 				for(const product of data.products) {
 					const productDetails = await productModel.findOne({where: {id: product.product_id,business_id: data.business_id,is_deleted: false}});
@@ -1090,6 +1096,25 @@ exports.orderCreate = async (req,res) => {
 						order_status: 1, //1–Pending,2–Cancelled,3-Completed
 					}
 					orderDetails.push(orderDetailObj);
+					productsForCart.push(product.product_id);
+				}
+				for(const cartProduct of productsForCart) {
+					var shoppincartData = await shoppincartModel.findAll({
+						where: {
+							product_id: cartProduct,
+							user_id: user.id,
+						}
+					})
+					if(!_.isEmpty(shoppincartData)) {
+						await shoppincartModel.update({
+							is_deleted: true,
+						},{
+							where: {
+								product_id: cartProduct,
+								user_id: user.id,
+							}
+						})
+					}
 				}
 			} else {
 				throw new Error('Error while creating order!');
@@ -1131,6 +1156,10 @@ exports.orderCreate = async (req,res) => {
 
 
 			let sendUseCashbackNotification = false;
+
+			if(data?.from_cart && data?.from_cart == true) {
+
+			}
 			/** Redeem/Use cashbacks by user */
 			if(data?.use_cashback) {
 				// Redeem cashback amount from user and create debit transaction
@@ -1184,9 +1213,10 @@ exports.orderCreate = async (req,res) => {
 
 			/** Update Required Rewards with created Order */
 			// Coupon
+
 			if(data?.applied_coupon?.user_coupon_id && data?.applied_coupon?.amount > 0) {
 				// update used user coupon with order created
-				const findAppliedCoupon = await userCouponModel.findOne({where: {id: data?.applied_coupon?.user_coupon_id,user_id: user.id}});
+				const findAppliedCoupon = await userCouponModel.findOne({where: {coupon_id: data?.applied_coupon?.user_coupon_id,user_id: user.id}});
 				if(findAppliedCoupon) {
 					const updateCouponOrder = await userCouponModel.update({order_id: createdOrder.id},{where: {id: data?.applied_coupon?.user_coupon_id,user_id: user.id}},{transaction: t});
 					const userCouponUsed = await rewardHistoryModel.create({
@@ -1291,6 +1321,18 @@ exports.orderCreate = async (req,res) => {
 				if(discountReward) {
 					sendDiscountNotification = true;
 				}
+			}
+
+			if(data?.get_discounts && data?.get_discounts?.is_used == true) {
+				var disAmount = data?.get_discounts?.amount
+
+				const discountReward = await rewardHistoryModel.create({
+					order_id: createdOrder.id,
+					credit_debit: true,
+					amount: disAmount,
+					reference_reward_id: 1,
+					reference_reward_type: 'discounts'
+				},{transaction: t});
 			}
 
 			// calculateOrderAndProductLoyalty(data,createdOrder,user,businessDetails,t);
