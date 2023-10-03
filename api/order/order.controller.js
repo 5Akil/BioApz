@@ -213,6 +213,7 @@ exports.OrderDetail = async (req,res) => {
 			if(!_.isNull(onOrderCoupon)) {
 				usedCoupon = await couponModel.findOne({
 					where: {
+						id: onOrderCoupon.reference_reward_id,
 						isDeleted: false,
 						status: true
 					}
@@ -1218,7 +1219,7 @@ exports.orderCreate = async (req,res) => {
 				// update used user coupon with order created
 				const findAppliedCoupon = await userCouponModel.findOne({where: {coupon_id: data?.applied_coupon?.user_coupon_id,user_id: user.id}});
 				if(findAppliedCoupon) {
-					const updateCouponOrder = await userCouponModel.update({order_id: createdOrder.id},{where: {coupon_id: data?.applied_coupon?.user_coupon_id,user_id: user.id}},{transaction: t});
+					//const updateCouponOrder = await userCouponModel.update({order_id: createdOrder.id},{where: {coupon_id: data?.applied_coupon?.user_coupon_id,user_id: user.id}},{transaction: t});
 					const userCouponUsed = await rewardHistoryModel.create({
 						order_id: createdOrder.id,
 						credit_debit: true,
