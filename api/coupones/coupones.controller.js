@@ -465,6 +465,7 @@ exports.getUserCouponList = async (req,res) => {
 				})
 				var productsId = val.product_id
 				var couponProducts = [];
+				var categoryModel = models.product_categorys;
 				var product_ids = !_.isNull(val.product_id) && (val.product_id) ? productsId.split(',') : null;
 				if(!_.isEmpty(product_ids) && !_.isNull(product_ids)) {
 					for(const product of product_ids) {
@@ -476,6 +477,18 @@ exports.getUserCouponList = async (req,res) => {
 								id: product,
 								is_deleted: false,
 							},
+							include: [
+								{
+									model: categoryModel,
+									as: "product_categorys",
+									attributes: ["name"],
+								},
+								{
+									model: categoryModel,
+									as: "sub_category",
+									attributes: ["name"],
+								},
+							],
 						});
 						var isFree = false;
 
@@ -495,6 +508,18 @@ exports.getUserCouponList = async (req,res) => {
 								isFree = true;
 							}
 							productVal.dataValues.is_free = isFree
+						}
+						if(productVal.product_categorys != null) {
+							productVal.dataValues.category_name = productVal.product_categorys.name;
+							delete productVal.dataValues.product_categorys;
+						} else {
+							productVal.dataValues.category_name = "";
+						}
+						if(productVal.sub_category != null) {
+							productVal.dataValues.product_type = productVal.sub_category.name;
+							delete productVal.dataValues.sub_category;
+						} else {
+							productVal.dataValues.product_type = "";
 						}
 						couponProducts.push(productVal);
 					}
