@@ -1131,6 +1131,27 @@ exports.commonRewardsList = async (req,res) => {
 								} else {
 									gCard["is_expired"] = false;
 								}
+								gCard['is_used'] = false;
+								var rewardHistory = await rewardHistoryModel.findOne({
+									where: {
+										reference_reward_type: 'gift_cards',
+										reference_reward_id: gCard?.id,
+										credit_debit: false,
+									},
+									include: [
+										{
+											model: orderModel,
+											where: {
+												user_id: user.id
+											},
+											required: true
+										}
+									]
+								});
+								if(rewardHistory && !_.isEmpty(rewardHistory)) {
+									gCard['is_used'] = true;
+								}
+
 								if(user.role_id == 3) {
 									gCard.totalPurchase = gCard.user_giftcards.length || 0;
 								}
