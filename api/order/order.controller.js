@@ -225,7 +225,7 @@ exports.OrderDetail = async (req,res) => {
 				usedCoupon = await couponModel.findOne({
 					where: {
 						id: onOrderCoupon.coupon_id,
-						is_deleted: false,
+						isDeleted: false,
 						status: true
 					}
 				})
@@ -353,6 +353,7 @@ exports.OrderDetail = async (req,res) => {
 				res.send(setRes(resCode.ResourceNotFound,false,'Order details not found',null))
 			}
 		}).catch(error => {
+			console.log(error)
 			res.send(setRes(resCode.BadRequest,false,'Fail to get order details',null))
 		})
 	} else {
@@ -642,7 +643,7 @@ exports.BusinessOrderDetail = async (req,res) => {
 					const userCouponModel = models.user_coupons;
 					const onOrderCoupon = await userCouponModel.findOne({
 						where: {
-							order_id: data.id,
+							order_id: param.id,
 							user_id: reqUser.id
 							//reference_reward_type: 'coupones',
 							//credit_debit: true
@@ -653,7 +654,7 @@ exports.BusinessOrderDetail = async (req,res) => {
 						usedCoupon = await couponModel.findOne({
 							where: {
 								id: onOrderCoupon.coupon_id,
-								is_deleted: false,
+								isDeleted: false,
 								status: true
 							}
 						})

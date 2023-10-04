@@ -1938,7 +1938,11 @@ exports.CategoryList = async (req,res) => {
 			   (pcs.type = 'admin' ${searchPattern ? `AND pcs.name LIKE :searchPattern` : ""})
 			   OR
 			   (pcs.type = 'business' ${searchPattern ? `AND pcs.name LIKE :searchPattern` : ""} AND pcs.business_id = :business_id)
-			 )) AS total_count
+			 )`;
+			if(data.is_add == true) {
+				query += ` AND pcs.type = 'business'`;
+			}
+			query += `) AS total_count
 		  FROM product_categorys c
 		  WHERE c.is_deleted = false
 		  AND c.is_enable = true
@@ -1947,10 +1951,13 @@ exports.CategoryList = async (req,res) => {
 			(c.type = 'admin' ${searchPattern ? `AND c.name LIKE :searchPattern` : ""})
 			OR
 			(c.type = 'business' ${searchPattern ? `AND c.name LIKE :searchPattern` : ""} AND c.business_id = :business_id)
-		  )
-		  ORDER BY c.name ASC
-`;
+		  )`;
 
+			if(data.is_add == true) {
+				query += ` AND c.type = 'business'`;
+			}
+
+			query += ` ORDER BY c.name ASC`;
 			// Check if pagination is requested
 			if(data.page_size != 0 && !_.isEmpty(data.page_size)) {
 				query += ` LIMIT ${limit} OFFSET ${skip}`;
@@ -1980,7 +1987,7 @@ exports.CategoryList = async (req,res) => {
 				return obj;
 			});
 
-			const totalRecords = updatedResponse.length;
+			const totalRecords = updatedResponse[0].total_count;
 			const response = new pagination(
 				updatedResponse,
 				totalRecords,
