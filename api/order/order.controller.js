@@ -125,6 +125,7 @@ exports.OrderDetail = async (req,res) => {
 	const reqUser = req?.user || {};
 	var couponModel = models.coupones;
 	var discountModel = models.discounts;
+	var userCouponModel = models.user_coupons
 	// const userEmail = req.userEmail;
 	const userEmail = reqUser?.user;
 
@@ -202,19 +203,29 @@ exports.OrderDetail = async (req,res) => {
 			const products = [];
 			const discounted_product = [];
 
-			const onOrderCoupon = await rewardHistoryModel.findOne({
+			//const onOrderCoupon = await rewardHistoryModel.findOne({
+			//	where: {
+			//		order_id: data.id,
+			//		reference_reward_type: 'coupones',
+			//		credit_debit: true
+			//	},
+			//});
+			//userCouponModel
+
+			const onOrderCoupon = await userCouponModel.findOne({
 				where: {
 					order_id: data.id,
-					reference_reward_type: 'coupones',
-					credit_debit: true
+					user_id: reqUser.id
+					//reference_reward_type: 'coupones',
+					//credit_debit: true
 				},
 			});
 			var usedCoupon = null;
 			if(!_.isNull(onOrderCoupon)) {
 				usedCoupon = await couponModel.findOne({
 					where: {
-						id: onOrderCoupon.reference_reward_id,
-						isDeleted: false,
+						id: onOrderCoupon.coupon_id,
+						is_deleted: false,
 						status: true
 					}
 				})
@@ -611,19 +622,38 @@ exports.BusinessOrderDetail = async (req,res) => {
 						},
 					});
 
-					const onOrderCoupon = await rewardHistoryModel.findOne({
+					//const onOrderCoupon = await rewardHistoryModel.findOne({
+					//	where: {
+					//		order_id: param.id,
+					//		reference_reward_type: 'coupones',
+					//		credit_debit: true
+					//	},
+					//});
+					//var usedCoupon = null;
+					//if(!_.isNull(onOrderCoupon)) {
+					//	var couponModel = models.coupones;
+					//	usedCoupon = await couponModel.findOne({
+					//		where: {
+					//			isDeleted: false,
+					//			status: true
+					//		}
+					//	})
+					//}
+					const userCouponModel = models.user_coupons;
+					const onOrderCoupon = await userCouponModel.findOne({
 						where: {
-							order_id: param.id,
-							reference_reward_type: 'coupones',
-							credit_debit: true
+							order_id: data.id,
+							user_id: reqUser.id
+							//reference_reward_type: 'coupones',
+							//credit_debit: true
 						},
 					});
 					var usedCoupon = null;
 					if(!_.isNull(onOrderCoupon)) {
-						var couponModel = models.coupones;
 						usedCoupon = await couponModel.findOne({
 							where: {
-								isDeleted: false,
+								id: onOrderCoupon.coupon_id,
+								is_deleted: false,
 								status: true
 							}
 						})
