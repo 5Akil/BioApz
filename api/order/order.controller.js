@@ -229,8 +229,68 @@ exports.OrderDetail = async (req,res) => {
 						status: true
 					}
 				})
-			}
+				if(usedCoupon) {
+					if(usedCoupon.coupon_type == false) {
+						var couponProducts = usedCoupon?.product_id?.split(',') || [];
+						if(!_.isEmpty(couponProducts)) {
+							for(const product of couponProducts) {
+								const productVal = await productModel.findOne({
+									where: {
+										id: product,
+										is_deleted: false
+									},
+									include: [
+										{
+											model: categoryModel,
+											as: "product_categorys",
+											attributes: ["name"],
+										},
+										{
+											model: categoryModel,
+											as: "sub_category",
+											attributes: ["name"],
+										},
+									],
+								})
+								var isFree = false;
 
+								if(!_.isNull(usedCoupon) && !_.isEmpty(usedCoupon)) {
+									var couponProduct = await couponModel.findOne({
+										where: {
+											id: usedCoupon.id,
+											isDeleted: false,
+											status: true,
+											coupon_type: false,
+											product_id: {
+												[Op.regexp]: `(^|,)${product}(,|$)`,
+											}
+										}
+									});
+									if(!(_.isNull(couponData))) {
+										isFree = true;
+									}
+								}
+								if(productVal.product_categorys != null) {
+									productVal.dataValues.category_name = productVal.product_categorys.name;
+									delete productVal.dataValues.product_categorys;
+								} else {
+									productVal.dataValues.category_name = "";
+								}
+								if(productVal.sub_category != null) {
+									productVal.dataValues.product_type = productVal.sub_category.name;
+									delete productVal.dataValues.sub_category;
+								} else {
+									productVal.dataValues.product_type = "";
+								}
+								productVal.dataValues.is_free = isFree
+								if(productVal) {
+									products.push(productVal)
+								}
+							}
+						}
+					}
+				}
+			}
 			for(const order of orderDetails) {
 				const product = order.product;
 				var isFree = false;
@@ -547,6 +607,85 @@ exports.BusinessOrderDetail = async (req,res) => {
 
 					}
 					const products = [];
+
+					const userCouponModel = models.user_coupons;
+					const onOrderCoupon = await userCouponModel.findOne({
+						where: {
+							order_id: param.id,
+							//user_id: user.id
+							//reference_reward_type: 'coupones',
+							//credit_debit: true
+						},
+					});
+					var usedCoupon = null;
+					if(!_.isNull(onOrderCoupon)) {
+						usedCoupon = await couponModel.findOne({
+							where: {
+								id: onOrderCoupon.coupon_id,
+								isDeleted: false,
+								status: true
+							}
+						});
+						if(usedCoupon && usedCoupon.coupon_type == false) {
+							var couponProducts = usedCoupon?.product_id?.split(',') || [];
+							if(!_.isEmpty(couponProducts)) {
+								for(const product of couponProducts) {
+									const productVal = await productModel.findOne({
+										where: {
+											id: product,
+											is_deleted: false
+										},
+										include: [
+											{
+												model: categoryModel,
+												as: "product_categorys",
+												attributes: ["name"],
+											},
+											{
+												model: categoryModel,
+												as: "sub_category",
+												attributes: ["name"],
+											},
+										],
+									})
+									var isFree = false;
+
+									if(!_.isNull(usedCoupon) && !_.isEmpty(usedCoupon)) {
+										var couponProduct = await couponModel.findOne({
+											where: {
+												id: usedCoupon.id,
+												isDeleted: false,
+												status: true,
+												coupon_type: false,
+												product_id: {
+													[Op.regexp]: `(^|,)${product}(,|$)`,
+												}
+											}
+										});
+										if(!(_.isNull(couponData))) {
+											isFree = true;
+										}
+									}
+									if(productVal.product_categorys != null) {
+										productVal.dataValues.category_name = productVal.product_categorys.name;
+										delete productVal.dataValues.product_categorys;
+									} else {
+										productVal.dataValues.category_name = "";
+									}
+									if(productVal.sub_category != null) {
+										productVal.dataValues.product_type = productVal.sub_category.name;
+										delete productVal.dataValues.sub_category;
+									} else {
+										productVal.dataValues.product_type = "";
+									}
+									productVal.dataValues.is_free = isFree
+									if(productVal) {
+										products.push(productVal)
+									}
+								}
+							}
+						}
+					}
 					for(const order of orderDetails) {
 						const product = order.product;
 						var isFree = false;
@@ -640,25 +779,7 @@ exports.BusinessOrderDetail = async (req,res) => {
 					//		}
 					//	})
 					//}
-					const userCouponModel = models.user_coupons;
-					const onOrderCoupon = await userCouponModel.findOne({
-						where: {
-							order_id: param.id,
-							//user_id: user.id
-							//reference_reward_type: 'coupones',
-							//credit_debit: true
-						},
-					});
-					var usedCoupon = null;
-					if(!_.isNull(onOrderCoupon)) {
-						usedCoupon = await couponModel.findOne({
-							where: {
-								id: onOrderCoupon.coupon_id,
-								isDeleted: false,
-								status: true
-							}
-						})
-					}
+
 
 					const onOrderGiftCard = await rewardHistoryModel.findOne({
 						where: {
