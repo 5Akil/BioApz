@@ -282,6 +282,13 @@ exports.OrderDetail = async (req,res) => {
 								} else {
 									productVal.dataValues.product_type = "";
 								}
+								if(productVal.image) {
+									const signurl = await awsConfig.getSignUrl(productVal.image[0]).then(function(res) {
+										productVal.dataValues.product_image = res
+									})
+								} else {
+									productVal.product_image = commonConfig.default_image
+								}
 								productVal.dataValues.is_free = isFree
 								if(productVal) {
 									products.push(productVal)
@@ -677,6 +684,14 @@ exports.BusinessOrderDetail = async (req,res) => {
 										delete productVal.dataValues.sub_category;
 									} else {
 										productVal.dataValues.product_type = "";
+									}
+
+									if(productVal.image) {
+										const signurl = await awsConfig.getSignUrl(productVal.image[0]).then(function(res) {
+											productVal.dataValues.product_image = res
+										})
+									} else {
+										productVal.product_image = commonConfig.default_image
 									}
 									productVal.dataValues.is_free = isFree
 									if(productVal) {
