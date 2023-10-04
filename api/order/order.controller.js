@@ -590,25 +590,18 @@ exports.BusinessOrderDetail = async (req,res) => {
 
 						let product_images = data.product.image
 
-						if(data.product.image) {
-							const signurl = await awsConfig.getSignUrl(data.product.image[0]).then(function(res) {
-								data.product.dataValues.product_image = res
-							})
+						const image_array = [];
+						if(product_images != null) {
+							for(const data of product_images) {
+								const signurl = await awsConfig.getSignUrl(data).then(function(res) {
+									image_array.push(res);
+								});
+							}
 						} else {
-							data.product.dataValues.product_image = commonConfig.default_image
+							image_array.push(commonConfig.default_image)
 						}
-						//const image_array = [];
-						//if(product_images != null) {
-						//	for(const data of product_images) {
-						//		const signurl = await awsConfig.getSignUrl(data).then(function(res) {
-						//			image_array.push(res);
-						//		});
-						//	}
-						//} else {
-						//	image_array.push(commonConfig.default_image)
-						//}
 
-						//data.product.dataValues.product_images = image_array
+						data.product.dataValues.product_images = image_array
 						// const signurl = await awsConfig.getSignUrl(data.product.image[0]).then(function(res){
 						// 	data.product.dataValues.product_image = res
 						// })
