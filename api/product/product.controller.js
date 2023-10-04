@@ -2488,31 +2488,6 @@ exports.ProductTypeList = async (req,res) => {
 			var searchPattern = data?.search ? "%" + data.search + "%" : null;
 			var business_id = data.business_id;
 
-			//	var query = `
-			//SELECT *,
-			//	(SELECT COUNT(*) FROM product_categorys
-			//	WHERE is_deleted = false
-			//	AND is_enable = true
-			//	AND parent_id != 0
-			//	${data.category_id ? `AND parent_id = ${data.category_id}` : ""}
-			//	AND (
-			//		(type = 'admin' ${searchPattern ? `AND name LIKE :searchPattern` : ""})
-			//		OR
-			//		(type = 'business' ${searchPattern ? `AND name LIKE :searchPattern` : ""} AND (business_id = :business_id))
-			//	)) AS total_count
-			//FROM product_categorys
-			//WHERE is_deleted = false
-			//AND is_enable = true
-			//AND parent_id != 0
-			//${data.category_id ? `AND parent_id = ${data.category_id}` : ""}
-			//AND (
-			//	(type = 'admin' ${searchPattern ? `AND name LIKE :searchPattern` : ""})
-			//	OR
-			//	(type = 'business' ${searchPattern ? `AND name LIKE :searchPattern` : ""} AND (business_id = :business_id))
-			//)
-			//ORDER BY name ASC
-			//`;
-
 			var query = `
     SELECT pc.*,
         (SELECT COUNT(*) FROM product_categorys
@@ -2593,6 +2568,7 @@ exports.ProductTypeList = async (req,res) => {
 			);
 		}
 	} catch(error) {
+		console.log(error)
 		return res.send(
 			setRes(resCode.BadRequest,false,"Something went wrong!",null)
 		);

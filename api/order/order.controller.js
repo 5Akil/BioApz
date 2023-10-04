@@ -644,7 +644,7 @@ exports.BusinessOrderDetail = async (req,res) => {
 					const onOrderCoupon = await userCouponModel.findOne({
 						where: {
 							order_id: param.id,
-							user_id: reqUser.id
+							//user_id: user.id
 							//reference_reward_type: 'coupones',
 							//credit_debit: true
 						},
@@ -710,6 +710,7 @@ exports.BusinessOrderDetail = async (req,res) => {
 			return res.send(setRes(resCode.ResourceNotFound,false,'Authorized Business User not found',null))
 		}
 	} catch(error) {
+		console.log(error)
 		return res.send(
 			setRes(resCode.BadRequest,false,error,null)
 		);
