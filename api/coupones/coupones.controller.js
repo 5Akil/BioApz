@@ -369,7 +369,15 @@ exports.applyCoupon = async (req,res) => {
 					user_id: userAuth?.id,
 					coupon_id: data.coupon_id,
 					is_deleted: false
-				}
+				},
+				include: [{
+					model: couponeModel,
+					where: {
+						coupon_type: true,
+						isDeleted: false,
+						status: true
+					}
+				}]
 			})
 			if(appliedCoupon && !_.isEmpty(appliedCoupon)) {
 				return res.send(setRes(resCode.BadRequest,false,'Sorry,You have used this coupon code!',null))
