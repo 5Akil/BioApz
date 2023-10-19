@@ -127,6 +127,12 @@ Business.associate = function(models) {
     Business.hasMany(models.shopping_cart, {foreignKey: 'business_id'})
     Business.belongsTo(models.countries, {foreignKey: 'country_id'});
     Business.hasMany(models.device_tokens, {foreignKey: 'business_id'});
+
+    /*****************************************/
+    Business.hasMany(models.follow_unfollow_businesses , {as:'users' , foreignKey:'business_id' }) 
+    Business.hasMany(models.loyalty_token_cards,{foreignKey: "business_id"})
+    Business.hasMany(models.loyalty_token_card_history,{foreignKey: "business_id"})
+    
   };
   return Business;
 };

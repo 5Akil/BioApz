@@ -72,6 +72,14 @@ router.post('/logout',verifyToken,authorize([2,3]),controller.Logout)
 // Home Screen Route
 router.get('/home',verifyToken,authorize([2]),controller.homeList)
 // business routes
+
+/***********************/
+router.post('/follow-unfollow-businesses',verifyToken,authorize([2,3]),controller.followUnfollowBusinesses)
+router.post('/loyalty-token-cards/list' ,verifyToken,authorize([2]),controller.userLoyaltyTokenCardsList)
+
+/**********************/
+
+
 router.post('/rewards/list',verifyToken,controller.rewardsList)
 router.post('/rewards/view/:id',verifyToken,authorize([2,3]),controller.rewardsView)
 router.post('/loyalty/list',verifyToken,controller.loyaltyList)
@@ -91,5 +99,8 @@ router.post('/event/register',verifyToken,authorize([2]),controller.eventUserReg
 router.post('/event/leave',verifyToken,authorize([2]),controller.eventUserLeave)
 
 router.get('/price_filter',verifyToken,controller.priceFilterForWallet)
+
+router.post('/insert-loyalty-token' ,authorize([2]), verifyToken , controller.makeEntry)
+router.post('/claim-free-product',verifyToken, authorize([2]), controller.claimFreeProduct)
 
 module.exports = router;

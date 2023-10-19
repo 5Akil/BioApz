@@ -8,7 +8,7 @@ var body_parser = require('body-parser');
 var cookieParser = require('cookie-parser');
 var session = require('express-session');
 var morgan = require('morgan');
-const {NOTIFICATION_TYPES} = require('./config/notificationTypes')
+const { NOTIFICATION_TYPES } = require('./config/notificationTypes')
 
 // set morgan to log info about our requests for development use.
 app.use(morgan('dev'));
@@ -22,19 +22,19 @@ app.use(body_parser.json());
 // app.use('/views', express.static(path.join(__dirname, 'views')))
 
 var models = require('./models');
-models.sequelize.sync().then(function() {
+models.sequelize.sync().then(function () {
 	console.log('database sync..');
 })
 
 var router = express.Router();
 
-app.use(function(req,res,next) {
+app.use(function (req, res, next) {
 
-	res.header("Access-Control-Allow-Origin","*");
+	res.header("Access-Control-Allow-Origin", "*");
 
-	res.header("Access-Control-Allow-Headers","Origin, X-Requested-With, Authorization, Content-Type, Accept");
+	res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Authorization, Content-Type, Accept");
 
-	res.setHeader('Access-Control-Allow-Methods','GET, POST, OPTIONS, PUT, PATCH, DELETE');
+	res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
 
 	next();
 
@@ -48,34 +48,34 @@ app.use(function(req,res,next) {
 //   res.redirect('/login');
 // });
 
-app.get('/',(req,res) => {
+app.get('/', (req, res) => {
 	res.send("server is running...")
 })
 
 app.use(express.static('uploads'));
 
-app.use('/api',router);
+app.use('/api', router);
 
 require('./route')(app);
 
-app.use(function(req,res,next) {
-	res.send(setRes(resCode.ResourceNotFound,null,true,'Route not found.'));
+app.use(function (req, res, next) {
+	res.send(setRes(resCode.ResourceNotFound, null, true, 'Route not found.'));
 });
 
-app.use(function(err,req,res,next) {
-	console.log('err status...',err.status);
-	res.send(setRes(resCode.InternalServer,null,true,err.message));
+app.use(function (err, req, res, next) {
+	console.log('err status...', err.status);
+	res.send(setRes(resCode.InternalServer, null, true, err.message));
 });
 
 // Handle 404 - Keep this as a last route
-app.use((req,res) => {
+app.use((req, res) => {
 	res.redirect('/404');
 });
 
 // require('./cron-job')(cron)
 
 // error handler
-app.use(function(err,req,res,next) {
+app.use(function (err, req, res, next) {
 	// set locals, only providing error in development
 	res.locals.message = err.message;
 	res.locals.error = req.app.get('env') === 'development' ? err : {};
@@ -106,7 +106,6 @@ var Queue = require('better-queue');
 var notification = require('./push_notification')
 
 var db = admin.database()
-
 var userModel = models.user;
 var businessModel = models.business;
 var deviceModel = models.device_tokens;
@@ -115,8 +114,8 @@ var NotificationData = {};
 
 var NotificationRef = db.ref(`notifications`)
 
-var NotificationQueue = new Queue(async function(task,cb) {
-	if(task.role == 'customer') {
+var NotificationQueue = new Queue(async function (task, cb) {
+	if (task.role == 'customer') {
 		await userModel.findOne({
 			where: {
 				id: task.id,
@@ -124,13 +123,13 @@ var NotificationQueue = new Queue(async function(task,cb) {
 				is_active: true,
 			}
 		}).then(async user => {
-			if(user != null) {
-				const deviceToken = await deviceModel.findOne({where: {status: 1,user_id: user.id}});
-				if(deviceToken) {
+			if (user != null) {
+				const deviceToken = await deviceModel.findOne({ where: { status: 1, user_id: user.id } });
+				if (deviceToken) {
 					NotificationData.device_token = deviceToken?.device_token;
 					NotificationData.message = task.text
 					NotificationData.title = task.from_name
-					NotificationData.content = {notification_type: NOTIFICATION_TYPES.CHAT_NOTIFICATION,user_id: user.id,business_id: task.business_id}
+					NotificationData.content = { notification_type: NOTIFICATION_TYPES.CHAT_NOTIFICATION, user_id: user.id, business_id: task.business_id }
 					notification.SendNotification(NotificationData)
 				}
 			}
@@ -143,13 +142,13 @@ var NotificationQueue = new Queue(async function(task,cb) {
 				is_active: true,
 			}
 		}).then(async business => {
-			if(business != null) {
-				const deviceToken = await deviceModel.findOne({where: {status: 1,business_id: business.id}});
-				if(deviceToken) {
+			if (business != null) {
+				const deviceToken = await deviceModel.findOne({ where: { status: 1, business_id: business.id } });
+				if (deviceToken) {
 					NotificationData.device_token = deviceToken?.device_token
 					NotificationData.message = task.text
 					NotificationData.title = task.from_name
-					NotificationData.content = {notification_type: NOTIFICATION_TYPES.CHAT_NOTIFICATION,user_id: task.user_id,business_id: business.id}
+					NotificationData.content = { notification_type: NOTIFICATION_TYPES.CHAT_NOTIFICATION, user_id: task.user_id, business_id: business.id }
 					notification.SendNotification(NotificationData)
 				}
 			}
@@ -158,12 +157,12 @@ var NotificationQueue = new Queue(async function(task,cb) {
 	cb();
 })
 
-var RemoveDataQueue = new Queue(function(task,cb) {
+var RemoveDataQueue = new Queue(function (task, cb) {
 	NotificationRef.child(task).remove();
 	cb();
 })
 
-NotificationRef.on("child_added",function(snapshot) {
+NotificationRef.on("child_added", function (snapshot) {
 	snapshotVal = JSON.parse(JSON.stringify(snapshot.val()))
 	snapshotKey = JSON.parse(JSON.stringify(snapshot.key))
 	NotificationQueue.push(snapshotVal);

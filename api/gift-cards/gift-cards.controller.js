@@ -22,7 +22,7 @@ const pagination = require('../../helpers/pagination');
 
 
 // Create Reward Virtual card START
-exports.giftCardCreate = async (req,res) => {
+exports.giftCardCreate = async (req, res) => {
 	try {
 		var data = req.body
 		var giftCardModel = models.gift_cards
@@ -30,23 +30,23 @@ exports.giftCardCreate = async (req,res) => {
 		req.file ? data.image = `${req.file.key}` : '';
 		var validation = true;
 		var Op = models.Op;
-		let arrayFields = ['business_id','image','name','amount','expire_at','description','is_cashback'];
+		let arrayFields = ['business_id', 'image', 'name', 'amount', 'expire_at', 'description', 'is_cashback'];
 		const result = data.is_cashback == 1 ? (arrayFields.push('cashback_percentage')) : '';
 
-		var requiredFields = _.reject(arrayFields,(o) => {return _.has(data,o)})
+		var requiredFields = _.reject(arrayFields, (o) => { return _.has(data, o) })
 
-		if(requiredFields.length == 0) {
+		if (requiredFields.length == 0) {
 			const giftCardName = data?.name?.trim() || data.name;
 			var currentDate = (moment().format('YYYY-MM-DD') == moment(data.expire_at).format('YYYY-MM-DD'))
-			var pastDate = moment(data.expire_at,'YYYY-MM-DD').isBefore(moment());
-			if(result != '' && !((data.cashback_percentage >= Math.min(1,100)) && (data.cashback_percentage <= Math.max(1,100)))) {
-				res.send(setRes(resCode.BadRequest,false,"Please select valid cashback percentage!",null))
-			} else if(currentDate || pastDate) {
-				res.send(setRes(resCode.BadRequest,false,"You can't select past and current date.!",null))
-			} else if(!Number(data.amount) || isNaN(data.amount) || data.amount <= 0) {
-				res.send(setRes(resCode.BadRequest,false,"Amount value should be greater than 0!",null))
+			var pastDate = moment(data.expire_at, 'YYYY-MM-DD').isBefore(moment());
+			if (result != '' && !((data.cashback_percentage >= Math.min(1, 100)) && (data.cashback_percentage <= Math.max(1, 100)))) {
+				res.send(setRes(resCode.BadRequest, false, "Please select valid cashback percentage!", null))
+			} else if (currentDate || pastDate) {
+				res.send(setRes(resCode.BadRequest, false, "You can't select past and current date.!", null))
+			} else if (!Number(data.amount) || isNaN(data.amount) || data.amount <= 0) {
+				res.send(setRes(resCode.BadRequest, false, "Amount value should be greater than 0!", null))
 			} else {
-				if(validation) {
+				if (validation) {
 					businessModel.findOne({
 						where: {
 							id: data.business_id,
@@ -54,8 +54,8 @@ exports.giftCardCreate = async (req,res) => {
 							is_active: true
 						}
 					}).then(async business => {
-						if(_.isEmpty(business)) {
-							res.send(setRes(resCode.ResourceNotFound,false,"Business not found.",null))
+						if (_.isEmpty(business)) {
+							res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
 						} else {
 							await giftCardModel.findOne({
 								where: {
@@ -66,21 +66,21 @@ exports.giftCardCreate = async (req,res) => {
 									}
 								}
 							}).then(async giftCard => {
-								if(giftCard) {
-									res.send(setRes(resCode.BadRequest,false,"Virtual card name already taken.!",null))
+								if (giftCard) {
+									res.send(setRes(resCode.BadRequest, false, "Virtual card name already taken.!", null))
 								} else {
 									giftCardModel.create(data).then(async giftCardData => {
-										if(giftCardData) {
-											if(data.image != null) {
-												var image = await awsConfig.getSignUrl(giftCardData.image).then(function(res) {
+										if (giftCardData) {
+											if (data.image != null) {
+												var image = await awsConfig.getSignUrl(giftCardData.image).then(function (res) {
 													giftCardData.image = res
 												})
 											} else {
 												giftCardData.image = commonConfig.default_image
 											}
-											res.send(setRes(resCode.OK,true,"Virtual card added successfully",giftCardData))
+											res.send(setRes(resCode.OK, true, "Virtual card added successfully", giftCardData))
 										} else {
-											res.send(setRes(resCode.InternalServer,false,"Internal server error",null))
+											res.send(setRes(resCode.InternalServer, false, "Internal server error", null))
 										}
 									})
 								}
@@ -92,22 +92,22 @@ exports.giftCardCreate = async (req,res) => {
 				}
 			}
 		} else {
-			res.send(setRes(resCode.BadRequest,false,(requiredFields.toString() + ' are required'),null))
+			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
 		}
-	} catch(error) {
-		res.send(setRes(resCode.BadRequest,false,"Something went wrong!",null))
+	} catch (error) {
+		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
 	}
 }
 // Create Reward Virtual card END
 
 // Delete Reward Virtual card START
-exports.deleteGiftCard = async (req,res) => {
+exports.deleteGiftCard = async (req, res) => {
 	try {
 		var data = req.params
 		var giftCardModel = models.gift_cards
-		var requiredFields = _.reject(['id'],(o) => {return _.has(data,o)})
+		var requiredFields = _.reject(['id'], (o) => { return _.has(data, o) })
 
-		if(requiredFields == "") {
+		if (requiredFields == "") {
 			giftCardModel.findOne({
 				where: {
 					id: data.id,
@@ -115,7 +115,7 @@ exports.deleteGiftCard = async (req,res) => {
 				}
 			}).then(async giftCardData => {
 				var timestamps = moment().format('YYYY-MM-DD HH:mm:ss')
-				if(giftCardData) {
+				if (giftCardData) {
 					const params = {
 						Bucket: awsConfig.Bucket,
 						Key: giftCardData.image
@@ -126,7 +126,7 @@ exports.deleteGiftCard = async (req,res) => {
 						isDeleted: true,
 						status: false
 					}).then(async deleteData => {
-						if(deleteData) {
+						if (deleteData) {
 							await giftCardModel.findOne({
 								where: {
 									id: deleteData.id
@@ -141,69 +141,69 @@ exports.deleteGiftCard = async (req,res) => {
 							});
 						}
 					});
-					res.send(setRes(resCode.OK,true,"Virtual card deleted successfully",null))
+					res.send(setRes(resCode.OK, true, "Virtual card deleted successfully", null))
 				} else {
-					res.send(setRes(resCode.ResourceNotFound,false,"Virtual card not found",null))
+					res.send(setRes(resCode.ResourceNotFound, false, "Virtual card not found", null))
 				}
 			}).catch(error => {
-				res.send(setRes(resCode.BadRequest,false,error,null))
+				res.send(setRes(resCode.BadRequest, false, error, null))
 			})
 		} else {
-			res.send(setRes(resCode.BadRequest,false,(requiredFields.toString() + ' are required'),null))
+			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
 		}
-	} catch(error) {
-		res.send(setRes(resCode.BadRequest,false,"Something went wrong!",null))
+	} catch (error) {
+		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
 	}
 }
 // Delete Reward Virtual card END
 
 // Update Reward Virtual card START
-exports.giftCardUpdate = async (req,res) => {
+exports.giftCardUpdate = async (req, res) => {
 	try {
 		var data = req.body;
 		req.file ? data.image = `${req.file.key}` : '';
 		var giftCardModel = models.gift_cards;
 		const userGiftCardList = models.user_giftcards;
 		var Op = models.Op;
-		let arrayFields = ['id','name','amount','expire_at','description','is_cashback'];
+		let arrayFields = ['id', 'name', 'amount', 'expire_at', 'description', 'is_cashback'];
 		const result = data.is_cashback == 1 ? (arrayFields.push('cashback_percentage')) : '';
 
-		var requiredFields = _.reject(arrayFields,(o) => {return _.has(data,o)})
+		var requiredFields = _.reject(arrayFields, (o) => { return _.has(data, o) })
 
-		if(requiredFields.length == 0) {
+		if (requiredFields.length == 0) {
 			const giftCardName = data?.name?.trim() || data.name;
 			var currentDate = (moment().format('YYYY-MM-DD') == moment(data.expire_at).format('YYYY-MM-DD'))
-			var pastDate = moment(data.expire_at,'YYYY-MM-DD').isBefore(moment());
-			if((result != '' && !(data.cashback_percentage >= Math.min(1,100)) && (data.cashback_percentage <= Math.max(1,100)))) {
-				res.send(setRes(resCode.BadRequest,false,"Please select valid cashback percentage!",null))
-			} else if(!Number(data.amount) || isNaN(data.amount) || data.amount <= 0) {
-				res.send(setRes(resCode.BadRequest,false,"Amount value should be greater than 0!",null))
-			} else if(currentDate || pastDate) {
-				res.send(setRes(resCode.BadRequest,false,"You can't select past and current date.!",null))
+			var pastDate = moment(data.expire_at, 'YYYY-MM-DD').isBefore(moment());
+			if ((result != '' && !(data.cashback_percentage >= Math.min(1, 100)) && (data.cashback_percentage <= Math.max(1, 100)))) {
+				res.send(setRes(resCode.BadRequest, false, "Please select valid cashback percentage!", null))
+			} else if (!Number(data.amount) || isNaN(data.amount) || data.amount <= 0) {
+				res.send(setRes(resCode.BadRequest, false, "Amount value should be greater than 0!", null))
+			} else if (currentDate || pastDate) {
+				res.send(setRes(resCode.BadRequest, false, "You can't select past and current date.!", null))
 			} else {
 				giftCardModel.findOne({
-					where: {id: data.id,isDeleted: false,status: true}
+					where: { id: data.id, isDeleted: false, status: true }
 				}).then(async giftCardDetail => {
-					if(_.isEmpty(giftCardDetail)) {
-						res.send(setRes(resCode.ResourceNotFound,false,"Virtual card not found.",null))
+					if (_.isEmpty(giftCardDetail)) {
+						res.send(setRes(resCode.ResourceNotFound, false, "Virtual card not found.", null))
 					} else {
 						giftCardModel.findOne({
-							where: {isDeleted: false,status: true,name: {[Op.eq]: giftCardName},id: {[Op.ne]: data.id}}
+							where: { isDeleted: false, status: true, name: { [Op.eq]: giftCardName }, id: { [Op.ne]: data.id } }
 						}).then(async giftCardData => {
-							if(data?.is_cashback == 0) {
+							if (data?.is_cashback == 0) {
 								data.cashback_percentage = null;
 							}
-							if(giftCardData == null) {
+							if (giftCardData == null) {
 								giftCardModel.update(data,
 									{
-										where: {id: data.id,isDeleted: false,status: true}
+										where: { id: data.id, isDeleted: false, status: true }
 									}).then(async updateData => {
-										if(data.image != null) {
-											const params = {Bucket: awsConfig.Bucket,Key: giftCardDetail.image}; awsConfig.deleteImageAWS(params)
+										if (data.image != null) {
+											const params = { Bucket: awsConfig.Bucket, Key: giftCardDetail.image }; awsConfig.deleteImageAWS(params)
 										}
-										if(updateData) {
+										if (updateData) {
 											giftCardModel.findOne({
-												where: {id: data.id,isDeleted: false,status: true},
+												where: { id: data.id, isDeleted: false, status: true },
 												include: [
 													{
 														model: userGiftCardList,
@@ -215,12 +215,12 @@ exports.giftCardUpdate = async (req,res) => {
 													}
 												]
 											}).then(async updatedGiftCardDetail => {
-												if(data.image != null) {
-													var updateData_image = await awsConfig.getSignUrl(updatedGiftCardDetail.image).then(function(res) {
+												if (data.image != null) {
+													var updateData_image = await awsConfig.getSignUrl(updatedGiftCardDetail.image).then(function (res) {
 														updatedGiftCardDetail.image = res;
 													})
-												} else if(updatedGiftCardDetail.image != null) {
-													var updateData_image = await awsConfig.getSignUrl(updatedGiftCardDetail.image).then(function(res) {
+												} else if (updatedGiftCardDetail.image != null) {
+													var updateData_image = await awsConfig.getSignUrl(updatedGiftCardDetail.image).then(function (res) {
 														updatedGiftCardDetail.image = res;
 													})
 												}
@@ -228,7 +228,7 @@ exports.giftCardUpdate = async (req,res) => {
 													updatedGiftCardDetail.image = awsConfig.default_image;
 												}
 												const curentDate = (moment().format('YYYY-MM-DD'));
-												if(updatedGiftCardDetail.dataValues.expire_at < curentDate) {
+												if (updatedGiftCardDetail.dataValues.expire_at < curentDate) {
 													updatedGiftCardDetail.dataValues.is_expired = true;
 												} else {
 													updatedGiftCardDetail.dataValues.is_expired = false;
@@ -237,30 +237,30 @@ exports.giftCardUpdate = async (req,res) => {
 												updatedGiftCardDetail.dataValues.totalPurchase = updatedGiftCardDetail?.dataValues?.user_giftcards?.length || 0;
 												delete updatedGiftCardDetail?.dataValues?.user_giftcards;
 
-												res.send(setRes(resCode.OK,true,'Virtual card update successfully',updatedGiftCardDetail))
+												res.send(setRes(resCode.OK, true, 'Virtual card update successfully', updatedGiftCardDetail))
 											})
 										} else {
-											res.send(setRes(resCode.BadRequest,false,"Fail to update Virtual card.",null))
+											res.send(setRes(resCode.BadRequest, false, "Fail to update Virtual card.", null))
 										}
 									})
 							} else {
-								res.send(setRes(resCode.BadRequest,false,"Virtual card name already taken.!",null))
+								res.send(setRes(resCode.BadRequest, false, "Virtual card name already taken.!", null))
 							}
 						})
 					}
 				})
 			}
 		} else {
-			res.send(setRes(resCode.BadRequest,false,(requiredFields.toString() + ' are required'),null))
+			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
 		}
-	} catch(error) {
-		res.send(setRes(resCode.BadRequest,false,"Something went wrong!",null))
+	} catch (error) {
+		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
 	}
 }
 // Update Reward Virtual card END
 
 // LIST Virtual cards 
-exports.giftCardLists = async (req,res) => {
+exports.giftCardLists = async (req, res) => {
 	try {
 		const query = req.query;
 		const business_id = query?.business_id || '';
@@ -277,13 +277,13 @@ exports.giftCardLists = async (req,res) => {
 				},
 			},
 			order: [
-				['createdAt','DESC']
+				['createdAt', 'DESC']
 			],
-			attributes: {exclude: ["status","isDeleted","updatedAt","deleted_at"]}
+			attributes: { exclude: ["status", "isDeleted", "updatedAt", "deleted_at"] }
 		});
-		return res.send(setRes(resCode.OK,true,"Virtual cards List.",giftCards));
-	} catch(error) {
-		return res.send(setRes(resCode.BadRequest,false,"Something went wrong!",null))
+		return res.send(setRes(resCode.OK, true, "Virtual cards List.", giftCards));
+	} catch (error) {
+		return res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
 	}
 }
 
@@ -291,7 +291,7 @@ exports.giftCardLists = async (req,res) => {
 /** 
  * Older reward list api is not in use 
  */
-exports.commonRewardsListOlder = async (req,res) => {
+exports.commonRewardsListOlder = async (req, res) => {
 	try {
 		var data = req.body
 		var giftCardModel = models.gift_cards
@@ -304,16 +304,16 @@ exports.commonRewardsListOlder = async (req,res) => {
 		const promises = [];
 		var request_type = data.type
 
-		var requiredFields = _.reject(['business_id','page','page_size','type'],(o) => {return _.has(data,o)})
+		var requiredFields = _.reject(['business_id', 'page', 'page_size', 'type'], (o) => { return _.has(data, o) })
 
-		if(requiredFields == "") {
-			if(data.page < 0 || data.page == 0) {
-				return res.send(setRes(resCode.BadRequest,null,false,"invalid page number, should start with 1"))
+		if (requiredFields == "") {
+			if (data.page < 0 || data.page == 0) {
+				return res.send(setRes(resCode.BadRequest, null, false, "invalid page number, should start with 1"))
 			}
-			var typeArr = ['gift_cards','cashbacks','discounts','coupones','loyalty_points'];
+			var typeArr = ['gift_cards', 'cashbacks', 'discounts', 'coupones', 'loyalty_points'];
 
-			if((request_type) && !(typeArr.includes(request_type))) {
-				return res.send(setRes(resCode.BadRequest,null,false,"Please select valid type."))
+			if ((request_type) && !(typeArr.includes(request_type))) {
+				return res.send(setRes(resCode.BadRequest, null, false, "Please select valid type."))
 			}
 			// var skip = data.page_size * (data.page - 1)
 			// var limit = parseInt(data.page_size)
@@ -322,22 +322,22 @@ exports.commonRewardsListOlder = async (req,res) => {
 
 			promises.push(
 				await giftCardModel.findAll({
-					where: {isDeleted: false,status: true,business_id: data.business_id,deleted_at: null,[Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],}
+					where: { isDeleted: false, status: true, business_id: data.business_id, deleted_at: null, [Op.or]: [{ name: { [Op.like]: "%" + data.search + "%", } }], }
 				}).then(async giftCardData => {
-					if(giftCardData.length > 0) {
+					if (giftCardData.length > 0) {
 						const dataArray = [];
 						// Update Sign URL
-						for(const data of giftCardData) {
-							if(data.image != null) {
+						for (const data of giftCardData) {
+							if (data.image != null) {
 								var images = data.image
-								const signurl = await awsConfig.getSignUrl(images.toString()).then(function(res) {
+								const signurl = await awsConfig.getSignUrl(images.toString()).then(function (res) {
 									data.image = res;
 								});
 							} else {
 								data.image = commonConfig.default_image;
 							}
 							let result = JSON.parse(JSON.stringify(data));
-							if(result.expire_at < currentDate) {
+							if (result.expire_at < currentDate) {
 								result.expire_status = 1;
 							} else {
 								result.expire_status = 0;
@@ -350,13 +350,13 @@ exports.commonRewardsListOlder = async (req,res) => {
 					return [];
 				}),
 				await cashbackModel.findAll({
-					where: {isDeleted: false,status: true,business_id: data.business_id,deleted_at: null,[Op.or]: [{title: {[Op.like]: "%" + data.search + "%",}}],}
+					where: { isDeleted: false, status: true, business_id: data.business_id, deleted_at: null, [Op.or]: [{ title: { [Op.like]: "%" + data.search + "%", } }], }
 				}).then(async CashbackData => {
-					if(CashbackData.length > 0) {
+					if (CashbackData.length > 0) {
 						const dataArray = [];
-						for(const data of CashbackData) {
+						for (const data of CashbackData) {
 							let result = JSON.parse(JSON.stringify(data));
-							if(result.validity_for < currentDate) {
+							if (result.validity_for < currentDate) {
 								result.expire_status = 1;
 							} else {
 								result.expire_status = 0;
@@ -369,13 +369,13 @@ exports.commonRewardsListOlder = async (req,res) => {
 					return [];
 				}),
 				await discountModel.findAll({
-					where: {isDeleted: false,status: true,business_id: data.business_id,deleted_at: null,[Op.or]: [{title: {[Op.like]: "%" + data.search + "%",}}],}
+					where: { isDeleted: false, status: true, business_id: data.business_id, deleted_at: null, [Op.or]: [{ title: { [Op.like]: "%" + data.search + "%", } }], }
 				}).then(async DiscountData => {
-					if(DiscountData.length > 0) {
+					if (DiscountData.length > 0) {
 						const dataArray = [];
-						for(const data of DiscountData) {
+						for (const data of DiscountData) {
 							let result = JSON.parse(JSON.stringify(data));
-							if(result.validity_for < currentDate) {
+							if (result.validity_for < currentDate) {
 								result.expire_status = 1;
 							} else {
 								result.expire_status = 0;
@@ -388,13 +388,13 @@ exports.commonRewardsListOlder = async (req,res) => {
 					return [];
 				}),
 				await couponeModel.findAll({
-					where: {isDeleted: false,status: true,business_id: data.business_id,deleted_at: null,[Op.or]: [{title: {[Op.like]: "%" + data.search + "%",}}],}
+					where: { isDeleted: false, status: true, business_id: data.business_id, deleted_at: null, [Op.or]: [{ title: { [Op.like]: "%" + data.search + "%", } }], }
 				}).then(async CouponeData => {
-					if(CouponeData.length > 0) {
+					if (CouponeData.length > 0) {
 						const dataArray = [];
-						for(const data of CouponeData) {
+						for (const data of CouponeData) {
 							let result = JSON.parse(JSON.stringify(data));
-							if(result.expire_at < currentDate) {
+							if (result.expire_at < currentDate) {
 								result.expire_status = 1;
 							} else {
 								result.expire_status = 0;
@@ -408,13 +408,13 @@ exports.commonRewardsListOlder = async (req,res) => {
 					return [];
 				}),
 				await loyaltyPointModel.findAll({
-					where: {isDeleted: false,status: true,business_id: data.business_id,deleted_at: null,[Op.or]: [{name: {[Op.like]: "%" + data.search + "%",}}],}
+					where: { isDeleted: false, status: true, business_id: data.business_id, deleted_at: null, [Op.or]: [{ name: { [Op.like]: "%" + data.search + "%", } }], }
 				}).then(async LoyaltyPointData => {
-					if(LoyaltyPointData.length > 0) {
+					if (LoyaltyPointData.length > 0) {
 						const dataArray = [];
-						for(const data of LoyaltyPointData) {
+						for (const data of LoyaltyPointData) {
 							let result = JSON.parse(JSON.stringify(data));
-							if(result.validity < currentDate) {
+							if (result.validity < currentDate) {
 								result.expire_status = 1;
 							} else {
 								result.expire_status = 0;
@@ -428,31 +428,31 @@ exports.commonRewardsListOlder = async (req,res) => {
 				})
 			);
 
-			const [giftcardRewards,cashbackData,discountData,couponeData,loyaltyPointData] = await Promise.all(promises);
+			const [giftcardRewards, cashbackData, discountData, couponeData, loyaltyPointData] = await Promise.all(promises);
 
-			const arrays = [giftcardRewards,cashbackData,discountData,couponeData,loyaltyPointData];
+			const arrays = [giftcardRewards, cashbackData, discountData, couponeData, loyaltyPointData];
 			const mergedArray = mergeRandomArrayObjects(arrays);
-			let result = mergedArray.slice(skip,skip + limit);
-			if(!(_.isEmpty(request_type))) {
-				result = _.filter(result,{type: request_type})
+			let result = mergedArray.slice(skip, skip + limit);
+			if (!(_.isEmpty(request_type))) {
+				result = _.filter(result, { type: request_type })
 			}
 			let resData = {};
 			resData.total_rewards_purchase = "";
 			resData.total_loyalty_purchase = "";
 			resData.rewards_and_loyalty = result;
-			res.send(setRes(resCode.OK,true,"Get rewards detail successfully.",resData))
+			res.send(setRes(resCode.OK, true, "Get rewards detail successfully.", resData))
 		} else {
-			res.send(setRes(resCode.BadRequest,false,(requiredFields.toString() + ' are required'),null))
+			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
 		}
-	} catch(error) {
-		res.send(setRes(resCode.BadRequest,false,"Something went wrong!",null))
+	} catch (error) {
+		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
 	}
 }
 
 /**
  * 	Wallet Reward Latest api
  */
-exports.commonRewardsListOld = async (req,res) => {
+exports.commonRewardsListOld = async (req, res) => {
 	try {
 		const data = req.body
 		const giftCardModel = models.gift_cards
@@ -466,21 +466,21 @@ exports.commonRewardsListOld = async (req,res) => {
 		const businessModel = models.business;
 		const Op = models.Op;
 		const currentDate = (moment().format('YYYY-MM-DD'))
-		const requiredFields = _.reject(['page'],(o) => {return _.has(data,o)})
+		const requiredFields = _.reject(['page'], (o) => { return _.has(data, o) })
 		const businessEmail = req.userEmail;
-		const businessDetails = await businessModel.findOne({where: {email: businessEmail,is_active: true,is_deleted: false}});
+		const businessDetails = await businessModel.findOne({ where: { email: businessEmail, is_active: true, is_deleted: false } });
 		const businessId = businessDetails?.id || '';
-		const businessIdCond = data?.business_id ? {business_id: data?.business_id} : {business_id: businessId};
-		if(requiredFields == "") {
-			if(!data?.page || +(data.page) <= 0) {
-				return res.send(setRes(resCode.BadRequest,null,false,"invalid page number, should start with 1"))
+		const businessIdCond = data?.business_id ? { business_id: data?.business_id } : { business_id: businessId };
+		if (requiredFields == "") {
+			if (!data?.page || +(data.page) <= 0) {
+				return res.send(setRes(resCode.BadRequest, null, false, "invalid page number, should start with 1"))
 			}
-			var typeArr = ['gift_cards','cashbacks','discounts','coupones','loyalty_points'];
+			var typeArr = ['gift_cards', 'cashbacks', 'discounts', 'coupones', 'loyalty_points'];
 			let request_type = data?.type?.includes(',') && data?.type?.split(',').length > 0 ? data?.type?.split(',') : (data?.type && data?.type?.trim() !== '' ? [data?.type] : typeArr);
 			request_type = request_type.filter(tp => tp && tp.trim() !== '');
 			const requestTypeNotExists = request_type.filter(tp => !typeArr.includes(tp) && tp !== '');
-			if(request_type && requestTypeNotExists.length !== 0) {
-				return res.send(setRes(resCode.BadRequest,null,false,"Please select valid type."))
+			if (request_type && requestTypeNotExists.length !== 0) {
+				return res.send(setRes(resCode.BadRequest, null, false, "Please select valid type."))
 			}
 			// if((request_type) && !(typeArr.includes(request_type))){
 			// 	return res.send(setRes(resCode.BadRequest, null, false, "Please select valid type."))
@@ -510,12 +510,12 @@ exports.commonRewardsListOld = async (req,res) => {
 				],
 			} : {};
 
-			let giftCardsRecords,cashbackRecords,discountRecords,couponeRecords,loyaltyRecords;
-			let remainingGiftcardRecordLimit = 0,remainingCashbackRecordLimit = 0,remainingDiscountRecordLimit = 0,remainingCouponRecordLimit = 0;
+			let giftCardsRecords, cashbackRecords, discountRecords, couponeRecords, loyaltyRecords;
+			let remainingGiftcardRecordLimit = 0, remainingCashbackRecordLimit = 0, remainingDiscountRecordLimit = 0, remainingCouponRecordLimit = 0;
 			/**
 			 * Fetch Virtual cards and calculate and forward to next module not fetched record limit 
 			 */
-			if(request_type.includes('gift_cards')) {
+			if (request_type.includes('gift_cards')) {
 				giftCardsRecords = await giftCardModel.findAndCountAll({
 					offset: perTableLimit * (data.page - 1),
 					limit: perTableLimit,
@@ -537,25 +537,25 @@ exports.commonRewardsListOld = async (req,res) => {
 					},
 					attributes: {
 						include: [
-							[models.sequelize.literal("'gift_cards'"),"type"],
+							[models.sequelize.literal("'gift_cards'"), "type"],
 						]
 					},
 					order: [
-						['createdAt','DESC']
+						['createdAt', 'DESC']
 					]
 				});
 				const tempGiftCardsRecords = [];
-				for(let data of giftCardsRecords?.rows || []) {
+				for (let data of giftCardsRecords?.rows || []) {
 					let gCard = JSON.parse(JSON.stringify(data));
-					if(gCard.image && gCard.image != null) {
+					if (gCard.image && gCard.image != null) {
 						let images = gCard.image
-						const signurl = await awsConfig.getSignUrl(images.toString()).then(function(res) {
+						const signurl = await awsConfig.getSignUrl(images.toString()).then(function (res) {
 							gCard.image = res;
 						});
 					} else {
 						gCard.image = commonConfig.default_image;
 					}
-					if(gCard.expire_at < currentDate) {
+					if (gCard.expire_at < currentDate) {
 						gCard["is_expired"] = true;
 					} else {
 						gCard["is_expired"] = false;
@@ -573,7 +573,7 @@ exports.commonRewardsListOld = async (req,res) => {
 			/**
 			 * Fetch Cashback records and calculate and forward to next module not fetched record limit 
 			 */
-			if(request_type.includes('cashbacks')) {
+			if (request_type.includes('cashbacks')) {
 				cashbackRecords = await cashbackModel.findAndCountAll({
 					offset: perTableLimit * (data.page - 1),
 					limit: perTableLimit + remainingGiftcardRecordLimit,
@@ -584,22 +584,22 @@ exports.commonRewardsListOld = async (req,res) => {
 						...cashBackDiscountCouponCondition
 					},
 					attributes: {
-						include: [[models.sequelize.literal("'cashbacks'"),"type"]]
+						include: [[models.sequelize.literal("'cashbacks'"), "type"]]
 					},
 					include: [
 						{
 							model: productCategoryModel,
-							attributes: ['id','name']
+							attributes: ['id', 'name']
 						}
 					],
 					order: [
-						['createdAt','DESC']
+						['createdAt', 'DESC']
 					]
 				});
 				const tempCashbackRecords = [];
-				for(const data of cashbackRecords?.rows || []) {
+				for (const data of cashbackRecords?.rows || []) {
 					let cashBackObj = JSON.parse(JSON.stringify(data));
-					const products = await productModel.findAll({where: {id: {[Op.in]: cashBackObj.product_id?.split(',') || []}},attributes: ["name"],raw: true});
+					const products = await productModel.findAll({ where: { id: { [Op.in]: cashBackObj.product_id?.split(',') || [] } }, attributes: ["name"], raw: true });
 					const product_name_arr = products?.map(val => val.name);
 					const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
 					cashBackObj.product_name = product_name;
@@ -607,7 +607,7 @@ exports.commonRewardsListOld = async (req,res) => {
 					cashBackObj.value_type = cashBackObj.cashback_type;
 					cashBackObj.amount = cashBackObj.cashback_value;
 					delete cashBackObj.product_category;
-					if(cashBackObj.validity_for < currentDate) {
+					if (cashBackObj.validity_for < currentDate) {
 						cashBackObj.is_expired = true;
 					} else {
 						cashBackObj.is_expired = false;
@@ -623,7 +623,7 @@ exports.commonRewardsListOld = async (req,res) => {
 			/**
 			 * Fetch discount records and calculate and forward to next module not fetched record limit 
 			 */
-			if(request_type.includes('discounts')) {
+			if (request_type.includes('discounts')) {
 				discountRecords = await discountModel.findAndCountAll({
 					offset: perTableLimit * (data.page - 1),
 					limit: perTableLimit + remainingCashbackRecordLimit,
@@ -634,22 +634,22 @@ exports.commonRewardsListOld = async (req,res) => {
 						...cashBackDiscountCouponCondition
 					},
 					attributes: {
-						include: [[models.sequelize.literal("'discounts'"),"type"]]
+						include: [[models.sequelize.literal("'discounts'"), "type"]]
 					},
 					include: [
 						{
 							model: productCategoryModel,
-							attributes: ['id','name']
+							attributes: ['id', 'name']
 						}
 					],
 					order: [
-						['createdAt','DESC']
+						['createdAt', 'DESC']
 					]
 				});
 				const tempDiscountRecords = [];
-				for(const data of discountRecords?.rows || []) {
+				for (const data of discountRecords?.rows || []) {
 					let discountObj = JSON.parse(JSON.stringify(data));
-					const products = await productModel.findAll({where: {id: {[Op.in]: discountObj.product_id?.split(',') || []}},attributes: ["name"],raw: true});
+					const products = await productModel.findAll({ where: { id: { [Op.in]: discountObj.product_id?.split(',') || [] } }, attributes: ["name"], raw: true });
 					const product_name_arr = products?.map(val => val.name);
 					const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
 					discountObj.product_name = product_name;
@@ -657,7 +657,7 @@ exports.commonRewardsListOld = async (req,res) => {
 					discountObj.value_type = discountObj.discount_type;
 					discountObj.amount = discountObj.discount_value;
 					delete discountObj.product_category;
-					if(discountObj.validity_for < currentDate) {
+					if (discountObj.validity_for < currentDate) {
 						discountObj.is_expired = true;
 					} else {
 						discountObj.is_expired = false;
@@ -674,7 +674,7 @@ exports.commonRewardsListOld = async (req,res) => {
 			/**
 			 *  Fetch coupon records and calculate and forward to next module not fetched record limit 
 			 */
-			if(request_type.includes('coupones')) {
+			if (request_type.includes('coupones')) {
 				couponeRecords = await couponeModel.findAndCountAll({
 					offset: perTableLimit * (data.page - 1),
 					limit: perTableLimit + remainingDiscountRecordLimit,
@@ -685,29 +685,29 @@ exports.commonRewardsListOld = async (req,res) => {
 						...cashBackDiscountCouponCondition
 					},
 					attributes: {
-						include: [[models.sequelize.literal("'coupones'"),"type"]]
+						include: [[models.sequelize.literal("'coupones'"), "type"]]
 					},
 					include: [
 						{
 							model: productCategoryModel,
-							attributes: ['id','name']
+							attributes: ['id', 'name']
 						}
 					],
 					order: [
-						['createdAt','DESC']
+						['createdAt', 'DESC']
 					]
 				});
 				const tempCouponesRecords = [];
-				for(const data of couponeRecords?.rows || []) {
+				for (const data of couponeRecords?.rows || []) {
 					let couponeObj = JSON.parse(JSON.stringify(data));
-					const products = await productModel.findAll({where: {id: {[Op.in]: couponeObj.product_id?.split(',') || []}},attributes: ["name"],raw: true});
+					const products = await productModel.findAll({ where: { id: { [Op.in]: couponeObj.product_id?.split(',') || [] } }, attributes: ["name"], raw: true });
 					const product_name_arr = products?.map(val => val.name);
 					const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
 					couponeObj.product_name = product_name;
 					couponeObj.product_category_name = couponeObj?.product_category?.name || ''
 					couponeObj.amount = couponeObj.coupon_value;
 					delete couponeObj.product_category;
-					if(couponeObj.expire_at < currentDate) {
+					if (couponeObj.expire_at < currentDate) {
 						couponeObj.is_expired = true;
 					} else {
 						couponeObj.is_expired = false;
@@ -723,7 +723,7 @@ exports.commonRewardsListOld = async (req,res) => {
 			/**
 			 * Fetch loyalty records
 			 */
-			if(request_type.includes('loyalty_points')) {
+			if (request_type.includes('loyalty_points')) {
 				loyaltyRecords = await loyaltyPointModel.findAndCountAll({
 					offset: lastTableLimit * (data.page - 1),
 					limit: lastTableLimit + remainingCouponRecordLimit,
@@ -734,35 +734,35 @@ exports.commonRewardsListOld = async (req,res) => {
 						...giftCardLoyaltyCondition
 					},
 					attributes: {
-						include: [[models.sequelize.literal("'loyalty_points'"),"type"]]
+						include: [[models.sequelize.literal("'loyalty_points'"), "type"]]
 					},
 					include: [
 						{
 							model: productModel,
-							attributes: ['id','name','category_id'],
+							attributes: ['id', 'name', 'category_id'],
 							include: [
 								{
 									model: productCategoryModel,
-									attributes: ['id','name'],
+									attributes: ['id', 'name'],
 									as: 'product_categorys'
 								}
 							],
 						},
 						{
 							model: giftCardModel,
-							attributes: ['id','name'],
+							attributes: ['id', 'name'],
 						}
 					],
 					order: [
-						['createdAt','DESC']
+						['createdAt', 'DESC']
 					]
 				});
 				const tempLoyaltyRecords = [];
-				for(const data of loyaltyRecords?.rows || []) {
+				for (const data of loyaltyRecords?.rows || []) {
 					let loyaltyObj = JSON.parse(JSON.stringify(data));
 					// loyaltyObj.product_name = loyaltyObj?.product?.name || '';
 					loyaltyObj.product_category_name = loyaltyObj?.product?.product_categorys?.name || '';
-					const products = await productModel.findAll({where: {id: {[Op.in]: loyaltyObj.product_id?.split(',') || []}},attributes: ["name"],raw: true});
+					const products = await productModel.findAll({ where: { id: { [Op.in]: loyaltyObj.product_id?.split(',') || [] } }, attributes: ["name"], raw: true });
 					const product_name_arr = products?.map(val => val.name);
 					const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
 					loyaltyObj.product_name = product_name;
@@ -770,7 +770,7 @@ exports.commonRewardsListOld = async (req,res) => {
 					loyaltyObj.giftcard_name = loyaltyObj?.gift_card?.name || '';
 					delete loyaltyObj?.gift_card;
 					delete loyaltyObj?.product;
-					if(loyaltyObj.validity < currentDate) {
+					if (loyaltyObj.validity < currentDate) {
 						loyaltyObj.is_expired = true;
 					} else {
 						loyaltyObj.is_expired = false;
@@ -810,7 +810,7 @@ exports.commonRewardsListOld = async (req,res) => {
 			const previousPage = currentPage - 1 <= 0 ? null : (currentPage - 1);
 			const nextPage = currentPage + 1 > lastPage ? null : (currentPage + 1);
 
-			const arrays = [...fetchedGiftCardsRecords,...fetchedCashbackRecords,...fetchedDiscountRecords,...fetchedCouponRecords,...fetchedLoyaltyRecords];
+			const arrays = [...fetchedGiftCardsRecords, ...fetchedCashbackRecords, ...fetchedDiscountRecords, ...fetchedCouponRecords, ...fetchedLoyaltyRecords];
 
 			// const [giftcardRewards,cashbackData,discountData,couponeData,loyaltyPointData] = await Promise.all(promises);
 
@@ -837,17 +837,16 @@ exports.commonRewardsListOld = async (req,res) => {
 			resData.previousPage = previousPage;
 			resData.lastPage = lastPage;
 
-			res.send(setRes(resCode.OK,true,"Get rewards list successfully",resData))
+			res.send(setRes(resCode.OK, true, "Get rewards list successfully", resData))
 		} else {
-			res.send(setRes(resCode.BadRequest,false,(requiredFields.toString() + ' are required'),null))
+			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
 		}
-	} catch(error) {
-		//console.log('error', error);
-		res.send(setRes(resCode.BadRequest,false,"Something went wrong!",null))
+	} catch (error) {
+		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
 	}
 }
 
-exports.commonRewardsList = async (req,res) => {
+exports.commonRewardsList = async (req, res) => {
 	try {
 		const data = req.body
 		const giftCardModel = models.gift_cards
@@ -867,17 +866,17 @@ exports.commonRewardsList = async (req,res) => {
 		const user = req?.user || {};
 
 		const currentDate = (moment().format('YYYY-MM-DD'))
-		const requiredFields = _.reject(['page'],(o) => {return _.has(data,o)})
+		const requiredFields = _.reject(['page'], (o) => { return _.has(data, o) })
 		// const businessEmail = req.userEmail;
 		const businessEmail = user?.user;
-		const businessDetails = await businessModel.findOne({where: {email: businessEmail,is_active: true,is_deleted: false}});
+		const businessDetails = await businessModel.findOne({ where: { email: businessEmail, is_active: true, is_deleted: false } });
 		const businessId = businessDetails?.id || '';
 
 		let total_rewards_purchase = "0";
 		let total_loyalty_purchase = "0";
 		let total_cashbacks = "0";
 		let total_loyalty_points = "0";
-		if(user.role_id == '2') {
+		if (user.role_id == '2') {
 			const userDetails = await userModel.findOne({
 				where: {
 					id: user.id
@@ -888,10 +887,10 @@ exports.commonRewardsList = async (req,res) => {
 			total_cashbacks = total_rewards;
 			total_loyalty_points = total_loyalty;
 		}
-		if(user.role_id == '3') {
+		if (user.role_id == '3') {
 
 			const businessRewardsDetails = await rewardHistoryModel.findAll({
-				attributes: [[models.sequelize.fn('sum',models.sequelize.col('reward_history.amount')),'total_rewards']],
+				attributes: [[models.sequelize.fn('sum', models.sequelize.col('reward_history.amount')), 'total_rewards']],
 				include: [
 					{
 						model: orderModel,
@@ -903,12 +902,12 @@ exports.commonRewardsList = async (req,res) => {
 					}
 				],
 				where: {
-					reference_reward_type: {[Op.ne]: 'loyalty_points'}
+					reference_reward_type: { [Op.ne]: 'loyalty_points' }
 				},
 				group: ['reward_history.id']
 			});
 			const businessLoyaltyDetails = await rewardHistoryModel.findAll({
-				attributes: [[models.sequelize.fn('sum',models.sequelize.col('reward_history.amount')),'total_loyalty']],
+				attributes: [[models.sequelize.fn('sum', models.sequelize.col('reward_history.amount')), 'total_loyalty']],
 				include: [
 					{
 						model: orderModel,
@@ -919,7 +918,7 @@ exports.commonRewardsList = async (req,res) => {
 					}
 				],
 				where: {
-					reference_reward_type: {[Op.eq]: 'loyalty_points'}
+					reference_reward_type: { [Op.eq]: 'loyalty_points' }
 				},
 				group: ['reward_history.id']
 			});
@@ -929,11 +928,11 @@ exports.commonRewardsList = async (req,res) => {
 		// const businessIdCond = data?.business_id ? `AND business_id="${data.business_id}"` : `AND business_id="${businessId}"`;
 		const businessIdCond = (tableName) => data?.business_id ? `AND ${tableName}.business_id="${data.business_id}"` : `AND ${tableName}.business_id="${businessId}"`;
 
-		if(requiredFields == '') {
+		if (requiredFields == '') {
 			const limit = 15;
 			const offset = (data.page >= 1) ? (data.page - 1) * limit : 0
 
-			const typeArr = ['gift_cards','cashbacks','discounts','coupones','loyalty_points'];
+			const typeArr = ['gift_cards', 'cashbacks', 'discounts', 'coupones', 'loyalty_points'];
 			let request_type = data?.type?.includes(',') && data?.type?.split(',').length > 0 ? data?.type?.split(',') : (data?.type && data?.type?.trim() !== '' ? [data?.type] : typeArr);
 
 			let unionQuery = '';
@@ -945,22 +944,22 @@ exports.commonRewardsList = async (req,res) => {
 			const cashbackDiscountCouponWhereClause = (tableName) => `isDeleted=false AND status=true ${cashbackDiscountCouponCond} ${businessIdCond(tableName)}`;
 
 			let filteCondition = '';
-			if(data.category_id != undefined && data.category_id) {
+			if (data.category_id != undefined && data.category_id) {
 				const category = data.category_id ? data.category_id.trim() : '';
 				filteCondition += ` products.category_id IN (${category})`;
 			}
 
-			if(data.product_type != undefined && data.product_type) {
+			if (data.product_type != undefined && data.product_type) {
 				const productType = data.product_type ? data.product_type.trim() : '';
 				const condition = `products.sub_category_id IN (${productType})`
 				filteCondition += filteCondition != '' ? ` AND ${condition}` : condition;
 			}
-			if(data.price != undefined && data.price) {
+			if (data.price != undefined && data.price) {
 				const priceRange = data.price != '' ? data.price.split('-') : [];
 				const lowerRange = priceRange.length > 1 ? priceRange[0] : 0;
 				const upperRange = priceRange.length > 1 ? priceRange[1] : 0;
 				let condition = `products.price >= ${lowerRange} `;
-				if(upperRange - lowerRange != 1) {
+				if (upperRange - lowerRange != 1) {
 					condition += `AND  products.price <= ${upperRange}`;
 				}
 				filteCondition += filteCondition != '' ? ` AND ${condition}` : condition;
@@ -974,42 +973,42 @@ exports.commonRewardsList = async (req,res) => {
 			const couponesQuery = `SELECT coupones.id, coupones.createdAt, "coupones" as type FROM coupones ${filteCondition != '' ? productFilterCondition('coupones') : ''} ${filteCondition != '' ? 'AND ' + cashbackDiscountCouponWhereClause('coupones') : 'WHERE ' + cashbackDiscountCouponWhereClause('coupones')}`;
 			const loyaltyPointsQuery = `SELECT loyalty_points.id, loyalty_points.createdAt, "loyalty_points" as type FROM loyalty_points ${filteCondition != '' ? productFilterCondition('loyalty_points') : ''} ${filteCondition != '' ? 'AND ' + giftLoyaltyWhereClause('loyalty_points') : 'WHERE ' + giftLoyaltyWhereClause('loyalty_points')}`;
 
-			if(request_type.includes('gift_cards')) {
+			if (request_type.includes('gift_cards')) {
 				unionQuery += giftCardQuery;
 			}
 
-			if(request_type.includes('cashbacks')) {
+			if (request_type.includes('cashbacks')) {
 				unionQuery += unionQuery != '' ? ` UNION ${cashbackQuery}` : cashbackQuery;
 			}
 
-			if(request_type.includes('discounts')) {
+			if (request_type.includes('discounts')) {
 				unionQuery += unionQuery != '' ? ` UNION ${discountQuery}` : discountQuery;
 			}
 
-			if(request_type.includes('coupones')) {
+			if (request_type.includes('coupones')) {
 				unionQuery += unionQuery != '' ? ` UNION ${couponesQuery}` : couponesQuery;
 			}
 
-			if(request_type.includes('loyalty_points')) {
+			if (request_type.includes('loyalty_points')) {
 				unionQuery += unionQuery != '' ? ` UNION ${loyaltyPointsQuery}` : loyaltyPointsQuery;
 			}
 			// unionQuery += `${unionQuery}`
 			let rewards = [];
 			let rewardsCounts = [];
-			if(user.role_id == 3) {
-				rewards = await models.sequelize.query(`SELECT * FROM (${unionQuery}) Rewards ${filteCondition != '' ? 'GROUP BY id' : ''} ORDER BY createdAt desc LIMIT ${offset}, ${limit}`,{
+			if (user.role_id == 3) {
+				rewards = await models.sequelize.query(`SELECT * FROM (${unionQuery}) Rewards ${filteCondition != '' ? 'GROUP BY id' : ''} ORDER BY createdAt desc LIMIT ${offset}, ${limit}`, {
 					type: models.sequelize.QueryTypes.SELECT
 				});
-				rewardsCounts = await models.sequelize.query(`SELECT * FROM (${unionQuery}) Rewards ${filteCondition != '' ? 'GROUP BY id' : ''}`,{
+				rewardsCounts = await models.sequelize.query(`SELECT * FROM (${unionQuery}) Rewards ${filteCondition != '' ? 'GROUP BY id' : ''}`, {
 					type: models.sequelize.QueryTypes.SELECT
 				});
 			} // for user's rewards
 			else {
 				const textSearch = (tableName) => {
-					if(['gift_cards','loyalty_points'].includes(tableName)) {
+					if (['gift_cards', 'loyalty_points'].includes(tableName)) {
 						return data.search ? ` AND ${tableName}.name LIKE "%${data.search}%"` : '';
 					}
-					if(['cashbacks','discounts','coupones'].includes(tableName)) {
+					if (['cashbacks', 'discounts', 'coupones'].includes(tableName)) {
 						return data.search ? `AND ${tableName}.title LIKE "%${data.search}%"` : '';
 					}
 				}
@@ -1025,39 +1024,39 @@ exports.commonRewardsList = async (req,res) => {
 
 				let userUnionQuery = '';
 				// const userUnionQuery = `${userGiftCardQuery} UNION ${userRewardQuery}`;
-				if(request_type.includes('gift_cards')) {
+				if (request_type.includes('gift_cards')) {
 					userUnionQuery += userGiftCardQuery;
 				}
 
-				if(request_type.includes('cashbacks')) {
+				if (request_type.includes('cashbacks')) {
 					userUnionQuery += userUnionQuery != '' ? ` UNION ${userCashbackRewardQuery}` : userCashbackRewardQuery;
 				}
 
-				if(request_type.includes('discounts')) {
+				if (request_type.includes('discounts')) {
 					userUnionQuery += userUnionQuery != '' ? ` UNION ${userDiscountRewardQuery}` : userDiscountRewardQuery;
 				}
 
-				if(request_type.includes('coupones')) {
+				if (request_type.includes('coupones')) {
 					userUnionQuery += userUnionQuery != '' ? ` UNION ${userCouponesRewardQuery}` : userCouponesRewardQuery;
 				}
 
-				if(request_type.includes('loyalty_points')) {
+				if (request_type.includes('loyalty_points')) {
 					userUnionQuery += userUnionQuery != '' ? ` UNION ${userLoyaltyRewardQuery}` : userLoyaltyRewardQuery;
 				}
 
-				rewards = await models.sequelize.query(`SELECT * FROM (${userUnionQuery}) Rewards ORDER BY createdAt desc LIMIT ${offset}, ${limit}`,{
+				rewards = await models.sequelize.query(`SELECT * FROM (${userUnionQuery}) Rewards ORDER BY createdAt desc LIMIT ${offset}, ${limit}`, {
 					type: models.sequelize.QueryTypes.SELECT
 				});
-				rewardsCounts = await models.sequelize.query(`SELECT * FROM (${userUnionQuery}) Rewards`,{
+				rewardsCounts = await models.sequelize.query(`SELECT * FROM (${userUnionQuery}) Rewards`, {
 					type: models.sequelize.QueryTypes.SELECT
 				})
 			}
 			const allRewardsData = await Promise.all([
 				...rewards.map((rew) => {
-					if(rew.type == 'gift_cards') {
+					if (rew.type == 'gift_cards') {
 						return new Promise(async (resolve) => {
 							let gCard = {};
-							if(user.role_id == 3) {
+							if (user.role_id == 3) {
 								gCard = await giftCardModel.findOne({
 									include: [
 										{
@@ -1074,7 +1073,7 @@ exports.commonRewardsList = async (req,res) => {
 									},
 									attributes: {
 										include: [
-											[models.sequelize.literal("'gift_cards'"),"type"],
+											[models.sequelize.literal("'gift_cards'"), "type"],
 										]
 									},
 								});
@@ -1088,7 +1087,7 @@ exports.commonRewardsList = async (req,res) => {
 											model: giftCardModel,
 											attributes: {
 												include: [
-													[models.sequelize.literal("'gift_cards'"),"type"],
+													[models.sequelize.literal("'gift_cards'"), "type"],
 												]
 											}
 										}
@@ -1104,29 +1103,29 @@ exports.commonRewardsList = async (req,res) => {
 										is_active: true
 									}
 								});
-								if(userGiftCard.payment_status == 1) {
+								if (userGiftCard.payment_status == 1) {
 									const purchase_for = userGiftCard?.to_email ? (userDetails?.email == userGiftCard?.to_email ? 'Self' : (userDetails?.username ? userDetails?.username : userGiftCard?.to_email)) : 'Self';
 									gCard['purchase_for'] = purchase_for;
 									gCard['purchase_date'] = userGiftCard?.purchase_date || "";
 									gCard['redeemed_amount'] = userGiftCard?.amount || "";
-									if(userGiftCard?.from) {
+									if (userGiftCard?.from) {
 										gCard['from'] = userGiftCard?.from || "";
 										gCard['note'] = userGiftCard?.note || "";
 									}
 								}
-								gCard = {...gCard,...userGiftCard?.gift_card,id: rew.user_giftcard_id};
+								gCard = { ...gCard, ...userGiftCard?.gift_card, id: rew.user_giftcard_id };
 							}
-							if(gCard) {
+							if (gCard) {
 								gCard = JSON.parse(JSON.stringify(gCard));
-								if(gCard?.image && gCard?.image != null) {
+								if (gCard?.image && gCard?.image != null) {
 									let images = gCard.image
-									const signurl = await awsConfig.getSignUrl(images.toString()).then(function(res) {
+									const signurl = await awsConfig.getSignUrl(images.toString()).then(function (res) {
 										gCard.image = res;
 									});
 								} else {
 									gCard.image = commonConfig.default_image;
 								}
-								if(gCard.expire_at < currentDate) {
+								if (gCard.expire_at < currentDate) {
 									gCard["is_expired"] = true;
 								} else {
 									gCard["is_expired"] = false;
@@ -1148,11 +1147,11 @@ exports.commonRewardsList = async (req,res) => {
 										}
 									]
 								});
-								if(rewardHistory && !_.isEmpty(rewardHistory)) {
+								if (rewardHistory && !_.isEmpty(rewardHistory)) {
 									gCard['is_used'] = true;
 								}
 
-								if(user.role_id == 3) {
+								if (user.role_id == 3) {
 									gCard.totalPurchase = gCard.user_giftcards.length || 0;
 								}
 								delete gCard.user_giftcards;
@@ -1198,25 +1197,25 @@ exports.commonRewardsList = async (req,res) => {
 								resolve(null);
 							}
 						})
-					} else if(rew.type == 'cashbacks') {
+					} else if (rew.type == 'cashbacks') {
 						return new Promise(async (resolve) => {
 							let cashBackObj = await cashbackModel.findOne({
 								where: {
 									id: rew.id
 								},
 								attributes: {
-									include: [[models.sequelize.literal("'cashbacks'"),"type"]]
+									include: [[models.sequelize.literal("'cashbacks'"), "type"]]
 								},
 								include: [
 									{
 										model: productCategoryModel,
-										attributes: ['id','name']
+										attributes: ['id', 'name']
 									}
 								],
 							});
-							if(cashBackObj) {
+							if (cashBackObj) {
 								cashBackObj = JSON.parse(JSON.stringify(cashBackObj));
-								const products = await productModel.findAll({where: {id: {[Op.in]: cashBackObj.product_id?.split(',') || []}},attributes: ["name"],raw: true});
+								const products = await productModel.findAll({ where: { id: { [Op.in]: cashBackObj.product_id?.split(',') || [] } }, attributes: ["name"], raw: true });
 								const product_name_arr = products?.map(val => val.name);
 								const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
 								cashBackObj.product_name = product_name;
@@ -1224,7 +1223,7 @@ exports.commonRewardsList = async (req,res) => {
 								cashBackObj.value_type = cashBackObj.cashback_type;
 								cashBackObj.amount = cashBackObj.cashback_value;
 								delete cashBackObj.product_category;
-								if(cashBackObj.validity_for < currentDate) {
+								if (cashBackObj.validity_for < currentDate) {
 									cashBackObj.is_expired = true;
 								} else {
 									cashBackObj.is_expired = false;
@@ -1234,25 +1233,25 @@ exports.commonRewardsList = async (req,res) => {
 								resolve(null);
 							}
 						})
-					} else if(rew.type == 'discounts') {
+					} else if (rew.type == 'discounts') {
 						return new Promise(async (resolve) => {
 							let discountObj = await discountModel.findOne({
 								where: {
 									id: rew.id
 								},
 								attributes: {
-									include: [[models.sequelize.literal("'discounts'"),"type"]]
+									include: [[models.sequelize.literal("'discounts'"), "type"]]
 								},
 								include: [
 									{
 										model: productCategoryModel,
-										attributes: ['id','name']
+										attributes: ['id', 'name']
 									}
 								],
 							});
-							if(discountObj) {
+							if (discountObj) {
 								discountObj = JSON.parse(JSON.stringify(discountObj));
-								const products = await productModel.findAll({where: {id: {[Op.in]: discountObj.product_id?.split(',') || []}},attributes: ["name"],raw: true});
+								const products = await productModel.findAll({ where: { id: { [Op.in]: discountObj.product_id?.split(',') || [] } }, attributes: ["name"], raw: true });
 								const product_name_arr = products?.map(val => val.name);
 								const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
 								discountObj.product_name = product_name;
@@ -1260,7 +1259,7 @@ exports.commonRewardsList = async (req,res) => {
 								discountObj.value_type = discountObj.discount_type;
 								discountObj.amount = discountObj.discount_value;
 								delete discountObj.product_category;
-								if(discountObj.validity_for < currentDate) {
+								if (discountObj.validity_for < currentDate) {
 									discountObj.is_expired = true;
 								} else {
 									discountObj.is_expired = false;
@@ -1270,32 +1269,32 @@ exports.commonRewardsList = async (req,res) => {
 								resolve(null);
 							}
 						})
-					} else if(rew.type == 'coupones') {
+					} else if (rew.type == 'coupones') {
 						return new Promise(async (resolve) => {
 							let couponeObj = await couponeModel.findOne({
 								where: {
 									id: rew.id
 								},
 								attributes: {
-									include: [[models.sequelize.literal("'coupones'"),"type"]]
+									include: [[models.sequelize.literal("'coupones'"), "type"]]
 								},
 								include: [
 									{
 										model: productCategoryModel,
-										attributes: ['id','name']
+										attributes: ['id', 'name']
 									}
 								],
 							});
-							if(couponeObj) {
+							if (couponeObj) {
 								couponeObj = JSON.parse(JSON.stringify(couponeObj));
-								const products = await productModel.findAll({where: {id: {[Op.in]: couponeObj.product_id?.split(',') || []}},attributes: ["name"],raw: true});
+								const products = await productModel.findAll({ where: { id: { [Op.in]: couponeObj.product_id?.split(',') || [] } }, attributes: ["name"], raw: true });
 								const product_name_arr = products?.map(val => val.name);
 								const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
 								couponeObj.product_name = product_name;
 								couponeObj.product_category_name = couponeObj?.product_category?.name || ''
 								couponeObj.amount = couponeObj.coupon_value;
 								delete couponeObj.product_category;
-								if(couponeObj.expire_at < currentDate) {
+								if (couponeObj.expire_at < currentDate) {
 									couponeObj.is_expired = true;
 								} else {
 									couponeObj.is_expired = false;
@@ -1305,42 +1304,42 @@ exports.commonRewardsList = async (req,res) => {
 								resolve(null);
 							}
 						})
-					} else if(rew.type == 'loyalty_points') {
+					} else if (rew.type == 'loyalty_points') {
 						return new Promise(async (resolve) => {
 							let loyaltyObj = await loyaltyPointModel.findOne({
 								where: {
 									id: rew.id
 								},
 								attributes: {
-									include: [[models.sequelize.literal("'loyalty_points'"),"type"]]
+									include: [[models.sequelize.literal("'loyalty_points'"), "type"]]
 								},
 								include: [
 									{
 										model: productModel,
-										attributes: ['id','name','category_id'],
+										attributes: ['id', 'name', 'category_id'],
 										include: [
 											{
 												model: productCategoryModel,
-												attributes: ['id','name'],
+												attributes: ['id', 'name'],
 												as: 'product_categorys'
 											},
 										],
 									},
 									{
 										model: giftCardModel,
-										attributes: ['id','name'],
+										attributes: ['id', 'name'],
 									}
 								],
 							});
-							if(loyaltyObj) {
+							if (loyaltyObj) {
 								// loyaltyObj.dataValues.product_name = loyaltyObj?.dataValues?.product?.dataValues?.name || '';
 								loyaltyObj.dataValues.product_category_name = loyaltyObj?.dataValues?.product?.dataValues?.product_categorys?.name || '';
-								const products = await productModel.findAll({where: {id: {[Op.in]: loyaltyObj?.dataValues?.product_id?.split(',') || []}},attributes: ["name"]});
+								const products = await productModel.findAll({ where: { id: { [Op.in]: loyaltyObj?.dataValues?.product_id?.split(',') || [] } }, attributes: ["name"] });
 								const product_name_arr = products?.map(val => val.name);
 								const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
 								loyaltyObj.dataValues.product_name = product_name;
 
-								const giftCards = await giftCardModel.findAll({where: {id: {[Op.in]: loyaltyObj?.dataValues?.gift_card_id?.split(',') || []}},attributes: ["name"]});
+								const giftCards = await giftCardModel.findAll({ where: { id: { [Op.in]: loyaltyObj?.dataValues?.gift_card_id?.split(',') || [] } }, attributes: ["name"] });
 								const giftcards_name_arr = giftCards?.map(val => val.name);
 								const giftcard_name = giftcards_name_arr?.length > 0 ? giftcards_name_arr?.join(',') : '';
 								loyaltyObj.dataValues.giftcard_name = giftcard_name;
@@ -1348,7 +1347,7 @@ exports.commonRewardsList = async (req,res) => {
 								// loyaltyObj.dataValues.giftcard_name = loyaltyObj?.dataValues?.gift_card?.name || '';
 								delete loyaltyObj?.dataValues?.gift_card;
 								delete loyaltyObj?.dataValues.product;
-								if(loyaltyObj.validity < currentDate) {
+								if (loyaltyObj.validity < currentDate) {
 									loyaltyObj.dataValues.is_expired = true;
 								} else {
 									loyaltyObj.dataValues.is_expired = false;
@@ -1362,18 +1361,18 @@ exports.commonRewardsList = async (req,res) => {
 				})
 			])
 			const rewardList = allRewardsData.filter(obj => obj != null);
-			const response = new pagination(rewardList,rewardsCounts?.length || 0,parseInt(data.page),parseInt(limit));
-			res.send(setRes(resCode.OK,true,"Get rewards list successfully",({total_cashbacks,total_loyalty_points,total_rewards_purchase,total_loyalty_purchase,...response.getPaginationInfo(),})));
+			const response = new pagination(rewardList, rewardsCounts?.length || 0, parseInt(data.page), parseInt(limit));
+			res.send(setRes(resCode.OK, true, "Get rewards list successfully", ({ total_cashbacks, total_loyalty_points, total_rewards_purchase, total_loyalty_purchase, ...response.getPaginationInfo(), })));
 		} else {
-			res.send(setRes(resCode.BadRequest,false,(requiredFields.toString() + ' are required'),null))
+			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
 		}
-	} catch(error) {
-		res.send(setRes(resCode.BadRequest,false,"Something went wrong!",null))
+	} catch (error) {
+		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
 	}
 }
 
 function sortByCreatedLatest(arrays) {
-	const sortedArray = arrays.sort((a,b) => new moment(b.createdAt) - new moment(a.createdAt));
+	const sortedArray = arrays.sort((a, b) => new moment(b.createdAt) - new moment(a.createdAt));
 	return sortedArray;
 }
 
@@ -1381,9 +1380,9 @@ function mergeRandomArrayObjects(arrays) {
 	const shuffledArrays = _.shuffle(arrays);
 	const mergedArray = [];
 
-	_.each(shuffledArrays,function(array) {
-		_.each(array,function(obj) {
-			_.extend(obj,{random: Math.random()});
+	_.each(shuffledArrays, function (array) {
+		_.each(array, function (obj) {
+			_.extend(obj, { random: Math.random() });
 			mergedArray.push(obj);
 		});
 	});
@@ -1392,7 +1391,7 @@ function mergeRandomArrayObjects(arrays) {
 // List Rewards END
 
 // View Rewards START
-exports.commonRewardsView = async (req,res) => {
+exports.commonRewardsView = async (req, res) => {
 	try {
 		var data = req.params
 		var paramType = req.query.type
@@ -1401,17 +1400,18 @@ exports.commonRewardsView = async (req,res) => {
 		var discountModel = models.discounts
 		var couponeModel = models.coupones
 		var loyaltyPointModel = models.loyalty_points
+		var loyaltyCardModel = models.loyalty_token_cards
 		var productCategoryModel = models.product_categorys;
 		const userGiftCardList = models.user_giftcards;
 		const productModel = models.products;
 		var Op = models.Op
 		var currentDate = (moment().format('YYYY-MM-DD'))
 
-		var typeArr = ['gift_cards','cashbacks','discounts','coupones','loyalty_points'];
-		if((paramType) && !(typeArr.includes(paramType))) {
-			return res.send(setRes(resCode.BadRequest,null,false,"Please select valid type."))
+		var typeArr = ['gift_cards', 'cashbacks', 'discounts', 'coupones', 'loyalty_points', 'loyalty_token_card'];
+		if ((paramType) && !(typeArr.includes(paramType))) {
+			return res.send(setRes(resCode.BadRequest, null, false, "Please select valid type."))
 		} else {
-			if(paramType == 'gift_cards') {
+			if (paramType == 'gift_cards') {
 				await giftCardModel.findOne({
 					where: {
 						id: data.id,
@@ -1429,16 +1429,15 @@ exports.commonRewardsView = async (req,res) => {
 						}
 					],
 				}).then(async giftCardData => {
-					if(giftCardData != null) {
-						console.log(giftCardData.user_giftcards);
-						if(giftCardData.image != null) {
-							var giftCardData_image = await awsConfig.getSignUrl(giftCardData.image).then(function(res) {
+					if (giftCardData != null) {
+						if (giftCardData.image != null) {
+							var giftCardData_image = await awsConfig.getSignUrl(giftCardData.image).then(function (res) {
 								giftCardData.image = res;
 							})
 						} else {
 							giftCardData.image = commonConfig.default_image;
 						}
-						if(giftCardData.expire_at < currentDate) {
+						if (giftCardData.expire_at < currentDate) {
 							giftCardData.dataValues.is_expired = true;
 						} else {
 							giftCardData.dataValues.is_expired = false;
@@ -1446,53 +1445,53 @@ exports.commonRewardsView = async (req,res) => {
 						giftCardData.dataValues.type = 'gift_cards';
 						giftCardData.dataValues.totalPurchase = giftCardData.user_giftcards.length || 0;
 						delete giftCardData.dataValues.user_giftcards;
-						return res.send(setRes(resCode.OK,true,"Get Virtual card detail successfully.",giftCardData))
+						return res.send(setRes(resCode.OK, true, "Get Virtual card detail successfully.", giftCardData))
 					}
 					else {
-						return res.send(setRes(resCode.ResourceNotFound,false,"Virtual card not found.",null))
+						return res.send(setRes(resCode.ResourceNotFound, false, "Virtual card not found.", null))
 					}
 				}).catch(error2 => {
-					res.send(setRes(resCode.InternalServer,false,"Internal server error.",null))
+					res.send(setRes(resCode.InternalServer, false, "Internal server error.", null))
 				})
 
-			} else if(paramType == 'cashbacks') {
+			} else if (paramType == 'cashbacks') {
 				await cashbackModel.findOne({
-					where: {id: data.id,status: true,isDeleted: false},
+					where: { id: data.id, status: true, isDeleted: false },
 					include: [
 						{
 							model: productCategoryModel,
-							attributes: ['id','name']
+							attributes: ['id', 'name']
 						}
 					],
 				}).then(async cashbackData => {
-					if(cashbackData != null) {
+					if (cashbackData != null) {
 						cashbackData.dataValues.type = 'cashbacks';
-						if(cashbackData.validity_for < currentDate) {
+						if (cashbackData.validity_for < currentDate) {
 							cashbackData.dataValues.is_expired = true;
 						} else {
 							cashbackData.dataValues.is_expired = false;
 						}
-						const products = await productModel.findAll({where: {id: {[Op.in]: cashbackData.product_id?.split(',') || []}},attributes: ["name"],raw: true});
+						const products = await productModel.findAll({ where: { id: { [Op.in]: cashbackData.product_id?.split(',') || [] } }, attributes: ["name"], raw: true });
 						const product_name_arr = products?.map(val => val.name);
 						const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
 						cashbackData.dataValues.product_name = product_name;
 						cashbackData.dataValues.product_category_name = cashbackData?.product_category?.name || ''
 						cashbackData.dataValues.amount = cashbackData.cashback_value;
 						delete cashbackData.dataValues.product_category;
-						return res.send(setRes(resCode.OK,true,"Get cashbacks detail successfully.",cashbackData))
+						return res.send(setRes(resCode.OK, true, "Get cashbacks detail successfully.", cashbackData))
 					}
 					else {
-						return res.send(setRes(resCode.ResourceNotFound,false,"Cashback not found.",null))
+						return res.send(setRes(resCode.ResourceNotFound, false, "Cashback not found.", null))
 					}
 				}).catch(error3 => {
-					res.send(setRes(resCode.InternalServer,false,"Internal server error.",null))
+					res.send(setRes(resCode.InternalServer, false, "Internal server error.", null))
 				})
-			} else if(paramType == 'discounts') {
+			} else if (paramType == 'discounts') {
 				await discountModel.findOne({
-					where: {id: data.id,status: true,isDeleted: false,deleted_at: null,}
+					where: { id: data.id, status: true, isDeleted: false, deleted_at: null, }
 				}).then(async discountData => {
-					if(discountData != null) {
-						const products = await productModel.findAll({where: {id: {[Op.in]: discountData.product_id?.split(',') || []}},attributes: ["name"],raw: true});
+					if (discountData != null) {
+						const products = await productModel.findAll({ where: { id: { [Op.in]: discountData.product_id?.split(',') || [] } }, attributes: ["name"], raw: true });
 						const product_name_arr = products?.map(val => val.name);
 						const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
 						discountData.dataValues.product_name = product_name;
@@ -1501,91 +1500,100 @@ exports.commonRewardsView = async (req,res) => {
 						discountData.dataValues.amount = discountData.discount_value;
 						discountData.dataValues.type = 'discounts';
 						delete discountData.product_category;
-						if(discountData.validity_for < currentDate) {
+						if (discountData.validity_for < currentDate) {
 							discountData.dataValues.is_expired = true;
 						} else {
 							discountData.dataValues.is_expired = false;
 						}
-						return res.send(setRes(resCode.OK,true,"Get Discount detail successfully.",discountData))
+						return res.send(setRes(resCode.OK, true, "Get Discount detail successfully.", discountData))
 					}
 					else {
-						return res.send(setRes(resCode.ResourceNotFound,false,"Discount not found.",null))
+						return res.send(setRes(resCode.ResourceNotFound, false, "Discount not found.", null))
 					}
 				}).catch(error4 => {
-					console.log(error4)
-					res.send(setRes(resCode.InternalServer,false,"Internal server error.",null))
+					res.send(setRes(resCode.InternalServer, false, "Internal server error.", null))
 				})
-			} else if(paramType == 'coupones') {
+			} else if (paramType == 'coupones') {
 				await couponeModel.findOne({
-					where: {id: data.id,status: true,isDeleted: false,deleted_at: null},
+					where: { id: data.id, status: true, isDeleted: false, deleted_at: null },
 					include: [
 						{
 							model: productCategoryModel,
-							attributes: ['id','name']
+							attributes: ['id', 'name']
 						}
 					],
 				}).then(async couponeData => {
-					if(couponeData != null) {
-						if(couponeData.expire_at < currentDate) {
+					if (couponeData != null) {
+						if (couponeData.expire_at < currentDate) {
 							couponeData.dataValues.is_expired = true;
 						} else {
 							couponeData.dataValues.is_expired = false;
 						}
 						couponeData.dataValues.type = "coupones";
-						const products = await productModel.findAll({where: {id: {[Op.in]: couponeData.product_id?.split(',') || []}},attributes: ["name"],raw: true});
+						const products = await productModel.findAll({ where: { id: { [Op.in]: couponeData.product_id?.split(',') || [] } }, attributes: ["name"], raw: true });
 						const product_name_arr = products?.map(val => val.name);
 						const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
 						couponeData.dataValues.product_name = product_name;
 						couponeData.dataValues.product_category_name = couponeData?.product_category?.name || ''
 						couponeData.dataValues.amount = couponeData.coupon_value;
 						delete couponeData.dataValues.product_category;
-						return res.send(setRes(resCode.OK,true,"Get Coupones detail successfully.",couponeData))
+						return res.send(setRes(resCode.OK, true, "Get Coupones detail successfully.", couponeData))
 					}
 					else {
-						return res.send(setRes(resCode.ResourceNotFound,false,"Coupon not found.",null))
+						return res.send(setRes(resCode.ResourceNotFound, false, "Coupon not found.", null))
 					}
 				}).catch(error5 => {
-					return res.send(setRes(resCode.InternalServer,false,"Internal server error.",null))
+					return res.send(setRes(resCode.InternalServer, false, "Internal server error.", null))
 				})
-			} else if(paramType == 'loyalty_points') {
+			} else if (paramType == 'loyalty_points') {
 				await loyaltyPointModel.findOne({
-					where: {id: data.id,status: true,isDeleted: false,deleted_at: null}
+					where: { id: data.id, status: true, isDeleted: false, deleted_at: null }
 				}).then(async loyaltyPointData => {
-					if(loyaltyPointData != null) {
+					if (loyaltyPointData != null) {
 						loyaltyPointData.dataValues.type = 'loyalty_points';
-						if(loyaltyPointData.validity < currentDate) {
+						if (loyaltyPointData.validity < currentDate) {
 							loyaltyPointData.dataValues.is_expired = true;
 						} else {
 							loyaltyPointData.dataValues.is_expired = false;
 						}
-						const products = await productModel.findAll({where: {id: {[Op.in]: loyaltyPointData.product_id?.split(',') || []}},attributes: ["name"],raw: true});
+						const products = await productModel.findAll({ where: { id: { [Op.in]: loyaltyPointData.product_id?.split(',') || [] } }, attributes: ["name"], raw: true });
 						const product_name_arr = products?.map(val => val.name);
 						const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
 						loyaltyPointData.dataValues.product_name = product_name;
 						loyaltyPointData.dataValues.product_category_name = loyaltyPointData?.product_category?.name || '';
 
-						const giftCards = await giftCardModel.findAll({where: {id: {[Op.in]: loyaltyPointData?.dataValues?.gift_card_id?.split(',') || []}},attributes: ["name"]});
+						const giftCards = await giftCardModel.findAll({ where: { id: { [Op.in]: loyaltyPointData?.dataValues?.gift_card_id?.split(',') || [] } }, attributes: ["name"] });
 
 						const giftcards_name_arr = giftCards?.map(val => val.name);
 						const giftcard_name = giftcards_name_arr?.length > 0 ? giftcards_name_arr?.join(',') : '';
 						loyaltyPointData.dataValues.giftcard_name = giftcard_name;
 
 						delete loyaltyPointData.dataValues.product_category;
-						res.send(setRes(resCode.OK,true,"Get loyalty point detail successfully.",loyaltyPointData))
+						res.send(setRes(resCode.OK, true, "Get loyalty point detail successfully.", loyaltyPointData))
 					}
 					else {
-						res.send(setRes(resCode.ResourceNotFound,false,"loyalty point not found.",null))
+						res.send(setRes(resCode.ResourceNotFound, false, "loyalty point not found.", null))
 					}
 				}).catch(error2 => {
-					res.send(setRes(resCode.InternalServer,false,"Internal server error.",null))
+					res.send(setRes(resCode.InternalServer, false, "Internal server error.", null))
+				})
+			} else if (paramType == 'loyalty_token_card') {
+				await loyaltyCardModel.findOne({
+					where: { id: data.id, status: true, isDeleted: false },
+					attributes: { exclude: ["status", "updatedAt", "createdAt", "isDeleted", "id"] }
+				}).then((loyaltyCardData) => {
+					if (loyaltyCardData != null) {
+						return res.send(setRes(resCode.OK, true, "Get Loyalty  card detail successfully.", loyaltyCardData))
+					} else {
+						return res.send(setRes(resCode.ResourceNotFound, false, "loyalty card not found.", null))
+					}
 				})
 			} else {
-				res.send(setRes(resCode.BadRequest,null,false,"Please select valid type."))
+				res.send(setRes(resCode.BadRequest, null, false, "Please select valid type."))
 			}
 		}
-
-	} catch(error) {
-		res.send(setRes(resCode.BadRequest,false,"Something went wrong!",null))
+	} catch (error) {
+		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
 	}
 }
 // View Rewards END

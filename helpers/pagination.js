@@ -5,7 +5,7 @@ class pagination {
       this.currentPage = currentPage;
       this.itemsPerPage = (itemsPerPage == 0) ? this.totalCount : itemsPerPage;
     }
-  
+   
     totalPages() {
       if(this.itemsPerPage == 0){
         return 1;

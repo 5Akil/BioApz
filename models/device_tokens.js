@@ -17,7 +17,7 @@ module.exports = (sequelize, DataTypes) => {
     },
     device_type: {
       type: DataTypes.STRING,
-      enum:['ios','android']
+      enum: ['ios', 'android']
     },
     device_token: DataTypes.STRING,
     os_version: {
@@ -34,7 +34,7 @@ module.exports = (sequelize, DataTypes) => {
     },
     api_version: {
       type: DataTypes.STRING,
-      enum:['production','testing']
+      enum: ['production', 'testing']
     },
     status: {
       type: DataTypes.INTEGER
@@ -44,13 +44,13 @@ module.exports = (sequelize, DataTypes) => {
     createdAt: 'created_at',
     updatedAt: 'updated_at',
     deletedAt: 'deleted_at',
-   // timestamps: false
- });
-  
-  DeviceTokens.associate = function(models) {
+    // timestamps: false
+  });
+
+  DeviceTokens.associate = function (models) {
     // associations can be defined here
-    DeviceTokens.belongsTo(models.business, {foreignKey: 'business_id'});
-    DeviceTokens.belongsTo(models.user, {foreignKey: 'user_id'});
+    DeviceTokens.belongsTo(models.business, { foreignKey: 'business_id' });
+    DeviceTokens.belongsTo(models.user, { foreignKey: 'user_id' });
   };
   return DeviceTokens;
 };

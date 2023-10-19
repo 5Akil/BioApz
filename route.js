@@ -21,6 +21,12 @@ module.exports = function (app) {
   app.use('/api/discounts', require('./api/discounts'))
   app.use('/api/coupones', require('./api/coupones'))
   app.use('/api/loyalty_points', require('./api/loyalty-points'))
+  
+
+  /////////////////////////////////////////
+  app.use('/api/loyalty-token-card' ,require('./api/loyalty-token-card')) 
+//////////////////////////////////////////////////
+
 
   // User APP Routes 
   app.use('/api/user', require('./api/user'))
@@ -31,5 +37,12 @@ module.exports = function (app) {
   app.use('/api/device_token', require('./api/device-token'))
   app.use('/api/rewardhistory', require('./api/reward-history'))
   app.use('/api/notifications', require('./api/notification'))
+
+
+  
+
+
+
+  
 
 }

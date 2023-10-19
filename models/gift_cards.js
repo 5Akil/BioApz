@@ -29,7 +29,8 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.BOOLEAN,
       defaultValue: false
     },
-  }, {
+  }, 
+  {
      paranoid: true,
      deletedAt: 'deleted_at',
     // timestamps: false

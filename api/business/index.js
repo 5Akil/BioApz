@@ -177,4 +177,7 @@ router.post('/profile/update',verifyToken,awsuploadprofile.single('profile_pictu
 // Home Page
 router.get('/home',verifyToken,authorize([3]),controller.homeList)
 
+/************************************** */
+router.post('/get-registered-users',verifyToken,authorize([3]),controller.GetRegisteredUsers)
+
 module.exports = router;
