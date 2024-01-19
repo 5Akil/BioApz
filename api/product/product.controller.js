@@ -18,11 +18,12 @@ var awsConfig = require("../../config/aws_S3_config");
 const fs = require("fs");
 var multer = require("multer");
 const multerS3 = require("multer-s3");
-const {condition} = require("sequelize");
+const { condition } = require("sequelize");
 const pagination = require("../../helpers/pagination");
 const response = require("../../response");
+var mailConfig = require("../../config/mail_config");
 
-exports.createInquiry = async (req,res) => {
+exports.createInquiry = async (req, res) => {
 	try {
 		var data = req.body;
 		var dbModel = models.product_inquiry;
@@ -41,17 +42,17 @@ exports.createInquiry = async (req,res) => {
 				"type",
 			],
 			(o) => {
-				return _.has(data,o);
+				return _.has(data, o);
 			}
 		);
 
-		if(requiredFields == "") {
+		if (requiredFields == "") {
 			// dbModel.findOne({where: {email: data.email, is_deleted: false}}).then((inquiry) => {
 			// 	if (inquiry == null){
 			dbModel
 				.create(data)
-				.then(async function(inquiry) {
-					if(inquiry) {
+				.then(async function (inquiry) {
+					if (inquiry) {
 						//send firebase notification to business user
 						var NotificationData = {};
 						var InquiryMessage = "Someone want to know about your products.";
@@ -64,7 +65,7 @@ exports.createInquiry = async (req,res) => {
 								},
 							})
 							.then((business) => {
-								if(business != null && business.device_token != null) {
+								if (business != null && business.device_token != null) {
 									NotificationData.device_token = business.device_token;
 
 									inquiry.type == 1
@@ -82,17 +83,17 @@ exports.createInquiry = async (req,res) => {
 							});
 						// send notification code over
 						res.send(
-							setRes(resCode.OK,true,"Inquiry created successfully.",inquiry)
+							setRes(resCode.OK, true, "Inquiry created successfully.", inquiry)
 						);
 					} else {
 						res.send(
-							setRes(resCode.BadRequest,false,"Fail to create inquiry.",null)
+							setRes(resCode.BadRequest, false, "Fail to create inquiry.", null)
 						);
 					}
 				})
 				.catch((error) => {
 					res.send(
-						setRes(resCode.InternalServer,false,"Internal server error.",null)
+						setRes(resCode.InternalServer, false, "Internal server error.", null)
 					);
 				});
 			// 	}
@@ -110,14 +111,14 @@ exports.createInquiry = async (req,res) => {
 				)
 			);
 		}
-	} catch(error) {
+	} catch (error) {
 		return res.send(
-			setRes(resCode.BadRequest,false,"Something went wrong!",null)
+			setRes(resCode.BadRequest, false, "Something went wrong!", null)
 		);
 	}
 };
 
-exports.GetAllProducts = async (req,res) => {
+exports.GetAllProducts = async (req, res) => {
 	try {
 		var productModel = models.products;
 		var business = models.business;
@@ -131,12 +132,12 @@ exports.GetAllProducts = async (req,res) => {
 		var Op = models.Op;
 		var categoryModel = models.product_categorys;
 		var data = req.body;
-		var requiredFields = _.reject(["page","page_size","business_id"],(o) => {
-			return _.has(data,o);
+		var requiredFields = _.reject(["page", "page_size", "business_id"], (o) => {
+			return _.has(data, o);
 		});
 
-		if(requiredFields == "") {
-			if(data.page && +data.page <= 0) {
+		if (requiredFields == "") {
+			if (data.page && +data.page <= 0) {
 				return res.send(
 					setRes(
 						resCode.BadRequest,
@@ -158,16 +159,16 @@ exports.GetAllProducts = async (req,res) => {
 			//	);
 			//}
 
-			if(data.category_id && +data.category_id < 1) {
+			if (data.category_id && +data.category_id < 1) {
 				return res.send(
-					setRes(resCode.BadRequest,false,"Invalid Category id",null)
+					setRes(resCode.BadRequest, false, "Invalid Category id", null)
 				);
 			}
 
 			var skip = data.page_size * (data.page - 1);
 			var limit = parseInt(data.page_size);
 			var condition = {
-				order: [["name","ASC"]],
+				order: [["name", "ASC"]],
 				include: [
 					{
 						model: productRattingModel,
@@ -176,7 +177,7 @@ exports.GetAllProducts = async (req,res) => {
 					{
 						model: categoryModel,
 						as: "product_categorys",
-						attributes: ["name","is_deleted"],
+						attributes: ["name", "is_deleted"],
 						where: {
 							is_deleted: false
 						}
@@ -184,7 +185,7 @@ exports.GetAllProducts = async (req,res) => {
 					{
 						model: categoryModel,
 						as: "sub_category",
-						attributes: ["name","is_deleted"],
+						attributes: ["name", "is_deleted"],
 						//where: {
 						//	is_deleted: false
 						//}
@@ -193,7 +194,7 @@ exports.GetAllProducts = async (req,res) => {
 				attributes: {
 					include: [
 						[
-							Sequelize.fn("AVG",Sequelize.col("product_ratings.ratings")),
+							Sequelize.fn("AVG", Sequelize.col("product_ratings.ratings")),
 							"rating",
 						],
 					],
@@ -201,29 +202,29 @@ exports.GetAllProducts = async (req,res) => {
 			};
 			const categoryCond =
 				data.category_id && +data.category_id > 0
-					? {category_id: data.category_id}
+					? { category_id: data.category_id }
 					: {};
 			condition.where = {
 				...categoryCond,
-				...{business_id: data.business_id,is_deleted: false},
+				...{ business_id: data.business_id, is_deleted: false },
 			};
-			condition.attributes = {exclude: ["createdAt","updatedAt"]};
-			if(!_.isEmpty(data.price)) {
-				if(data.price == 1) {
+			condition.attributes = { exclude: ["createdAt", "updatedAt"] };
+			if (!_.isEmpty(data.price)) {
+				if (data.price == 1) {
 					condition.order = Sequelize.literal("price DESC");
 				} else {
 					condition.order = Sequelize.literal("price ASC");
 				}
 			}
 
-			if(data.search && data.search != null && !_.isEmpty(data.search)) {
+			if (data.search && data.search != null && !_.isEmpty(data.search)) {
 				condition.where = {
 					...condition.where,
-					...{[Op.or]: [{name: {[Op.like]: "%" + data.search + "%"}}]},
+					...{ [Op.or]: [{ name: { [Op.like]: "%" + data.search + "%" } }] },
 				};
 			}
 
-			if(data.sub_category_id) {
+			if (data.sub_category_id) {
 				condition.where = {
 					...condition.where,
 					...{
@@ -234,21 +235,21 @@ exports.GetAllProducts = async (req,res) => {
 				};
 			}
 
-			if(data.page_size != 0 && !_.isEmpty(data.page_size)) {
-				(condition.offset = skip),(condition.limit = limit);
+			if (data.page_size != 0 && !_.isEmpty(data.page_size)) {
+				(condition.offset = skip), (condition.limit = limit);
 			}
 			const recordCount = await productModel.findAndCountAll(condition);
 			const totalRecords = recordCount?.count;
 			await productModel
 				.findAll(condition)
 				.then(async (products) => {
-					if(products) {
-						for(const data of products) {
+					if (products) {
+						for (const data of products) {
 
 							const rewards = [];
 							const discounts = await discountsModel.findAll({
 								attributes: {
-									exclude: ["createdAt","updatedAt","deleted_at","isDeleted"],
+									exclude: ["createdAt", "updatedAt", "deleted_at", "isDeleted"],
 								},
 								where: {
 									product_id: {
@@ -258,9 +259,9 @@ exports.GetAllProducts = async (req,res) => {
 									isDeleted: false,
 								},
 							});
-							for(const data of discounts) {
+							for (const data of discounts) {
 								let discountString = "";
-								if(data.discount_type == 0) {
+								if (data.discount_type == 0) {
 									discountString += `${data.discount_value}% Discount`;
 								} else {
 									discountString += `$${data.discount_value} Discount`;
@@ -280,7 +281,7 @@ exports.GetAllProducts = async (req,res) => {
 							}
 
 							const coupones = await couponesModel.findAll({
-								attributes: ["id","value_type","coupon_value","coupon_type"],
+								attributes: ["id", "value_type", "coupon_value", "coupon_type"],
 								where: {
 									product_id: {
 										[Op.regexp]: `(^|,)${data.id}(,|$)`,
@@ -289,15 +290,15 @@ exports.GetAllProducts = async (req,res) => {
 									isDeleted: false,
 								},
 							});
-							for(const data of coupones) {
+							for (const data of coupones) {
 								let couponString = "";
-								if(data.coupon_type == 1) {
-									if(data.value_type == 1) {
+								if (data.coupon_type == 1) {
+									if (data.value_type == 1) {
 										couponString += `${data.coupon_value}% Discount`;
 									} else {
 										couponString += `$${data.coupon_value} Discount`;
 									}
-									rewards.push({type: "coupones",title: couponString});
+									rewards.push({ type: "coupones", title: couponString });
 								}
 							}
 
@@ -316,20 +317,20 @@ exports.GetAllProducts = async (req,res) => {
 									isDeleted: false,
 								},
 							});
-							for(const data of cashbacks) {
+							for (const data of cashbacks) {
 								let discountString = "";
-								if(data.cashback_on == 0) {
-									if(data.cashback_type == 0) {
+								if (data.cashback_on == 0) {
+									if (data.cashback_type == 0) {
 										discountString += `${data.cashback_value}% cashback`;
 									} else {
 										discountString += `$${data.cashback_value} cashback`;
 									}
-									rewards.push({type: "cashbacks",title: discountString});
+									rewards.push({ type: "cashbacks", title: discountString });
 								}
 							}
 
 							const loyaltyPoints = await loyaltyPointModel.findAll({
-								attributes: ["id","loyalty_type","points_earned"],
+								attributes: ["id", "loyalty_type", "points_earned"],
 								where: {
 									product_id: {
 										[Op.regexp]: `(^|,)${data.id}(,|$)`,
@@ -338,11 +339,11 @@ exports.GetAllProducts = async (req,res) => {
 									isDeleted: false,
 								},
 							});
-							for(const data of loyaltyPoints) {
+							for (const data of loyaltyPoints) {
 								let loyaltyString = "";
-								if(data.loyalty_type == 1) {
+								if (data.loyalty_type == 1) {
 									loyaltyString += `Earn ${data.points_earned} points`;
-									rewards.push({type: "loyalty_points",title: loyaltyString});
+									rewards.push({ type: "loyalty_points", title: loyaltyString });
 								}
 							}
 
@@ -350,11 +351,11 @@ exports.GetAllProducts = async (req,res) => {
 
 							var image_array = [];
 
-							if(product_images != null) {
-								for(const data of product_images) {
+							if (product_images != null) {
+								for (const data of product_images) {
 									const signurl = await awsConfig
 										.getSignUrl(data)
-										.then(function(res) {
+										.then(function (res) {
 											image_array.push(res);
 										});
 								}
@@ -363,13 +364,13 @@ exports.GetAllProducts = async (req,res) => {
 							}
 
 							data.dataValues.product_images = image_array;
-							if(data.product_categorys != null) {
+							if (data.product_categorys != null) {
 								data.dataValues.category_name = data.product_categorys.name;
 								delete data.dataValues.product_categorys;
 							} else {
 								data.dataValues.category_name = "";
 							}
-							if(data.sub_category != null) {
+							if (data.sub_category != null) {
 								data.dataValues.product_type = data.sub_category.name;
 								delete data.dataValues.sub_category;
 							} else {
@@ -387,7 +388,7 @@ exports.GetAllProducts = async (req,res) => {
 									}
 								}
 							});
-							if(!(_.isNull(couponData))) {
+							if (!(_.isNull(couponData))) {
 								isFree = true;
 							}
 							data.dataValues.is_free = isFree
@@ -410,7 +411,7 @@ exports.GetAllProducts = async (req,res) => {
 					}
 				})
 				.catch((error) => {
-					res.send(setRes(resCode.InternalServer,false,error,null));
+					res.send(setRes(resCode.InternalServer, false, error, null));
 				});
 		} else {
 			res.send(
@@ -422,25 +423,25 @@ exports.GetAllProducts = async (req,res) => {
 				)
 			);
 		}
-	} catch(error) {
+	} catch (error) {
 		return res.send(
-			setRes(resCode.BadRequest,false,"Something went wrong!",null)
+			setRes(resCode.BadRequest, false, "Something went wrong!", null)
 		);
 	}
 };
 
-exports.GetBookingInquiry = async (req,res) => {
+exports.GetBookingInquiry = async (req, res) => {
 	try {
 		var data = req.body;
 		var businessModel = models.business;
 		var calenderModel = models.product_inquiry;
 		var Op = models.Op;
 
-		var requiredFields = _.reject(["business"],(o) => {
-			return _.has(data,o);
+		var requiredFields = _.reject(["business"], (o) => {
+			return _.has(data, o);
 		});
 
-		if(requiredFields == "") {
+		if (requiredFields == "") {
 			businessModel
 				.findOne({
 					where: {
@@ -450,7 +451,7 @@ exports.GetBookingInquiry = async (req,res) => {
 					},
 				})
 				.then((business) => {
-					if(business != "") {
+					if (business != "") {
 						calenderModel
 							.findAll({
 								where: {
@@ -464,12 +465,12 @@ exports.GetBookingInquiry = async (req,res) => {
 									},
 								},
 								order: [
-									["date","DESC"],
-									["time","DESC"],
+									["date", "DESC"],
+									["time", "DESC"],
 								],
 							})
 							.then((bookings) => {
-								if(bookings != "") {
+								if (bookings != "") {
 									res.send(
 										setRes(
 											resCode.OK,
@@ -501,13 +502,13 @@ exports.GetBookingInquiry = async (req,res) => {
 							});
 					} else {
 						res.send(
-							setRes(resCode.ResourceNotFound,false,"Business not found.",null)
+							setRes(resCode.ResourceNotFound, false, "Business not found.", null)
 						);
 					}
 				})
 				.catch((error) => {
 					res.send(
-						setRes(resCode.InternalServer,false,"Internal server error.",null)
+						setRes(resCode.InternalServer, false, "Internal server error.", null)
 					);
 				});
 		} else {
@@ -520,23 +521,23 @@ exports.GetBookingInquiry = async (req,res) => {
 				)
 			);
 		}
-	} catch(error) {
+	} catch (error) {
 		return res.send(
-			setRes(resCode.BadRequest,false,"Something went wrong!",null)
+			setRes(resCode.BadRequest, false, "Something went wrong!", null)
 		);
 	}
 };
 
-exports.IsReadStatus = async (req,res) => {
+exports.IsReadStatus = async (req, res) => {
 	try {
 		var data = req.body;
 		var ProductInqModel = models.product_inquiry;
 
-		var requiredFields = _.reject(["inquiry"],(o) => {
-			return _.has(data,o);
+		var requiredFields = _.reject(["inquiry"], (o) => {
+			return _.has(data, o);
 		});
 
-		if(requiredFields == "") {
+		if (requiredFields == "") {
 			ProductInqModel.update(
 				{
 					is_read: 1,
@@ -549,7 +550,7 @@ exports.IsReadStatus = async (req,res) => {
 				}
 			)
 				.then((inquiry) => {
-					if(inquiry == 1) {
+					if (inquiry == 1) {
 						ProductInqModel.findOne({
 							where: {
 								id: data.inquiry,
@@ -557,7 +558,7 @@ exports.IsReadStatus = async (req,res) => {
 							},
 						})
 							.then((UpdatedInquiry) => {
-								if(UpdatedInquiry != "") {
+								if (UpdatedInquiry != "") {
 									res.send(
 										setRes(
 											resCode.OK,
@@ -589,12 +590,12 @@ exports.IsReadStatus = async (req,res) => {
 							});
 					} else {
 						res.send(
-							setRes(resCode.BadRequest,false,"Fail to read inquiry.",null)
+							setRes(resCode.BadRequest, false, "Fail to read inquiry.", null)
 						);
 					}
 				})
 				.catch((error) => {
-					res.send(setRes(resCode.BadRequest,false,error,null));
+					res.send(setRes(resCode.BadRequest, false, error, null));
 				});
 		} else {
 			res.send(
@@ -606,14 +607,14 @@ exports.IsReadStatus = async (req,res) => {
 				)
 			);
 		}
-	} catch(error) {
+	} catch (error) {
 		return res.send(
-			setRes(resCode.BadRequest,false,"Something went wrong!",null)
+			setRes(resCode.BadRequest, false, "Something went wrong!", null)
 		);
 	}
 };
 
-exports.createProduct = async (req,res) => {
+exports.createProduct = async (req, res) => {
 	try {
 		var data = req.body;
 		var filesData = req.files;
@@ -633,14 +634,14 @@ exports.createProduct = async (req,res) => {
 				"product_item",
 			],
 			(o) => {
-				return _.has(data,o);
+				return _.has(data, o);
 			}
 		);
-		if(requiredFields == "") {
-			if(data.name && !_.isEmpty == data.name) {
+		if (requiredFields == "") {
+			if (data.name && !_.isEmpty == data.name) {
 				var name = data.name;
 				var validname = /^[A-Z+_.a-z+_.0-9 ]+$/;
-				if(name.match(validname) == null) {
+				if (name.match(validname) == null) {
 					return res.send(
 						setRes(
 							resCode.BadRequest,
@@ -652,7 +653,7 @@ exports.createProduct = async (req,res) => {
 				}
 			}
 
-			if(data.name && !_.isEmpty(data.name)) {
+			if (data.name && !_.isEmpty(data.name)) {
 				const condition = {};
 				condition.where = {
 					is_deleted: false,
@@ -662,14 +663,14 @@ exports.createProduct = async (req,res) => {
 						[Op.eq]: data.name,
 					},
 				};
-				if(data.sub_category_id) {
+				if (data.sub_category_id) {
 					condition.where = {
 						...condition.where,
-						...{sub_category_id: data.sub_category_id},
+						...{ sub_category_id: data.sub_category_id },
 					};
 				}
 				const existCategory = await productModel.findOne(condition);
-				if(existCategory) {
+				if (existCategory) {
 					validation = false;
 					return res.send(
 						setRes(
@@ -682,7 +683,7 @@ exports.createProduct = async (req,res) => {
 				}
 			}
 
-			if(data.category_id) {
+			if (data.category_id) {
 				await categoryModel
 					.findOne({
 						where: {
@@ -695,7 +696,7 @@ exports.createProduct = async (req,res) => {
 						},
 					})
 					.then(async (productCategory) => {
-						if(productCategory == null) {
+						if (productCategory == null) {
 							validation = false;
 							return res.send(
 								setRes(
@@ -709,8 +710,8 @@ exports.createProduct = async (req,res) => {
 					});
 			}
 
-			if(data.price && !_.isEmpty(data.price)) {
-				if(data.price <= 0) {
+			if (data.price && !_.isEmpty(data.price)) {
+				if (data.price <= 0) {
 					validation = false;
 					return res.send(
 						setRes(
@@ -723,8 +724,8 @@ exports.createProduct = async (req,res) => {
 				}
 			}
 
-			if(data.cost_price && !_.isEmpty(data.cost_price)) {
-				if(data.cost_price <= 0) {
+			if (data.cost_price && !_.isEmpty(data.cost_price)) {
+				if (data.cost_price <= 0) {
 					validation = false;
 					return res.send(
 						setRes(
@@ -737,7 +738,7 @@ exports.createProduct = async (req,res) => {
 				}
 			}
 
-			if(data.sub_category_id) {
+			if (data.sub_category_id) {
 				await categoryModel
 					.findOne({
 						where: {
@@ -750,7 +751,7 @@ exports.createProduct = async (req,res) => {
 						},
 					})
 					.then(async (productSubCategory) => {
-						if(productSubCategory == null) {
+						if (productSubCategory == null) {
 							validation = false;
 							return res.send(
 								setRes(
@@ -764,7 +765,7 @@ exports.createProduct = async (req,res) => {
 					});
 			}
 
-			if(filesData.length == 0) {
+			if (filesData.length == 0) {
 				res.send(
 					setRes(
 						resCode.BadRequest,
@@ -774,7 +775,7 @@ exports.createProduct = async (req,res) => {
 					)
 				);
 				validation = false;
-			} else if(filesData.length > 5) {
+			} else if (filesData.length > 5) {
 				validation = false;
 				res.send(
 					setRes(
@@ -785,11 +786,11 @@ exports.createProduct = async (req,res) => {
 					)
 				);
 			}
-			if(filesData.length != 0 && filesData.length <= 5) {
-				for(const image of filesData) {
+			if (filesData.length != 0 && filesData.length <= 5) {
+				for (const image of filesData) {
 					const fileContent = await fs.promises.readFile(image.path);
 					const fileExt = `${image.originalname}`.split(".").pop();
-					if(image.size > commonConfig.maxFileSize) {
+					if (image.size > commonConfig.maxFileSize) {
 						validation = false;
 						res.send(
 							setRes(
@@ -799,7 +800,7 @@ exports.createProduct = async (req,res) => {
 								null
 							)
 						);
-					} else if(!commonConfig.allowedExtensions.includes(fileExt)) {
+					} else if (!commonConfig.allowedExtensions.includes(fileExt)) {
 						// the file extension is not allowed
 						validation = false;
 						res.send(
@@ -814,7 +815,7 @@ exports.createProduct = async (req,res) => {
 				}
 			}
 
-			if(validation) {
+			if (validation) {
 				await businessModel
 					.findOne({
 						where: {
@@ -824,7 +825,7 @@ exports.createProduct = async (req,res) => {
 						},
 					})
 					.then(async (business) => {
-						if(_.isEmpty(business)) {
+						if (_.isEmpty(business)) {
 							return res.send(
 								setRes(
 									resCode.ResourceNotFound,
@@ -836,11 +837,11 @@ exports.createProduct = async (req,res) => {
 						} else {
 							await productModel
 								.create(data)
-								.then(async function(product) {
+								.then(async function (product) {
 									const lastInsertId = product.id;
-									if(lastInsertId) {
+									if (lastInsertId) {
 										var files = [];
-										for(const file of filesData) {
+										for (const file of filesData) {
 											const fileContent = await fs.promises.readFile(file.path);
 											const fileExt = `${file.originalname}`.split(".").pop();
 											const randomString = Math.floor(Math.random() * 1000000);
@@ -854,7 +855,7 @@ exports.createProduct = async (req,res) => {
 											const result = await awsConfig.s3
 												.upload(params)
 												.promise();
-											if(result) {
+											if (result) {
 												files.push(`products/${lastInsertId}/${fileName}`);
 												fs.unlinkSync(file.path);
 											}
@@ -872,16 +873,16 @@ exports.createProduct = async (req,res) => {
 												}
 											)
 											.then((productData) => {
-												if(productData) {
+												if (productData) {
 													productModel
-														.findOne({where: {id: lastInsertId}})
+														.findOne({ where: { id: lastInsertId } })
 														.then(async (getData) => {
 															var product_images = getData.image;
 															var image_array = [];
-															for(const data of product_images) {
+															for (const data of product_images) {
 																const signurl = await awsConfig
 																	.getSignUrl(data)
-																	.then(function(res) {
+																	.then(function (res) {
 																		image_array.push(res);
 																	});
 															}
@@ -932,11 +933,11 @@ exports.createProduct = async (req,res) => {
 				)
 			);
 		}
-	} catch(error) {
-		res.send(setRes(resCode.BadRequest,false,"Something went wrong!",null));
+	} catch (error) {
+		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null));
 	}
 };
-exports.UpdateProductDetail = async (req,res) => {
+exports.UpdateProductDetail = async (req, res) => {
 	try {
 		var data = req.body;
 
@@ -948,19 +949,19 @@ exports.UpdateProductDetail = async (req,res) => {
 			},
 		};
 
-		const row = await productModel.findByPk(data.id,options);
-		if(row == null) {
+		const row = await productModel.findByPk(data.id, options);
+		if (row == null) {
 			return res.send(
-				setRes(resCode.ResourceNotFound,false,"Product not found",null)
+				setRes(resCode.ResourceNotFound, false, "Product not found", null)
 			);
 		}
 		const image = !_.isEmpty(row.image) && row.image != null ? row.image : 0;
 
-		if(data.id) {
-			if(data.name) {
+		if (data.id) {
+			if (data.name) {
 				var name = data.name;
 				var validname = /^[A-Z+_.a-z+_.0-9 ]+$/;
-				if(name.match(validname) == null) {
+				if (name.match(validname) == null) {
 					return res.send(
 						setRes(
 							resCode.BadRequest,
@@ -971,7 +972,7 @@ exports.UpdateProductDetail = async (req,res) => {
 					);
 				}
 			}
-			if(data.name && !_.isEmpty(data.name)) {
+			if (data.name && !_.isEmpty(data.name)) {
 				var condition = {};
 				condition.where = {
 					is_deleted: false,
@@ -982,20 +983,20 @@ exports.UpdateProductDetail = async (req,res) => {
 						[models.Op.ne]: data.id,
 					},
 				};
-				if(data.category_id) {
+				if (data.category_id) {
 					condition.where = {
 						...condition.where,
-						...{category_id: data.category_id},
+						...{ category_id: data.category_id },
 					};
 				}
-				if(data.sub_category_id) {
+				if (data.sub_category_id) {
 					condition.where = {
 						...condition.where,
-						...{sub_category_id: data.sub_category_id},
+						...{ sub_category_id: data.sub_category_id },
 					};
 				}
 				const existCategory = await productModel.findOne(condition);
-				if(existCategory) {
+				if (existCategory) {
 					validation = false;
 					return res.send(
 						setRes(
@@ -1008,8 +1009,8 @@ exports.UpdateProductDetail = async (req,res) => {
 				}
 			}
 
-			if(data.price && !_.isEmpty(data.price)) {
-				if(data.price <= 0) {
+			if (data.price && !_.isEmpty(data.price)) {
+				if (data.price <= 0) {
 					validation = false;
 					return res.send(
 						setRes(
@@ -1022,8 +1023,8 @@ exports.UpdateProductDetail = async (req,res) => {
 				}
 			}
 
-			if(data.cost_price && !_.isEmpty(data.cost_price)) {
-				if(data.cost_price <= 0) {
+			if (data.cost_price && !_.isEmpty(data.cost_price)) {
+				if (data.cost_price <= 0) {
 					validation = false;
 					return res.send(
 						setRes(
@@ -1036,12 +1037,12 @@ exports.UpdateProductDetail = async (req,res) => {
 				}
 			}
 
-			if(req.files) {
+			if (req.files) {
 				const filesData = req.files;
 				const total_image = image.length + filesData.length;
 				var validation = true;
 
-				if(total_image > 5) {
+				if (total_image > 5) {
 					validation = false;
 					res.send(
 						setRes(
@@ -1054,10 +1055,10 @@ exports.UpdateProductDetail = async (req,res) => {
 						)
 					);
 				}
-				for(const imageFile of filesData) {
+				for (const imageFile of filesData) {
 					const fileContent = await fs.promises.readFile(imageFile.path);
 					const fileExt = `${imageFile.originalname}`.split(".").pop();
-					if(imageFile.size > commonConfig.maxFileSize) {
+					if (imageFile.size > commonConfig.maxFileSize) {
 						validation = false;
 						res.send(
 							setRes(
@@ -1067,7 +1068,7 @@ exports.UpdateProductDetail = async (req,res) => {
 								null
 							)
 						);
-					} else if(!commonConfig.allowedExtensions.includes(fileExt)) {
+					} else if (!commonConfig.allowedExtensions.includes(fileExt)) {
 						// the file extension is not allowed
 						validation = false;
 						res.send(
@@ -1080,9 +1081,9 @@ exports.UpdateProductDetail = async (req,res) => {
 						);
 					}
 				}
-				if(validation) {
+				if (validation) {
 					var files = [];
-					for(const file of filesData) {
+					for (const file of filesData) {
 						const fileContent = await fs.promises.readFile(file.path);
 						const fileExt = `${file.originalname}`.split(".").pop();
 						const randomString = Math.floor(Math.random() * 1000000);
@@ -1094,7 +1095,7 @@ exports.UpdateProductDetail = async (req,res) => {
 						};
 
 						const result = await awsConfig.s3.upload(params).promise();
-						if(result) {
+						if (result) {
 							files.push(`products/${data.id}/${fileName}`);
 							fs.unlinkSync(file.path);
 						}
@@ -1102,7 +1103,7 @@ exports.UpdateProductDetail = async (req,res) => {
 					var images = files.join(";");
 					const oldFilenames = image ? image.join(";") : "";
 
-					if(images != "") {
+					if (images != "") {
 						const allFilenames = `${oldFilenames};${images}`;
 						data.image = allFilenames;
 					}
@@ -1110,14 +1111,14 @@ exports.UpdateProductDetail = async (req,res) => {
 			}
 
 			await productModel
-				.update(data,{
+				.update(data, {
 					where: {
 						id: data.id,
 						is_deleted: false,
 					},
 				})
 				.then(async (UpdatedProduct) => {
-					if(UpdatedProduct == 1) {
+					if (UpdatedProduct == 1) {
 						await productModel
 							.findOne({
 								where: {
@@ -1126,14 +1127,14 @@ exports.UpdateProductDetail = async (req,res) => {
 								},
 							})
 							.then(async (UpdatedProduct) => {
-								if(UpdatedProduct != null) {
+								if (UpdatedProduct != null) {
 									var product_images = UpdatedProduct.image;
 									var image_array = [];
-									if(product_images != null) {
-										for(const data of product_images) {
+									if (product_images != null) {
+										for (const data of product_images) {
 											const signurl = await awsConfig
 												.getSignUrl(data)
-												.then(function(res) {
+												.then(function (res) {
 													image_array.push(res);
 												});
 										}
@@ -1184,11 +1185,11 @@ exports.UpdateProductDetail = async (req,res) => {
 					);
 				});
 		} else {
-			res.send(setRes(resCode.BadRequest,false,"id is required",null));
+			res.send(setRes(resCode.BadRequest, false, "id is required", null));
 		}
-	} catch(error) {
+	} catch (error) {
 		return res.send(
-			setRes(resCode.BadRequest,false,"Something went wrong!",null)
+			setRes(resCode.BadRequest, false, "Something went wrong!", null)
 		);
 	}
 };
@@ -1238,7 +1239,7 @@ exports.UpdateProductDetail = async (req,res) => {
 // 		}
 // }
 
-exports.GetProductById = async (req,res) => {
+exports.GetProductById = async (req, res) => {
 	try {
 		var data = req.params;
 		var productModel = models.products;
@@ -1253,11 +1254,11 @@ exports.GetProductById = async (req,res) => {
 
 		var auth = req.user;
 		var auth_id = "";
-		if(auth.role_id == 2) {
+		if (auth.role_id == 2) {
 			auth_id = auth.id;
 		}
 		const userDetails = await userModel.findOne({
-			where: {email: auth?.user,is_deleted: false,is_active: true},
+			where: { email: auth?.user, is_deleted: false, is_active: true },
 		});
 		const userId = userDetails?.id || "";
 		const total_loyalty_points = userDetails?.total_loyalty_points
@@ -1291,14 +1292,14 @@ exports.GetProductById = async (req,res) => {
 				attributes: {
 					include: [
 						[
-							Sequelize.fn("AVG",Sequelize.col("product_ratings.ratings")),
+							Sequelize.fn("AVG", Sequelize.col("product_ratings.ratings")),
 							"rating",
 						],
 					],
 				},
 			})
 			.then(async (product) => {
-				if(product && product.id != null) {
+				if (product && product.id != null) {
 					var isFav = false;
 					var isAddCart = false;
 					await shoppingCartModel
@@ -1311,7 +1312,7 @@ exports.GetProductById = async (req,res) => {
 							},
 						})
 						.then(async (cart) => {
-							if(cart) {
+							if (cart) {
 								isAddCart = true;
 							}
 						});
@@ -1324,7 +1325,7 @@ exports.GetProductById = async (req,res) => {
 							},
 						})
 						.then(async (fav) => {
-							if(fav) {
+							if (fav) {
 								isFav = true;
 							}
 						});
@@ -1334,7 +1335,7 @@ exports.GetProductById = async (req,res) => {
 					const loyaltyPointModel = models.loyalty_points;
 					const discounts = await discountsModel.findAll({
 						attributes: {
-							exclude: ["createdAt","updatedAt","deleted_at","isDeleted"],
+							exclude: ["createdAt", "updatedAt", "deleted_at", "isDeleted"],
 						},
 						where: {
 							product_id: {
@@ -1344,9 +1345,9 @@ exports.GetProductById = async (req,res) => {
 							isDeleted: false,
 						},
 					});
-					for(const data of discounts) {
+					for (const data of discounts) {
 						let discountString = "";
-						if(data.discount_type == 0) {
+						if (data.discount_type == 0) {
 							discountString += `${data.discount_value}% Discount`;
 						} else {
 							discountString += `$${data.discount_value} Discount`;
@@ -1366,7 +1367,7 @@ exports.GetProductById = async (req,res) => {
 					}
 
 					const coupones = await couponModel.findAll({
-						attributes: ["id","value_type","coupon_value","coupon_type"],
+						attributes: ["id", "value_type", "coupon_value", "coupon_type"],
 						where: {
 							product_id: {
 								[Op.regexp]: `(^|,)${data.id}(,|$)`,
@@ -1375,20 +1376,20 @@ exports.GetProductById = async (req,res) => {
 							isDeleted: false,
 						},
 					});
-					for(const data of coupones) {
+					for (const data of coupones) {
 						let couponString = "";
-						if(data.coupon_type == 1) {
-							if(data.value_type == 1) {
+						if (data.coupon_type == 1) {
+							if (data.value_type == 1) {
 								couponString += `${data.coupon_value}% Discount`;
 							} else {
 								couponString += `$${data.coupon_value} Discount`;
 							}
-							rewards.push({type: "coupones",title: couponString});
+							rewards.push({ type: "coupones", title: couponString });
 						}
 					}
 
 					const cashbacks = await cashbaksModel.findAll({
-						attributes: ["id","cashback_value","cashback_type","cashback_on"],
+						attributes: ["id", "cashback_value", "cashback_type", "cashback_on"],
 						where: {
 							product_id: {
 								[Op.regexp]: `(^|,)${data.id}(,|$)`,
@@ -1397,20 +1398,20 @@ exports.GetProductById = async (req,res) => {
 							isDeleted: false,
 						},
 					});
-					for(const data of cashbacks) {
+					for (const data of cashbacks) {
 						let discountString = "";
-						if(data.cashback_on == 0) {
-							if(data.cashback_type == 0) {
+						if (data.cashback_on == 0) {
+							if (data.cashback_type == 0) {
 								discountString += `${data.cashback_value}% cashback`;
 							} else {
 								discountString += `$${data.cashback_value} cashback`;
 							}
-							rewards.push({type: "cashbacks",title: discountString});
+							rewards.push({ type: "cashbacks", title: discountString });
 						}
 					}
 
 					const loyaltyPoints = await loyaltyPointModel.findAll({
-						attributes: ["id","loyalty_type","points_earned"],
+						attributes: ["id", "loyalty_type", "points_earned"],
 						where: {
 							product_id: {
 								[Op.regexp]: `(^|,)${data.id}(,|$)`,
@@ -1419,9 +1420,9 @@ exports.GetProductById = async (req,res) => {
 							isDeleted: false,
 						},
 					});
-					for(const data of loyaltyPoints) {
+					for (const data of loyaltyPoints) {
 						let loyaltyString = "";
-						if(data.loyalty_type == 1) {
+						if (data.loyalty_type == 1) {
 							loyaltyString += `Earn ${data.points_earned} points`;
 							rewards.push({
 								type: "loyalty_points",
@@ -1429,6 +1430,36 @@ exports.GetProductById = async (req,res) => {
 								loyalty_id: data.id,
 							});
 						}
+					}
+					const reviews = await productRattingModel.findAll({
+						where: {
+							product_id: data.id,
+							is_deleted: false,
+						},
+						include: [
+							{
+								model: userModel,
+								where: {
+									is_active: true,
+								},
+								attributes: ['username', 'profile_picture']
+							}
+						],
+						attributes: ['ratings', 'description', 'is_review_report', 'report_description']
+					});
+					for (const data of reviews) {
+						if (data.user.profile_picture != null) {
+							var profile_picture = await awsConfig
+								.getSignUrl(data.user.profile_picture)
+								.then(function (res) {
+									data.dataValues.profile_picture = res;
+								});
+						} else {
+							data.dataValues.profile_picture =
+								commonConfig.default_user_image;
+						}
+						data.dataValues.username = data.user.username
+						delete data.dataValues.user
 					}
 
 					const couponData = await couponModel.findOne({
@@ -1443,20 +1474,20 @@ exports.GetProductById = async (req,res) => {
 					});
 					var is_coupon_available = false;
 
-					if(!_.isEmpty(couponData)) {
+					if (!_.isEmpty(couponData)) {
 						const productIds = couponData.product_id; // Retrieve the hobbies column value from the data object
 						const ids = productIds?.split(",")?.includes(`${product.id}`);
-						if(ids || couponsAvailableData) {
+						if (ids || couponsAvailableData) {
 							is_coupon_available = true;
 						}
 					}
 					var product_images = product.image;
 					var image_array = [];
-					if(product_images != null) {
-						for(const data of product_images) {
+					if (product_images != null) {
+						for (const data of product_images) {
 							const signurl = await awsConfig
 								.getSignUrl(data)
-								.then(function(res) {
+								.then(function (res) {
 									image_array.push(res);
 								});
 						}
@@ -1464,13 +1495,13 @@ exports.GetProductById = async (req,res) => {
 						image_array.push(commonConfig.default_image);
 					}
 					product.dataValues.product_images = image_array;
-					if(product.product_categorys != null) {
+					if (product.product_categorys != null) {
 						product.dataValues.category_name = product.product_categorys.name;
 						delete product.dataValues.product_categorys;
 					} else {
 						product.dataValues.category_name = "";
 					}
-					if(product.sub_category != null) {
+					if (product.sub_category != null) {
 						product.dataValues.product_type = product.sub_category.name;
 						delete product.dataValues.sub_category;
 					} else {
@@ -1507,7 +1538,7 @@ exports.GetProductById = async (req,res) => {
 							},
 						],
 					});
-					if(couponDetails) {
+					if (couponDetails) {
 						let discountObj = {
 							discountValue: 0,
 							user_coupon_id: couponDetails.id,
@@ -1517,13 +1548,13 @@ exports.GetProductById = async (req,res) => {
 							coupon: couponDetails?.coupone,
 						};
 						// If coupon is free product type
-						if(couponDetails?.coupone?.coupon_type === false) {
+						if (couponDetails?.coupone?.coupon_type === false) {
 							discountObj.discountValue = product?.dataValues?.price;
 						} // If coupon is Discount coupon
 						else {
-							if(couponDetails?.coupone?.value_type === true) {
+							if (couponDetails?.coupone?.value_type === true) {
 								// flat amount discount
-								if(
+								if (
 									couponDetails?.coupone?.coupon_value >
 									product?.dataValues?.price
 								) {
@@ -1546,40 +1577,42 @@ exports.GetProductById = async (req,res) => {
 						product.dataValues.applied_coupon_details = discountObj;
 					}
 					product.dataValues.rewards = rewards;
+					product.dataValues.reviews = reviews;
+					product.dataValues.total_reviews = reviews.length
 					product.dataValues.total_loyalty_points = total_loyalty_points;
 					product.dataValues.total_cashbacks = total_cashbacks;
 					res.send(
-						setRes(resCode.OK,true,"Get product detail successfully.",product)
+						setRes(resCode.OK, true, "Get product detail successfully.", product)
 					);
 				} else {
 					res.send(
-						setRes(resCode.ResourceNotFound,false,"Product not found.",null)
+						setRes(resCode.ResourceNotFound, false, "Product not found.", null)
 					);
 				}
 			})
 			.catch((GetProductError) => {
 				console.log(GetProductError);
 				res.send(
-					setRes(resCode.InternalServer,false,"Internal server error.",null)
+					setRes(resCode.InternalServer, false, "Internal server error.", null)
 				);
 			});
-	} catch(error) {
+	} catch (error) {
 		return res.send(
-			setRes(resCode.BadRequest,false,"Something went wrong!",null)
+			setRes(resCode.BadRequest, false, "Something went wrong!", null)
 		);
 	}
 };
 
-exports.RemoveProductImage = async (req,res) => {
+exports.RemoveProductImage = async (req, res) => {
 	try {
 		var data = req.body;
 		var productModel = models.products;
 
-		var requiredFields = _.reject(["id","image_name"],(o) => {
-			return _.has(data,o);
+		var requiredFields = _.reject(["id", "image_name"], (o) => {
+			return _.has(data, o);
 		});
-		if(requiredFields == "") {
-			if(data.image_name) {
+		if (requiredFields == "") {
+			if (data.image_name) {
 				await productModel
 					.findOne({
 						where: {
@@ -1588,17 +1621,17 @@ exports.RemoveProductImage = async (req,res) => {
 						},
 					})
 					.then(async (productData) => {
-						if(productData) {
-							var replaceImages = await _.filter(productData.image,(img) => {
+						if (productData) {
+							var replaceImages = await _.filter(productData.image, (img) => {
 								var typeArr = data.image_name;
-								if(!typeArr.includes(img)) {
+								if (!typeArr.includes(img)) {
 									return img;
 								}
 								return "";
 							});
 							var new_images = replaceImages.join(";");
 							var productremoveimages = data.image_name;
-							for(const data of productremoveimages) {
+							for (const data of productremoveimages) {
 								const params = {
 									Bucket: awsConfig.Bucket,
 									Key: data,
@@ -1618,7 +1651,7 @@ exports.RemoveProductImage = async (req,res) => {
 									}
 								)
 								.then(async (updatedProduct) => {
-									if(updatedProduct > 0) {
+									if (updatedProduct > 0) {
 										productModel
 											.findOne({
 												where: {
@@ -1628,10 +1661,10 @@ exports.RemoveProductImage = async (req,res) => {
 											.then(async (product) => {
 												var product_images = product.image;
 												var image_array = [];
-												for(const data of product_images) {
+												for (const data of product_images) {
 													const signurl = await awsConfig
 														.getSignUrl(data)
-														.then(function(res) {
+														.then(function (res) {
 															image_array.push(res);
 														});
 												}
@@ -1680,7 +1713,7 @@ exports.RemoveProductImage = async (req,res) => {
 					});
 			} else {
 				res.send(
-					setRes(resCode.BadRequest,false,"Invalid image name...",null)
+					setRes(resCode.BadRequest, false, "Invalid image name...", null)
 				);
 			}
 		} else {
@@ -1693,13 +1726,13 @@ exports.RemoveProductImage = async (req,res) => {
 				)
 			);
 		}
-	} catch(error) {
+	} catch (error) {
 		return res.send(
-			setRes(resCode.BadRequest,false,"Something went wrong!",null)
+			setRes(resCode.BadRequest, false, "Something went wrong!", null)
 		);
 	}
 };
-exports.CreateCategory = async (req,res) => {
+exports.CreateCategory = async (req, res) => {
 	try {
 		var data = req.body;
 		req.file ? (data.image = `${req.file.key}`) : "";
@@ -1708,17 +1741,17 @@ exports.CreateCategory = async (req,res) => {
 		var validation = true;
 
 		var requiredFields = _.reject(
-			["business_id","name","image","parent_id"],
+			["business_id", "name", "image", "parent_id"],
 			(o) => {
-				return _.has(data,o);
+				return _.has(data, o);
 			}
 		);
 
-		if(requiredFields == "") {
+		if (requiredFields == "") {
 			var name = data.name;
 			var validname = /^[A-Z+_.a-z+_.0-9 ]+$/;
-			if(name.match(validname) == null) {
-				if(data.parent_id == 0) {
+			if (name.match(validname) == null) {
+				if (data.parent_id == 0) {
 					return res.send(
 						setRes(
 							resCode.BadRequest,
@@ -1748,19 +1781,19 @@ exports.CreateCategory = async (req,res) => {
 					},
 				})
 				.then(async (business) => {
-					if(_.isEmpty(business)) {
+					if (_.isEmpty(business)) {
 						return res.send(
-							setRes(resCode.ResourceNotFound,false,"Business not found.",null)
+							setRes(resCode.ResourceNotFound, false, "Business not found.", null)
 						);
 					} else {
-						if(data.parent_id != 0 && !_.isEmpty(data.parent_id)) {
+						if (data.parent_id != 0 && !_.isEmpty(data.parent_id)) {
 							const parentCategory = await productCategoryModel.findOne({
 								where: {
 									id: data.parent_id,
 									is_deleted: false,
 								},
 							});
-							if(parentCategory.type == 'admin') {
+							if (parentCategory.type == 'admin') {
 								validation = false;
 								return res.send(
 									setRes(
@@ -1771,7 +1804,7 @@ exports.CreateCategory = async (req,res) => {
 									)
 								);
 							}
-							if(!parentCategory) {
+							if (!parentCategory) {
 								validation = false;
 								return res.send(
 									setRes(
@@ -1784,7 +1817,7 @@ exports.CreateCategory = async (req,res) => {
 							}
 						}
 
-						if(data.parent_id == 0 && !_.isEmpty(data.parent_id)) {
+						if (data.parent_id == 0 && !_.isEmpty(data.parent_id)) {
 							const existCategory = await productCategoryModel.findOne({
 								where: {
 									is_deleted: false,
@@ -1797,7 +1830,7 @@ exports.CreateCategory = async (req,res) => {
 									},
 								},
 							});
-							if(existCategory) {
+							if (existCategory) {
 								validation = false;
 								return res.send(
 									setRes(
@@ -1810,7 +1843,7 @@ exports.CreateCategory = async (req,res) => {
 							}
 						}
 
-						if(data.parent_id != 0 && !_.isEmpty(data.parent_id)) {
+						if (data.parent_id != 0 && !_.isEmpty(data.parent_id)) {
 							const existSubCategory = await productCategoryModel.findOne({
 								where: {
 									is_deleted: false,
@@ -1824,7 +1857,7 @@ exports.CreateCategory = async (req,res) => {
 									},
 								},
 							});
-							if(existSubCategory) {
+							if (existSubCategory) {
 								validation = false;
 								return res.send(
 									setRes(
@@ -1837,22 +1870,22 @@ exports.CreateCategory = async (req,res) => {
 							}
 						}
 
-						if(validation) {
+						if (validation) {
 							data.type = "business";
 							await productCategoryModel
 								.create(data)
 								.then(async (categoryData) => {
-									if(categoryData) {
-										if(data.image != null) {
+									if (categoryData) {
+										if (data.image != null) {
 											var image = await awsConfig
 												.getSignUrl(data.image)
-												.then(function(res) {
+												.then(function (res) {
 													data.image = res;
 												});
 										} else {
 											data.image = commonConfig.default_image;
 										}
-										if(categoryData.parent_id == 0) {
+										if (categoryData.parent_id == 0) {
 											return res.send(
 												setRes(
 													resCode.OK,
@@ -1895,25 +1928,25 @@ exports.CreateCategory = async (req,res) => {
 				)
 			);
 		}
-	} catch(error) {
+	} catch (error) {
 		return res.send(
-			setRes(resCode.BadRequest,false,"Something went wrong!",null)
+			setRes(resCode.BadRequest, false, "Something went wrong!", null)
 		);
 	}
 };
 
-exports.CategoryList = async (req,res) => {
+exports.CategoryList = async (req, res) => {
 	try {
 		var data = req.body;
 
 		var productCategoryModel = models.product_categorys;
 		const Op = models.Op;
 
-		var requiredFields = _.reject(["page","page_size"],(o) => {
-			return _.has(data,o);
+		var requiredFields = _.reject(["page", "page_size"], (o) => {
+			return _.has(data, o);
 		});
-		if(requiredFields == "") {
-			if(data.page < 0 || data.page === 0) {
+		if (requiredFields == "") {
+			if (data.page < 0 || data.page === 0) {
 				res.send(
 					setRes(
 						resCode.BadRequest,
@@ -1939,7 +1972,7 @@ exports.CategoryList = async (req,res) => {
 			   OR
 			   (pcs.type = 'business' ${searchPattern ? `AND pcs.name LIKE :searchPattern` : ""} AND pcs.business_id = :business_id)
 			 )`;
-			if(data.is_add == true) {
+			if (data.is_add == true) {
 				query += ` AND pcs.type = 'business'`;
 			}
 			query += `) AS total_count
@@ -1953,28 +1986,28 @@ exports.CategoryList = async (req,res) => {
 			(c.type = 'business' ${searchPattern ? `AND c.name LIKE :searchPattern` : ""} AND c.business_id = :business_id)
 		  )`;
 
-			if(data.is_add == true) {
+			if (data.is_add == true) {
 				query += ` AND c.type = 'business'`;
 			}
 
 			query += ` ORDER BY c.name ASC`;
 			// Check if pagination is requested
-			if(data.page_size != 0 && !_.isEmpty(data.page_size)) {
+			if (data.page_size != 0 && !_.isEmpty(data.page_size)) {
 				query += ` LIMIT ${limit} OFFSET ${skip}`;
 			}
 
-			var allCategorys = await models.sequelize.query(query,{
+			var allCategorys = await models.sequelize.query(query, {
 				replacements: {
 					searchPattern: searchPattern,
 					business_id: business_id,
 				},
 				type: Sequelize.QueryTypes.SELECT,
 			});
-			for(const data of allCategorys) {
-				if(data.image != null) {
+			for (const data of allCategorys) {
+				if (data.image != null) {
 					const signurl = await awsConfig
 						.getSignUrl(data.image)
-						.then(function(res) {
+						.then(function (res) {
 							data.image = res;
 						});
 				} else {
@@ -2012,15 +2045,15 @@ exports.CategoryList = async (req,res) => {
 				)
 			);
 		}
-	} catch(error) {
+	} catch (error) {
 		console.log(error)
 		return res.send(
-			setRes(resCode.BadRequest,false,"Something went wrong!",null)
+			setRes(resCode.BadRequest, false, "Something went wrong!", null)
 		);
 	}
 };
 
-exports.GetCategoryById = async (req,res) => {
+exports.GetCategoryById = async (req, res) => {
 	try {
 		var data = req.params;
 		var productCategoryModel = models.product_categorys;
@@ -2034,11 +2067,11 @@ exports.GetCategoryById = async (req,res) => {
 				},
 			})
 			.then(async (categoryData) => {
-				if(categoryData != null) {
-					if(categoryData.image != null) {
+				if (categoryData != null) {
+					if (categoryData.image != null) {
 						var categoryData_image = await awsConfig
 							.getSignUrl(categoryData.image)
-							.then(function(res) {
+							.then(function (res) {
 								categoryData.image = res;
 							});
 					} else {
@@ -2054,36 +2087,36 @@ exports.GetCategoryById = async (req,res) => {
 					);
 				} else {
 					res.send(
-						setRes(resCode.ResourceNotFound,false,"Category not found.",null)
+						setRes(resCode.ResourceNotFound, false, "Category not found.", null)
 					);
 				}
 			})
 			.catch((GetCategoryError) => {
 				res.send(
-					setRes(resCode.InternalServer,false,"Internal server error.",null)
+					setRes(resCode.InternalServer, false, "Internal server error.", null)
 				);
 			});
-	} catch(error) {
+	} catch (error) {
 		return res.send(
-			setRes(resCode.BadRequest,false,"Something went wrong!",null)
+			setRes(resCode.BadRequest, false, "Something went wrong!", null)
 		);
 	}
 };
 
-exports.UpdateCategory = async (req,res) => {
+exports.UpdateCategory = async (req, res) => {
 	try {
 		var data = req.body;
 		req.file ? (data.image = `${req.file.key}`) : "";
 		var productCategoryModel = models.product_categorys;
-		var requiredFields = _.reject(["id","business_id"],(o) => {
-			return _.has(data,o);
+		var requiredFields = _.reject(["id", "business_id"], (o) => {
+			return _.has(data, o);
 		});
-		if(requiredFields == "") {
-			if(!_.isEmpty(data.name)) {
+		if (requiredFields == "") {
+			if (!_.isEmpty(data.name)) {
 				var name = data.name;
 				var validname = /^[A-Z+_.a-z+_.0-9 ]+$/;
-				if(name.match(validname) == null) {
-					if(data.parent_id == 0) {
+				if (name.match(validname) == null) {
+					if (data.parent_id == 0) {
 						return res.send(
 							setRes(
 								resCode.BadRequest,
@@ -2104,7 +2137,7 @@ exports.UpdateCategory = async (req,res) => {
 					}
 				}
 			}
-			if(data.parent_id != 0 && !_.isEmpty(data.parent_id)) {
+			if (data.parent_id != 0 && !_.isEmpty(data.parent_id)) {
 				const parentCategory = await productCategoryModel.findOne({
 					where: {
 						id: {
@@ -2114,7 +2147,7 @@ exports.UpdateCategory = async (req,res) => {
 						is_deleted: false,
 					},
 				});
-				if(parentCategory && parentCategory.type == 'admin') {
+				if (parentCategory && parentCategory.type == 'admin') {
 					validation = false;
 					return res.send(
 						setRes(
@@ -2125,7 +2158,7 @@ exports.UpdateCategory = async (req,res) => {
 						)
 					);
 				}
-				if(!parentCategory) {
+				if (!parentCategory) {
 					validation = false;
 					return res.send(
 						setRes(
@@ -2138,7 +2171,7 @@ exports.UpdateCategory = async (req,res) => {
 				}
 			}
 
-			if(data.parent_id == 0 && !_.isEmpty(data.parent_id)) {
+			if (data.parent_id == 0 && !_.isEmpty(data.parent_id)) {
 				const existCategory = await productCategoryModel.findOne({
 					where: {
 						is_deleted: false,
@@ -2154,7 +2187,7 @@ exports.UpdateCategory = async (req,res) => {
 						},
 					},
 				});
-				if(existCategory) {
+				if (existCategory) {
 					validation = false;
 					return res.send(
 						setRes(
@@ -2167,7 +2200,7 @@ exports.UpdateCategory = async (req,res) => {
 				}
 			}
 
-			if(data.parent_id != 0 && !_.isEmpty(data.parent_id)) {
+			if (data.parent_id != 0 && !_.isEmpty(data.parent_id)) {
 				const existSubCategory = await productCategoryModel.findOne({
 					where: {
 						is_deleted: false,
@@ -2184,7 +2217,7 @@ exports.UpdateCategory = async (req,res) => {
 						},
 					},
 				});
-				if(existSubCategory) {
+				if (existSubCategory) {
 					validation = false;
 					return res.send(
 						setRes(
@@ -2206,8 +2239,8 @@ exports.UpdateCategory = async (req,res) => {
 					},
 				})
 				.then(async (categoryData) => {
-					if(categoryData != null) {
-						if(data.image) {
+					if (categoryData != null) {
+						if (data.image) {
 							const params = {
 								Bucket: awsConfig.Bucket,
 								Key: categoryData.image,
@@ -2215,7 +2248,7 @@ exports.UpdateCategory = async (req,res) => {
 							awsConfig.deleteImageAWS(params);
 						}
 						await productCategoryModel
-							.update(data,{
+							.update(data, {
 								where: {
 									id: data.id,
 									is_deleted: false,
@@ -2223,7 +2256,7 @@ exports.UpdateCategory = async (req,res) => {
 								},
 							})
 							.then(async (updateData) => {
-								if(updateData == 1) {
+								if (updateData == 1) {
 									await productCategoryModel
 										.findOne({
 											where: {
@@ -2233,16 +2266,16 @@ exports.UpdateCategory = async (req,res) => {
 											},
 										})
 										.then(async (categoryDetail) => {
-											if(categoryDetail.image != null) {
+											if (categoryDetail.image != null) {
 												var categoryDetail_image = await awsConfig
 													.getSignUrl(categoryDetail.image)
-													.then(function(res) {
+													.then(function (res) {
 														categoryDetail.image = res;
 													});
 											} else {
 												categoryDetail.image = awsConfig.default_image;
 											}
-											if(categoryDetail.parent_id == 0) {
+											if (categoryDetail.parent_id == 0) {
 												return res.send(
 													setRes(
 														resCode.OK,
@@ -2275,7 +2308,7 @@ exports.UpdateCategory = async (req,res) => {
 							});
 					} else {
 						res.send(
-							setRes(resCode.ResourceNotFound,false,"Category not found",null)
+							setRes(resCode.ResourceNotFound, false, "Category not found", null)
 						);
 					}
 				});
@@ -2289,14 +2322,14 @@ exports.UpdateCategory = async (req,res) => {
 				)
 			);
 		}
-	} catch(error) {
+	} catch (error) {
 		return res.send(
-			setRes(resCode.BadRequest,false,"Something went wrong!",null)
+			setRes(resCode.BadRequest, false, "Something went wrong!", null)
 		);
 	}
 };
 
-exports.RemoveCategory = async (req,res) => {
+exports.RemoveCategory = async (req, res) => {
 	try {
 		var data = req.params;
 		var productModel = models.products;
@@ -2306,7 +2339,7 @@ exports.RemoveCategory = async (req,res) => {
 		var wishlistModel = models.wishlists;
 		var Op = models.Op;
 
-		if(data.id) {
+		if (data.id) {
 			productModel
 				.findAll({
 					where: {
@@ -2319,7 +2352,7 @@ exports.RemoveCategory = async (req,res) => {
 				})
 				.then((productData) => {
 					var product_ids = [];
-					for(const data of productData) {
+					for (const data of productData) {
 						product_ids.push(data.id);
 					}
 					cartModel
@@ -2332,7 +2365,7 @@ exports.RemoveCategory = async (req,res) => {
 							},
 						})
 						.then((cartData) => {
-							if(cartData.length > 0) {
+							if (cartData.length > 0) {
 								res.send(
 									setRes(
 										resCode.BadRequest,
@@ -2352,7 +2385,7 @@ exports.RemoveCategory = async (req,res) => {
 										},
 									})
 									.then((wishlistData) => {
-										if(wishlistData.length > 0) {
+										if (wishlistData.length > 0) {
 											res.send(
 												setRes(
 													resCode.BadRequest,
@@ -2373,7 +2406,7 @@ exports.RemoveCategory = async (req,res) => {
 													},
 												})
 												.then((orderData) => {
-													if(orderData.length > 0) {
+													if (orderData.length > 0) {
 														res.send(
 															setRes(
 																resCode.BadRequest,
@@ -2392,7 +2425,7 @@ exports.RemoveCategory = async (req,res) => {
 																},
 															})
 															.then(async (subCategoryData) => {
-																if(subCategoryData.length > 0) {
+																if (subCategoryData.length > 0) {
 																	return res.send(
 																		setRes(
 																			resCode.BadRequest,
@@ -2414,7 +2447,7 @@ exports.RemoveCategory = async (req,res) => {
 																			},
 																		})
 																		.then((categoryData) => {
-																			if(categoryData != null) {
+																			if (categoryData != null) {
 																				categoryData.update({
 																					is_deleted: true,
 																					is_enable: false,
@@ -2449,30 +2482,30 @@ exports.RemoveCategory = async (req,res) => {
 				})
 				.catch((error) => {
 					res.send(
-						setRes(resCode.InternalServer,false,"Internal server error.",null)
+						setRes(resCode.InternalServer, false, "Internal server error.", null)
 					);
 				});
 		} else {
-			res.send(setRes.BadRequest,false,"id is required.",null);
+			res.send(setRes.BadRequest, false, "id is required.", null);
 		}
-	} catch(error) {
+	} catch (error) {
 		return res.send(
-			setRes(resCode.BadRequest,false,"Something went wrong!",null)
+			setRes(resCode.BadRequest, false, "Something went wrong!", null)
 		);
 	}
 };
 
-exports.ProductTypeList = async (req,res) => {
+exports.ProductTypeList = async (req, res) => {
 	try {
 		var data = req.body;
 		var categoryModel = models.product_categorys;
 		var Op = models.Op;
 
-		var requiredFields = _.reject(["page","page_size"],(o) => {
-			return _.has(data,o);
+		var requiredFields = _.reject(["page", "page_size"], (o) => {
+			return _.has(data, o);
 		});
-		if(requiredFields == "") {
-			if(data.page < 0 || data.page === 0) {
+		if (requiredFields == "") {
+			if (data.page < 0 || data.page === 0) {
 				res.send(
 					setRes(
 						resCode.BadRequest,
@@ -2516,22 +2549,22 @@ exports.ProductTypeList = async (req,res) => {
 
 
 			// Check if pagination is requested
-			if(data.page_size != 0 && !_.isEmpty(data.page_size)) {
+			if (data.page_size != 0 && !_.isEmpty(data.page_size)) {
 				query += ` LIMIT ${limit} OFFSET ${skip}`;
 			}
 
-			var allSubCategorys = await models.sequelize.query(query,{
+			var allSubCategorys = await models.sequelize.query(query, {
 				replacements: {
 					searchPattern: searchPattern,
 					business_id: business_id,
 				},
 				type: Sequelize.QueryTypes.SELECT,
 			});
-			for(const data of allSubCategorys) {
-				if(data.image != null) {
+			for (const data of allSubCategorys) {
+				if (data.image != null) {
 					const signurl = await awsConfig
 						.getSignUrl(data.image)
-						.then(function(res) {
+						.then(function (res) {
 							data.image = res;
 						});
 				} else {
@@ -2567,15 +2600,15 @@ exports.ProductTypeList = async (req,res) => {
 				)
 			);
 		}
-	} catch(error) {
+	} catch (error) {
 		console.log(error)
 		return res.send(
-			setRes(resCode.BadRequest,false,"Something went wrong!",null)
+			setRes(resCode.BadRequest, false, "Something went wrong!", null)
 		);
 	}
 };
 
-exports.removeProductType = async (req,res) => {
+exports.removeProductType = async (req, res) => {
 	try {
 		var data = req.params;
 		var productCategoryModel = models.product_categorys;
@@ -2593,7 +2626,7 @@ exports.removeProductType = async (req,res) => {
 				},
 			})
 			.then(async (productData) => {
-				if(productData.length > 0) {
+				if (productData.length > 0) {
 					res.send(
 						setRes(
 							resCode.BadRequest,
@@ -2604,7 +2637,7 @@ exports.removeProductType = async (req,res) => {
 					);
 				} else {
 					var product_ids = [];
-					for(const data of productData) {
+					for (const data of productData) {
 						product_ids.push(data.id);
 					}
 					await cartModel
@@ -2617,7 +2650,7 @@ exports.removeProductType = async (req,res) => {
 							},
 						})
 						.then(async (cartData) => {
-							if(cartData.length > 0) {
+							if (cartData.length > 0) {
 								res.send(
 									setRes(
 										resCode.BadRequest,
@@ -2637,7 +2670,7 @@ exports.removeProductType = async (req,res) => {
 										},
 									})
 									.then((wishlistData) => {
-										if(wishlistData.length > 0) {
+										if (wishlistData.length > 0) {
 											res.send(
 												setRes(
 													resCode.BadRequest,
@@ -2658,7 +2691,7 @@ exports.removeProductType = async (req,res) => {
 													},
 												})
 												.then((orderData) => {
-													if(orderData.length > 0) {
+													if (orderData.length > 0) {
 														res.send(
 															setRes(
 																resCode.BadRequest,
@@ -2680,7 +2713,7 @@ exports.removeProductType = async (req,res) => {
 																},
 															})
 															.then((subCategoryData) => {
-																if(subCategoryData != null) {
+																if (subCategoryData != null) {
 																	subCategoryData.update({
 																		is_deleted: true,
 																		is_enable: false,
@@ -2714,30 +2747,30 @@ exports.removeProductType = async (req,res) => {
 			})
 			.catch((error) => {
 				res.send(
-					setRes(resCode.BadRequest,false,"Internal server error.",null)
+					setRes(resCode.BadRequest, false, "Internal server error.", null)
 				);
 			});
-	} catch(error) {
+	} catch (error) {
 		return res.send(
-			setRes(resCode.BadRequest,false,"Something went wrong!",null)
+			setRes(resCode.BadRequest, false, "Something went wrong!", null)
 		);
 	}
 };
 
-exports.AddProductRattings = async (req,res) => {
+exports.AddProductRattings = async (req, res) => {
 	try {
 		var data = req.body;
 		var userModel = models.user;
 		var productModel = models.products;
 		var productRattingModel = models.product_ratings;
 		var requiredFields = _.reject(
-			["user_id","product_id","ratings","description"],
+			["user_id", "product_id", "ratings", "description"],
 			(o) => {
-				return _.has(data,o);
+				return _.has(data, o);
 			}
 		);
 
-		if(requiredFields == "") {
+		if (requiredFields == "") {
 			userModel
 				.findOne({
 					where: {
@@ -2747,9 +2780,9 @@ exports.AddProductRattings = async (req,res) => {
 					},
 				})
 				.then(async (user) => {
-					if(_.isEmpty(user)) {
+					if (_.isEmpty(user)) {
 						res.send(
-							setRes(resCode.ResourceNotFound,false,"User not found.",null)
+							setRes(resCode.ResourceNotFound, false, "User not found.", null)
 						);
 					} else {
 						productModel
@@ -2760,7 +2793,7 @@ exports.AddProductRattings = async (req,res) => {
 								},
 							})
 							.then(async (product) => {
-								if(_.isEmpty(product)) {
+								if (_.isEmpty(product)) {
 									res.send(
 										setRes(
 											resCode.ResourceNotFound,
@@ -2779,16 +2812,16 @@ exports.AddProductRattings = async (req,res) => {
 											},
 										})
 										.then((rattingData) => {
-											if(rattingData != null) {
+											if (rattingData != null) {
 												productRattingModel
-													.update(data,{
+													.update(data, {
 														where: {
 															user_id: data.user_id,
 															product_id: data.product_id,
 														},
 													})
 													.then((updateData) => {
-														if(updateData == 1) {
+														if (updateData == 1) {
 															productRattingModel
 																.findOne({
 																	where: {
@@ -2857,14 +2890,14 @@ exports.AddProductRattings = async (req,res) => {
 				)
 			);
 		}
-	} catch(error) {
+	} catch (error) {
 		return res.send(
-			setRes(resCode.BadRequest,false,"Something went wrong!",null)
+			setRes(resCode.BadRequest, false, "Something went wrong!", null)
 		);
 	}
 };
 
-exports.GetProductRattings = async (req,res) => {
+exports.GetProductRattings = async (req, res) => {
 	try {
 		var data = req.body;
 		var productRattingModel = models.product_ratings;
@@ -2872,10 +2905,10 @@ exports.GetProductRattings = async (req,res) => {
 		var userModel = models.user;
 		const businessModel = models.business;
 		const Op = models.Op;
-		var requiredFields = _.reject(["product_id","page","page_size"],(o) => {
-			return _.has(data,o);
+		var requiredFields = _.reject(["product_id", "page", "page_size"], (o) => {
+			return _.has(data, o);
 		});
-		let userDetail,userRole;
+		let userDetail, userRole;
 		var authUser = req.user;
 
 		userDetail = await userModel.findOne({
@@ -2883,7 +2916,7 @@ exports.GetProductRattings = async (req,res) => {
 				email: authUser.user,
 			},
 		});
-		if(userDetail) {
+		if (userDetail) {
 			userRole = userDetail?.role_id;
 		} else {
 			userDetail = await businessModel.findOne({
@@ -2891,7 +2924,7 @@ exports.GetProductRattings = async (req,res) => {
 					email: authUser.user,
 				},
 			});
-			if(userDetail) {
+			if (userDetail) {
 				userRole = authUser.role_id;
 			}
 		}
@@ -2915,49 +2948,49 @@ exports.GetProductRattings = async (req,res) => {
 					product_id: data.product_id,
 					is_deleted: false,
 					is_review_report: false,
-					user_id: {[Op.not]: userDetail.id},
+					user_id: { [Op.not]: userDetail.id },
 				},
 			],
 		};
 
-		if(requiredFields == "") {
+		if (requiredFields == "") {
 			const condition = {
 				where: whereCond,
 				include: {
 					model: userModel,
 				},
-				order: [["createdAt","DESC"]],
-				attributes: {exclude: ["is_deleted","updatedAt"]},
+				order: [["createdAt", "DESC"]],
+				attributes: { exclude: ["is_deleted", "updatedAt"] },
 			};
 
 			const skip = data.page_size * (data.page - 1);
 			const limit = parseInt(data.page_size);
 
-			if(data.page_size != 0 && !_.isEmpty(data.page_size)) {
-				(condition.offset = skip),(condition.limit = limit);
+			if (data.page_size != 0 && !_.isEmpty(data.page_size)) {
+				(condition.offset = skip), (condition.limit = limit);
 			}
 			const proCondition = {};
-			proCondition.where = {id: data.product_id,is_deleted: false};
-			if(data.business_id) {
+			proCondition.where = { id: data.product_id, is_deleted: false };
+			if (data.business_id) {
 				proCondition.where = {
 					...proCondition.where,
-					...{business_id: data.business_id},
+					...{ business_id: data.business_id },
 				};
 			}
 			const productDetails = await productModel.findOne(proCondition);
-			if(productDetails) {
+			if (productDetails) {
 				const recordCounts = await productRattingModel.findAndCountAll(condition);
 				const totalRecords = recordCounts?.count;
 
 				await productRattingModel
 					.findAll(condition)
 					.then(async (ratingData) => {
-						for(const data of ratingData) {
+						for (const data of ratingData) {
 							data.dataValues.user_name = data.user.username;
-							if(data.user.profile_picture != null) {
+							if (data.user.profile_picture != null) {
 								const signurl = await awsConfig
 									.getSignUrl(data.user.profile_picture)
-									.then(function(res) {
+									.then(function (res) {
 										data.dataValues.profile_picture = res;
 									});
 							} else {
@@ -2986,12 +3019,12 @@ exports.GetProductRattings = async (req,res) => {
 					})
 					.catch((error) => {
 						res.send(
-							setRes(resCode.BadRequest,false,"Fail to get ratings",null)
+							setRes(resCode.BadRequest, false, "Fail to get ratings", null)
 						);
 					});
 			} else {
 				res.send(
-					setRes(resCode.ResourceNotFound,false,"Product not found",null)
+					setRes(resCode.ResourceNotFound, false, "Product not found", null)
 				);
 			}
 		} else {
@@ -3004,45 +3037,45 @@ exports.GetProductRattings = async (req,res) => {
 				)
 			);
 		}
-	} catch(error) {
+	} catch (error) {
 		return res.send(
-			setRes(resCode.BadRequest,false,"Something went wrong!",null)
+			setRes(resCode.BadRequest, false, "Something went wrong!", null)
 		);
 	}
 };
 
-exports.productRatting = async (req,res) => {
+exports.productRatting = async (req, res) => {
 	try {
 		var params = req.params;
 		var data = req.query;
 		var productModel = models.products;
-		var requiredFields = _.reject(["order_id"],(o) => {
-			return _.has(data,o);
+		var requiredFields = _.reject(["order_id"], (o) => {
+			return _.has(data, o);
 		});
-		var {role_id} = req.user;
+		var { role_id } = req.user;
 		var orderDetailsModel = models.order_details;
 
-		if(requiredFields == "") {
+		if (requiredFields == "") {
 			const proCondition = {
 				include: {
 					model: productModel,
 				},
 			};
-			proCondition.where = {product_id: params.id,is_deleted: false};
-			if(data.order_id) {
+			proCondition.where = { product_id: params.id, is_deleted: false };
+			if (data.order_id) {
 				proCondition.where = {
 					...proCondition.where,
-					...{order_id: data.order_id},
+					...{ order_id: data.order_id },
 				};
 			}
-			if(data.business_id) {
+			if (data.business_id) {
 				proCondition.where = {
 					...proCondition.where,
-					...{business_id: data.business_id},
+					...{ business_id: data.business_id },
 				};
 			}
 			const orderDetails = await orderDetailsModel.findOne(proCondition);
-			if(orderDetails) {
+			if (orderDetails) {
 				const response = {};
 				response.product_name = orderDetails.product?.name
 					? orderDetails.product?.name
@@ -3050,21 +3083,21 @@ exports.productRatting = async (req,res) => {
 				response.qty = orderDetails.qty;
 				response.price = orderDetails.price;
 				response.order_status = orderDetails.order_status;
-				if(orderDetails?.product?.image != null) {
+				if (orderDetails?.product?.image != null) {
 					await awsConfig
 						.getSignUrl(orderDetails?.product?.image[0])
-						.then(function(res) {
+						.then(function (res) {
 							response.product_image = res;
 						});
 				} else {
 					response.product_image = commonConfig.default_image;
 				}
 				res.send(
-					setRes(resCode.OK,true,"Get product review succesfully..",response)
+					setRes(resCode.OK, true, "Get product review succesfully..", response)
 				);
 			} else {
 				res.send(
-					setRes(resCode.ResourceNotFound,false,"Product not found",null)
+					setRes(resCode.ResourceNotFound, false, "Product not found", null)
 				);
 			}
 		} else {
@@ -3077,34 +3110,44 @@ exports.productRatting = async (req,res) => {
 				)
 			);
 		}
-	} catch(error) {
+	} catch (error) {
 		return res.send(
-			setRes(resCode.BadRequest,false,"Something went wrong!",null)
+			setRes(resCode.BadRequest, false, "Something went wrong!", null)
 		);
 	}
 };
 
-exports.reportCustomerReview = async (req,res) => {
+exports.reportCustomerReview = async (req, res) => {
 	try {
 		const data = req.body;
 		const user = req?.user || {};
-		// const userEmail = req.userEmail;
-		const userEmail = user?.user;
 		const businessModel = models.business;
+		const userModel = models.user;
+		const productModel = models.products;
 		const productRattingModel = models.product_ratings;
-		const requiredFields = _.reject(["product_rating_id","description"],(o) => {
-			return _.has(data,o);
+		const requiredFields = _.reject(["product_rating_id", "description"], (o) => {
+			return _.has(data, o);
 		});
-		if(requiredFields == "") {
-			await businessModel.findOne({email: userEmail}).then(async (user) => {
-				if(user) {
+		if (requiredFields == "") {
+			await businessModel.findOne({ where: { id: user.id  } }).then(async (business) => {
+				if (business) {
 					await productRattingModel
 						.findOne({
-							where: {id: data.product_rating_id,is_deleted: false},
-							attributes: {exclude: ["createdAt","updatedAt"]},
+							where: { id: data.product_rating_id, is_deleted: false },
+							include: [
+								{
+									model: userModel,
+									attributes: ['username']
+								},
+								{
+									model: productModel,
+									attributes: ['id', 'name']
+								}
+							],
+							attributes: { exclude: ["createdAt", "updatedAt"] },
 						})
 						.then(async (productRating) => {
-							if(productRating) {
+							if (productRating) {
 								await productRattingModel
 									.update(
 										{
@@ -3118,28 +3161,86 @@ exports.reportCustomerReview = async (req,res) => {
 										}
 									)
 									.then(async (UpdateData) => {
-										await productRattingModel
-											.findOne({
-												where: {id: data.product_rating_id,is_deleted: false},
-												attributes: {exclude: ["createdAt","updatedAt"]},
-											})
-											.then(async (updatedproductRating) => {
-												res.send(
-													setRes(
-														resCode.OK,
-														true,
-														"Review reported successfully.",
-														updatedproductRating
-													)
+										var transporter = nodemailer.createTransport({
+											host: mailConfig.host,
+											port: mailConfig.port,
+											secure: mailConfig.secure,
+											auth: mailConfig.auth,
+											tls: mailConfig.tls
+										});
+										var templates = new EmailTemplates();
+										const context = {
+											productName: productRating.product.name,
+											userName: productRating.user.username,
+											userReview:productRating.description,
+											businessName: business.business_name,
+											businessEmail: business.email,
+											description: data.description,
+											url: `${commonConfig.admin_url}/products/view/${productRating.product.id}`,
+										};
+										templates.render(
+											path.join(
+												__dirname,
+												"../../",
+												"template",
+												"report.html"
+											),
+											context,
+											(err, html, text, subject) => {
+												// console.log(text);
+												if (err) {
+													console.error("Template rendering error", err);
+													return;
+												}
+												transporter.sendMail(
+													{
+														from: "b.a.s.e. <do-not-reply@mail.com>",
+														to: "kureshi.sakil@technostacks.in",
+														subject: `Urgent: Product Review Report - ${productRating.product.name}`,
+														html: html,
+													},
+													async function (err, result) {
+														console.log(result);
+														console.log(err);
+														if (err) {
+															return res.send(
+																setRes(
+																	resCode.BadRequest,
+																	false,
+																	"Something went wrong.",
+																	err
+																)
+															);
+														} else {
+															
+															await productRattingModel
+																.findOne({
+																	where: { id: data.product_rating_id, is_deleted: false },
+																	attributes: { exclude: ["createdAt", "updatedAt"] },
+																})
+																.then(async (updatedproductRating) => {
+																	return res.send(
+																		setRes(
+																			resCode.OK,
+																			true,
+																			"Review reported successfully.",
+																			updatedproductRating
+																		)
+																	);
+																});
+														}
+													}
 												);
-											});
+											}
+										);
 									})
 									.catch((error) => {
+										console.log(error);
 										res.send(
 											setRes(
 												resCode.InternalServer,
 												false,
-												"Fail to report Customer review.",
+												"Fail to  Customer review.",
 												null
 											)
 										);
@@ -3157,7 +3258,7 @@ exports.reportCustomerReview = async (req,res) => {
 						});
 				} else {
 					res.send(
-						setRes(resCode.BadRequest,false,"Business User not exists ",null)
+						setRes(resCode.BadRequest, false, "Business User not exists ", null)
 					);
 				}
 			});
@@ -3171,25 +3272,25 @@ exports.reportCustomerReview = async (req,res) => {
 				)
 			);
 		}
-	} catch(error) {
+	} catch (error) {
 		return res.send(
-			setRes(resCode.BadRequest,false,"Something went wrong!",null)
+			setRes(resCode.BadRequest, false, "Something went wrong!", null)
 		);
 	}
 };
 
 //  Simillar product get
-exports.simillarProducts = async (req,res) => {
+exports.simillarProducts = async (req, res) => {
 	try {
 		var val = req.params;
 		var productModel = models.products;
 		var productCategoryModel = models.product_categorys;
 		var Op = models.Op;
-		var requiredFields = _.reject(["id"],(o) => {
-			return _.has(val,o);
+		var requiredFields = _.reject(["id"], (o) => {
+			return _.has(val, o);
 		});
 
-		if(requiredFields == "") {
+		if (requiredFields == "") {
 			productModel
 				.findOne({
 					where: {
@@ -3198,9 +3299,9 @@ exports.simillarProducts = async (req,res) => {
 					},
 				})
 				.then(async (product) => {
-					if(_.isEmpty(product) || product == null || product == 0) {
+					if (_.isEmpty(product) || product == null || product == 0) {
 						return res.send(
-							setRes(resCode.ResourceNotFound,true,"Product not found.",null)
+							setRes(resCode.ResourceNotFound, true, "Product not found.", null)
 						);
 					} else {
 						var condition = {};
@@ -3221,10 +3322,10 @@ exports.simillarProducts = async (req,res) => {
 							"product_item",
 						];
 						productModel.findAll(condition).then(async (categoryData) => {
-							if(categoryData.length > 0) {
+							if (categoryData.length > 0) {
 								const shuffledArrays = _.shuffle(categoryData);
-								let responseData = shuffledArrays.slice(0,5);
-								for(const data of responseData) {
+								let responseData = shuffledArrays.slice(0, 5);
+								for (const data of responseData) {
 									var rewards = [];
 									const cashbaksModel = models.cashbacks;
 									var discountsModel = models.discounts;
@@ -3248,9 +3349,9 @@ exports.simillarProducts = async (req,res) => {
 											isDeleted: false,
 										},
 									});
-									for(const data of discounts) {
+									for (const data of discounts) {
 										let discountString = "";
-										if(data.discount_type == 0) {
+										if (data.discount_type == 0) {
 											discountString += `${data.discount_value}% Discount`;
 										} else {
 											discountString += `$${data.discount_value} Discount`;
@@ -3283,15 +3384,15 @@ exports.simillarProducts = async (req,res) => {
 											isDeleted: false,
 										},
 									});
-									for(const data of coupones) {
+									for (const data of coupones) {
 										let couponString = "";
-										if(data.coupon_type == 1) {
-											if(data.value_type == 1) {
+										if (data.coupon_type == 1) {
+											if (data.value_type == 1) {
 												couponString += `${data.coupon_value}% Discount`;
 											} else {
 												couponString += `$${data.coupon_value} Discount`;
 											}
-											rewards.push({type: "coupones",title: couponString});
+											rewards.push({ type: "coupones", title: couponString });
 										}
 									}
 
@@ -3310,20 +3411,20 @@ exports.simillarProducts = async (req,res) => {
 											isDeleted: false,
 										},
 									});
-									for(const data of cashbacks) {
+									for (const data of cashbacks) {
 										let discountString = "";
-										if(data.cashback_on == 0) {
-											if(data.cashback_type == 0) {
+										if (data.cashback_on == 0) {
+											if (data.cashback_type == 0) {
 												discountString += `${data.cashback_value}% cashback`;
 											} else {
 												discountString += `$${data.cashback_value} cashback`;
 											}
-											rewards.push({type: "cashbacks",title: discountString});
+											rewards.push({ type: "cashbacks", title: discountString });
 										}
 									}
 
 									const loyaltyPoints = await loyaltyPointModel.findAll({
-										attributes: ["id","loyalty_type","points_earned"],
+										attributes: ["id", "loyalty_type", "points_earned"],
 										where: {
 											product_id: {
 												[Op.regexp]: `(^|,)${data.id}(,|$)`,
@@ -3332,9 +3433,9 @@ exports.simillarProducts = async (req,res) => {
 											isDeleted: false,
 										},
 									});
-									for(const data of loyaltyPoints) {
+									for (const data of loyaltyPoints) {
 										let loyaltyString = "";
-										if(data.loyalty_type == 1) {
+										if (data.loyalty_type == 1) {
 											loyaltyString += `Earn ${data.points_earned} points`;
 											rewards.push({
 												type: "loyalty_points",
@@ -3342,46 +3443,46 @@ exports.simillarProducts = async (req,res) => {
 											});
 										}
 									}
-									if(data.image != null && !_.isEmpty(data.image)) {
+									if (data.image != null && !_.isEmpty(data.image)) {
 										var product_image = await awsConfig
 											.getSignUrl(data.image[0])
-											.then(function(res) {
+											.then(function (res) {
 												data.dataValues.product_image = res;
 											});
 									} else {
 										data.dataValues.product_image = commonConfig.default_image;
 									}
 
-									if(data.product != null) {
+									if (data.product != null) {
 										data.dataValues.business_id = data.business_id;
 									} else {
 										data.dataValues.business_id = null;
 									}
 
-									if(data.product != null) {
+									if (data.product != null) {
 										data.dataValues.product_name = data.name;
 									} else {
 										data.dataValues.product_name = null;
 									}
 
-									if(data.product_categorys != null) {
+									if (data.product_categorys != null) {
 										data.dataValues.category_name = data.product_categorys.name;
 									} else {
 										data.dataValues.category_name = null;
 									}
-									if(data.sub_category != null) {
+									if (data.sub_category != null) {
 										data.dataValues.sub_category_name = data.sub_category.name;
 									} else {
 										data.dataValues.sub_category_name = null;
 									}
 
-									if(data.description != null) {
+									if (data.description != null) {
 										data.dataValues.description = data.description;
 									} else {
 										data.dataValues.description = null;
 									}
 
-									if(data.product != null) {
+									if (data.product != null) {
 										data.dataValues.rating = null;
 									} else {
 										data.dataValues.rating = null;
@@ -3389,18 +3490,18 @@ exports.simillarProducts = async (req,res) => {
 									data.dataValues.rewards = rewards;
 									var product_image = data.image;
 									var image_array = [];
-									if(product_image != null) {
-										for(const data of product_image) {
+									if (product_image != null) {
+										for (const data of product_image) {
 											const signurl = await awsConfig
 												.getSignUrl(data)
-												.then(function(res) {
+												.then(function (res) {
 													image_array.push(res);
 												});
 										}
 									} else {
 										image_array.push(commonConfig.default_image);
 									}
-									if(product_image.length == 0) {
+									if (product_image.length == 0) {
 										image_array.push(commonConfig.default_image);
 									}
 									data.dataValues.product_image = _.first(image_array);
@@ -3447,14 +3548,14 @@ exports.simillarProducts = async (req,res) => {
 				)
 			);
 		}
-	} catch(error) {
+	} catch (error) {
 		return res.send(
-			setRes(resCode.BadRequest,false,"Something went wrong!",null)
+			setRes(resCode.BadRequest, false, "Something went wrong!", null)
 		);
 	}
 };
 
-exports.deleteProduct = async (req,res) => {
+exports.deleteProduct = async (req, res) => {
 	try {
 		var data = req.params;
 		var validation = true;
@@ -3462,12 +3563,12 @@ exports.deleteProduct = async (req,res) => {
 		var shoppingCartModel = models.shopping_cart;
 		var wishlistModel = models.wishlists;
 		var orderDetailsModel = models.order_details;
-		var requiredFields = _.reject(["id"],(o) => {
-			return _.has(data,o);
+		var requiredFields = _.reject(["id"], (o) => {
+			return _.has(data, o);
 		});
 		var Op = models.Op;
 
-		if(requiredFields == "") {
+		if (requiredFields == "") {
 			await productModel
 				.findOne({
 					where: {
@@ -3476,7 +3577,7 @@ exports.deleteProduct = async (req,res) => {
 					},
 				})
 				.then(async (product) => {
-					if(product != null) {
+					if (product != null) {
 						const cartProduct = await shoppingCartModel.findAll({
 							where: {
 								product_id: product.id,
@@ -3484,7 +3585,7 @@ exports.deleteProduct = async (req,res) => {
 							},
 						});
 
-						if(cartProduct.length > 0) {
+						if (cartProduct.length > 0) {
 							validation = false;
 							return res.send(
 								setRes(
@@ -3506,7 +3607,7 @@ exports.deleteProduct = async (req,res) => {
 							},
 						});
 
-						if(orders.length > 0) {
+						if (orders.length > 0) {
 							validation = false;
 							return res.send(
 								setRes(
@@ -3525,7 +3626,7 @@ exports.deleteProduct = async (req,res) => {
 							},
 						});
 
-						if(wishlistProduct.length > 0) {
+						if (wishlistProduct.length > 0) {
 							validation = false;
 							return res.send(
 								setRes(
@@ -3542,11 +3643,11 @@ exports.deleteProduct = async (req,res) => {
 								is_deleted: true,
 							})
 							.then(async (deleteData) => {
-								if(deleteData) {
+								if (deleteData) {
 									var product_images = deleteData.image;
 									var image_array = [];
-									if(product_images != null) {
-										for(const data of product_images) {
+									if (product_images != null) {
+										for (const data of product_images) {
 											const params = {
 												Bucket: awsConfig.Bucket,
 												Key: data,
@@ -3574,7 +3675,7 @@ exports.deleteProduct = async (req,res) => {
 							});
 					} else {
 						return res.send(
-							setRes(resCode.ResourceNotFound,false,"Product not found.",null)
+							setRes(resCode.ResourceNotFound, false, "Product not found.", null)
 						);
 					}
 				});
@@ -3588,9 +3689,9 @@ exports.deleteProduct = async (req,res) => {
 				)
 			);
 		}
-	} catch(error) {
+	} catch (error) {
 		return res.send(
-			setRes(resCode.BadRequest,false,"Something went wrong!",null)
+			setRes(resCode.BadRequest, false, "Something went wrong!", null)
 		);
 	}
 };

@@ -475,16 +475,17 @@ exports.commonRewardsListOld = async (req, res) => {
 			if (!data?.page || +(data.page) <= 0) {
 				return res.send(setRes(resCode.BadRequest, null, false, "invalid page number, should start with 1"))
 			}
-			var typeArr = ['gift_cards', 'cashbacks', 'discounts', 'coupones', 'loyalty_points'];
+			var typeArr = ['gift_cards', 'cashbacks', 'discounts', 'coupones', 'loyalty_points', 'loyalty_product'];
 			let request_type = data?.type?.includes(',') && data?.type?.split(',').length > 0 ? data?.type?.split(',') : (data?.type && data?.type?.trim() !== '' ? [data?.type] : typeArr);
+			console.log(request_type, '//////////////////////');
 			request_type = request_type.filter(tp => tp && tp.trim() !== '');
 			const requestTypeNotExists = request_type.filter(tp => !typeArr.includes(tp) && tp !== '');
-			if (request_type && requestTypeNotExists.length !== 0) {
-				return res.send(setRes(resCode.BadRequest, null, false, "Please select valid type."))
-			}
-			// if((request_type) && !(typeArr.includes(request_type))){
+			// if (request_type && requestTypeNotExists.length !== 0) {
 			// 	return res.send(setRes(resCode.BadRequest, null, false, "Please select valid type."))
 			// }
+			if ((request_type) && !(typeArr.includes(request_type))) {
+				return res.send(setRes(resCode.BadRequest, null, false, "Please select valid type."))
+			}
 
 			// Total limit for all records
 			const limit = 15;
@@ -846,6 +847,534 @@ exports.commonRewardsListOld = async (req, res) => {
 	}
 }
 
+// exports.commonRewardsList = async (req, res) => {
+// 	try {
+// 		const data = req.body
+// 		const giftCardModel = models.gift_cards
+// 		const userGiftCardList = models.user_giftcards;
+// 		const cashbackModel = models.cashbacks
+// 		const discountModel = models.discounts
+// 		const couponeModel = models.coupones
+// 		const loyaltyPointModel = models.loyalty_points
+// 		const productCategoryModel = models.product_categorys;
+// 		const productModel = models.products;
+// 		const businessModel = models.business;
+// 		const rewardHistoryModel = models.reward_history;
+// 		const userModel = models.user;
+// 		const orderModel = models.orders
+// 		const Op = models.Op;
+
+// 		const user = req?.user || {};
+
+// 		const currentDate = (moment().format('YYYY-MM-DD'))
+// 		const requiredFields = _.reject(['page'], (o) => { return _.has(data, o) })
+// 		// const businessEmail = req.userEmail;
+// 		const businessEmail = user?.user;
+// 		const businessDetails = await businessModel.findOne({ where: { email: businessEmail, is_active: true, is_deleted: false } });
+// 		const businessId = businessDetails?.id || '';
+
+// 		let total_rewards_purchase = "0";
+// 		let total_loyalty_purchase = "0";
+// 		let total_cashbacks = "0";
+// 		let total_loyalty_points = "0";
+// 		if (user.role_id == '2') {
+// 			const userDetails = await userModel.findOne({
+// 				where: {
+// 					id: user.id
+// 				}
+// 			});
+// 			const total_rewards = userDetails?.dataValues?.total_cashbacks ? userDetails?.dataValues?.total_cashbacks : "0";
+// 			const total_loyalty = userDetails?.dataValues?.total_loyalty_points ? userDetails?.dataValues?.total_loyalty_points : "0";
+// 			total_cashbacks = total_rewards;
+// 			total_loyalty_points = total_loyalty;
+// 		}
+// 		if (user.role_id == '3') {
+
+// 			const businessRewardsDetails = await rewardHistoryModel.findAll({
+// 				attributes: [[models.sequelize.fn('sum', models.sequelize.col('reward_history.amount')), 'total_rewards']],
+// 				include: [
+// 					{
+// 						model: orderModel,
+// 						attributes: [],
+// 						where: {
+// 							business_id: businessId
+// 						},
+// 						required: true
+// 					}
+// 				],
+// 				where: {
+// 					reference_reward_type: { [Op.ne]: 'loyalty_points' }
+// 				},
+// 				group: ['reward_history.id']
+// 			});
+// 			const businessLoyaltyDetails = await rewardHistoryModel.findAll({
+// 				attributes: [[models.sequelize.fn('sum', models.sequelize.col('reward_history.amount')), 'total_loyalty']],
+// 				include: [
+// 					{
+// 						model: orderModel,
+// 						where: {
+// 							business_id: businessId
+// 						},
+// 						required: true
+// 					}
+// 				],
+// 				where: {
+// 					reference_reward_type: { [Op.eq]: 'loyalty_points' }
+// 				},
+// 				group: ['reward_history.id']
+// 			});
+// 			total_rewards_purchase = businessRewardsDetails[0]?.dataValues?.total_rewards ? businessRewardsDetails[0].dataValues.total_rewards : "0";
+// 			total_loyalty_purchase = businessLoyaltyDetails[0]?.dataValues?.total_loyalty ? businessLoyaltyDetails[0].dataValues.total_loyalty : "0";
+// 		}
+// 		// const businessIdCond = data?.business_id ? `AND business_id="${data.business_id}"` : `AND business_id="${businessId}"`;
+// 		const businessIdCond = (tableName) => data?.business_id ? `AND ${tableName}.business_id="${data.business_id}"` : `AND ${tableName}.business_id="${businessId}"`;
+
+// 		if (requiredFields == '') {
+// 			const limit = 15;
+// 			const offset = (data.page >= 1) ? (data.page - 1) * limit : 0
+
+// 			const typeArr = ['gift_cards', 'cashbacks', 'discounts', 'coupones', 'loyalty_points'];
+// 			let request_type = data?.type?.includes(',') && data?.type?.split(',').length > 0 ? data?.type?.split(',') : (data?.type && data?.type?.trim() !== '' ? [data?.type] : typeArr);
+
+// 			let unionQuery = '';
+
+// 			const giftCardAndLoyaltyCond = data.search ? ` AND name LIKE "%${data.search}%"` : '';
+// 			const cashbackDiscountCouponCond = data.search ? `AND title LIKE "%${data.search}%"` : '';
+
+// 			const giftLoyaltyWhereClause = (tableName) => `isDeleted=false AND status=true ${giftCardAndLoyaltyCond} ${businessIdCond(tableName)}`;
+// 			const cashbackDiscountCouponWhereClause = (tableName) => `isDeleted=false AND status=true ${cashbackDiscountCouponCond} ${businessIdCond(tableName)}`;
+
+// 			let filteCondition = '';
+// 			if (data.category_id != undefined && data.category_id) {
+// 				const category = data.category_id ? data.category_id.trim() : '';
+// 				filteCondition += ` products.category_id IN (${category})`;
+// 			}
+
+// 			if (data.product_type != undefined && data.product_type) {
+// 				const productType = data.product_type ? data.product_type.trim() : '';
+// 				const condition = `products.sub_category_id IN (${productType})`
+// 				filteCondition += filteCondition != '' ? ` AND ${condition}` : condition;
+// 			}
+// 			if (data.price != undefined && data.price) {
+// 				const priceRange = data.price != '' ? data.price.split('-') : [];
+// 				const lowerRange = priceRange.length > 1 ? priceRange[0] : 0;
+// 				const upperRange = priceRange.length > 1 ? priceRange[1] : 0;
+// 				let condition = `products.price >= ${lowerRange} `;
+// 				if (upperRange - lowerRange != 1) {
+// 					condition += `AND  products.price <= ${upperRange}`;
+// 				}
+// 				filteCondition += filteCondition != '' ? ` AND ${condition}` : condition;
+// 			}
+
+// 			const productFilterCondition = (tableName) => `JOIN products ON FIND_IN_SET(products.id, product_id) > 0 WHERE ${filteCondition}`
+
+// 			const giftCardQuery = `SELECT gift_cards.id, gift_cards.createdAt, "gift_cards" as type FROM gift_cards WHERE ${giftLoyaltyWhereClause('gift_cards')}`;
+// 			const cashbackQuery = `SELECT cashbacks.id, cashbacks.createdAt, "cashbacks" as type FROM cashbacks ${filteCondition != '' ? productFilterCondition('cashbacks') : ''} ${filteCondition != '' ? 'AND ' + cashbackDiscountCouponWhereClause('cashbacks') : 'WHERE ' + cashbackDiscountCouponWhereClause('cashbacks')}`;
+// 			const discountQuery = `SELECT discounts.id, discounts.createdAt, "discounts" as type FROM discounts ${filteCondition != '' ? productFilterCondition('discounts') : ''} ${filteCondition != '' ? 'AND ' + cashbackDiscountCouponWhereClause('discounts') : 'WHERE ' + cashbackDiscountCouponWhereClause('discounts')}`;
+// 			const couponesQuery = `SELECT coupones.id, coupones.createdAt, "coupones" as type FROM coupones ${filteCondition != '' ? productFilterCondition('coupones') : ''} ${filteCondition != '' ? 'AND ' + cashbackDiscountCouponWhereClause('coupones') : 'WHERE ' + cashbackDiscountCouponWhereClause('coupones')}`;
+// 			const loyaltyPointsQuery = `SELECT loyalty_points.id, loyalty_points.createdAt, "loyalty_points" as type FROM loyalty_points ${filteCondition != '' ? productFilterCondition('loyalty_points') : ''} ${filteCondition != '' ? 'AND ' + giftLoyaltyWhereClause('loyalty_points') : 'WHERE ' + giftLoyaltyWhereClause('loyalty_points')}`;
+
+// 			if (request_type.includes('gift_cards')) {
+// 				unionQuery += giftCardQuery;
+// 			}
+
+// 			if (request_type.includes('cashbacks')) {
+// 				unionQuery += unionQuery != '' ? ` UNION ${cashbackQuery}` : cashbackQuery;
+// 			}
+
+// 			if (request_type.includes('discounts')) {
+// 				unionQuery += unionQuery != '' ? ` UNION ${discountQuery}` : discountQuery;
+// 			}
+
+// 			if (request_type.includes('coupones')) {
+// 				unionQuery += unionQuery != '' ? ` UNION ${couponesQuery}` : couponesQuery;
+// 			}
+
+// 			if (request_type.includes('loyalty_points')) {
+// 				unionQuery += unionQuery != '' ? ` UNION ${loyaltyPointsQuery}` : loyaltyPointsQuery;
+// 			}
+// 			// unionQuery += `${unionQuery}`
+// 			let rewards = [];
+// 			let rewardsCounts = [];
+// 			if (user.role_id == 3) {
+// 				rewards = await models.sequelize.query(`SELECT * FROM (${unionQuery}) Rewards ${filteCondition != '' ? 'GROUP BY id' : ''} ORDER BY createdAt desc LIMIT ${offset}, ${limit}`, {
+// 					type: models.sequelize.QueryTypes.SELECT
+// 				});
+// 				rewardsCounts = await models.sequelize.query(`SELECT * FROM (${unionQuery}) Rewards ${filteCondition != '' ? 'GROUP BY id' : ''}`, {
+// 					type: models.sequelize.QueryTypes.SELECT
+// 				});
+// 			} // for user's rewards
+// 			else {
+// 				const textSearch = (tableName) => {
+// 					if (['gift_cards', 'loyalty_points'].includes(tableName)) {
+// 						return data.search ? ` AND ${tableName}.name LIKE "%${data.search}%"` : '';
+// 					}
+// 					if (['cashbacks', 'discounts', 'coupones'].includes(tableName)) {
+// 						return data.search ? `AND ${tableName}.title LIKE "%${data.search}%"` : '';
+// 					}
+// 				}
+
+// 				const userGiftCardQuery = `SELECT user_giftcards.gift_card_id as "id", user_giftcards.createdAt, "gift_cards" as type, user_giftcards.id as "user_giftcard_id"  FROM user_giftcards JOIN gift_cards ON user_giftcards.gift_card_id=gift_cards.id WHERE ((user_id=${user?.id} and to_email is null) OR (to_email = '${user?.user}')) AND user_giftcards.is_deleted=false AND user_giftcards.status=true ${textSearch('gift_cards')}`;
+// 				// const userRewardQuery = `SELECT user_earned_rewards.reference_reward_id, createdAt, user_earned_rewards.reference_reward_type as "type"  FROM user_earned_rewards WHERE user_id=${user?.id}`;
+// 				const productFilter = (tableName) => `JOIN ${tableName} ON user_earned_rewards.reference_reward_id=${tableName}.id ${filteCondition != '' ? `JOIN products ON FIND_IN_SET(products.id, ${tableName}.product_id) > 0` : ''} WHERE ${filteCondition} ${filteCondition !== '' ? 'AND' : ''} user_id=${user?.id} AND reference_reward_type='${tableName}' ${textSearch(tableName)} ${filteCondition !== '' ? 'GROUP BY user_earned_rewards.id' : ''}`
+
+// 				const userCashbackRewardQuery = `SELECT user_earned_rewards.reference_reward_id as "id", user_earned_rewards.createdAt, user_earned_rewards.reference_reward_type as "type", null as "user_giftcard_id"  FROM user_earned_rewards ${productFilter('cashbacks')}`;
+// 				const userDiscountRewardQuery = `SELECT user_earned_rewards.reference_reward_id as "id", user_earned_rewards.createdAt, user_earned_rewards.reference_reward_type as "type", null as "user_giftcard_id"  FROM user_earned_rewards ${productFilter('discounts')}`;
+// 				const userCouponesRewardQuery = `SELECT user_earned_rewards.reference_reward_id as "id", user_earned_rewards.createdAt, user_earned_rewards.reference_reward_type as "type", null as "user_giftcard_id"  FROM user_earned_rewards ${productFilter('coupones')}`;
+// 				const userLoyaltyRewardQuery = `SELECT user_earned_rewards.reference_reward_id as "id", user_earned_rewards.createdAt, user_earned_rewards.reference_reward_type as "type", null as "user_giftcard_id"  FROM user_earned_rewards ${productFilter('loyalty_points')}`;
+
+// 				let userUnionQuery = '';
+// 				// const userUnionQuery = `${userGiftCardQuery} UNION ${userRewardQuery}`;
+// 				if (request_type.includes('gift_cards')) {
+// 					userUnionQuery += userGiftCardQuery;
+// 				}
+
+// 				if (request_type.includes('cashbacks')) {
+// 					userUnionQuery += userUnionQuery != '' ? ` UNION ${userCashbackRewardQuery}` : userCashbackRewardQuery;
+// 				}
+
+// 				if (request_type.includes('discounts')) {
+// 					userUnionQuery += userUnionQuery != '' ? ` UNION ${userDiscountRewardQuery}` : userDiscountRewardQuery;
+// 				}
+
+// 				if (request_type.includes('coupones')) {
+// 					userUnionQuery += userUnionQuery != '' ? ` UNION ${userCouponesRewardQuery}` : userCouponesRewardQuery;
+// 				}
+
+// 				if (request_type.includes('loyalty_points')) {
+// 					userUnionQuery += userUnionQuery != '' ? ` UNION ${userLoyaltyRewardQuery}` : userLoyaltyRewardQuery;
+// 				}
+
+// 				rewards = await models.sequelize.query(`SELECT * FROM (${userUnionQuery}) Rewards ORDER BY createdAt desc LIMIT ${offset}, ${limit}`, {
+// 					type: models.sequelize.QueryTypes.SELECT
+// 				});
+// 				rewardsCounts = await models.sequelize.query(`SELECT * FROM (${userUnionQuery}) Rewards`, {
+// 					type: models.sequelize.QueryTypes.SELECT
+// 				})
+// 			}
+// 			const allRewardsData = await Promise.all([
+// 				...rewards.map((rew) => {
+// 					if (rew.type == 'gift_cards') {
+// 						return new Promise(async (resolve) => {
+// 							let gCard = {};
+// 							if (user.role_id == 3) {
+// 								gCard = await giftCardModel.findOne({
+// 									include: [
+// 										{
+// 											model: userGiftCardList,
+// 											attributes: ['id'],
+// 											where: {
+// 												payment_status: 1
+// 											},
+// 											required: false
+// 										}
+// 									],
+// 									where: {
+// 										id: rew.id
+// 									},
+// 									attributes: {
+// 										include: [
+// 											[models.sequelize.literal("'gift_cards'"), "type"],
+// 										]
+// 									},
+// 								});
+// 							} else {
+// 								const userGiftCard = await userGiftCardList.findOne({
+// 									where: {
+// 										id: rew.user_giftcard_id,
+// 									},
+// 									include: [
+// 										{
+// 											model: giftCardModel,
+// 											attributes: {
+// 												include: [
+// 													[models.sequelize.literal("'gift_cards'"), "type"],
+// 												]
+// 											}
+// 										}
+// 									],
+// 									raw: true,
+// 									nest: true,
+// 								})
+// 								const userEmail = userGiftCard?.to_email;
+// 								const userDetails = await userModel.findOne({
+// 									where: {
+// 										email: userEmail,
+// 										is_deleted: false,
+// 										is_active: true
+// 									}
+// 								});
+// 								if (userGiftCard.payment_status == 1) {
+// 									const purchase_for = userGiftCard?.to_email ? (userDetails?.email == userGiftCard?.to_email ? 'Self' : (userDetails?.username ? userDetails?.username : userGiftCard?.to_email)) : 'Self';
+// 									gCard['purchase_for'] = purchase_for;
+// 									gCard['purchase_date'] = userGiftCard?.purchase_date || "";
+// 									gCard['redeemed_amount'] = userGiftCard?.amount || "";
+// 									if (userGiftCard?.from) {
+// 										gCard['from'] = userGiftCard?.from || "";
+// 										gCard['note'] = userGiftCard?.note || "";
+// 									}
+// 								}
+// 								gCard = { ...gCard, ...userGiftCard?.gift_card, id: rew.user_giftcard_id };
+// 							}
+// 							if (gCard) {
+// 								gCard = JSON.parse(JSON.stringify(gCard));
+// 								if (gCard?.image && gCard?.image != null) {
+// 									let images = gCard.image
+// 									const signurl = await awsConfig.getSignUrl(images.toString()).then(function (res) {
+// 										gCard.image = res;
+// 									});
+// 								} else {
+// 									gCard.image = commonConfig.default_image;
+// 								}
+// 								if (gCard.expire_at < currentDate) {
+// 									gCard["is_expired"] = true;
+// 								} else {
+// 									gCard["is_expired"] = false;
+// 								}
+// 								gCard['is_used'] = false;
+// 								var rewardHistory = await rewardHistoryModel.findOne({
+// 									where: {
+// 										reference_reward_type: 'gift_cards',
+// 										reference_reward_id: gCard?.id,
+// 										credit_debit: false,
+// 									},
+// 									include: [
+// 										{
+// 											model: orderModel,
+// 											where: {
+// 												user_id: user.id
+// 											},
+// 											required: true
+// 										}
+// 									]
+// 								});
+// 								if (rewardHistory && !_.isEmpty(rewardHistory)) {
+// 									gCard['is_used'] = true;
+// 								}
+
+// 								if (user.role_id == 3) {
+// 									gCard.totalPurchase = gCard.user_giftcards.length || 0;
+// 								}
+// 								delete gCard.user_giftcards;
+// 								// if (user.role_id == 2) {
+// 								// 	const userGiftCard = await userGiftCardList.findOne({
+// 								// 		where: {
+// 								// 			gift_card_id: rew.id,
+// 								// 			[Op.or] : [
+// 								// 				{
+// 								// 					[Op.and] : [
+// 								// 						{ user_id: user.id },
+// 								// 						{ to_email: null }
+// 								// 					]
+// 								// 				},
+// 								// 				{
+// 								// 					to_email: user?.user
+// 								// 				}
+// 								// 			],
+// 								// 			is_deleted: false,
+// 								// 			status: true,
+// 								// 		}
+// 								// 	})
+// 								// 	//console.log('userGiftCard', rew.id, userGiftCard.to_email);
+// 								// }
+// 								let giftcardLoyalty = await loyaltyPointModel.findOne({
+// 									where: {
+// 										gift_card_id: {
+// 											[Op.regexp]: `(^|,)${gCard.id}(,|$)`,
+// 										},
+// 										points_redeemed: true,
+// 										//status:true,
+// 										//isDeleted:false,
+// 										//validity:{
+// 										//	[Op.gte] : moment().format('YYYY-MM-DD')
+// 										//},
+// 									}
+// 								})
+// 								gCard['points_earned'] = giftcardLoyalty?.points_earned;
+// 								gCard['points_redeemed'] = giftcardLoyalty?.amount;
+// 								// responseArr.push(gCard);
+// 								resolve(gCard);
+// 							} else {
+// 								resolve(null);
+// 							}
+// 						})
+// 					} else if (rew.type == 'cashbacks') {
+// 						return new Promise(async (resolve) => {
+// 							let cashBackObj = await cashbackModel.findOne({
+// 								where: {
+// 									id: rew.id
+// 								},
+// 								attributes: {
+// 									include: [[models.sequelize.literal("'cashbacks'"), "type"]]
+// 								},
+// 								include: [
+// 									{
+// 										model: productCategoryModel,
+// 										attributes: ['id', 'name']
+// 									}
+// 								],
+// 							});
+// 							if (cashBackObj) {
+// 								cashBackObj = JSON.parse(JSON.stringify(cashBackObj));
+// 								const products = await productModel.findAll({ where: { id: { [Op.in]: cashBackObj.product_id?.split(',') || [] } }, attributes: ["name"], raw: true });
+// 								const product_name_arr = products?.map(val => val.name);
+// 								const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
+// 								cashBackObj.product_name = product_name;
+// 								cashBackObj.product_category_name = cashBackObj?.product_category?.name || ''
+// 								cashBackObj.value_type = cashBackObj.cashback_type;
+// 								cashBackObj.amount = cashBackObj.cashback_value;
+// 								delete cashBackObj.product_category;
+// 								if (cashBackObj.validity_for < currentDate) {
+// 									cashBackObj.is_expired = true;
+// 								} else {
+// 									cashBackObj.is_expired = false;
+// 								}
+// 								resolve(cashBackObj);
+// 							} else {
+// 								resolve(null);
+// 							}
+// 						})
+// 					} else if (rew.type == 'discounts') {
+// 						return new Promise(async (resolve) => {
+// 							let discountObj = await discountModel.findOne({
+// 								where: {
+// 									id: rew.id
+// 								},
+// 								attributes: {
+// 									include: [[models.sequelize.literal("'discounts'"), "type"]]
+// 								},
+// 								include: [
+// 									{
+// 										model: productCategoryModel,
+// 										attributes: ['id', 'name']
+// 									}
+// 								],
+// 							});
+// 							if (discountObj) {
+// 								discountObj = JSON.parse(JSON.stringify(discountObj));
+// 								const products = await productModel.findAll({ where: { id: { [Op.in]: discountObj.product_id?.split(',') || [] } }, attributes: ["name"], raw: true });
+// 								const product_name_arr = products?.map(val => val.name);
+// 								const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
+// 								discountObj.product_name = product_name;
+// 								discountObj.product_category_name = discountObj?.product_category?.name || ''
+// 								discountObj.value_type = discountObj.discount_type;
+// 								discountObj.amount = discountObj.discount_value;
+// 								delete discountObj.product_category;
+// 								if (discountObj.validity_for < currentDate) {
+// 									discountObj.is_expired = true;
+// 								} else {
+// 									discountObj.is_expired = false;
+// 								}
+// 								resolve(discountObj);
+// 							} else {
+// 								resolve(null);
+// 							}
+// 						})
+// 					} else if (rew.type == 'coupones') {
+// 						return new Promise(async (resolve) => {
+// 							let couponeObj = await couponeModel.findOne({
+// 								where: {
+// 									id: rew.id
+// 								},
+// 								attributes: {
+// 									include: [[models.sequelize.literal("'coupones'"), "type"]]
+// 								},
+// 								include: [
+// 									{
+// 										model: productCategoryModel,
+// 										attributes: ['id', 'name']
+// 									}
+// 								],
+// 							});
+// 							if (couponeObj) {
+// 								couponeObj = JSON.parse(JSON.stringify(couponeObj));
+// 								const products = await productModel.findAll({ where: { id: { [Op.in]: couponeObj.product_id?.split(',') || [] } }, attributes: ["name"], raw: true });
+// 								const product_name_arr = products?.map(val => val.name);
+// 								const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
+// 								couponeObj.product_name = product_name;
+// 								couponeObj.product_category_name = couponeObj?.product_category?.name || ''
+// 								couponeObj.amount = couponeObj.coupon_value;
+// 								delete couponeObj.product_category;
+// 								if (couponeObj.expire_at < currentDate) {
+// 									couponeObj.is_expired = true;
+// 								} else {
+// 									couponeObj.is_expired = false;
+// 								}
+// 								resolve(couponeObj);
+// 							} else {
+// 								resolve(null);
+// 							}
+// 						})
+// 					} else if (rew.type == 'loyalty_points') {
+// 						return new Promise(async (resolve) => {
+// 							let loyaltyObj = await loyaltyPointModel.findOne({
+// 								where: {
+// 									id: rew.id
+// 								},
+// 								attributes: {
+// 									include: [[models.sequelize.literal("'loyalty_points'"), "type"]]
+// 								},
+// 								include: [
+// 									{
+// 										model: productModel,
+// 										attributes: ['id', 'name', 'category_id'],
+// 										include: [
+// 											{
+// 												model: productCategoryModel,
+// 												attributes: ['id', 'name'],
+// 												as: 'product_categorys'
+// 											},
+// 										],
+// 									},
+// 									{
+// 										model: giftCardModel,
+// 										attributes: ['id', 'name'],
+// 									}
+// 								],
+// 							});
+// 							if (loyaltyObj) {
+// 								// loyaltyObj.dataValues.product_name = loyaltyObj?.dataValues?.product?.dataValues?.name || '';
+// 								loyaltyObj.dataValues.product_category_name = loyaltyObj?.dataValues?.product?.dataValues?.product_categorys?.name || '';
+// 								const products = await productModel.findAll({ where: { id: { [Op.in]: loyaltyObj?.dataValues?.product_id?.split(',') || [] } }, attributes: ["name"] });
+// 								const product_name_arr = products?.map(val => val.name);
+// 								const product_name = product_name_arr?.length > 0 ? product_name_arr?.join(',') : '';
+// 								loyaltyObj.dataValues.product_name = product_name;
+
+// 								const giftCards = await giftCardModel.findAll({ where: { id: { [Op.in]: loyaltyObj?.dataValues?.gift_card_id?.split(',') || [] } }, attributes: ["name"] });
+// 								const giftcards_name_arr = giftCards?.map(val => val.name);
+// 								const giftcard_name = giftcards_name_arr?.length > 0 ? giftcards_name_arr?.join(',') : '';
+// 								loyaltyObj.dataValues.giftcard_name = giftcard_name;
+// 								loyaltyObj.dataValues.expire_at = loyaltyObj.validity;
+// 								// loyaltyObj.dataValues.giftcard_name = loyaltyObj?.dataValues?.gift_card?.name || '';
+// 								delete loyaltyObj?.dataValues?.gift_card;
+// 								delete loyaltyObj?.dataValues.product;
+// 								if (loyaltyObj.validity < currentDate) {
+// 									loyaltyObj.dataValues.is_expired = true;
+// 								} else {
+// 									loyaltyObj.dataValues.is_expired = false;
+// 								}
+// 								resolve(loyaltyObj);
+// 							} else {
+// 								resolve(null);
+// 							}
+// 						})
+// 					}
+// 				})
+// 			])
+// 			const rewardList = allRewardsData.filter(obj => obj != null);
+// 			const response = new pagination(rewardList, rewardsCounts?.length || 0, parseInt(data.page), parseInt(limit));
+// 			res.send(setRes(resCode.OK, true, "Get rewards list successfully", ({ total_cashbacks, total_loyalty_points, total_rewards_purchase, total_loyalty_purchase, ...response.getPaginationInfo(), })));
+// 		} else {
+// 			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
+// 		}
+// 	} catch (error) {
+// 		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
+// 	}
+// }
+
+/**************************************************************************************************************************** */
+
+
 exports.commonRewardsList = async (req, res) => {
 	try {
 		const data = req.body
@@ -888,9 +1417,68 @@ exports.commonRewardsList = async (req, res) => {
 			total_loyalty_points = total_loyalty;
 		}
 		if (user.role_id == '3') {
+			const businessLoyaltyDetailsOrder = await rewardHistoryModel.findAll({
+				//attributes: [
+				//	[models.sequelize.fn('sum',models.sequelize.col('reward_history.amount')),'total_loyalty']
+				//],
+				include: [
+					{
+						model: orderModel,
+						where: {
+							business_id: businessId
+						},
+						required: true
+					},
+					{
+						model: models.user,
+					},
+				],
+				where: {
+					reference_reward_type: { [Op.eq]: 'loyalty_points' },
+					credit_debit: true
+				},
+				//group: ['reward_history.id']
+			});
 
-			const businessRewardsDetails = await rewardHistoryModel.findAll({
-				attributes: [[models.sequelize.fn('sum', models.sequelize.col('reward_history.amount')), 'total_rewards']],
+			const businessLoyaltyGiftCard = await rewardHistoryModel.findAll({
+				//attributes: [
+				//	[models.sequelize.fn('sum',models.sequelize.col('reward_history.amount')),'total_loyalty']
+				//],
+				include: [
+					{
+						model: giftCardModel,
+						where: {
+							business_id: businessId
+						},
+						required: true,
+					},
+					{
+						model: models.user,
+					},
+				],
+				where: {
+					reference_reward_type: { [Op.eq]: 'loyalty_points' },
+					credit_debit: true
+				},
+				//group: ['reward_history.id']
+			});
+
+			var total_loyalty_onOrder = 0.00;
+			if (!_.isEmpty(businessLoyaltyDetailsOrder)) {
+				for (const amount of businessLoyaltyDetailsOrder) {
+					total_loyalty_onOrder += parseFloat(amount.amount)
+				}
+			}
+
+			var total_loyalty_onGiftCard = 0.00;
+			if (!_.isEmpty(businessLoyaltyGiftCard)) {
+				for (const amount of businessLoyaltyGiftCard) {
+					total_loyalty_onGiftCard += parseFloat(amount.amount)
+				}
+			}
+
+			const businessRewardsDetailsOnOrder = await rewardHistoryModel.findAll({
+				//attributes: [[models.sequelize.fn('sum',models.sequelize.col('reward_history.amount')),'total_rewards']],
 				include: [
 					{
 						model: orderModel,
@@ -899,31 +1487,59 @@ exports.commonRewardsList = async (req, res) => {
 							business_id: businessId
 						},
 						required: true
-					}
+					},
+					{
+						model: models.user,
+					},
 				],
 				where: {
-					reference_reward_type: { [Op.ne]: 'loyalty_points' }
+					reference_reward_type: { [Op.ne]: 'loyalty_points' },
+					credit_debit: true
 				},
 				group: ['reward_history.id']
 			});
-			const businessLoyaltyDetails = await rewardHistoryModel.findAll({
-				attributes: [[models.sequelize.fn('sum', models.sequelize.col('reward_history.amount')), 'total_loyalty']],
+
+			var total_loyalty_rewards_onOrder = 0.00;
+			if (!_.isEmpty(businessRewardsDetailsOnOrder)) {
+				for (const amount of businessRewardsDetailsOnOrder) {
+					total_loyalty_rewards_onOrder += parseFloat(amount.amount)
+				}
+			}
+
+			const businessRewardsDetailsOnGiftCard = await rewardHistoryModel.findAll({
+				//attributes: [[models.sequelize.fn('sum',models.sequelize.col('reward_history.amount')),'total_rewards']],
 				include: [
 					{
 						model: orderModel,
+						attributes: [],
 						where: {
 							business_id: businessId
 						},
 						required: true
-					}
+					},
+					{
+						model: models.user,
+					},
 				],
 				where: {
-					reference_reward_type: { [Op.eq]: 'loyalty_points' }
+					reference_reward_type: { [Op.ne]: 'loyalty_points' },
+					credit_debit: true
 				},
 				group: ['reward_history.id']
 			});
-			total_rewards_purchase = businessRewardsDetails[0]?.dataValues?.total_rewards ? businessRewardsDetails[0].dataValues.total_rewards : "0";
-			total_loyalty_purchase = businessLoyaltyDetails[0]?.dataValues?.total_loyalty ? businessLoyaltyDetails[0].dataValues.total_loyalty : "0";
+
+			var total_loyalty_rewards_onGiftCard = 0.00;
+			if (!_.isEmpty(businessRewardsDetailsOnGiftCard)) {
+				for (const amount of businessRewardsDetailsOnGiftCard) {
+					total_loyalty_rewards_onGiftCard += parseFloat(amount.amount)
+				}
+			}
+			//total_cashbacks = total_rewards;
+			//total_loyalty_points = total_loyalty;
+			const total_reward = total_loyalty_rewards_onOrder + total_loyalty_rewards_onGiftCard;
+			const total_loyalty = total_loyalty_onOrder + total_loyalty_onGiftCard;
+			total_rewards_purchase = total_reward.toFixed(2);
+			total_loyalty_purchase = total_loyalty.toFixed(2);
 		}
 		// const businessIdCond = data?.business_id ? `AND business_id="${data.business_id}"` : `AND business_id="${businessId}"`;
 		const businessIdCond = (tableName) => data?.business_id ? `AND ${tableName}.business_id="${data.business_id}"` : `AND ${tableName}.business_id="${businessId}"`;
@@ -932,16 +1548,31 @@ exports.commonRewardsList = async (req, res) => {
 			const limit = 15;
 			const offset = (data.page >= 1) ? (data.page - 1) * limit : 0
 
-			const typeArr = ['gift_cards', 'cashbacks', 'discounts', 'coupones', 'loyalty_points'];
-			let request_type = data?.type?.includes(',') && data?.type?.split(',').length > 0 ? data?.type?.split(',') : (data?.type && data?.type?.trim() !== '' ? [data?.type] : typeArr);
+			const typeArr = ['gift_cards', 'cashbacks', 'discounts', 'coupones', 'loyalty_points', 'loyalty_product'];
+			//let request_type = data?.type?.includes(',') && data?.type?.split(',').length > 0 ? data?.type?.split(',') : (data?.type && data?.type?.trim() !== '' ? [data?.type] : typeArr);
+			let request_type =
+				data?.type?.includes(",") && data?.type?.split(",").length > 0
+					? data?.type?.split(",")
+					: data?.type && data?.type?.trim() !== ""
+						? [data?.type]
+						: typeArr;
+			request_type = request_type.filter((tp) => tp && tp.trim() !== "");
+			const requestTypeNotExists = request_type.filter(
+				(tp) => !typeArr.includes(tp) && tp !== ""
+			);
+			if (request_type && requestTypeNotExists.length !== 0) {
+				return res.send(
+					setRes(resCode.BadRequest, false, "Please select valid type.", null)
+				);
+			}
+			// let unionQuery = '';
 
-			let unionQuery = '';
+			// const giftCardAndLoyaltyCond = data.search ? ` AND name LIKE "%${data.search}%"` : '';
+			// const cashbackDiscountCouponCond = data.search ? `AND title LIKE "%${data.search}%"` : '';
 
-			const giftCardAndLoyaltyCond = data.search ? ` AND name LIKE "%${data.search}%"` : '';
-			const cashbackDiscountCouponCond = data.search ? `AND title LIKE "%${data.search}%"` : '';
-
-			const giftLoyaltyWhereClause = (tableName) => `isDeleted=false AND status=true ${giftCardAndLoyaltyCond} ${businessIdCond(tableName)}`;
-			const cashbackDiscountCouponWhereClause = (tableName) => `isDeleted=false AND status=true ${cashbackDiscountCouponCond} ${businessIdCond(tableName)}`;
+			// const giftLoyaltyWhereClause = (tableName) => `isDeleted=false AND status=true ${giftCardAndLoyaltyCond} ${businessIdCond(tableName)}`;
+			// const freeProductWhereClause = (tableName) => `isDeleted=false AND status=true AND Is_claimed=false`;
+			// const cashbackDiscountCouponWhereClause = (tableName) => `isDeleted=false AND status=true ${cashbackDiscountCouponCond} ${businessIdCond(tableName)}`;
 
 			let filteCondition = '';
 			if (data.category_id != undefined && data.category_id) {
@@ -965,33 +1596,36 @@ exports.commonRewardsList = async (req, res) => {
 				filteCondition += filteCondition != '' ? ` AND ${condition}` : condition;
 			}
 
-			const productFilterCondition = (tableName) => `JOIN products ON FIND_IN_SET(products.id, product_id) > 0 WHERE ${filteCondition}`
+			// const productFilterCondition = (tableName) => `JOIN products ON FIND_IN_SET(products.id, product_id) > 0 WHERE ${filteCondition}`
 
-			const giftCardQuery = `SELECT gift_cards.id, gift_cards.createdAt, "gift_cards" as type FROM gift_cards WHERE ${giftLoyaltyWhereClause('gift_cards')}`;
-			const cashbackQuery = `SELECT cashbacks.id, cashbacks.createdAt, "cashbacks" as type FROM cashbacks ${filteCondition != '' ? productFilterCondition('cashbacks') : ''} ${filteCondition != '' ? 'AND ' + cashbackDiscountCouponWhereClause('cashbacks') : 'WHERE ' + cashbackDiscountCouponWhereClause('cashbacks')}`;
-			const discountQuery = `SELECT discounts.id, discounts.createdAt, "discounts" as type FROM discounts ${filteCondition != '' ? productFilterCondition('discounts') : ''} ${filteCondition != '' ? 'AND ' + cashbackDiscountCouponWhereClause('discounts') : 'WHERE ' + cashbackDiscountCouponWhereClause('discounts')}`;
-			const couponesQuery = `SELECT coupones.id, coupones.createdAt, "coupones" as type FROM coupones ${filteCondition != '' ? productFilterCondition('coupones') : ''} ${filteCondition != '' ? 'AND ' + cashbackDiscountCouponWhereClause('coupones') : 'WHERE ' + cashbackDiscountCouponWhereClause('coupones')}`;
-			const loyaltyPointsQuery = `SELECT loyalty_points.id, loyalty_points.createdAt, "loyalty_points" as type FROM loyalty_points ${filteCondition != '' ? productFilterCondition('loyalty_points') : ''} ${filteCondition != '' ? 'AND ' + giftLoyaltyWhereClause('loyalty_points') : 'WHERE ' + giftLoyaltyWhereClause('loyalty_points')}`;
+			// const giftCardQuery = `SELECT gift_cards.id, gift_cards.createdAt, "gift_cards" as type FROM gift_cards WHERE ${giftLoyaltyWhereClause('gift_cards')}`;
+			// const cashbackQuery = `SELECT cashbacks.id, cashbacks.createdAt, "cashbacks" as type FROM cashbacks ${filteCondition != '' ? productFilterCondition('cashbacks') : ''} ${filteCondition != '' ? 'AND ' + cashbackDiscountCouponWhereClause('cashbacks') : 'WHERE ' + cashbackDiscountCouponWhereClause('cashbacks')}`;
+			// const discountQuery = `SELECT discounts.id, discounts.createdAt, "discounts" as type FROM discounts ${filteCondition != '' ? productFilterCondition('discounts') : ''} ${filteCondition != '' ? 'AND ' + cashbackDiscountCouponWhereClause('discounts') : 'WHERE ' + cashbackDiscountCouponWhereClause('discounts')}`;
+			// const couponesQuery = `SELECT coupones.id, coupones.createdAt, "coupones" as type FROM coupones ${filteCondition != '' ? productFilterCondition('coupones') : ''} ${filteCondition != '' ? 'AND ' + cashbackDiscountCouponWhereClause('coupones') : 'WHERE ' + cashbackDiscountCouponWhereClause('coupones')}`;
+			// const loyaltyPointsQuery = `SELECT loyalty_points.id, loyalty_points.createdAt, "loyalty_points" as type FROM loyalty_points ${filteCondition != '' ? productFilterCondition('loyalty_points') : ''} ${filteCondition != '' ? 'AND ' + giftLoyaltyWhereClause('loyalty_points') : 'WHERE ' + giftLoyaltyWhereClause('loyalty_points')}`;
+			// const loyaltyProduct = `SELECT * FROM loyalty_token_claim_products WHERE ${freeProductWhereClause('loyalty_token_claim_products')}`
+			// if (request_type.includes('gift_cards')) {
+			// 	unionQuery += giftCardQuery;
+			// }
 
-			if (request_type.includes('gift_cards')) {
-				unionQuery += giftCardQuery;
-			}
+			// if (request_type.includes('cashbacks')) {
+			// 	unionQuery += unionQuery != '' ? ` UNION ${cashbackQuery}` : cashbackQuery;
+			// }
 
-			if (request_type.includes('cashbacks')) {
-				unionQuery += unionQuery != '' ? ` UNION ${cashbackQuery}` : cashbackQuery;
-			}
+			// if (request_type.includes('discounts')) {
+			// 	unionQuery += unionQuery != '' ? ` UNION ${discountQuery}` : discountQuery;
+			// }
 
-			if (request_type.includes('discounts')) {
-				unionQuery += unionQuery != '' ? ` UNION ${discountQuery}` : discountQuery;
-			}
+			// if (request_type.includes('coupones')) {
+			// 	unionQuery += unionQuery != '' ? ` UNION ${couponesQuery}` : couponesQuery;
+			// }
 
-			if (request_type.includes('coupones')) {
-				unionQuery += unionQuery != '' ? ` UNION ${couponesQuery}` : couponesQuery;
-			}
-
-			if (request_type.includes('loyalty_points')) {
-				unionQuery += unionQuery != '' ? ` UNION ${loyaltyPointsQuery}` : loyaltyPointsQuery;
-			}
+			// if (request_type.includes('loyalty_points')) {
+			// 	unionQuery += unionQuery != '' ? ` UNION ${loyaltyPointsQuery}` : loyaltyPointsQuery;
+			// }
+			// if (request_type.includes('loyalty_product')) {
+			// 	unionQuery += unionQuery != '' ? ` UNION ${loyaltyProduct}` : loyaltyProduct;
+			// }
 			// unionQuery += `${unionQuery}`
 			let rewards = [];
 			let rewardsCounts = [];
@@ -1014,6 +1648,8 @@ exports.commonRewardsList = async (req, res) => {
 				}
 
 				const userGiftCardQuery = `SELECT user_giftcards.gift_card_id as "id", user_giftcards.createdAt, "gift_cards" as type, user_giftcards.id as "user_giftcard_id"  FROM user_giftcards JOIN gift_cards ON user_giftcards.gift_card_id=gift_cards.id WHERE ((user_id=${user?.id} and to_email is null) OR (to_email = '${user?.user}')) AND user_giftcards.is_deleted=false AND user_giftcards.status=true ${textSearch('gift_cards')}`;
+				const userClaimedProductQuery = `SELECT loyalty_token_claim_products.id as id, loyalty_token_claim_products.created_at, 'loyalty_product' as type ,loyalty_token_claim_products.loyalty_token_card_id as loyalty_token_card_id FROM loyalty_token_claim_products  WHERE (user_id=${user?.id} AND is_deleted=false AND status=true)`;
+
 				// const userRewardQuery = `SELECT user_earned_rewards.reference_reward_id, createdAt, user_earned_rewards.reference_reward_type as "type"  FROM user_earned_rewards WHERE user_id=${user?.id}`;
 				const productFilter = (tableName) => `JOIN ${tableName} ON user_earned_rewards.reference_reward_id=${tableName}.id ${filteCondition != '' ? `JOIN products ON FIND_IN_SET(products.id, ${tableName}.product_id) > 0` : ''} WHERE ${filteCondition} ${filteCondition !== '' ? 'AND' : ''} user_id=${user?.id} AND reference_reward_type='${tableName}' ${textSearch(tableName)} ${filteCondition !== '' ? 'GROUP BY user_earned_rewards.id' : ''}`
 
@@ -1021,7 +1657,6 @@ exports.commonRewardsList = async (req, res) => {
 				const userDiscountRewardQuery = `SELECT user_earned_rewards.reference_reward_id as "id", user_earned_rewards.createdAt, user_earned_rewards.reference_reward_type as "type", null as "user_giftcard_id"  FROM user_earned_rewards ${productFilter('discounts')}`;
 				const userCouponesRewardQuery = `SELECT user_earned_rewards.reference_reward_id as "id", user_earned_rewards.createdAt, user_earned_rewards.reference_reward_type as "type", null as "user_giftcard_id"  FROM user_earned_rewards ${productFilter('coupones')}`;
 				const userLoyaltyRewardQuery = `SELECT user_earned_rewards.reference_reward_id as "id", user_earned_rewards.createdAt, user_earned_rewards.reference_reward_type as "type", null as "user_giftcard_id"  FROM user_earned_rewards ${productFilter('loyalty_points')}`;
-
 				let userUnionQuery = '';
 				// const userUnionQuery = `${userGiftCardQuery} UNION ${userRewardQuery}`;
 				if (request_type.includes('gift_cards')) {
@@ -1043,13 +1678,20 @@ exports.commonRewardsList = async (req, res) => {
 				if (request_type.includes('loyalty_points')) {
 					userUnionQuery += userUnionQuery != '' ? ` UNION ${userLoyaltyRewardQuery}` : userLoyaltyRewardQuery;
 				}
+				if (request_type.includes('loyalty_product')) {
+					userUnionQuery += userUnionQuery != '' ? ` UNION ${userClaimedProductQuery}` : userClaimedProductQuery;
+				}
+				if (request_type && request_type.includes('loyalty_product') && user && user.id) {
+					userUnionQuery += userUnionQuery !== '' ? ` UNION ${userClaimedProductQuery}` : userClaimedProductQuery;
+				}
+				try {
+					rewards = await models.sequelize.query(`SELECT * FROM (${userUnionQuery}) AS Rewards`, {
+						type: models.sequelize.QueryTypes.SELECT,
+					});
 
-				rewards = await models.sequelize.query(`SELECT * FROM (${userUnionQuery}) Rewards ORDER BY createdAt desc LIMIT ${offset}, ${limit}`, {
-					type: models.sequelize.QueryTypes.SELECT
-				});
-				rewardsCounts = await models.sequelize.query(`SELECT * FROM (${userUnionQuery}) Rewards`, {
-					type: models.sequelize.QueryTypes.SELECT
-				})
+				} catch (error) {
+					console.error('Error executing query:', error);
+				}
 			}
 			const allRewardsData = await Promise.all([
 				...rewards.map((rew) => {
@@ -1133,6 +1775,7 @@ exports.commonRewardsList = async (req, res) => {
 								gCard['is_used'] = false;
 								var rewardHistory = await rewardHistoryModel.findOne({
 									where: {
+										user_id: user?.id,
 										reference_reward_type: 'gift_cards',
 										reference_reward_id: gCard?.id,
 										credit_debit: false,
@@ -1140,11 +1783,10 @@ exports.commonRewardsList = async (req, res) => {
 									include: [
 										{
 											model: orderModel,
-											where: {
-												user_id: user.id
-											},
-											required: true
-										}
+										},
+										{
+											model: models.user,
+										},
 									]
 								});
 								if (rewardHistory && !_.isEmpty(rewardHistory)) {
@@ -1332,6 +1974,7 @@ exports.commonRewardsList = async (req, res) => {
 								],
 							});
 							if (loyaltyObj) {
+								console.log(loyaltyObj);
 								// loyaltyObj.dataValues.product_name = loyaltyObj?.dataValues?.product?.dataValues?.name || '';
 								loyaltyObj.dataValues.product_category_name = loyaltyObj?.dataValues?.product?.dataValues?.product_categorys?.name || '';
 								const products = await productModel.findAll({ where: { id: { [Op.in]: loyaltyObj?.dataValues?.product_id?.split(',') || [] } }, attributes: ["name"] });
@@ -1358,18 +2001,81 @@ exports.commonRewardsList = async (req, res) => {
 							}
 						})
 					}
+					/************************************************************************************************************* */
+
+					else if (rew.type == 'loyalty_product') {
+						return new Promise(async (resolve) => {
+							if (user.role_id == '2') {
+							const loyaltyCondition = {
+								where: {
+									id: rew.id,
+								},
+								include: [
+									{
+										model: models.loyalty_token_cards,
+										include: [
+											{
+												model: models.loyalty_token_icon,
+											},
+										],
+									},
+								],
+							};
+							var allDataProduct = await models.loyalty_token_claim_product.findAll(loyaltyCondition);
+							if (allDataProduct) {
+								const loyalObj = {};
+								for (const data of allDataProduct) {
+									let img = data.loyalty_token_card.loyalty_token_icon.active_image
+									if (img != null) {
+										const signurl = await awsConfig
+											.getSignUrl(img)
+											.then(function (res) {
+												img = res;
+											});
+									} else {
+										img = commonConfig.default_image;
+									}
+									loyalObj['id'] = data?.id;
+									loyalObj['user_id'] = data?.user_id;
+									loyalObj['business_id'] = data?.business_id;
+									loyalObj['loyalty_token_card_id'] = data?.loyalty_token_card_id;
+									loyalObj['name'] = data?.loyalty_token_card?.name;
+									loyalObj['image'] = img;
+									loyalObj['product_id'] = data?.product_id;
+									loyalObj['product_name'] = data?.product_name;
+									loyalObj['product_price'] = data?.product_price;
+									loyalObj['is_claimed'] = data?.is_claimed ? true : false;
+									loyalObj['is_cart_added'] = false;
+									loyalObj['type'] = "loyalty_product";
+								}
+								resolve(loyalObj);
+							} else {
+								resolve(null);
+							}
+							}
+						})
+					}
+
+					/************************************************************************************************************* */
 				})
 			])
 			const rewardList = allRewardsData.filter(obj => obj != null);
-			const response = new pagination(rewardList, rewardsCounts?.length || 0, parseInt(data.page), parseInt(limit));
+			const response = new pagination(rewardList, rewardList?.length || 0, parseInt(data.page), parseInt(limit));
 			res.send(setRes(resCode.OK, true, "Get rewards list successfully", ({ total_cashbacks, total_loyalty_points, total_rewards_purchase, total_loyalty_purchase, ...response.getPaginationInfo(), })));
 		} else {
 			res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
 		}
 	} catch (error) {
+		console.log(error)
 		res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
 	}
 }
+
+
+
+
+/**************************************************************************************************************************** */
+
 
 function sortByCreatedLatest(arrays) {
 	const sortedArray = arrays.sort((a, b) => new moment(b.createdAt) - new moment(a.createdAt));

@@ -1,4 +1,7 @@
 const { Route53 } = require('aws-sdk')
+const { verifyToken } = require('./config/token')
+const { authorize } = require('./helpers/authorize')
+const body_parser =require("body-parser")
 
 module.exports = function (app) {
   app.use('/api/common', require('./api/common'))
@@ -21,11 +24,11 @@ module.exports = function (app) {
   app.use('/api/discounts', require('./api/discounts'))
   app.use('/api/coupones', require('./api/coupones'))
   app.use('/api/loyalty_points', require('./api/loyalty-points'))
-  
+
 
   /////////////////////////////////////////
-  app.use('/api/loyalty-token-card' ,require('./api/loyalty-token-card')) 
-//////////////////////////////////////////////////
+  app.use('/api/loyalty-token-card', require('./api/loyalty-token-card'))
+  //////////////////////////////////////////////////
 
 
   // User APP Routes 
@@ -39,10 +42,22 @@ module.exports = function (app) {
   app.use('/api/notifications', require('./api/notification'))
 
 
-  
+
+  const stripeController = require('./api/stripe-example/stripe')
+  const invoice = require('./api/Invoice/generatePDF')
 
 
 
-  
+
+  // app.get('/startStripeAuthorization',stripeController.startStripeAuthorization)
+  app.get('/stripeConnectAuthentication', stripeController.stripeConnectAuthentication)
+  app.post('/api/invoice',  invoice.generateInvoice)
+  app.post('/stripePayment', stripeController.payment)
+  app.post('/webhook',body_parser.raw({ type: 'application/json' }), stripeController.webhook)
+  app.post('/createCustomer', stripeController.customer)
+
+
+
+
 
 }

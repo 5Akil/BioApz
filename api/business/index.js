@@ -180,4 +180,6 @@ router.get('/home',verifyToken,authorize([3]),controller.homeList)
 /************************************** */
 router.post('/get-registered-users',verifyToken,authorize([3]),controller.GetRegisteredUsers)
 
+router.get('/status-list',verifyToken,authorize([3]),controller.statusList)
+
 module.exports = router;

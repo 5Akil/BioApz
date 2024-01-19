@@ -19,6 +19,12 @@ module.exports = (sequelize, DataTypes) => {
         },
         // tableName: 'loyalty_token_icon',
        
+    },
+    {
+        paranoid: true,
+        createdAt: 'created_at',
+        updatedAt: 'updated_at',
+        deletedAt: 'deleted_at',
     });
 return loyaltyTokenCardIcon;
 };

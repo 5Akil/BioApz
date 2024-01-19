@@ -1,0 +1,6 @@
+*Work logs of : (28-11-2023) [09:00 Hrs]*
+Fleet Management App : 09:00 Hrs
+[FL - 1164]->create api to store late, called out and vto driver according to the date selected 
+[FL - 1168]->remove state variable for all the 5 dashboard sections 
+[FL - 1170]->display the default value and handle the input change and drop down change using react hook form 
+[FL - 1172]->Fleet Management App Meeting 

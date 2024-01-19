@@ -28,14 +28,18 @@ module.exports = (sequelize, DataTypes) => {
         createdAt: 'created_at',
         updatedAt: 'updated_at',
         deletedAt: 'deleted_at',
-        // timestamps: false
     }
+
+
     );
     LoyaltyCards.associate = function (models) {
-        LoyaltyCards.belongsTo(models.business, { foreignKey: 'business_id' })
+        // LoyaltyCards.belongsTo(models.business, { foreignKey: 'business_id' })
+        LoyaltyCards.belongsTo(models.business, { foreignKey: 'business_id'})
+
         LoyaltyCards.belongsTo(models.products, { foreignKey: 'product_id' })
         LoyaltyCards.hasMany(models.loyalty_token_card_history,{foreignKey:'loyalty_token_card_id'})
         LoyaltyCards.belongsTo(models.loyalty_token_icon ,{foreignKey:"token_icon_id"})
+
     };
     return LoyaltyCards;
 };

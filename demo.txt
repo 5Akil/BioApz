@@ -1,0 +1,9 @@
+*Work logs of : (28-11-2023) [08:30 Hrs]*
+
+*Fleet Management App : 08:30 Hrs*
+[FL - 1164] - create api to store late, called out and vto driver according to the date selected : 00:09 Hrs -> Completed
+[FL - 1168] - remove state variable for all the 5 dashboard sections : 01:44 Hrs -> Completed
+[FL - 1170] - display the default value and handle the input change and drop down change using react hook form : 02:27 Hrs -> Completed
+[FL - 1172] - Fleet Management App Meeting : 00:17 Hrs -> Completed
+[FL - 1169] - add react hook form to for dashboard and handle the default value and api calls : 03:02 Hrs -> Inprogress
+[FL - 1165] - create api to get data according to the selected date for late, called out and vto driver : 00:48 Hrs -> Inprogress

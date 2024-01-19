@@ -34,7 +34,12 @@ module.exports = (sequelize, DataTypes) => {
      paranoid: true,
      deletedAt: 'deleted_at',
     // timestamps: false
-  });
+  }, {
+    paranoid: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+    deletedAt: 'deleted_at',
+});
   GiftCards.associate = function(models) {
     // associations can be defined here
     GiftCards.belongsTo(models.business, {foreignKey: 'business_id'})

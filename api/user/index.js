@@ -50,7 +50,7 @@ var awsupload = multer({
   fileFilter,
 })
 
-var controller = require('./user.controller')
+var controller = require('./user.controller2')
 
 const {verifyToken} = require('../../config/token');
 
@@ -76,6 +76,9 @@ router.get('/home',verifyToken,authorize([2]),controller.homeList)
 /***********************/
 router.post('/follow-unfollow-businesses',verifyToken,authorize([2,3]),controller.followUnfollowBusinesses)
 router.post('/loyalty-token-cards/list' ,verifyToken,authorize([2]),controller.userLoyaltyTokenCardsList)
+router.post('/add-free-loyalty-product-to-cart',verifyToken, authorize([2]), controller.addFreeLoyaltyProductToCart)
+router.post('/insert-loyalty-token' ,authorize([2]), verifyToken , controller.makeEntry)
+router.post('/claim-free-product',verifyToken, authorize([2]), controller.claimFreeProduct)
 
 /**********************/
 
@@ -99,8 +102,5 @@ router.post('/event/register',verifyToken,authorize([2]),controller.eventUserReg
 router.post('/event/leave',verifyToken,authorize([2]),controller.eventUserLeave)
 
 router.get('/price_filter',verifyToken,controller.priceFilterForWallet)
-
-router.post('/insert-loyalty-token' ,authorize([2]), verifyToken , controller.makeEntry)
-router.post('/claim-free-product',verifyToken, authorize([2]), controller.claimFreeProduct)
 
 module.exports = router;

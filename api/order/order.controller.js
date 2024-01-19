@@ -17,6 +17,7 @@ var commonConfig = require('../../config/common_config');
 var pagination = require('../../helpers/pagination');
 const {NOTIFICATION_TITLES,NOTIFICATION_TYPES,NOTIFICATION_MESSAGE} = require('../../config/notificationTypes');
 const fcmNotification = require('../../push_notification')
+const moment = require('moment')
 // const {JSON} = require('sequelize')
 
 exports.OrderHistory = async (req,res) => {
@@ -526,6 +527,7 @@ exports.BusinessOrderDetail = async (req,res) => {
 		var userModel = models.user
 		var Op = models.Op
 		const businessModel = models.business
+		const productRattingModel = models.product_ratings;
 		const rewardHistoryModel = models.reward_history;
 		const user = req?.user || {};
 		// const userEmail = req.userEmail;
@@ -555,6 +557,12 @@ exports.BusinessOrderDetail = async (req,res) => {
 								model: categoryModel,
 								as: 'sub_category',
 								attributes: ['name']
+							},
+							{
+								model:productRattingModel,
+								include:[{
+									model:userModel
+								}]
 							}
 							],
 
@@ -587,7 +595,12 @@ exports.BusinessOrderDetail = async (req,res) => {
 						data.product.dataValues.qty = data.qty
 						data.product.dataValues.discount_price = data?.discount_price
 						data.product.dataValues.discount_type = data?.discount_type
-
+						for (const item of data.product.dataValues.product_ratings){
+							item.dataValues.user_name = item.user.username
+							delete item.dataValues.user
+						}
+						data.product.dataValues.reviews = data.product.dataValues.product_ratings
+						delete data.product.dataValues.product_ratings
 						let product_images = data.product.image
 
 						const image_array = [];
@@ -1165,10 +1178,12 @@ exports.businessTransactionDetails = async (req,res) => {
 }
 
 exports.orderCreate = async (req,res) => {
+	console.log(req.body,'<<<<<,');
 	const t = await models.sequelize.transaction();
 	try {
-		/** models and variables Declatrations */
+		/* models and variables Declatrations */
 		const data = req.body;
+		const currentDate = moment().format('YYYY-MM-DD');
 		const user = req?.user;
 		const userModel = models.user;
 		const businessModel = models.business;
@@ -1176,27 +1191,24 @@ exports.orderCreate = async (req,res) => {
 		const orderDetailsModel = models.order_details;
 		const productModel = models.products;
 		const shoppincartModel = models.shopping_cart
-
 		const notificationModel = models.notifications;
 		const notificationReceiverModel = models.notification_receivers;
 		const deviceModel = models.device_tokens;
-
 		const rewardHistoryModel = models.reward_history;
-		const userCouponModel = models.user_coupons;
 		const userGiftCardsModel = models.user_giftcards;
 		const giftCardsModel = models.gift_cards;
-		const userEarnedRewardsModel = models.user_earned_rewards;
+		var userDetails = await userModel.findOne({
+			where: {
+				id: user.id,
+				is_deleted: false,
+				is_active: true
+			}
+		})
 
-		const discountsModel = models.discounts;
-		const cashbacksModel = models.cashbacks;
-		const couponesModel = models.coupones;
-		const loyaltyPointsModel = models.loyalty_points;
-
-		/** Input Declatrations */
+		/* Input Declatrations */
 		const requiredFields = _.reject(["amount","payment_id","payment_status","payment_response"],(o) => {return _.has(data,o)});
 		const blankField = _.reject(["amount","payment_id","payment_status"],(o) => {return data[o]});
-
-		/** Validate inputs */
+		/* Validate inputs */
 		if(data?.products?.length > 0) {
 			let validProducts = true;
 			let notBlankProductsField = true;
@@ -1229,9 +1241,14 @@ exports.orderCreate = async (req,res) => {
 		}
 
 		if(requiredFields == "") {
-			const businessDetails = await businessModel.findOne({where: {id: data.business_id}})
-
-			/** Create Order and order details */
+			const businessDetails = await businessModel.findOne({
+				where: {
+					id: data.business_id,
+					is_active: true,
+					is_deleted: false
+				}
+			});
+			/* Create Order and order details */
 			const orderObj = {
 				user_id: user.id,
 				business_id: data.business_id,
@@ -1240,7 +1257,21 @@ exports.orderCreate = async (req,res) => {
 				payment_status: data.payment_status,
 				payment_response: data.payment_response && typeof (data.payment_response) != 'string' ? JSON.stringify(data.payment_response) : data.payment_response,
 				delivery_status: 1, //pending
-				order_status: 1, //pending
+				order_status: 1, //pending,
+				coupon_id: data.coupon_id,
+				coupon_code: data.coupon_code,
+				coupon_type: data.coupon_type,
+				coupon_value: data.coupon_value,
+				virtual_card_id: data.virtual_card_id,
+				virtual_card_value: data.virtual_card_value,
+				total_discounts: (data?.get_discounts?.is_used) ? (data?.get_discounts?.amount) : '0.00',
+				cashback: data.cashback,
+				reedem_point: data.reedem_point,
+				value_type: data.value_type,
+				is_pickup: data.is_pickup ?? false,
+				pickup_time: data.pickup_time ?? null,
+				giftcard_used_amount: data.giftcard_used_amount ?? null,
+				coupon_discount_amount: data.coupon_discount_amount ?? null,
 			}
 			const createdOrder = await orderModel.create(orderObj,{transaction: t});
 			const orderDetails = [];
@@ -1248,41 +1279,79 @@ exports.orderCreate = async (req,res) => {
 
 			if(createdOrder.id) {
 				for(const product of data.products) {
-					const productDetails = await productModel.findOne({where: {id: product.product_id,business_id: data.business_id,is_deleted: false}});
+					const productDetails = await productModel.findOne({
+						where: {
+							id: product.product_id,
+							business_id: data.business_id,
+							is_deleted: false
+						}
+					});
 					if(!productDetails) {
 						throw new Error('Product details not found for business!');
 					}
+
+
 					const orderDetailObj = {
 						user_id: user.id,
 						order_id: createdOrder.id,
 						business_id: data.business_id,
 						product_id: product.product_id,
+						discount_id: product.discount_id,
 						discount_price: product.discount_price,
 						discount_type: product.discount_type,
+						loyality_point_id: product.loyality_point_id,
+						loyalty_type: product.loyalty_type,
+						loyalty_price: product.loyalty_price,
+						is_loyalty_product: product.is_loyalty_product,
+						cashback_id: product.cashback_id,
+						cashback_type: product.cashback_type,
+						cashback_value: product.cashback_value,
+						final_price: product.final_price,
+						is_free: product.is_free || 0,
+						coupon_id: product.coupon_id,
+						coupon_type: product.coupon_type,
+						coupon_price: product.coupon_price,
+						virtual_card_id: product.virtual_card_id,
+						virtual_card_value: product.virtual_card_value,
 						category_id: product.category_id,
 						price: product.price,
 						qty: product.qty,
 						order_status: 1, //1–Pending,2–Cancelled,3-Completed
 					}
+
+					if(product.discount_id) {
+						const rewardCashbackDebit = await rewardHistoryModel.create({
+							order_id: createdOrder.id,
+							product_id: product.product_id,
+							user_id: user.id,
+							credit_debit: true,
+							amount: product.discount_price,
+							reference_reward_id: product.discount_id,
+							reference_reward_type: 'discounts'
+						});
+					}
+
 					orderDetails.push(orderDetailObj);
 					productsForCart.push(product.product_id);
 				}
-				for(const cartProduct of productsForCart) {
-					var shoppincartData = await shoppincartModel.findAll({
-						where: {
-							product_id: cartProduct,
-							user_id: user.id,
-						}
-					})
-					if(!_.isEmpty(shoppincartData)) {
-						await shoppincartModel.update({
-							is_deleted: true,
-						},{
+				if(data?.from_cart && data?.from_cart == true) {
+					for(const cartProduct of productsForCart) {
+						var shoppincartData = await shoppincartModel.findAll({
 							where: {
 								product_id: cartProduct,
 								user_id: user.id,
 							}
 						})
+						if(!_.isEmpty(shoppincartData)) {
+							await shoppincartModel.update({
+								is_deleted: true,
+							},{
+								where: {
+									product_id: cartProduct,
+									user_id: user.id,
+								}
+							})
+						}
 					}
 				}
 			} else {
@@ -1293,48 +1362,90 @@ exports.orderCreate = async (req,res) => {
 			} else {
 				throw new Error('Order details products missing!');
 			}
+			// Send NOTIFICATION on Create order
+			if(createdOrder) {
+				/** Send Device notifications order Placed*/
+				/* Send to user */
+				var Notificationdata = {
+					notification_type: NOTIFICATION_TYPES.PLACE_ORDER,
+					title: NOTIFICATION_TITLES.PLACE_ORDER_USER(),
+					message: NOTIFICATION_MESSAGE.PLACE_ORDER_USER(createdOrder?.order_no),
+					order_id: createdOrder.id,
+					user_id: user.id,
+					business_id: businessDetails.id
+				};
 
-			// validation on selected rewards 
-			let loyaltyPointsUsed = false;
-			let giftCardAndCashbackUsed = false;
-			let couponCashbackDiscountUsed = false;
+				const notificationUserObj = {
+					role_id: businessDetails.role_id,
+					params: JSON.stringify(Notificationdata),
+					title: NOTIFICATION_TITLES.PLACE_ORDER_USER(),
+					message: NOTIFICATION_MESSAGE.PLACE_ORDER_USER(createdOrder?.order_no),
+					notification_type: NOTIFICATION_TYPES.PLACE_ORDER,
+				}
+				const notificationUser = await notificationModel.create(notificationUserObj,{transaction: t});
+				if(notificationUser && notificationUser.id) {
+					const notificationReceiverUserObj = {
+						role_id: 2,
+						notification_id: notificationUser.id,
+						sender_id: businessDetails.id,
+						receiver_id: user.id,
+						is_read: false
+					}
+					const notificationReceiver = await notificationReceiverModel.create(notificationReceiverUserObj,{transaction: t});
+				}
+				/* FCM push noifiation */
+				const activeUserReceiverDevices = await deviceModel.findOne({where: {status: 1,user_id: user.id}},{attributes: ["device_token"]});
+				// const userDeviceTokensList = activeUserReceiverDevices.map((device) => device.device_token);
+				// const userUniqueDeviceTokens = Array.from(new Set(userDeviceTokensList));
+				const userNotificationPayload = {
+					device_token: activeUserReceiverDevices?.device_token,
+					title: NOTIFICATION_TITLES.PLACE_ORDER_USER(),
+					message: NOTIFICATION_MESSAGE.PLACE_ORDER_USER(createdOrder?.order_no),
+					content: {notification_type: NOTIFICATION_TYPES.PLACE_ORDER,notification_id: notificationUser?.id,title: NOTIFICATION_TITLES.PLACE_ORDER_USER(),message: NOTIFICATION_MESSAGE.PLACE_ORDER_USER(createdOrder?.order_no),order_id: createdOrder.id,user_id: user.id,business_id: businessDetails.id}
+				};
+				setTimeout(() => {
+					fcmNotification.SendNotification(userNotificationPayload);
+				},5000);
 
-			//if(data?.use_redeem_points?.is_used) {
-			//	loyaltyPointsUsed = true;
-			//}
-
-			//if((data?.applied_giftcard?.user_gift_card_id && data?.use_cashback?.is_used)) {
-			//	giftCardAndCashbackUsed = true;
-			//}
-
-			//if((data?.applied_coupon && data?.use_cashback?.is_used && data?.applied_discount)) {
-			//	couponCashbackDiscountUsed = true;
-			//}
-
-			//if(loyaltyPointsUsed && (data?.applied_giftcard?.user_gift_card_id || data?.use_cashback?.is_used || data?.applied_coupon?.user_coupon_id || data?.applied_discount?.discount_id)) {
-			//	throw new Error('Other rewards cannot be used with Redeem points.');
-			//}
-
-			//if(giftCardAndCashbackUsed && (loyaltyPointsUsed || data?.applied_coupon?.user_coupon_id || data?.applied_discount?.discount_id)) {
-			//	throw new Error('Other rewards cannot be used with Giftcard and Redeem Cashback.');
-			//}
-
-			//if(couponCashbackDiscountUsed && data?.applied_giftcard?.user_gift_card_id) {
-			//	throw new Error('Other rewards cannot be used with Coupon, Cashback and Discount.');
-			//}
-
-
-			let sendUseCashbackNotification = false;
-
-			if(data?.from_cart && data?.from_cart == true) {
-
+				/* Send to Business */
+				const notificationBusinessObj = {
+					params: JSON.stringify({notification_type: NOTIFICATION_TYPES.PLACE_ORDER,title: NOTIFICATION_TITLES.PLACE_ORDER_BUSINESS(userDetails.username),message: NOTIFICATION_MESSAGE.PLACE_ORDER_BUSINESS(userDetails.username,createdOrder?.order_no),order_id: createdOrder.id,user_id: user.id,business_id: businessDetails.id}),
+					title: NOTIFICATION_TITLES.PLACE_ORDER_BUSINESS(userDetails.username),
+					message: NOTIFICATION_MESSAGE.PLACE_ORDER_BUSINESS(userDetails.username,createdOrder?.order_no),
+					notification_type: NOTIFICATION_TYPES.PLACE_ORDER,
+				}
+				const notificationBusiness = await notificationModel.create(notificationBusinessObj,{transaction: t});
+				if(notificationBusiness && notificationBusiness.id) {
+					const notificationReceiverBusinessObj = {
+						role_id: businessDetails.role_id,
+						notification_id: notificationBusiness.id,
+						receiver_id: businessDetails.id,
+						is_read: false
+					}
+					const notificationReceiver = await notificationReceiverModel.create(notificationReceiverBusinessObj,{transaction: t});
+				}
+				/* FCM push noifiation */
+				const activeReceiverDevices = await deviceModel.findAll({where: {status: 1,business_id: businessDetails.id}},{attributes: ["device_token"]});
+				const deviceTokensList = activeReceiverDevices.map((device) => device.device_token);
+				const uniqueDeviceTokens = Array.from(new Set(deviceTokensList))
+				const businessNotificationPayload = {
+					device_token: uniqueDeviceTokens,
+					title: NOTIFICATION_TITLES.PLACE_ORDER_BUSINESS(userDetails.username),
+					message: NOTIFICATION_MESSAGE.PLACE_ORDER_BUSINESS(userDetails.username,createdOrder?.order_no),
+					content: {notification_type: NOTIFICATION_TYPES.PLACE_ORDER,notification_id: notificationBusiness?.id,title: NOTIFICATION_TITLES.PLACE_ORDER_BUSINESS(userDetails.username),message: NOTIFICATION_MESSAGE.PLACE_ORDER_BUSINESS(userDetails.username,createdOrder?.order_no),order_id: createdOrder.id,user_id: user.id,business_id: businessDetails.id}
+				};
+				setTimeout(() => {
+					fcmNotification.SendNotification(businessNotificationPayload);
+				},5000);
 			}
-			/** Redeem/Use cashbacks by user */
+
+			/* Redeem/Use cashbacks by user */
 			if(data?.use_cashback) {
 				// Redeem cashback amount from user and create debit transaction
 				if(data?.use_cashback?.amount && data?.use_cashback?.amount > 0 && data?.use_cashback?.is_used) {
 					const rewardCashbackDebit = await rewardHistoryModel.create({
 						order_id: createdOrder.id,
+						user_id: user.id,
 						credit_debit: false,
 						amount: data?.use_cashback?.amount,
 						reference_reward_type: 'cashbacks'
@@ -1355,11 +1466,13 @@ exports.orderCreate = async (req,res) => {
 				}
 			}
 
+			/* Redeem/Use Loyaly Points by user */
 			if(data?.use_redeem_points) {
 				//Redeem loyalty points from user and create debit transaction
 				if(data?.use_redeem_points?.amount && data?.use_redeem_points?.amount > 0 && data?.use_redeem_points?.is_used) {
 					const rewardLoyaltyPointsDebit = await rewardHistoryModel.create({
 						order_id: createdOrder.id,
+						user_id: user.id,
 						credit_debit: false,
 						amount: data?.use_redeem_points?.amount,
 						reference_reward_type: 'loyalty_points'
@@ -1379,321 +1492,672 @@ exports.orderCreate = async (req,res) => {
 					}
 				}
 			}
-
-			/** Update Required Rewards with created Order */
-			// Coupon
-
+			/* APPLY COUPON */
 			if(data?.applied_coupon?.user_coupon_id && data?.applied_coupon?.amount > 0) {
-				// update used user coupon with order created
-				//const findAppliedCoupon = await userCouponModel.findOne({where: {coupon_id: data?.applied_coupon?.user_coupon_id,user_id: user.id}});
-				//if(findAppliedCoupon) {
-				//const updateCouponOrder = await userCouponModel.update({order_id: createdOrder.id},{where: {coupon_id: data?.applied_coupon?.user_coupon_id,user_id: user.id}},{transaction: t});
 				const userCouponUsed = await rewardHistoryModel.create({
 					order_id: createdOrder.id,
-					credit_debit: true,
+					user_id: user.id,
+					credit_debit: false,
 					amount: data?.applied_coupon?.amount,
 					reference_reward_id: data?.applied_coupon?.user_coupon_id,
 					reference_reward_type: 'coupones'
 				},{transaction: t});
-				//}
 			}
-
-			// Giftcard
+			/* APPLY GIFTCARD */
 			if(data?.applied_giftcard) {
-				// giftcard user coupon check if cashback then add user cashback reward "redeem_amount"
 				const userGiftCardDetails = await userGiftCardsModel.findOne({
-					where: {id: data?.applied_giftcard?.user_gift_card_id,user_id: user.id},
+					where: {id: data?.applied_giftcard?.user_gift_card_id,is_deleted: false,status: true},
 					attributes: {include: [[models.sequelize.literal('(user_giftcards.amount - user_giftcards.redeemed_amount)'),'remaining_amount']]},
 					include: [{
 						model: giftCardsModel,
 						attributes: {exclude: ["status","isDeleted","createdAt","updatedAt","deleted_at"]}
 					}]
 				});
-				const redeemAmount = data?.applied_giftcard?.redeem_amount;
-				if(userGiftCardDetails?.id) {
-					const usedAmountGiftCardReward = await rewardHistoryModel.create({
-						order_id: createdOrder.id,
-						credit_debit: false,
-						amount: redeemAmount,
-						reference_reward_id: userGiftCardDetails?.id,
-						reference_reward_type: 'gift_cards'
-					},{transaction: t});
-					if(userGiftCardDetails?.gift_card?.is_cashback) {
-						const cahsbackPercentage = userGiftCardDetails?.gift_card?.cashback_percentage;
-						const cashbackAmount = Math.floor((redeemAmount * cahsbackPercentage) / 100);
+				const usedAmountGiftCardReward = await rewardHistoryModel.create({
+					order_id: createdOrder.id,
+					user_id: user.id,
+					giftcard_id: userGiftCardDetails?.gift_card_id,
+					user_gift_card_id: userGiftCardDetails.id,
+					credit_debit: false,
+					amount: data?.applied_giftcard?.redeem_amount,
+					reference_reward_id: userGiftCardDetails?.gift_card_id,
+					reference_reward_type: 'gift_cards'
+				},{transaction: t});
+			}
 
-						// If gift card has cashback true
-						const cashbackReward = await rewardHistoryModel.create({
-							order_id: createdOrder.id,
-							credit_debit: true,
-							amount: cashbackAmount,
-							reference_reward_id: userGiftCardDetails?.id,
-							reference_reward_type: 'cashbacks'
-						},{transaction: t});
+			await calculateOrderAndProductLoyalty(data,createdOrder,user,businessDetails);
+			await calculateOrderAndProductCashback(data,createdOrder,user);
 
-						/** Send Device notifications for event cancellation to all corresponding users.*/
-						/** Send to user */
-
-
-						const notificationUserObj = {
-							role_id: user?.role_id,
-							params: JSON.stringify({
-								notification_type: NOTIFICATION_TYPES.CASHBACK_REWARD,
-								title: NOTIFICATION_TITLES.CASHBACK_REWARD(),
-								message: NOTIFICATION_MESSAGE.CASHBACK_REWARD(createdOrder?.id,cashbackAmount),
-								cashback_id: cashbackReward.id,
-								user_id: orderObj?.user_id,
-								business_id: orderObj?.business_id
-							}),
-							title: NOTIFICATION_TITLES?.CASHBACK_REWARD(),
-							message: NOTIFICATION_MESSAGE?.CASHBACK_REWARD(createdOrder?.id,cashbackAmount),
-							notification_type: NOTIFICATION_TYPES.CASHBACK_REWARD,
+			/* APPLY GIFTCARD */
+			if(data.business_id && user.id) {
+				let followedBusiness = await models.follow_unfollow_businesses.findOne({
+					where: {
+						user_id: user.id,
+						business_id: data.business_id,
+						status: true
+					}
+				});
+				if(followedBusiness && !_.isNull(followedBusiness)) {
+					let loyaltycardData = await models.loyalty_token_cards.findOne({
+						where: {
+							business_id: followedBusiness.business_id,
+							is_deleted: false,
+							status: true
 						}
-
-						const notificationUser = await notificationModel.create(notificationUserObj);
-						if(notificationUser && notificationUser.id) {
-							const notificationReceiverUserObj = {
-								role_id: orderObj?.user_id,
-								notification_id: notificationUser.id,
-								sender_id: orderObj?.business_id,
-								receiver_id: orderObj?.user_id,
+					});
+					var loyaltyHistoryModel = models.loyalty_token_card_history
+					if(!_.isNull(loyaltycardData)) {
+						const loyaltyCardHistory = await loyaltyHistoryModel.findAndCountAll({
+							where: {
+								status: true,
+								is_deleted: false,
+								user_id: user?.id,
+								//business_id: data.business_id,
+								loyalty_token_card_id: loyaltycardData.id
 							}
-							const notificationReceiver = await notificationReceiverModel.create(notificationReceiverUserObj);
+						})
+						if(parseInt(data.amount) && (parseInt(loyaltycardData.min_purchase_amount) <= parseInt(data.amount)) && (parseInt(loyaltycardData.no_of_tokens) > parseInt(loyaltyCardHistory?.count))) {
+							await models.loyalty_token_card_history.create({
+								user_id: user.id,
+								business_id: loyaltycardData.business_id,
+								order_id: createdOrder?.id,
+								loyalty_token_card_id: loyaltycardData.id,
+								order_no: createdOrder?.order_no
+							});
 						}
-						/** FCM push noifiation */
-						const activeUserReceiverDevices = await deviceModel.findOne({where: {status: 1,user_id: orderObj?.user_id}},{attributes: ["device_token"]});
-						// const userDeviceTokensList = activeUserReceiverDevices.map((device) => device.device_token);
-						// const userUniqueDeviceTokens = Array.from(new Set(userDeviceTokensList));
-						const userNotificationPayload = {
-							device_token: activeUserReceiverDevices?.device_token,
-							title: NOTIFICATION_TITLES.CASHBACK_REWARD(),
-							message: NOTIFICATION_MESSAGE.CASHBACK_REWARD(createdOrder?.id,cashbackAmount),
-							content: {notification_type: NOTIFICATION_TYPES?.CASHBACK_REWARD,notification_id: notificationUser?.id,title: NOTIFICATION_TITLES?.CASHBACK_REWARD(),message: NOTIFICATION_MESSAGE?.CASHBACK_REWARD(createdOrder?.id,cashbackAmount),cashback_id: cashbackReward?.id,user_id: orderObj?.user_id,business_id: orderObj?.business_id}
-						};
-						await fcmNotification.SendNotification(userNotificationPayload);
 					}
 				}
 			}
 
-			// Discount
-			let sendDiscountNotification = false;
-			if(data?.applied_discount && data?.applied_discount?.discount_id && data?.applied_discount?.amount) {
-				const discountId = data?.applied_discount?.discount_id;
-				const discountAmount = data?.applied_discount?.amount
-				const discountReward = await rewardHistoryModel.create({
-					order_id: createdOrder.id,
-					credit_debit: true,
-					amount: discountAmount,
-					reference_reward_id: discountId,
-					reference_reward_type: 'discounts'
-				},{transaction: t});
-				if(discountReward) {
-					sendDiscountNotification = true;
-				}
-			}
-
-			if(data?.get_discounts && data?.get_discounts?.is_used == true) {
-				var disAmount = data?.get_discounts?.amount
-
-				const discountReward = await rewardHistoryModel.create({
-					order_id: createdOrder.id,
-					credit_debit: true,
-					amount: disAmount,
-					reference_reward_id: 1,
-					reference_reward_type: 'discounts'
-				},{transaction: t});
-			}
-
-			// calculateOrderAndProductLoyalty(data,createdOrder,user,businessDetails,t);
-
-
-			// Old calculation where loyalty info was been received from frontend for calculation.
-			// if (data?.applied_loyalty_points && data?.applied_loyalty_points?.loyalty_id) {
-			// 	const loyaltyId = data?.applied_loyalty_points?.loyalty_id;
-			// 	const loyaltyDetail = await loyaltyPointsModel.findOne({ where: { id: loyaltyId } });
-			// 	let earnPoints;
-			// 	if (loyaltyDetail?.id) {
-			// 		if (loyaltyDetail.loyalty_type && !loyaltyDetail.points_redeemed) {
-			// 			const loyaltySupportProducts = loyaltyDetail?.product_id?.split(',') || [];
-			// 			const products = data?.products?.filter(product => loyaltySupportProducts.includes(product.product_id)) || [];
-			// 			if (products.length > 0) {
-			// 				earnPoints = loyaltyDetail.points_earned;
-			// 			}
-			// 		} else if (!loyaltyDetail.loyalty_type && !loyaltyDetail.points_redeemed){
-			// 			if (+(data.amount) > loyaltyDetail.amount) {
-			// 				earnPoints = loyaltyDetail.points_earned;
-			// 			}
-			// 		}
-			// 		const loayaltyReward = await rewardHistoryModel.create({
-			// 			order_id : createdOrder.id,
-			// 			credit_debit: true,
-			// 			amount: earnPoints,
-			// 			reference_reward_id: loyaltyId,
-			// 			reference_reward_type: 'loyalty_points'
-			// 		}, { transaction: t });
-			// 		if (loayaltyReward) {
-			// 			sendLoyaltyNotification = true;
-			// 		}
-			// 	}
-			// }
-
-			// Cashback
-			// if (data?.applied_cashback && data?.applied_cashback?.cashback_id && data?.applied_cashback?.amount) {
-			// 	const discountId = data?.applied_cashback?.cashback_id;
-			// 	const cashbackReward = await rewardHistoryModel.create({
-			// 		order_id: createdOrder.id,
-			// 		credit_debit: true,
-			// 		amount: cashbackAmount,
-			// 		reference_reward_id: discountId,
-			// 		reference_reward_type: 'cashbacks'
-			// 	}, { transaction: t });
-			// }
-
-			// Update user wallet loyalty points and cashback
-
-
-			// Earn Reward
-			// if (data?.earn_reward) {
-			// 	const rewardType = data?.earn_reward?.type;
-			// 	const rewardId = data?.earn_reward?.reference_reward_id;
-			// 	if (["coupones", "loyalty_points", "cashbacks", "discounts"].includes(rewardType)) {
-			// 		let rewardDetail;
-			// 		let rewardExpire;
-			// 		if (rewardType == "coupones") {
-			// 			rewardDetail = await couponesModel.findOne({ where: { id: rewardId } }); 
-			// 			rewardExpire = rewardDetail.expire_at;
-			// 		} else if (rewardType == "loyalty_points") {
-			// 			rewardDetail = await loyaltyPointsModel.findOne({ where: { id: rewardId } }); 
-			// 			rewardExpire = rewardDetail.validity;
-			// 		} else if (rewardType == "cashbacks") {
-			// 			rewardDetail = await cashbacksModel.findOne({ where: { id: rewardId } }); 
-			// 			rewardExpire = rewardDetail.validity_for;
-			// 		} else if (rewardType == "discounts") {
-			// 			rewardDetail = await discountsModel.findOne({ where: { id: rewardId } });
-			// 			rewardExpire = rewardDetail.validity_for;
-			// 		}
-			// 		if (rewardDetail) {
-			// 			const userEarnedReward = await userEarnedRewardsModel.create({
-			// 				user_id: user.id,
-			// 				reference_reward_id: rewardId,
-			// 				reference_reward_type: rewardType,
-			// 				expiry_date: rewardExpire
-			// 			},{ transaction: t });
-			// 		}
-			// 	}
-			// }
-
-
-			/** Send Device notifications order Placed*/
-			/** Send to user */
-			var Notificationdata = {
-				notification_type: NOTIFICATION_TYPES.PLACE_ORDER,
-				title: NOTIFICATION_TITLES.PLACE_ORDER_USER(),
-				message: NOTIFICATION_MESSAGE.PLACE_ORDER_USER(createdOrder?.order_no),
-				order_id: createdOrder.id,
-				user_id: user.id,
-				business_id: businessDetails.id
-			};
-			const notificationUserObj = {
-				role_id: businessDetails.role_id,
-				params: JSON.stringify(Notificationdata),
-				title: NOTIFICATION_TITLES.PLACE_ORDER_USER(),
-				message: NOTIFICATION_MESSAGE.PLACE_ORDER_USER(createdOrder?.order_no),
-				notification_type: NOTIFICATION_TYPES.PLACE_ORDER,
-			}
-			const notificationUser = await notificationModel.create(notificationUserObj,{transaction: t});
-			if(notificationUser && notificationUser.id) {
-				const notificationReceiverUserObj = {
-					role_id: businessDetails.role_id,
-					notification_id: notificationUser.id,
-					sender_id: businessDetails.id,
-					receiver_id: user.id,
-				}
-				const notificationReceiver = await notificationReceiverModel.create(notificationReceiverUserObj,{transaction: t});
-			}
-			/** FCM push noifiation */
-			const activeUserReceiverDevices = await deviceModel.findOne({where: {status: 1,user_id: user.id}},{attributes: ["device_token"]});
-			// const userDeviceTokensList = activeUserReceiverDevices.map((device) => device.device_token);
-			// const userUniqueDeviceTokens = Array.from(new Set(userDeviceTokensList));
-			const userNotificationPayload = {
-				device_token: activeUserReceiverDevices?.device_token,
-				title: NOTIFICATION_TITLES.PLACE_ORDER_USER(),
-				message: NOTIFICATION_MESSAGE.PLACE_ORDER_USER(createdOrder?.order_no),
-				content: {notification_type: NOTIFICATION_TYPES.PLACE_ORDER,notification_id: notificationUser?.id,title: NOTIFICATION_TITLES.PLACE_ORDER_USER(),message: NOTIFICATION_MESSAGE.PLACE_ORDER_USER(createdOrder?.order_no),order_id: createdOrder.id,user_id: user.id,business_id: businessDetails.id}
-			};
-			fcmNotification.SendNotification(userNotificationPayload);
-
-			/** Send to Business */
-			const notificationBusinessObj = {
-				params: JSON.stringify({notification_type: NOTIFICATION_TYPES.PLACE_ORDER,title: NOTIFICATION_TITLES.PLACE_ORDER_BUSINESS(),message: NOTIFICATION_MESSAGE.PLACE_ORDER_BUSINESS(createdOrder?.order_no),order_id: createdOrder.id,user_id: user.id,business_id: businessDetails.id}),
-				title: NOTIFICATION_TITLES.PLACE_ORDER_BUSINESS(),
-				message: NOTIFICATION_MESSAGE.PLACE_ORDER_BUSINESS(createdOrder?.order_no),
-				notification_type: NOTIFICATION_TYPES.PLACE_ORDER,
-			}
-			const notificationBusiness = await notificationModel.create(notificationBusinessObj,{transaction: t});
-			if(notificationBusiness && notificationBusiness.id) {
-				const notificationReceiverBusinessObj = {
-					role_id: businessDetails.role_id,
-					notification_id: notificationBusiness.id,
-					receiver_id: businessDetails.id,
-				}
-				const notificationReceiver = await notificationReceiverModel.create(notificationReceiverBusinessObj,{transaction: t});
-			}
-			/** FCM push noifiation */
-			const activeReceiverDevices = await deviceModel.findAll({where: {status: 1,business_id: businessDetails.id}},{attributes: ["device_token"]});
-			const deviceTokensList = activeReceiverDevices.map((device) => device.device_token);
-			const uniqueDeviceTokens = Array.from(new Set(deviceTokensList))
-			const businessNotificationPayload = {
-				device_token: uniqueDeviceTokens,
-				title: NOTIFICATION_TITLES.PLACE_ORDER_BUSINESS(),
-				message: NOTIFICATION_MESSAGE.PLACE_ORDER_BUSINESS(createdOrder?.order_no),
-				content: {notification_type: NOTIFICATION_TYPES.PLACE_ORDER,notification_id: notificationBusiness?.id,title: NOTIFICATION_TITLES.PLACE_ORDER_BUSINESS(),message: NOTIFICATION_MESSAGE.PLACE_ORDER_BUSINESS(createdOrder?.order_no),order_id: createdOrder.id,user_id: user.id,business_id: businessDetails.id}
-			};
-			fcmNotification.SendNotification(businessNotificationPayload);
-
-
-			/** Send User get discount Notifcation to Business User */
-			if(sendDiscountNotification) {
-				const notificationDiscountObj = {
-					params: JSON.stringify({notification_type: NOTIFICATION_TYPES.DISCOUNT_USE,title: NOTIFICATION_TITLES.GET_DISCOUNT_ORDER(),message: NOTIFICATION_MESSAGE.GET_DISCOUNT_ORDER(createdOrder?.order_no),order_id: createdOrder.id,user_id: user.id,business_id: businessDetails.id}),
-					title: NOTIFICATION_TITLES.GET_DISCOUNT_ORDER(),
-					message: NOTIFICATION_MESSAGE.GET_DISCOUNT_ORDER(createdOrder?.order_no),
-					notification_type: NOTIFICATION_TYPES.DISCOUNT_USE,
-				}
-				const notificationDiscount = await notificationModel.create(notificationDiscountObj,{transaction: t});
-				if(notificationDiscount && notificationDiscount.id) {
-					const notificationReceiverDiscountObj = {
-						role_id: businessDetails.role_id,
-						notification_id: notificationDiscount.id,
-						receiver_id: businessDetails.id,
-					}
-					const notificationDiscountReceiver = await notificationReceiverModel.create(notificationReceiverDiscountObj,{transaction: t});
-				}
-				/** FCM push noifiation */
-				const activeReceiverDevices = await deviceModel.findAll({where: {status: 1,business_id: businessDetails.id}},{attributes: ["device_token"]});
-				const deviceTokensList = activeReceiverDevices.map((device) => device.device_token);
-				const uniqueDeviceTokens = Array.from(new Set(deviceTokensList))
-				const discountNotificationPayload = {
-					device_token: uniqueDeviceTokens,
-					title: NOTIFICATION_TITLES.GET_DISCOUNT_ORDER(),
-					message: NOTIFICATION_MESSAGE.GET_DISCOUNT_ORDER(createdOrder?.order_no),
-					content: {notification_type: NOTIFICATION_TYPES.DISCOUNT_USE,notification_id: notificationDiscount?.id,title: NOTIFICATION_TITLES.GET_DISCOUNT_ORDER(),message: NOTIFICATION_MESSAGE.GET_DISCOUNT_ORDER(createdOrder?.order_no),discount_id: data?.applied_discount?.discount_id,business_id: businessDetails.id}
-				};
-				fcmNotification.SendNotification(discountNotificationPayload);
-			}
-
-			calculateOrderAndProductLoyalty(data,createdOrder,user,businessDetails);
-			calculateOrderAndProductCashback(data,createdOrder,user);
 			await t.commit();
 			return res.send(setRes(resCode.OK,true,'Order Created Successfully!',createdOrder));
 		} else {
 			return res.send(setRes(resCode.BadRequest,false,(requiredFields.toString() + ' are required'),null));
 		}
 	} catch(error) {
+		console.log(error)
 		await t.rollback();
 		return res.send(setRes(resCode.BadRequest,false,error?.message || "Something went wrong","",null))
 	}
 }
+
+
+// exports.orderCreate = async (req,res) => {
+// 	const t = await models.sequelize.transaction();
+// 	try {
+// 		/** models and variables Declatrations */
+// 		const data = req.body;
+// 		const user = req?.user;
+// 		const userModel = models.user;
+// 		const businessModel = models.business;
+// 		const orderModel = models.orders;
+// 		const orderDetailsModel = models.order_details;
+// 		const productModel = models.products;
+// 		const shoppincartModel = models.shopping_cart
+
+// 		const notificationModel = models.notifications;
+// 		const notificationReceiverModel = models.notification_receivers;
+// 		const deviceModel = models.device_tokens;
+
+// 		const rewardHistoryModel = models.reward_history;
+// 		const userCouponModel = models.user_coupons;
+// 		const userGiftCardsModel = models.user_giftcards;
+// 		const giftCardsModel = models.gift_cards;
+// 		const userEarnedRewardsModel = models.user_earned_rewards;
+
+// 		const discountsModel = models.discounts;
+// 		const cashbacksModel = models.cashbacks;
+// 		const couponesModel = models.coupones;
+// 		const loyaltyPointsModel = models.loyalty_points;
+
+// 		/** Input Declatrations */
+// 		const requiredFields = _.reject(["amount","payment_id","payment_status","payment_response"],(o) => {return _.has(data,o)});
+// 		const blankField = _.reject(["amount","payment_id","payment_status"],(o) => {return data[o]});
+
+// 		/** Validate inputs */
+// 		if(data?.products?.length > 0) {
+// 			let validProducts = true;
+// 			let notBlankProductsField = true;
+// 			let productArrayField = [];
+// 			let blankProductsField = [];
+// 			for(const product of data?.products) {
+// 				productArrayField = _.reject(["product_id","category_id","price","qty"],(o) => {return _.has(product,o)});
+// 				blankProductsField = _.reject(["product_id","category_id","price","qty"],(o) => {return product[o]});
+// 				if(productArrayField != '') {
+// 					validProducts = false;
+// 					break;
+// 				}
+// 				if(blankProductsField != '') {
+// 					notBlankProductsField = false;
+// 					break;
+// 				}
+// 			}
+// 			if(!validProducts) {
+// 				return res.send(setRes(resCode.BadRequest,false,(productArrayField.toString() + ' are required for products'),null));
+// 			}
+// 			if(!notBlankProductsField) {
+// 				return res.send(setRes(resCode.BadRequest,false,(blankProductsField.toString() + ' can not be blank'),null))
+// 			}
+// 		} else {
+// 			return res.send(setRes(resCode.BadRequest,false,'Products are required',null));
+// 		}
+
+// 		if(requiredFields == "" && blankField != "") {
+// 			return res.send(setRes(resCode.BadRequest,false,(blankField.toString() + ' can not be blank'),null))
+// 		}
+
+// 		if(requiredFields == "") {
+// 			const businessDetails = await businessModel.findOne({where: {id: data.business_id}})
+
+// 			/** Create Order and order details */
+// 			const orderObj = {
+// 				user_id: user.id,
+// 				business_id: data.business_id,
+// 				amount: data.amount,
+// 				payment_id: data.payment_id,
+// 				payment_status: data.payment_status,
+// 				payment_response: data.payment_response && typeof (data.payment_response) != 'string' ? JSON.stringify(data.payment_response) : data.payment_response,
+// 				delivery_status: 1, //pending
+// 				order_status: 1, //pending
+// 			}
+// 			const createdOrder = await orderModel.create(orderObj,{transaction: t});
+// 			const orderDetails = [];
+// 			var productsForCart = [];
+
+// 			if(createdOrder.id) {
+// 				for(const product of data.products) {
+// 					const productDetails = await productModel.findOne({where: {id: product.product_id,business_id: data.business_id,is_deleted: false}});
+// 					if(!productDetails) {
+// 						throw new Error('Product details not found for business!');
+// 					}
+// 					const orderDetailObj = {
+// 						user_id: user.id,
+// 						order_id: createdOrder.id,
+// 						business_id: data.business_id,
+// 						product_id: product.product_id,
+// 						discount_price: product.discount_price,
+// 						discount_type: product.discount_type,
+// 						category_id: product.category_id,
+// 						price: product.price,
+// 						qty: product.qty,
+// 						order_status: 1, //1–Pending,2–Cancelled,3-Completed
+// 					}
+// 					orderDetails.push(orderDetailObj);
+// 					productsForCart.push(product.product_id);
+// 				}
+// 				for(const cartProduct of productsForCart) {
+// 					var shoppincartData = await shoppincartModel.findAll({
+// 						where: {
+// 							product_id: cartProduct,
+// 							user_id: user.id,
+// 						}
+// 					})
+// 					if(!_.isEmpty(shoppincartData)) {
+// 						await shoppincartModel.update({
+// 							is_deleted: true,
+// 						},{
+// 							where: {
+// 								product_id: cartProduct,
+// 								user_id: user.id,
+// 							}
+// 						})
+// 					}
+// 				}
+// 			} else {
+// 				throw new Error('Error while creating order!');
+// 			}
+// 			if(orderDetails.length > 0) {
+// 				const createdOrderDetails = await orderDetailsModel.bulkCreate(orderDetails,{transaction: t});
+// 			} else {
+// 				throw new Error('Order details products missing!');
+// 			}
+
+// 			// validation on selected rewards 
+// 			let loyaltyPointsUsed = false;
+// 			let giftCardAndCashbackUsed = false;
+// 			let couponCashbackDiscountUsed = false;
+
+// 			//if(data?.use_redeem_points?.is_used) {
+// 			//	loyaltyPointsUsed = true;
+// 			//}
+
+// 			//if((data?.applied_giftcard?.user_gift_card_id && data?.use_cashback?.is_used)) {
+// 			//	giftCardAndCashbackUsed = true;
+// 			//}
+
+// 			//if((data?.applied_coupon && data?.use_cashback?.is_used && data?.applied_discount)) {
+// 			//	couponCashbackDiscountUsed = true;
+// 			//}
+
+// 			//if(loyaltyPointsUsed && (data?.applied_giftcard?.user_gift_card_id || data?.use_cashback?.is_used || data?.applied_coupon?.user_coupon_id || data?.applied_discount?.discount_id)) {
+// 			//	throw new Error('Other rewards cannot be used with Redeem points.');
+// 			//}
+
+// 			//if(giftCardAndCashbackUsed && (loyaltyPointsUsed || data?.applied_coupon?.user_coupon_id || data?.applied_discount?.discount_id)) {
+// 			//	throw new Error('Other rewards cannot be used with Giftcard and Redeem Cashback.');
+// 			//}
+
+// 			//if(couponCashbackDiscountUsed && data?.applied_giftcard?.user_gift_card_id) {
+// 			//	throw new Error('Other rewards cannot be used with Coupon, Cashback and Discount.');
+// 			//}
+
+
+// 			let sendUseCashbackNotification = false;
+
+// 			if(data?.from_cart && data?.from_cart == true) {
+
+// 			}
+// 			/** Redeem/Use cashbacks by user */
+// 			if(data?.use_cashback) {
+// 				// Redeem cashback amount from user and create debit transaction
+// 				if(data?.use_cashback?.amount && data?.use_cashback?.amount > 0 && data?.use_cashback?.is_used) {
+// 					const rewardCashbackDebit = await rewardHistoryModel.create({
+// 						order_id: createdOrder.id,
+// 						credit_debit: false,
+// 						amount: data?.use_cashback?.amount,
+// 						reference_reward_type: 'cashbacks'
+// 					},{transaction: t});
+// 					const userWalletAmounts = await userModel.findOne({where: {id: user.id},attributes: ["total_loyalty_points","total_cashbacks"]});
+// 					if(userWalletAmounts.total_cashbacks < data?.use_cashback?.amount) {
+// 						throw new Error('Insufficient amount of cashback for user request');
+// 					} else {
+// 						const userCashbackUpdate = await userModel.update({
+// 							total_cashbacks: models.sequelize.literal(`total_cashbacks - ${data?.use_cashback?.amount}`)
+// 						},
+// 							{
+// 								where: {
+// 									id: user.id
+// 								}
+// 							});
+// 					}
+// 				}
+// 			}
+
+// 			if(data?.use_redeem_points) {
+// 				//Redeem loyalty points from user and create debit transaction
+// 				if(data?.use_redeem_points?.amount && data?.use_redeem_points?.amount > 0 && data?.use_redeem_points?.is_used) {
+// 					const rewardLoyaltyPointsDebit = await rewardHistoryModel.create({
+// 						order_id: createdOrder.id,
+// 						credit_debit: false,
+// 						amount: data?.use_redeem_points?.amount,
+// 						reference_reward_type: 'loyalty_points'
+// 					},{transaction: t});
+// 					const userWalletAmounts = await userModel.findOne({where: {id: user.id},attributes: ["total_loyalty_points","total_cashbacks"]});
+// 					if(userWalletAmounts.total_loyalty_points < data?.use_redeem_points?.amount) {
+// 						throw new Error('Insufficient amount of cashback for loyalty points request');
+// 					} else {
+// 						const userCashbackUpdate = await userModel.update({
+// 							total_loyalty_points: models.sequelize.literal(`total_loyalty_points - ${data?.use_redeem_points?.amount}`)
+// 						},
+// 							{
+// 								where: {
+// 									id: user.id
+// 								}
+// 							},{transaction: t});
+// 					}
+// 				}
+// 			}
+
+// 			/** Update Required Rewards with created Order */
+// 			// Coupon
+
+// 			if(data?.applied_coupon?.user_coupon_id && data?.applied_coupon?.amount > 0) {
+// 				// update used user coupon with order created
+// 				//const findAppliedCoupon = await userCouponModel.findOne({where: {coupon_id: data?.applied_coupon?.user_coupon_id,user_id: user.id}});
+// 				//if(findAppliedCoupon) {
+// 				//const updateCouponOrder = await userCouponModel.update({order_id: createdOrder.id},{where: {coupon_id: data?.applied_coupon?.user_coupon_id,user_id: user.id}},{transaction: t});
+// 				const userCouponUsed = await rewardHistoryModel.create({
+// 					order_id: createdOrder.id,
+// 					credit_debit: true,
+// 					amount: data?.applied_coupon?.amount,
+// 					reference_reward_id: data?.applied_coupon?.user_coupon_id,
+// 					reference_reward_type: 'coupones'
+// 				},{transaction: t});
+// 				//}
+// 			}
+
+// 			// Giftcard
+// 			if(data?.applied_giftcard) {
+// 				// giftcard user coupon check if cashback then add user cashback reward "redeem_amount"
+// 				const userGiftCardDetails = await userGiftCardsModel.findOne({
+// 					where: {id: data?.applied_giftcard?.user_gift_card_id,user_id: user.id},
+// 					attributes: {include: [[models.sequelize.literal('(user_giftcards.amount - user_giftcards.redeemed_amount)'),'remaining_amount']]},
+// 					include: [{
+// 						model: giftCardsModel,
+// 						attributes: {exclude: ["status","isDeleted","createdAt","updatedAt","deleted_at"]}
+// 					}]
+// 				});
+// 				const redeemAmount = data?.applied_giftcard?.redeem_amount;
+// 				if(userGiftCardDetails?.id) {
+// 					const usedAmountGiftCardReward = await rewardHistoryModel.create({
+// 						order_id: createdOrder.id,
+// 						credit_debit: false,
+// 						amount: redeemAmount,
+// 						reference_reward_id: userGiftCardDetails?.id,
+// 						reference_reward_type: 'gift_cards'
+// 					},{transaction: t});
+// 					if(userGiftCardDetails?.gift_card?.is_cashback) {
+// 						const cahsbackPercentage = userGiftCardDetails?.gift_card?.cashback_percentage;
+// 						const cashbackAmount = Math.floor((redeemAmount * cahsbackPercentage) / 100);
+
+// 						// If gift card has cashback true
+// 						const cashbackReward = await rewardHistoryModel.create({
+// 							order_id: createdOrder.id,
+// 							credit_debit: true,
+// 							amount: cashbackAmount,
+// 							reference_reward_id: userGiftCardDetails?.id,
+// 							reference_reward_type: 'cashbacks'
+// 						},{transaction: t});
+
+// 						/** Send Device notifications for event cancellation to all corresponding users.*/
+// 						/** Send to user */
+
+
+// 						const notificationUserObj = {
+// 							role_id: user?.role_id,
+// 							params: JSON.stringify({
+// 								notification_type: NOTIFICATION_TYPES.CASHBACK_REWARD,
+// 								title: NOTIFICATION_TITLES.CASHBACK_REWARD(),
+// 								message: NOTIFICATION_MESSAGE.CASHBACK_REWARD(createdOrder?.id,cashbackAmount),
+// 								cashback_id: cashbackReward.id,
+// 								user_id: orderObj?.user_id,
+// 								business_id: orderObj?.business_id
+// 							}),
+// 							title: NOTIFICATION_TITLES?.CASHBACK_REWARD(),
+// 							message: NOTIFICATION_MESSAGE?.CASHBACK_REWARD(createdOrder?.id,cashbackAmount),
+// 							notification_type: NOTIFICATION_TYPES.CASHBACK_REWARD,
+// 						}
+
+// 						const notificationUser = await notificationModel.create(notificationUserObj);
+// 						if(notificationUser && notificationUser.id) {
+// 							const notificationReceiverUserObj = {
+// 								role_id: orderObj?.user_id,
+// 								notification_id: notificationUser.id,
+// 								sender_id: orderObj?.business_id,
+// 								receiver_id: orderObj?.user_id,
+// 							}
+// 							const notificationReceiver = await notificationReceiverModel.create(notificationReceiverUserObj);
+// 						}
+// 						/** FCM push noifiation */
+// 						const activeUserReceiverDevices = await deviceModel.findOne({where: {status: 1,user_id: orderObj?.user_id}},{attributes: ["device_token"]});
+// 						// const userDeviceTokensList = activeUserReceiverDevices.map((device) => device.device_token);
+// 						// const userUniqueDeviceTokens = Array.from(new Set(userDeviceTokensList));
+// 						const userNotificationPayload = {
+// 							device_token: activeUserReceiverDevices?.device_token,
+// 							title: NOTIFICATION_TITLES.CASHBACK_REWARD(),
+// 							message: NOTIFICATION_MESSAGE.CASHBACK_REWARD(createdOrder?.id,cashbackAmount),
+// 							content: {notification_type: NOTIFICATION_TYPES?.CASHBACK_REWARD,notification_id: notificationUser?.id,title: NOTIFICATION_TITLES?.CASHBACK_REWARD(),message: NOTIFICATION_MESSAGE?.CASHBACK_REWARD(createdOrder?.id,cashbackAmount),cashback_id: cashbackReward?.id,user_id: orderObj?.user_id,business_id: orderObj?.business_id}
+// 						};
+// 						await fcmNotification.SendNotification(userNotificationPayload);
+// 					}
+// 				}
+// 			}
+
+// 			// Discount
+// 			let sendDiscountNotification = false;
+// 			if(data?.applied_discount && data?.applied_discount?.discount_id && data?.applied_discount?.amount) {
+// 				const discountId = data?.applied_discount?.discount_id;
+// 				const discountAmount = data?.applied_discount?.amount
+// 				const discountReward = await rewardHistoryModel.create({
+// 					order_id: createdOrder.id,
+// 					credit_debit: true,
+// 					amount: discountAmount,
+// 					reference_reward_id: discountId,
+// 					reference_reward_type: 'discounts'
+// 				},{transaction: t});
+// 				if(discountReward) {
+// 					sendDiscountNotification = true;
+// 				}
+// 			}
+
+// 			if(data?.get_discounts && data?.get_discounts?.is_used == true) {
+// 				var disAmount = data?.get_discounts?.amount
+
+// 				const discountReward = await rewardHistoryModel.create({
+// 					order_id: createdOrder.id,
+// 					credit_debit: true,
+// 					amount: disAmount,
+// 					reference_reward_id: 1,
+// 					reference_reward_type: 'discounts'
+// 				},{transaction: t});
+// 			}
+
+// 			// calculateOrderAndProductLoyalty(data,createdOrder,user,businessDetails,t);
+
+
+// 			// Old calculation where loyalty info was been received from frontend for calculation.
+// 			// if (data?.applied_loyalty_points && data?.applied_loyalty_points?.loyalty_id) {
+// 			// 	const loyaltyId = data?.applied_loyalty_points?.loyalty_id;
+// 			// 	const loyaltyDetail = await loyaltyPointsModel.findOne({ where: { id: loyaltyId } });
+// 			// 	let earnPoints;
+// 			// 	if (loyaltyDetail?.id) {
+// 			// 		if (loyaltyDetail.loyalty_type && !loyaltyDetail.points_redeemed) {
+// 			// 			const loyaltySupportProducts = loyaltyDetail?.product_id?.split(',') || [];
+// 			// 			const products = data?.products?.filter(product => loyaltySupportProducts.includes(product.product_id)) || [];
+// 			// 			if (products.length > 0) {
+// 			// 				earnPoints = loyaltyDetail.points_earned;
+// 			// 			}
+// 			// 		} else if (!loyaltyDetail.loyalty_type && !loyaltyDetail.points_redeemed){
+// 			// 			if (+(data.amount) > loyaltyDetail.amount) {
+// 			// 				earnPoints = loyaltyDetail.points_earned;
+// 			// 			}
+// 			// 		}
+// 			// 		const loayaltyReward = await rewardHistoryModel.create({
+// 			// 			order_id : createdOrder.id,
+// 			// 			credit_debit: true,
+// 			// 			amount: earnPoints,
+// 			// 			reference_reward_id: loyaltyId,
+// 			// 			reference_reward_type: 'loyalty_points'
+// 			// 		}, { transaction: t });
+// 			// 		if (loayaltyReward) {
+// 			// 			sendLoyaltyNotification = true;
+// 			// 		}
+// 			// 	}
+// 			// }
+
+// 			// Cashback
+// 			// if (data?.applied_cashback && data?.applied_cashback?.cashback_id && data?.applied_cashback?.amount) {
+// 			// 	const discountId = data?.applied_cashback?.cashback_id;
+// 			// 	const cashbackReward = await rewardHistoryModel.create({
+// 			// 		order_id: createdOrder.id,
+// 			// 		credit_debit: true,
+// 			// 		amount: cashbackAmount,
+// 			// 		reference_reward_id: discountId,
+// 			// 		reference_reward_type: 'cashbacks'
+// 			// 	}, { transaction: t });
+// 			// }
+
+// 			// Update user wallet loyalty points and cashback
+
+
+// 			// Earn Reward
+// 			// if (data?.earn_reward) {
+// 			// 	const rewardType = data?.earn_reward?.type;
+// 			// 	const rewardId = data?.earn_reward?.reference_reward_id;
+// 			// 	if (["coupones", "loyalty_points", "cashbacks", "discounts"].includes(rewardType)) {
+// 			// 		let rewardDetail;
+// 			// 		let rewardExpire;
+// 			// 		if (rewardType == "coupones") {
+// 			// 			rewardDetail = await couponesModel.findOne({ where: { id: rewardId } }); 
+// 			// 			rewardExpire = rewardDetail.expire_at;
+// 			// 		} else if (rewardType == "loyalty_points") {
+// 			// 			rewardDetail = await loyaltyPointsModel.findOne({ where: { id: rewardId } }); 
+// 			// 			rewardExpire = rewardDetail.validity;
+// 			// 		} else if (rewardType == "cashbacks") {
+// 			// 			rewardDetail = await cashbacksModel.findOne({ where: { id: rewardId } }); 
+// 			// 			rewardExpire = rewardDetail.validity_for;
+// 			// 		} else if (rewardType == "discounts") {
+// 			// 			rewardDetail = await discountsModel.findOne({ where: { id: rewardId } });
+// 			// 			rewardExpire = rewardDetail.validity_for;
+// 			// 		}
+// 			// 		if (rewardDetail) {
+// 			// 			const userEarnedReward = await userEarnedRewardsModel.create({
+// 			// 				user_id: user.id,
+// 			// 				reference_reward_id: rewardId,
+// 			// 				reference_reward_type: rewardType,
+// 			// 				expiry_date: rewardExpire
+// 			// 			},{ transaction: t });
+// 			// 		}
+// 			// 	}
+// 			// }
+
+
+// 			/** Send Device notifications order Placed*/
+// 			/** Send to user */
+// 			var Notificationdata = {
+// 				notification_type: NOTIFICATION_TYPES.PLACE_ORDER,
+// 				title: NOTIFICATION_TITLES.PLACE_ORDER_USER(),
+// 				message: NOTIFICATION_MESSAGE.PLACE_ORDER_USER(createdOrder?.order_no),
+// 				order_id: createdOrder.id,
+// 				user_id: user.id,
+// 				business_id: businessDetails.id
+// 			};
+// 			const notificationUserObj = {
+// 				role_id: businessDetails.role_id,
+// 				params: JSON.stringify(Notificationdata),
+// 				title: NOTIFICATION_TITLES.PLACE_ORDER_USER(),
+// 				message: NOTIFICATION_MESSAGE.PLACE_ORDER_USER(createdOrder?.order_no),
+// 				notification_type: NOTIFICATION_TYPES.PLACE_ORDER,
+// 			}
+// 			const notificationUser = await notificationModel.create(notificationUserObj,{transaction: t});
+// 			if(notificationUser && notificationUser.id) {
+// 				const notificationReceiverUserObj = {
+// 					role_id: businessDetails.role_id,
+// 					notification_id: notificationUser.id,
+// 					sender_id: businessDetails.id,
+// 					receiver_id: user.id,
+// 				}
+// 				const notificationReceiver = await notificationReceiverModel.create(notificationReceiverUserObj,{transaction: t});
+// 			}
+// 			/** FCM push noifiation */
+// 			const activeUserReceiverDevices = await deviceModel.findOne({where: {status: 1,user_id: user.id}},{attributes: ["device_token"]});
+// 			// const userDeviceTokensList = activeUserReceiverDevices.map((device) => device.device_token);
+// 			// const userUniqueDeviceTokens = Array.from(new Set(userDeviceTokensList));
+// 			const userNotificationPayload = {
+// 				device_token: activeUserReceiverDevices?.device_token,
+// 				title: NOTIFICATION_TITLES.PLACE_ORDER_USER(),
+// 				message: NOTIFICATION_MESSAGE.PLACE_ORDER_USER(createdOrder?.order_no),
+// 				content: {notification_type: NOTIFICATION_TYPES.PLACE_ORDER,notification_id: notificationUser?.id,title: NOTIFICATION_TITLES.PLACE_ORDER_USER(),message: NOTIFICATION_MESSAGE.PLACE_ORDER_USER(createdOrder?.order_no),order_id: createdOrder.id,user_id: user.id,business_id: businessDetails.id}
+// 			};
+// 			fcmNotification.SendNotification(userNotificationPayload);
+
+// 			/** Send to Business */
+// 			const notificationBusinessObj = {
+// 				params: JSON.stringify({notification_type: NOTIFICATION_TYPES.PLACE_ORDER,title: NOTIFICATION_TITLES.PLACE_ORDER_BUSINESS(),message: NOTIFICATION_MESSAGE.PLACE_ORDER_BUSINESS(createdOrder?.order_no),order_id: createdOrder.id,user_id: user.id,business_id: businessDetails.id}),
+// 				title: NOTIFICATION_TITLES.PLACE_ORDER_BUSINESS(),
+// 				message: NOTIFICATION_MESSAGE.PLACE_ORDER_BUSINESS(createdOrder?.order_no),
+// 				notification_type: NOTIFICATION_TYPES.PLACE_ORDER,
+// 			}
+// 			const notificationBusiness = await notificationModel.create(notificationBusinessObj,{transaction: t});
+// 			if(notificationBusiness && notificationBusiness.id) {
+// 				const notificationReceiverBusinessObj = {
+// 					role_id: businessDetails.role_id,
+// 					notification_id: notificationBusiness.id,
+// 					receiver_id: businessDetails.id,
+// 				}
+// 				const notificationReceiver = await notificationReceiverModel.create(notificationReceiverBusinessObj,{transaction: t});
+// 			}
+// 			/** FCM push noifiation */
+// 			const activeReceiverDevices = await deviceModel.findAll({where: {status: 1,business_id: businessDetails.id}},{attributes: ["device_token"]});
+// 			const deviceTokensList = activeReceiverDevices.map((device) => device.device_token);
+// 			const uniqueDeviceTokens = Array.from(new Set(deviceTokensList))
+// 			const businessNotificationPayload = {
+// 				device_token: uniqueDeviceTokens,
+// 				title: NOTIFICATION_TITLES.PLACE_ORDER_BUSINESS(),
+// 				message: NOTIFICATION_MESSAGE.PLACE_ORDER_BUSINESS(createdOrder?.order_no),
+// 				content: {notification_type: NOTIFICATION_TYPES.PLACE_ORDER,notification_id: notificationBusiness?.id,title: NOTIFICATION_TITLES.PLACE_ORDER_BUSINESS(),message: NOTIFICATION_MESSAGE.PLACE_ORDER_BUSINESS(createdOrder?.order_no),order_id: createdOrder.id,user_id: user.id,business_id: businessDetails.id}
+// 			};
+// 			fcmNotification.SendNotification(businessNotificationPayload);
+
+
+// 			/** Send User get discount Notifcation to Business User */
+// 			if(sendDiscountNotification) {
+// 				const notificationDiscountObj = {
+// 					params: JSON.stringify({notification_type: NOTIFICATION_TYPES.DISCOUNT_USE,title: NOTIFICATION_TITLES.GET_DISCOUNT_ORDER(),message: NOTIFICATION_MESSAGE.GET_DISCOUNT_ORDER(createdOrder?.order_no),order_id: createdOrder.id,user_id: user.id,business_id: businessDetails.id}),
+// 					title: NOTIFICATION_TITLES.GET_DISCOUNT_ORDER(),
+// 					message: NOTIFICATION_MESSAGE.GET_DISCOUNT_ORDER(createdOrder?.order_no),
+// 					notification_type: NOTIFICATION_TYPES.DISCOUNT_USE,
+// 				}
+// 				const notificationDiscount = await notificationModel.create(notificationDiscountObj,{transaction: t});
+// 				if(notificationDiscount && notificationDiscount.id) {
+// 					const notificationReceiverDiscountObj = {
+// 						role_id: businessDetails.role_id,
+// 						notification_id: notificationDiscount.id,
+// 						receiver_id: businessDetails.id,
+// 					}
+// 					const notificationDiscountReceiver = await notificationReceiverModel.create(notificationReceiverDiscountObj,{transaction: t});
+// 				}
+// 				/** FCM push noifiation */
+// 				const activeReceiverDevices = await deviceModel.findAll({where: {status: 1,business_id: businessDetails.id}},{attributes: ["device_token"]});
+// 				const deviceTokensList = activeReceiverDevices.map((device) => device.device_token);
+// 				const uniqueDeviceTokens = Array.from(new Set(deviceTokensList))
+// 				const discountNotificationPayload = {
+// 					device_token: uniqueDeviceTokens,
+// 					title: NOTIFICATION_TITLES.GET_DISCOUNT_ORDER(),
+// 					message: NOTIFICATION_MESSAGE.GET_DISCOUNT_ORDER(createdOrder?.order_no),
+// 					content: {notification_type: NOTIFICATION_TYPES.DISCOUNT_USE,notification_id: notificationDiscount?.id,title: NOTIFICATION_TITLES.GET_DISCOUNT_ORDER(),message: NOTIFICATION_MESSAGE.GET_DISCOUNT_ORDER(createdOrder?.order_no),discount_id: data?.applied_discount?.discount_id,business_id: businessDetails.id}
+// 				};
+// 				fcmNotification.SendNotification(discountNotificationPayload);
+// 			}
+
+// 			calculateOrderAndProductLoyalty(data,createdOrder,user,businessDetails);
+// 			calculateOrderAndProductCashback(data,createdOrder,user);
+
+
+
+
+// 			if(data.business_id && user.id) {
+// 				let followedBusiness = await models.follow_unfollow_businesses.findOne({
+// 					where: {
+// 						user_id: user.id,
+// 						business_id: data.business_id,
+// 						status: true
+// 					}
+// 				});
+// 				if(followedBusiness && !_.isNull(followedBusiness)) {
+// 					let loyaltycardData = await models.loyalty_token_cards.findOne({
+// 						where: {
+// 							business_id: followedBusiness.business_id,
+// 							is_deleted: false,
+// 							status: true
+// 						}
+// 					});
+// 					const loyaltyHistoryModel = models.loyalty_token_card_history
+// 					const loyaltyCardHistory = await loyaltyHistoryModel.findAndCountAll({
+// 						where: {
+// 							status: true,
+// 							is_deleted: false,
+// 							user_id: user?.id,
+// 							//business_id: data.business_id,
+// 							loyalty_token_card_id: loyaltycardData.id
+// 						}
+// 					})
+// 					console.log(parseInt(loyaltycardData.min_purchase_amount))
+// 					console.log(parseInt(data.amount))
+// 					console.log(parseInt(loyaltycardData.min_purchase_amount) <= parseInt(data.amount))
+// 					if(parseInt(data.amount) && parseInt(loyaltycardData.min_purchase_amount) <= parseInt(data.amount) && parseInt(loyaltycardData.no_of_tokens) <= parseInt(loyaltyCardHistory?.count)) {
+// 						await models.loyalty_token_card_history.create({
+// 							user_id: user.id,
+// 							business_id: loyaltycardData.business_id,
+// 							order_id: createdOrder?.id,
+// 							loyalty_token_card_id: loyaltycardData.id,
+// 							order_no: createdOrder?.order_no
+// 						});
+// 					}
+// 				}
+// 			}
+// 			await t.commit();
+// 			return res.send(setRes(resCode.OK,true,'Order Created Successfully!',createdOrder));
+// 		} else {
+// 			return res.send(setRes(resCode.BadRequest,false,(requiredFields.toString() + ' are required'),null));
+// 		}
+// 	} catch(error) {
+// 		await t.rollback();
+// 		return res.send(setRes(resCode.BadRequest,false,error?.message || "Something went wrong","",null))
+// 	}
+// }
+
+
 
 /**
  * Order Products loyalty and Order Loyalty calculation on the given order.
@@ -1737,8 +2201,6 @@ const calculateOrderAndProductLoyalty = async (data,createdOrder,user,businessDe
 				}
 			}
 		}
-
-
 
 		if(loyaltyProducts?.length) {
 			for await(const businessProductLoyalty of loyaltyProducts) {
@@ -2022,130 +2484,346 @@ const sendCashbackReceivedNotification = async (user,createdOrder,cashbackReward
 }
 
 
+// exports.updateOrderStatus = async (req,res) => {
+// 	const t = await models.sequelize.transaction();
+// 	try {
+// 		const data = req.body;
+// 		const Op = models.Op;
+// 		const orderModel = models.orders;
+// 		const userModel = models.user;
+
+// 		const notificationModel = models.notifications;
+// 		const notificationReceiverModel = models.notification_receivers;
+// 		const deviceModel = models.device_tokens;
+// 		const rewardHistoryModel = models.reward_history;
+
+// 		const businessUser = req?.user;
+
+// 		// To update user's wallet values store 
+// 		let user_loyalty = 0,user_cashback = 0;
+
+// 		const requiredFields = _.reject(["order_status","order_id"],(o) => {return _.has(data,o)});
+// 		if([2,3].includes(data.order_status)) {
+// 			return res.send(setRes(resCode.BadRequest,false,'provide valid Order status',null));
+// 		}
+// 		if(requiredFields == '') {
+// 			const orderDetails = await orderModel.findOne({where: {id: data.order_id}});
+// 			const userDetails = await userModel.findOne({where: {id: orderDetails.user_id}})
+
+// 			const updateOrder = await orderModel.update({order_status: data.order_status},{where: {id: data.order_id}},{transaction: t})
+// 			if(data.order_status == 3) {
+// 				const userWalletAmounts = await userModel.findOne({where: {id: orderDetails.user_id},attributes: ["total_loyalty_points","total_cashbacks"]});
+// 				const rewardsAdded = await rewardHistoryModel.findAll({
+// 					where: {
+// 						order_id: data.order_id,
+// 						reference_reward_type: {[Op.in]: ['loyalty_points','cashbacks']},
+// 						credit_debit: true,
+// 					}
+// 				});
+
+// 				if(rewardsAdded?.length > 0) {
+// 					for(const reward of rewardsAdded) {
+// 						if(reward.reference_reward_type == 'loyalty_points') {
+// 							user_loyalty += +(reward.amount) || 0;
+// 						}
+// 						if(reward.reference_reward_type == 'cashbacks') {
+// 							user_cashback += +(reward.amount) || 0;
+// 						}
+// 					}
+// 				}
+
+// 				const userCashbackLoyaltyPointUpdate = await userModel.update({
+// 					total_loyalty_points: models.sequelize.literal(`total_loyalty_points + ${user_loyalty}`),
+// 					total_cashbacks: models.sequelize.literal(`total_cashbacks + ${user_cashback}`)
+// 				},
+// 					{
+// 						where: {
+// 							id: orderDetails.user_id
+// 						}
+// 					},{transaction: t});
+
+// 				/** Send Device notifications order Placed*/
+// 				/** Send to user */
+// 				const notificationUserObj = {
+// 					role_id: businessUser.role_id,
+// 					params: JSON.stringify({notification_type: NOTIFICATION_TYPES.ORDER_DELIVERED,title: NOTIFICATION_TITLES.ORDER_DELIVERED_USER(),message: NOTIFICATION_MESSAGE.ORDER_DELIVERED_USER(orderDetails?.order_no),order_id: orderDetails.id,user_id: orderDetails.user_id,business_id: businessUser.id}),
+// 					title: NOTIFICATION_TITLES.ORDER_DELIVERED_USER(),
+// 					message: NOTIFICATION_MESSAGE.ORDER_DELIVERED_USER(orderDetails?.order_no),
+// 					notification_type: NOTIFICATION_TYPES.ORDER_DELIVERED,
+// 				}
+// 				const notificationUser = await notificationModel.create(notificationUserObj);
+// 				if(notificationUser && notificationUser.id) {
+// 					const notificationReceiverUserObj = {
+// 						role_id: userDetails.role_id,
+// 						notification_id: notificationUser.id,
+// 						sender_id: businessUser.id,
+// 						receiver_id: userDetails.id,
+// 					}
+// 					const notificationReceiver = await notificationReceiverModel.create(notificationReceiverUserObj);
+// 				}
+// 				/** FCM push noifiation */
+// 				const activeUserReceiverDevices = await deviceModel.findAll({where: {status: 1,user_id: orderDetails.user_id}},{attributes: ["device_token"]});
+// 				const userDeviceTokensList = activeUserReceiverDevices.map((device) => device.device_token);
+// 				const userUniqueDeviceTokens = Array.from(new Set(userDeviceTokensList));
+// 				const userNotificationPayload = {
+// 					device_token: userUniqueDeviceTokens,
+// 					title: NOTIFICATION_TITLES.ORDER_DELIVERED_USER(),
+// 					message: NOTIFICATION_MESSAGE.ORDER_DELIVERED_USER(orderDetails?.order_no),
+// 					content: {notification_type: NOTIFICATION_TYPES.ORDER_DELIVERED,notification_id: notificationUser?.id,title: NOTIFICATION_TITLES.ORDER_DELIVERED_USER(),message: NOTIFICATION_MESSAGE.ORDER_DELIVERED_USER(orderDetails?.order_no),order_id: orderDetails.id,user_id: orderDetails.user_id,business_id: businessUser.id}
+// 				};
+// 				fcmNotification.SendNotification(userNotificationPayload);
+
+// 				/** Send to Business */
+// 				const notificationBusinessObj = {
+// 					params: JSON.stringify({notification_type: NOTIFICATION_TYPES.ORDER_DELIVERED,title: NOTIFICATION_TITLES.ORDER_DELIVERED_BUSINESS(),message: NOTIFICATION_MESSAGE.ORDER_DELIVERED_BUSINESS(orderDetails?.order_no),order_id: orderDetails.id,user_id: orderDetails.user_id,business_id: businessUser.id}),
+// 					title: NOTIFICATION_TITLES.ORDER_DELIVERED_BUSINESS(),
+// 					message: NOTIFICATION_MESSAGE.ORDER_DELIVERED_BUSINESS(orderDetails?.order_no),
+// 					notification_type: NOTIFICATION_TYPES.ORDER_DELIVERED,
+// 				}
+// 				const notificationBusiness = await notificationModel.create(notificationBusinessObj);
+// 				if(notificationBusiness && notificationBusiness.id) {
+// 					const notificationReceiverBusinessObj = {
+// 						role_id: businessUser.role_id,
+// 						notification_id: notificationBusiness.id,
+// 						receiver_id: businessUser.id,
+// 					}
+// 					const notificationReceiver = await notificationReceiverModel.create(notificationReceiverBusinessObj);
+// 				}
+// 				/** FCM push noifiation */
+// 				const activeReceiverDevices = await deviceModel.findAll({where: {status: 1,business_id: businessUser.id}},{attributes: ["device_token"]});
+// 				const deviceTokensList = activeReceiverDevices.map((device) => device.device_token);
+// 				const uniqueDeviceTokens = Array.from(new Set(deviceTokensList))
+// 				const businessNotificationPayload = {
+// 					device_token: uniqueDeviceTokens,
+// 					title: NOTIFICATION_TITLES.ORDER_DELIVERED_BUSINESS(),
+// 					message: NOTIFICATION_MESSAGE.ORDER_DELIVERED_BUSINESS(orderDetails?.order_no),
+// 					content: {notification_type: NOTIFICATION_TYPES.ORDER_DELIVERED,notification_id: notificationBusiness?.id,title: NOTIFICATION_TITLES.ORDER_DELIVERED_BUSINESS(),message: NOTIFICATION_MESSAGE.ORDER_DELIVERED_BUSINESS(orderDetails?.order_no),order_id: orderDetails.id,user_id: orderDetails.user_id,business_id: businessUser.id}
+// 				};
+// 				fcmNotification.SendNotification(businessNotificationPayload);
+// 			}
+// 			await t.commit();
+// 			return res.send(setRes(resCode.OK,true,'Order status updated.',{order_id: data.order_id}));
+// 		} else {
+// 			return res.send(setRes(resCode.BadRequest,false,(requiredFields.toString() + ' are required'),null));
+// 		}
+// 	} catch(error) {
+// 		await t.rollback();
+// 		return res.send(setRes(resCode.BadRequest,false,"Something went wrong","",null))
+// 	}
+// }
+
+
 exports.updateOrderStatus = async (req,res) => {
-	const t = await models.sequelize.transaction();
 	try {
 		const data = req.body;
 		const Op = models.Op;
 		const orderModel = models.orders;
+		const orderDetailsModel = models.order_details;
 		const userModel = models.user;
-
-		const notificationModel = models.notifications;
-		const notificationReceiverModel = models.notification_receivers;
-		const deviceModel = models.device_tokens;
+		var statusesModel = models.statuses
 		const rewardHistoryModel = models.reward_history;
-
 		const businessUser = req?.user;
-
+		const couponModel = models.coupones;
 		// To update user's wallet values store 
 		let user_loyalty = 0,user_cashback = 0;
 
 		const requiredFields = _.reject(["order_status","order_id"],(o) => {return _.has(data,o)});
-		if([2,3].includes(data.order_status)) {
-			return res.send(setRes(resCode.BadRequest,false,'provide valid Order status',null));
-		}
+		//if([2,3].includes(data.order_status)) {
+		//	return res.send(setRes(resCode.BadRequest,false,'provide valid Order status',null));
+		//}
 		if(requiredFields == '') {
 			const orderDetails = await orderModel.findOne({where: {id: data.order_id}});
 			const userDetails = await userModel.findOne({where: {id: orderDetails.user_id}})
-
-			const updateOrder = await orderModel.update({order_status: data.order_status},{where: {id: data.order_id}},{transaction: t})
-			if(data.order_status == 3) {
-				const userWalletAmounts = await userModel.findOne({where: {id: orderDetails.user_id},attributes: ["total_loyalty_points","total_cashbacks"]});
-				const rewardsAdded = await rewardHistoryModel.findAll({
+			const productDetails = await models.products.findOne({where: {id: data.product_id}})
+			var updateOrder = null;
+			var orderStatus = await statusesModel.findOne({
+				where: {
+					id: data.order_status
+				}
+			});
+			//if(data.order_status) {
+			//}
+			if(data.product_id && !_.isNull(data.product_id)) {
+				const updateOrder = await orderDetailsModel.update(data,{
 					where: {
 						order_id: data.order_id,
-						reference_reward_type: {[Op.in]: ['loyalty_points','cashbacks']},
-						credit_debit: true,
+						product_id: data.product_id
 					}
 				});
 
-				if(rewardsAdded?.length > 0) {
-					for(const reward of rewardsAdded) {
-						if(reward.reference_reward_type == 'loyalty_points') {
-							user_loyalty += +(reward.amount) || 0;
-						}
-						if(reward.reference_reward_type == 'cashbacks') {
-							user_cashback += +(reward.amount) || 0;
-						}
+				const allOrderedProducts = await orderDetailsModel.findAndCountAll({
+					where: {
+						order_id: data.order_id,
+					}
+				});
+
+				const allOrderedProductsUpdated = await orderDetailsModel.findAndCountAll({
+					where: {
+						order_id: data.order_id,
+						order_status: data.order_status
+					}
+				});
+
+				const isLastProduct = allOrderedProducts?.count === allOrderedProductsUpdated?.count && allOrderedProducts.count > 0;
+
+				if(updateOrder) {                                                                                                                                                   
+					if(isLastProduct && (data.order_status == 4 || data.order_status == 8)) {
+						const orderStatusForAllProduct = await orderModel.update(data,{
+							where: {
+								id: data.order_id
+							}
+						});
+						sendOrderTrackNotificationToUser(productDetails,orderDetails,orderStatus,userDetails,businessUser)
+						console.log("hello"); // Replace this with your notification function for the last product
+					} else if(allOrderedProducts.count > 1) {
+						sendOrderProductTrackNotificationToUser(productDetails,orderDetails,orderStatus,userDetails,businessUser)
+						console.log("hi"); // Replace this with your notification function for the first three products
 					}
 				}
+				//updateOrder = await orderDetailsModel.update(data,{
+				//	where: {
+				//		order_id: data.order_id,
+				//		product_id: data.product_id
+				//	}
+				//});
+				//if(updateOrder) {
+				//	sendOrderProductTrackNotificationToUser(productDetails,orderDetails,orderStatus,userDetails,businessUser)
+				//}
 
-				const userCashbackLoyaltyPointUpdate = await userModel.update({
-					total_loyalty_points: models.sequelize.literal(`total_loyalty_points + ${user_loyalty}`),
-					total_cashbacks: models.sequelize.literal(`total_cashbacks + ${user_cashback}`)
-				},
-					{
-						where: {
-							id: orderDetails.user_id
-						}
-					},{transaction: t});
+				//var allOrderedProducts = await orderDetailsModel.findAndCountAll({
+				//	where: {
+				//		order_id: data.order_id,
+				//	}
+				//});
 
-				/** Send Device notifications order Placed*/
-				/** Send to user */
-				const notificationUserObj = {
-					role_id: businessUser.role_id,
-					params: JSON.stringify({notification_type: NOTIFICATION_TYPES.ORDER_DELIVERED,title: NOTIFICATION_TITLES.ORDER_DELIVERED_USER(),message: NOTIFICATION_MESSAGE.ORDER_DELIVERED_USER(orderDetails?.order_no),order_id: orderDetails.id,user_id: orderDetails.user_id,business_id: businessUser.id}),
-					title: NOTIFICATION_TITLES.ORDER_DELIVERED_USER(),
-					message: NOTIFICATION_MESSAGE.ORDER_DELIVERED_USER(orderDetails?.order_no),
-					notification_type: NOTIFICATION_TYPES.ORDER_DELIVERED,
-				}
-				const notificationUser = await notificationModel.create(notificationUserObj);
-				if(notificationUser && notificationUser.id) {
-					const notificationReceiverUserObj = {
-						role_id: userDetails.role_id,
-						notification_id: notificationUser.id,
-						sender_id: businessUser.id,
-						receiver_id: userDetails.id,
-					}
-					const notificationReceiver = await notificationReceiverModel.create(notificationReceiverUserObj);
-				}
-				/** FCM push noifiation */
-				const activeUserReceiverDevices = await deviceModel.findAll({where: {status: 1,user_id: orderDetails.user_id}},{attributes: ["device_token"]});
-				const userDeviceTokensList = activeUserReceiverDevices.map((device) => device.device_token);
-				const userUniqueDeviceTokens = Array.from(new Set(userDeviceTokensList));
-				const userNotificationPayload = {
-					device_token: userUniqueDeviceTokens,
-					title: NOTIFICATION_TITLES.ORDER_DELIVERED_USER(),
-					message: NOTIFICATION_MESSAGE.ORDER_DELIVERED_USER(orderDetails?.order_no),
-					content: {notification_type: NOTIFICATION_TYPES.ORDER_DELIVERED,notification_id: notificationUser?.id,title: NOTIFICATION_TITLES.ORDER_DELIVERED_USER(),message: NOTIFICATION_MESSAGE.ORDER_DELIVERED_USER(orderDetails?.order_no),order_id: orderDetails.id,user_id: orderDetails.user_id,business_id: businessUser.id}
-				};
-				fcmNotification.SendNotification(userNotificationPayload);
+				//var allOrderedProductsUpdated = await orderDetailsModel.findAndCountAll({
+				//	where: {
+				//		order_id: data.order_id,
+				//		order_status: data.order_status
+				//	}
+				//});
 
-				/** Send to Business */
-				const notificationBusinessObj = {
-					params: JSON.stringify({notification_type: NOTIFICATION_TYPES.ORDER_DELIVERED,title: NOTIFICATION_TITLES.ORDER_DELIVERED_BUSINESS(),message: NOTIFICATION_MESSAGE.ORDER_DELIVERED_BUSINESS(orderDetails?.order_no),order_id: orderDetails.id,user_id: orderDetails.user_id,business_id: businessUser.id}),
-					title: NOTIFICATION_TITLES.ORDER_DELIVERED_BUSINESS(),
-					message: NOTIFICATION_MESSAGE.ORDER_DELIVERED_BUSINESS(orderDetails?.order_no),
-					notification_type: NOTIFICATION_TYPES.ORDER_DELIVERED,
-				}
-				const notificationBusiness = await notificationModel.create(notificationBusinessObj);
-				if(notificationBusiness && notificationBusiness.id) {
-					const notificationReceiverBusinessObj = {
-						role_id: businessUser.role_id,
-						notification_id: notificationBusiness.id,
-						receiver_id: businessUser.id,
-					}
-					const notificationReceiver = await notificationReceiverModel.create(notificationReceiverBusinessObj);
-				}
-				/** FCM push noifiation */
-				const activeReceiverDevices = await deviceModel.findAll({where: {status: 1,business_id: businessUser.id}},{attributes: ["device_token"]});
-				const deviceTokensList = activeReceiverDevices.map((device) => device.device_token);
-				const uniqueDeviceTokens = Array.from(new Set(deviceTokensList))
-				const businessNotificationPayload = {
-					device_token: uniqueDeviceTokens,
-					title: NOTIFICATION_TITLES.ORDER_DELIVERED_BUSINESS(),
-					message: NOTIFICATION_MESSAGE.ORDER_DELIVERED_BUSINESS(orderDetails?.order_no),
-					content: {notification_type: NOTIFICATION_TYPES.ORDER_DELIVERED,notification_id: notificationBusiness?.id,title: NOTIFICATION_TITLES.ORDER_DELIVERED_BUSINESS(),message: NOTIFICATION_MESSAGE.ORDER_DELIVERED_BUSINESS(orderDetails?.order_no),order_id: orderDetails.id,user_id: orderDetails.user_id,business_id: businessUser.id}
-				};
-				fcmNotification.SendNotification(businessNotificationPayload);
+				//if(allOrderedProducts?.count == allOrderedProductsUpdated?.count) {
+				//	var orderStatusForAllProduct = await orderModel.update(data,{
+				//		where: {
+				//			id: data.order_id
+				//		}
+				//	});
+				//	if(orderStatusForAllProduct && (data.order_status == 4 || data.order_status == 8)) {
+				//		sendOrderTrackNotificationToUser(orderDetails,orderStatus,userDetails,businessUser)
+				//	}
+				//}
 			}
-			await t.commit();
-			return res.send(setRes(resCode.OK,true,'Order status updated.',{order_id: data.order_id}));
+
+			var oneBusinessOrderDetails = await orderDetailsModel.findOne({
+				where: {
+					order_id: data.order_id,
+					product_id: data.product_id
+				},
+				include: [
+					{
+						model: models.products,
+						required: true,
+						attributes: ['id','image','name','price','category_id','sub_category_id','product_item'],
+						include: [{
+							model: models.product_categorys,
+							as: 'product_categorys',
+							attributes: ['name','id']
+						},
+						{
+							model: models.product_categorys,
+							as: 'sub_category',
+							attributes: ['name','id']
+						}
+						]
+					},
+					{
+						model: orderModel
+					}
+				]
+			});
+
+			var isFree = false;
+			var isFob = false;
+			const userCouponModel = models.user_coupons;
+			const onOrderCoupon = await userCouponModel.findOne({
+				where: {
+					order_id: data.order_id,
+				},
+			});
+			if(onOrderCoupon) {
+				var couponData = await couponModel.findOne({
+					where: {
+						id: onOrderCoupon.coupon_id,
+						isDeleted: false,
+						status: true,
+						coupon_type: false,
+						product_id: {
+							[Op.regexp]: `(^|,)${data.product_id}(,|$)`,
+						}
+					}
+				});
+				if(!(_.isNull(couponData))) {
+					isFree = true;
+					isFob = true;
+				}
+			}
+			oneBusinessOrderDetails.dataValues.is_free = isFree
+			if(oneBusinessOrderDetails.dataValues.is_loyalty_product) {
+				isFob = true
+			}
+			var productStatus = await statusesModel.findOne({
+				where: {
+					id: data.order_status,
+					//is_deleted: false,
+					//status: true
+				}
+			});
+			var orderStatus = await statusesModel.findOne({
+				where: {
+					id: oneBusinessOrderDetails?.order?.order_status,
+					//is_deleted: false,
+					//status: true
+				}
+			});
+			var orderStatuses = productStatus;
+			oneBusinessOrderDetails.dataValues.orderStatuses = orderStatuses;
+			oneBusinessOrderDetails.dataValues.orderDetailStatus = orderStatus;
+			oneBusinessOrderDetails.dataValues.category_id = oneBusinessOrderDetails?.product?.category_id;
+			oneBusinessOrderDetails.dataValues.category_name = oneBusinessOrderDetails?.product?.product_categorys?.name;
+			oneBusinessOrderDetails.dataValues.product_type = oneBusinessOrderDetails?.product?.sub_category?.name;
+			oneBusinessOrderDetails.dataValues.total_rating = oneBusinessOrderDetails?.product?.total_rating;
+			oneBusinessOrderDetails.dataValues.cost_price = oneBusinessOrderDetails?.product?.cost_price;
+			oneBusinessOrderDetails.dataValues.description = oneBusinessOrderDetails?.product?.description;
+			oneBusinessOrderDetails.dataValues.name = oneBusinessOrderDetails?.product?.name;
+			oneBusinessOrderDetails.dataValues.price = oneBusinessOrderDetails?.product?.price;
+			oneBusinessOrderDetails.dataValues.product_code = oneBusinessOrderDetails?.product?.product_code;
+			oneBusinessOrderDetails.dataValues.product_item = oneBusinessOrderDetails?.product?.product_item;
+			oneBusinessOrderDetails.dataValues.supplier = oneBusinessOrderDetails?.product?.supplier;
+			let product_images = oneBusinessOrderDetails?.product?.image
+			const image_array = [];
+			if(product_images != null) {
+				for(const data of product_images) {
+					const signurl = await awsConfig.getSignUrl(data).then(function(res) {
+						image_array.push(res);
+					});
+				}
+			} else {
+				image_array.push(commonConfig.default_image)
+			}
+
+			oneBusinessOrderDetails.dataValues.product_images = image_array
+			oneBusinessOrderDetails.dataValues.is_history = ((orderStatus?.id == 4) || (orderStatus?.id == 8) || (orderStatus?.id == 5) || (orderStatus?.id == 12)) ? true : false,
+				delete oneBusinessOrderDetails.dataValues.product;
+			delete oneBusinessOrderDetails.dataValues.order;
+
+
+			return res.send(setRes(resCode.OK,true,'Order status updated.',oneBusinessOrderDetails));
 		} else {
 			return res.send(setRes(resCode.BadRequest,false,(requiredFields.toString() + ' are required'),null));
 		}
 	} catch(error) {
-		await t.rollback();
+		console.log(error)
 		return res.send(setRes(resCode.BadRequest,false,"Something went wrong","",null))
 	}
 }

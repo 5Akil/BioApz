@@ -32,7 +32,6 @@ exports.loyaltyTokenCardCreate = async (req, res) => {
                         is_active: true
                     }
                 }).then(async business => {
-                    // console.log(business,'<<<<<<,');
                     if (_.isEmpty(business)) {
                         return res.send(setRes(resCode.ResourceNotFound, false, "Business not found.", null))
                     } else {
@@ -45,11 +44,9 @@ exports.loyaltyTokenCardCreate = async (req, res) => {
                                 }
                             }
                         }).then(async (loyaltiCard) => {
-                            // console.log(loyaltiCard,'<<<<<<<<<<<<<');
                             if (loyaltiCard) {
                                 return res.send(setRes(resCode.BadRequest, false, "loyalty card name already taken.!", null))
                             } else {
-                                // console.log(loyaltiCardData,'<<<<<<<<');
                                 loyaltyCardModel.create(data).then((loyaltiCardData) => {
                                     if (loyaltiCardData) {
                                         return res.send(setRes(resCode.OK, true, "Loyalty card published successfully", loyaltiCardData))
@@ -159,8 +156,14 @@ exports.loyaltyTokenCardList = async (req, res) => {
                 business_id,
                 status: true,
                 is_Deleted: false,
+                ...(data.search && {
+                    [Op.or]: [{ name: { [Op.like]: `%${data.search}%` } }]
+                }),
             },
-            include: [{ model: models.loyalty_token_icon, attributes: ['default_image', 'active_image'] }],
+            include: [
+                { model: models.products },
+                { model: models.loyalty_token_icon, attributes: ['default_image', 'active_image'] }
+            ],
             order: [
                 ['created_at', 'DESC']
             ],
@@ -169,11 +172,14 @@ exports.loyaltyTokenCardList = async (req, res) => {
         if (data.page_size != 0 && !_.isEmpty(data.page_size)) {
             (condition.offset = skip), (condition.limit = limit);
         }
-
+        
 
         loyaltyCardModel.findAndCountAll(condition).then(async loyaltiCardData => {
             if (loyaltiCardData.rows.length != 0) {
                 for (const item of loyaltiCardData.rows) {
+                    item.dataValues.product_name = item.product.name
+                    delete item.dataValues.product
+
                     if (item.loyalty_token_icon.default_image !== null) {
                         await awsConfig
                             .getSignUrl(item.loyalty_token_icon.default_image)
@@ -197,7 +203,7 @@ exports.loyaltyTokenCardList = async (req, res) => {
                 )
                 return res.send(setRes(resCode.OK, true, "Loyalty cards List.", response.getPaginationInfo()));
             } else {
-                return res.send(setRes(resCode.BadRequest, false, "There is no active loyalty card now", null))
+                return res.send(setRes(resCode.BadRequest, false, "There is no loyalty card", null))
             }
         })
     } catch (error) {
@@ -206,16 +212,17 @@ exports.loyaltyTokenCardList = async (req, res) => {
 }
 exports.loyaltyTokenCardPerformance = async (req, res) => {
     try {
-        const data = req.body
-        const sequelize = models.sequelize
-        const loyaltyCardModel = models.loyalty_token_cards
-        const loyaltyCardFreeProductModel = models.loyalty_token_claim_product
-        const loyaltyHistoryModel = models.loyalty_token_card_history
+        const data = req.body;
+        const business = req.user;
+        const sequelize = models.sequelize;
+        const loyaltyCardModel = models.loyalty_token_cards;
+        const loyaltyCardFreeProductModel = models.loyalty_token_claim_product;
+        const loyaltyHistoryModel = models.loyalty_token_card_history;
         const completedUsers = [];
         const onGoingUsers = [];
-        var requiredFields = _.reject(['loyalty_token_card_id'], (o) => { return _.has(data, o) })
+        var requiredFields = _.reject(['loyalty_token_card_id'], (o) => { return _.has(data, o) });
         if (requiredFields == '') {
-            const { no_of_tokens } = await loyaltyCardModel.findOne({ where: { id: data.loyalty_token_card_id, is_Deleted: false, status: true } })
+            const loyaltyCard = await loyaltyCardModel.findOne({ where: { id: data.loyalty_token_card_id, business_id: business.id, is_Deleted: false, status: true } });
             loyaltyHistoryModel.findAll({
                 where: {
                     loyalty_token_card_id: data.loyalty_token_card_id,
@@ -229,27 +236,28 @@ exports.loyaltyTokenCardPerformance = async (req, res) => {
                 group: ['user_id'],
             }).then((data) => {
                 for (const item of data) {
-                    if (item.dataValues.totalEntries == no_of_tokens) {
+                    if (item.dataValues.totalEntries == loyaltyCard.no_of_tokens) {
                         completedUsers.push(item)
-                    } else if (item.dataValues.totalEntries < no_of_tokens) {
+                    } else if (item.dataValues.totalEntries < loyaltyCard.no_of_tokens) {
                         onGoingUsers.push(item)
-                    }
-                }
-            })
+                    };
+                };
+            });
             const claimedProductuser = await loyaltyCardFreeProductModel.findAll({
                 where: { loyalty_token_card_id: data.loyalty_token_card_id, is_Deleted: false, status: true, is_claimed: true }
-            })
+            });
             const responseBody = {
                 totalOnGoingUsers: onGoingUsers.length,
                 totalCompletedUsers: completedUsers.length,
                 productClaimed: claimedProductuser.length
-            }
-            return res.send(setRes(resCode.OK, true, "Data fetched succcessfully", responseBody))
+            };
+            return res.send(setRes(resCode.OK, true, "Data fetched succcessfully", [responseBody]));
         } else {
-            return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null))
+            return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' are required'), null));
         }
     } catch (error) {
-        return res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null))
+        console.log(error);
+        return res.send(setRes(resCode.BadRequest, false, "Something went wrong!", null));
     }
 }
 

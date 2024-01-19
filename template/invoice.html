@@ -1,0 +1,437 @@
+<!-- <!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <title>Order Details</title>
+  <link rel="stylesheet" href="/public/style/invoiceStyle.css">
+  <style>
+    .top_rw {
+      background-color: #f4f4f4;
+    }
+
+    .invoice-box {
+      max-width: 890px;
+      margin: auto;
+      padding: 10px;
+      border: 1px solid #eee;
+      box-shadow: 0 0 10px rgba(0, 0, 0, .15);
+      font-size: 14px;
+      line-height: 24px;
+      font-family: 'Helvetica Neue', 'Helvetica', Helvetica, Arial, sans-serif;
+      color: #555;
+    }
+
+    .invoice-box table {
+      width: 100%;
+      line-height: inherit;
+      text-align: left;
+    }
+
+    .invoice-box table td {
+      padding: 5px;
+      vertical-align: top;
+    }
+
+    .invoice-box table tr.information table td {
+      padding: 20px 5px 20px 5px;
+    }
+
+    .invoice-box table tr.heading td {
+      background: #eee;
+      border-bottom: 1px solid #ddd;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    td,
+    th {
+      min-width: 3em;
+      max-width: 3em;
+      overflow-wrap: break-word;
+    }
+
+    .invoice-box table tr.item td {
+      border-bottom: 1px solid #eee;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="invoice-box">
+    <table cellpadding="0" cellspacing="0">
+      <tr style="vertical-align: middle;">
+        <td colspan="2">
+          <img src="https://bioapz.s3.amazonaws.com/logos/logo.jpg" style="height: 100px;" alt="">
+        </td>
+        <td style="text-align: right;">
+          <p style="margin-left: 10px; padding: 10px;">Invoice / Cash Memo <br>
+            <span>(Original for Recipient)</span>
+          </p>
+        </td>
+      </tr>
+      <tr class="top_rw">
+        <td colspan="2" style="padding-left: 15px;">
+          <h4 style="margin: 0px; font-weight: 500;"> Invoice No. </h4>
+          <span style="font-weight: bold;"> {{data.invoice_no}} </span>
+        </td>
+        <td colspan="2" style="text-align: right; padding-right: 20px;">
+          <h5 style="margin: 0px; font-size: 12px; font-weight: 500;"> Order No: <b> {{data.order_no}} </b> </h5>
+          <span style="margin: 0px; font-size: 12px;"> Order Date: <b>{{data.order_date}}</b></span style="margin: 0;">
+        </td>
+      </tr>
+      <tr class="information">
+        <td colspan="3">
+          <table>
+            <tr style="vertical-align: top;">
+              <td style="width: 50%;">
+                <b> Sold By: <br>
+                  {{data.business.dataValues.business_name}} </b> <br />
+                {{data.business.dataValues.address}}
+              </td>
+              <td style="width: 50%; text-align: right;">
+                <b> Billing Address: <br />
+                  {{data.user.dataValues.username}}</b> <br />
+                {{data.user.dataValues.address}}
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <td colspan="3">
+        <table cellspacing="0px" cellpadding="2px">
+          {{#ifCond data.is_pickup "!==" false}}
+          <tr>
+            <td>
+              <b> Pickup Time </b> : Within a {{data.pickup_time}}
+              
+            </td>
+          </tr>
+          {{/ifCond}}
+          <tr class="heading">
+            <td style="width:25%;">
+              ITEMS
+            </td>
+            <td style="width:10%; text-align:right;">
+              PRICE
+            </td>
+            <td style="width:10%; text-align:center;">
+              QTY
+            </td>
+            <td style="width:10%; text-align:right;">
+              TOTAL
+            </td>
+          </tr>
+          {{#each data.order_details}}
+          <tr class="item">
+            <td style="width:25%;">
+              {{this.dataValues.name}} <br>
+            </td>
+            <td style="width:10%; text-align:right;">
+              ${{this.dataValues.price}}
+            </td>
+            <td style="width:10%; text-align:center;">
+              {{this.dataValues.qty}}
+            </td>
+            <td style="width:10%; text-align:right;">
+              ${{this.dataValues.productTotal}}
+            </td>
+          </tr>
+          {{/each}}
+          {{#ifCond data.discount_total "!==" '0.00'}}
+          <tr>
+            <td style="width:25%;" colspan="3"> <b> Total </b> </td>
+            <td style="width:10%; text-align:right;">
+              ${{data.product_total}}
+            </td>
+          </tr>
+          <tr>
+            <td style="width:25%;" colspan="3"> <b> Discount </b> </td>
+            <td style="width:10%; text-align:right;">
+              ${{data.discount_total}}
+            </td>
+          </tr>
+          {{/ifCond}}
+          <tr class="item">
+            <td style="width:25%;" colspan="3"> <b> Grand Total </b> </td>
+            <td style="width:10%; text-align:right; font-weight: bold;">
+              ${{data.grand_total}}
+            </td>
+          </tr>
+      </td>
+    </table>
+    <tr>
+      <td colspan="3">
+        <table cellspacing="0px" cellpadding="2px">
+          <tr>
+            <td width="50%">
+              <b> Declaration: </b> <br>
+              We declare that this invoice shows the actual price of the goods
+              described above and that all particulars are true and correct. The
+              goods sold are intended for end user consumption and not for resale.
+            </td>
+            <td style="vertical-align: middle;">
+              * This is a computer generated invoice and does not
+              require a physical signature
+            </td>
+          </tr>
+          <tr>
+            <td width="50%">
+            </td>
+            <td>
+              <div style="margin-left: 50px;">
+                <b> Authorized Signature </b>
+                <br>
+                <br>
+                ...................................
+                <br>
+                <br>
+                <br>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    </table>
+  </div>
+</body>
+
+</html> -->
+
+
+
+
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <title>Order Details</title>
+  <link rel="stylesheet" href="/public/style/invoiceStyle.css">
+  <style>
+    .top_rw {
+      background-color: #f4f4f4;
+    }
+
+    .invoice-box {
+      max-width: 890px;
+      margin: auto;
+      padding: 10px;
+      border: 1px solid #eee;
+      box-shadow: 0 0 10px rgba(0, 0, 0, .15);
+      font-size: 14px;
+      line-height: 24px;
+      font-family: 'Helvetica Neue', 'Helvetica', Helvetica, Arial, sans-serif;
+      color: #555;
+    }
+
+    .invoice-box table {
+      width: 100%;
+      line-height: inherit;
+      text-align: left;
+    }
+
+    .invoice-box table td {
+      padding: 5px;
+      vertical-align: top;
+    }
+
+    .invoice-box table tr.heading td {
+      background: #eee;
+      border-bottom: 1px solid #ddd;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    td,
+    th {
+      min-width: 3em;
+      max-width: 3em;
+      overflow-wrap: break-word;
+    }
+
+    .invoice-box table tr.item td {
+      border-bottom: 1px solid #eee;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="invoice-box">
+    <table cellpadding="0" cellspacing="0">
+      <tr style="vertical-align: middle;">
+        <td colspan="2">
+          <img src="https://bioapz.s3.amazonaws.com/logos/logo.jpg" style="height:100px;" alt="">
+        </td>
+        <td style="text-align: right;">
+          <p style="margin-left: 10px; padding: 10px;">Invoice / Cash Memo <br>
+            (Original for Recipient)
+          </p>
+        </td>
+      </tr>
+      <tr class="top_rw">
+        <td colspan="2" style="padding-left: 15px;">
+          <h4 style="margin: 0px; font-weight: 500;"> Invoice No. </h4>
+          <span style="font-weight: bold;"> {{data.invoice_no}} </span>
+        </td>
+        <td colspan="2" style="text-align: right; padding-right: 20px;">
+          <h5 style="margin: 0px; font-size: 12px; font-weight: 500;"> Order No: <b> {{data.order_no}} </b>
+          </h5>
+          <span style="margin: 0px; font-size: 12px;"> Order Date: <b>{{data.order_date}}</b></span style="margin: 0;">
+          <br />
+          {{#ifCond data.is_pickup "===" true}}
+          <span style="margin: 0px; font-size: 12px;"> Pickup :<b> {{data.pickup_time}} </b> </span style="margin: 0;">
+          {{/ifCond}}
+        </td>
+      </tr>
+      <tr class="information">
+        <td colspan="3">
+          <table>
+            <tr style="vertical-align: top;">
+              <td style="width: 50%;">
+                <b> Sold By: <br>
+                  {{data.business.dataValues.business_name}} </b> <br />
+                {{data.business.dataValues.address}}
+              </td>
+              <td style="width: 50%; text-align: right;">
+                <b> Billing Address: <br />
+                  {{data.user.dataValues.username}}</b> <br />
+                {{data.user.dataValues.address}}
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+      <td colspan="3">
+        <table cellspacing="0px" cellpadding="2px">
+          <tr class="heading">
+            <td style="width:25%;">
+              ITEMS
+            </td>
+            <td style="width:10%; text-align:right;">
+              PRICE
+            </td>
+            <td style="width:10%; text-align:center;">
+              QTY
+            </td>
+            <td style="width:10%; text-align:right;">
+              TOTAL
+            </td>
+          </tr>
+          {{#each data.order_details}}
+          <tr class="item">
+            <td style="width:25%;">
+              {{this.dataValues.name}} <br>
+              {{#ifCond this.dataValues.is_loyalty_product '==' true}}
+              <span style="font-size: 50%; font-weight: bold;">
+                (Free Loyalty Product)
+              </span>
+              {{/ifCond}}
+              {{#ifCond this.dataValues.is_free '==' true}}
+              <span style="font-size: 50%; font-weight: bold;">
+                (Free Product)
+              </span>
+              {{/ifCond}}
+            </td>
+            <td style="width:10%; text-align:right;">
+              {{#ifCond this.dataValues.is_free  "||" this.dataValues.is_loyalty_product }}
+              $0.00
+              {{else}}
+              ${{this.dataValues.price}}
+              {{/ifCond}}
+            </td>
+            <td style="width:10%; text-align:center;">
+              {{this.dataValues.qty}}
+            </td>
+            <td style="width:10%; text-align:right;">
+              {{#ifCond this.dataValues.is_free  "||" this.dataValues.is_loyalty_product }}
+              $0.00
+              {{else}}
+              ${{this.dataValues.productTotal}}
+              {{/ifCond}}
+            </td>
+          </tr>
+          {{/each}}
+          {{#ifCond data.discount_total ">" '0.00' }}
+          <tr>
+            <td colspan="3"> <b> Total Discount </b> </td>
+            <td style="text-align:right;">
+              -${{data.discount_total}}
+            </td>
+          </tr>
+          {{/ifCond}}
+          {{#ifCond data.cashback_total ">" '0.00'}}
+          <tr>
+            <td colspan="3"> <b>Used Cashback </b> </td>
+            <td style="text-align:right;">
+              -${{data.cashback_total}}
+            </td>
+          </tr>
+          {{/ifCond}}
+          {{#ifCond data.virtual_card_amount ">" '0.00'}}
+          <tr>
+            <td colspan="3"> <b>Used Virtual card </b> </td>
+            <td style="text-align:right;">
+              -${{data.giftcard_used_amount}} <div style="font-size: 50%; font-weight: bold;">
+              </div>
+            </td>
+          </tr>
+          {{/ifCond}}
+          {{#ifCond data.loyalty_points_total ">" '0.00'}}
+          <tr>
+            <td  colspan="3"> <b> Redeemed Amount </b> </td>
+            <td style="text-align:right;">
+              -${{data.loyaltyValue}} <div style="font-size: 50%; font-weight: bold;">
+                ({{data.loyalty_points_total}} Loyalty Points)
+              </div>
+            </td>
+          </tr>
+          {{/ifCond}}
+          <tr class="item">
+            <td colspan="3"> <b> Grand Total </b> </td>
+            <td style="text-align:right; font-weight: bold;">
+              ${{data.grand_total}}
+            </td>
+          </tr>
+      </td>
+    </table>
+    <tr>
+      <td colspan="3">
+        <table cellspacing="0px" cellpadding="2px">
+          <tr>
+            <td width="50%">
+              <b> Declaration: </b> <br>
+              We declare that this invoice shows the actual price of the goods
+              described above and that all particulars are true and correct. The
+              goods sold are intended for end user consumption and not for resale.
+            </td>
+            <td style="vertical-align: middle;">
+              * This is a computer generated invoice and does not
+              require a physical signature
+            </td>
+          </tr>
+          <tr>
+            <td width="50%">
+            </td>
+            <td>
+              <div style="margin-left: 50px;">
+                <b> Authorized Signature </b>
+                <br>
+                <br>
+                ...................................
+                <br>
+                <br>
+                <br>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    </table>
+  </div>
+</body>
+
+</html>

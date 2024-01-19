@@ -18,7 +18,7 @@ module.exports = (sequelize, DataTypes) => {
         order_id: {
             type: DataTypes.INTEGER,
         },
-        order_no:{
+        order_no: {
             type: DataTypes.STRING,
         },
         status: {
@@ -38,11 +38,9 @@ module.exports = (sequelize, DataTypes) => {
     }
     );
     LoyaltyTokenCardHistory.associate = function (models) {
-        LoyaltyTokenCardHistory.belongsTo(models.user ,{foreignKey:'user_id'})
-        // LoyaltyTokenCardHistory.hasOne(models.orders,{foreignKey: 'order_id'})
-        // LoyaltyTokenCardHistory.hasOne(models.orders , {foreignKey:'order_no'})
+        LoyaltyTokenCardHistory.belongsTo(models.user, { foreignKey: 'user_id' })
         LoyaltyTokenCardHistory.belongsTo(models.business, { foreignKey: 'business_id' })
-        LoyaltyTokenCardHistory.belongsTo(models.loyalty_token_cards,{foreignKey:'loyalty_token_card_id'})
+        LoyaltyTokenCardHistory.belongsTo(models.loyalty_token_cards, { foreignKey: 'loyalty_token_card_id' })
     };
     return LoyaltyTokenCardHistory;
 };

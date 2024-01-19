@@ -14,6 +14,10 @@ module.exports = (sequelize, DataTypes) => {
     qty : DataTypes.DOUBLE(10, 2),
     price : DataTypes.DOUBLE(10, 2),
     category_id: DataTypes.INTEGER,
+    is_loyalty_product:{
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
+    },
     is_deleted: {
       type: DataTypes.BOOLEAN,
       defaultValue: false

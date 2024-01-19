@@ -3,8 +3,8 @@ module.exports = {
     port: 587,
     secure: false,
     auth: {
-        user: 'shripal@technostacks.com',
-        pass: 'aoigyfornwtzrjky'
+        user: 'kureshi.sakil@technostacks.in',
+        pass: '#Sakil@977%'
     },
     tls: {
         rejectUnauthorized: false

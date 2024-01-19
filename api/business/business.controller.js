@@ -263,6 +263,7 @@ exports.GetBusinessProfile = async (req, res) => {
 		}
 		]
 	}).then(async business => {
+		console.log(business, '<<<<<<<<<<<<<<<<,`');
 		if (business) {
 			if (business.banner != null) {
 				var business_banner = await awsConfig.getSignUrl(business.banner).then(function (res) {
@@ -2117,6 +2118,26 @@ exports.GetRegisteredUsers = async (req, res) => {
 			return res.send(setRes(resCode.BadRequest, false, (requiredFields.toString() + ' required'), null))
 		}
 	} catch (error) {
+		return res.send(setRes(resCode.BadRequest, false, "something went wrong", null));
+	}
+}
+
+exports.statusList = async (req, res) => {
+	try {
+		const statusModel = models.statuses
+		const list = await statusModel.findAll({
+			where: { is_deleted: false },
+			order: [
+				['order_by', 'ASC'],
+			],
+		})
+		if (list.length > 0) {
+			return res.send(setRes(resCode.OK, true, "Fetched status list successfully", list))
+		}else{
+			return res.send(setRes(resCode.BadRequest, fasle, "No records", null))
+		}
+	} catch (error) {
+		console.log(error);
 		return res.send(setRes(resCode.BadRequest, false, "something went wrong", null));
 	}
 }

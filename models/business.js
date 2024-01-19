@@ -7,7 +7,10 @@ module.exports = (sequelize, DataTypes) => {
       primaryKey: true,
       autoIncrement: true,
     },
-    country_id: {
+    stripe_account_id:{
+      type: DataTypes.STRING,
+    },
+        country_id: {
       type: DataTypes.INTEGER,
     },
     role_id: {
@@ -132,6 +135,8 @@ Business.associate = function(models) {
     Business.hasMany(models.follow_unfollow_businesses , {as:'users' , foreignKey:'business_id' }) 
     Business.hasMany(models.loyalty_token_cards,{foreignKey: "business_id"})
     Business.hasMany(models.loyalty_token_card_history,{foreignKey: "business_id"})
+    // Business.hasMany(models.loyalty_token_cards, { foreignKey: 'business_id', as: 'loyaltyCards' })
+
     
   };
   return Business;

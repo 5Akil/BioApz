@@ -10,15 +10,30 @@ var session = require('express-session');
 var morgan = require('morgan');
 const { NOTIFICATION_TYPES } = require('./config/notificationTypes')
 
+
 // set morgan to log info about our requests for development use.
-app.use(morgan('dev'));
+// app.use(morgan('dev'));
+morgan.token('time', function (req, res) {
+	return new Date().toISOString();
+});
+app.use(morgan(':time :method :url :status :response-time ms'));
 app.use(express.static('./'));
 // initialize body-parser to parse incoming parameters requests to req.body
 app.use(body_parser.urlencoded({
 	extended: true
 }));
-app.use(body_parser.json());
+// app.use(body_parser.json());
 
+app.use(
+	(req, res, next) => {
+		console.log(req.originalUrl, '<<<<<<<<<<<<<<<<<<<<<<<<<<<<,,');
+		if (req.originalUrl === '/webhook') {
+			next();
+		} else {
+			body_parser.json()(req, res, next);
+		}
+	}
+);
 // app.use('/views', express.static(path.join(__dirname, 'views')))
 
 var models = require('./models');
@@ -53,7 +68,9 @@ app.get('/', (req, res) => {
 })
 
 app.use(express.static('uploads'));
+// app.use(express.static('public'));
 
+app.use(express.static(__dirname + '/public'))
 app.use('/api', router);
 
 require('./route')(app);
@@ -102,8 +119,15 @@ var serviceAccount = require("./bioapz-372208-4929769f6e43.json");
 
 // firebase initialization over
 
+
+// app.get('/stripeConnectAuthentication',(req,res) => {
+// 	console.log(res);
+// 	console.log(req);
+// 	res.send("Hello Team");
+// })
 var Queue = require('better-queue');
-var notification = require('./push_notification')
+var notification = require('./push_notification');
+const { log } = require('async');
 
 var db = admin.database()
 var userModel = models.user;
@@ -169,5 +193,33 @@ NotificationRef.on("child_added", function (snapshot) {
 	RemoveDataQueue.push(snapshotKey)
 
 })
+
+const fs = require('fs');
+const inputFilePath = './demo.txt';
+
+function formatLogs(inputFilePath) {
+	const inputContent = fs.readFileSync(inputFilePath, 'utf8');
+	const lines = inputContent.split('\n');
+	const formattedLogs = [];
+	let currentProject = null;
+	lines.forEach(line => {
+		if (line.startsWith('*Work logs of')) {
+			const line1 = line.match(/\*(.*?\))/)[1].trim()
+			formattedLogs.push(`==============================\n${line1}\n==============================`);
+		} else if (line.startsWith('*')) {
+			currentProject = line.match(/\*(.*?)\*/)[1].trim();
+			formattedLogs.push(`${currentProject}`)
+		} else if (line.startsWith('[')) {
+			const logDetails = line.match(/\[(.*?)\] - (.*?): (.*)/);
+			if (logDetails) {
+				const logId = logDetails[1];
+				const description = logDetails[2];
+				formattedLogs.push(`[${logId}]==>${description}`);
+			}
+		}
+	});
+	// console.log(formattedLogs.join('\n') ,'<<<<<<<<<<<<<<<output')
+}
+ formatLogs(inputFilePath);
 
 module.exports = app;
